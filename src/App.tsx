@@ -11,7 +11,6 @@ import LoadingSpinner from './components/common/LoadingSpinner';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Layout from './components/layout/Layout';
 
-
 // Lazy load components
 const Login = React.lazy(() => import('./components/Login'));
 const Register = React.lazy(() => import('./components/Register'));
@@ -48,7 +47,6 @@ const AssignSimulationsPage = React.lazy(() =>
 
 const App: React.FC = () => {
   return (
-    
     <ThemeProvider>
       <AuthProvider>
         <Router>
@@ -71,7 +69,7 @@ const App: React.FC = () => {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/dashboard">
                       <TraineeDashboard />
                     </ProtectedRoute>
                   }
@@ -79,7 +77,7 @@ const App: React.FC = () => {
                 <Route
                   path="/training"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/training">
                       <TrainingPlanPage />
                     </ProtectedRoute>
                   }
@@ -87,7 +85,7 @@ const App: React.FC = () => {
                 <Route
                   path="/training/:id"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/training">
                       <TrainingPlanDetailsPage />
                     </ProtectedRoute>
                   }
@@ -95,7 +93,7 @@ const App: React.FC = () => {
                 <Route
                   path="/playback"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/playback">
                       <PlaybackPage />
                     </ProtectedRoute>
                   }
@@ -103,7 +101,7 @@ const App: React.FC = () => {
                 <Route
                   path="/playback/:id"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/playback">
                       <PlaybackDetailPage />
                     </ProtectedRoute>
                   }
@@ -111,7 +109,7 @@ const App: React.FC = () => {
                 <Route
                   path="/manage-simulations"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/manage-simulations">
                       <ManageSimulationsPage />
                     </ProtectedRoute>
                   }
@@ -119,7 +117,7 @@ const App: React.FC = () => {
                 <Route
                   path="/generate-scripts"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/manage-simulations">
                       <GenerateScript />
                     </ProtectedRoute>
                   }
@@ -127,7 +125,7 @@ const App: React.FC = () => {
                 <Route 
                   path="/simulation/:id/attempt" 
                   element={
-                     <ProtectedRoute allowedRoles={['trainee']}>
+                     <ProtectedRoute allowedRoles={['trainee']} path="/training">
                       <SimulationAttemptPage />
                     </ProtectedRoute>
                   } 
@@ -135,7 +133,7 @@ const App: React.FC = () => {
                 <Route 
                   path="/manage-training-plan" 
                   element={
-                     <ProtectedRoute allowedRoles={['trainee']}>
+                     <ProtectedRoute allowedRoles={['trainee']} path="/manage-training-plan">
                       <ManageTrainingPlanPage />
                     </ProtectedRoute>
                   } 
@@ -143,7 +141,7 @@ const App: React.FC = () => {
                 <Route
                   path="/assign-simulations"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee']}>
+                    <ProtectedRoute allowedRoles={['trainee']} path="/assign-simulations">
                       <AssignSimulationsPage />
                     </ProtectedRoute>
                   }
@@ -154,7 +152,6 @@ const App: React.FC = () => {
         </Router>        
       </AuthProvider>
     </ThemeProvider>
-    
   );
 };
 

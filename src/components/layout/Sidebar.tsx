@@ -16,8 +16,9 @@ import {
   Assignment as AssignmentIcon,
   Settings as SettingsIcon,
   SmartToy as SmartToyIcon,
-  Book as BookIcon, // Added for Manage Training Plan
+  Book as BookIcon,
 } from '@mui/icons-material';
+import { hasPermission } from '../../utils/permissions';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -57,7 +58,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
     { path: '/settings', icon: SettingsIcon, label: 'Settings' },
     { path: '/support', icon: HelpIcon, label: 'Help & Support' },
     { path: '/feedback', icon: FeedbackIcon, label: 'Feedback' }
-  ];
+  ]
+    // .filter(item => hasPermission(item.path));
 
   return (
     <Stack

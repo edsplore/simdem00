@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Card, Button, Stack, Avatar } from '@mui/material';
-import { HeadsetMic, PlayArrow, CallEnd } from '@mui/icons-material';
+import {
+  Box,
+  Typography,
+  Card,
+  Button,
+  Stack,
+  Avatar,
+  IconButton,
+  TextField,
+} from '@mui/material';
+import {
+  HeadsetMic,
+  PlayArrow,
+  CallEnd,
+  Send as SendIcon,
+  SmartToy as SmartToyIcon,
+} from '@mui/icons-material';
 import axios from 'axios';
 import { RetellWebClient } from 'retell-client-js-sdk';
 
@@ -11,80 +26,83 @@ interface Message {
 
 interface PreviewTabProps {
   simulationId: string;
+  simulationType?: 'audio' | 'chat';
 }
 
 const webClient = new RetellWebClient();
 
-const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
+const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 'audio' }) => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStarting, setIsStarting] = useState(false);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    webClient.on('conversationStarted', () => {
-      console.log('Conversation started');
-    });
+    if (simulationType === 'audio') {
+      webClient.on('conversationStarted', () => {
+        console.log('Conversation started');
+      });
 
-    webClient.on('conversationEnded', ({ code, reason }) => {
-      console.log('Conversation ended:', code, reason);
-      setIsCallActive(false);
-    });
+      webClient.on('conversationEnded', ({ code, reason }) => {
+        console.log('Conversation ended:', code, reason);
+        setIsCallActive(false);
+      });
 
-    webClient.on('error', (error) => {
-      console.error('WebRTC error:', error);
-      setIsCallActive(false);
-    });
+      webClient.on('error', (error) => {
+        console.error('WebRTC error:', error);
+        setIsCallActive(false);
+      });
 
-    webClient.on('update', (update) => {
-      console.log('Update received:', update);
+      webClient.on('update', (update) => {
+        if (update.transcript) {
+          const newTranscript = update.transcript;
+          const previousTranscript = previousTranscriptRef.current || [];
 
-      if (update.transcript) {
-        const newTranscript = update.transcript;
-        const previousTranscript = previousTranscriptRef.current || [];
+          setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const newTranscriptLength = newTranscript.length;
+            const prevTranscriptLength = previousTranscript.length;
 
-        setMessages((prevMessages) => {
-          const updatedMessages = [...prevMessages];
-          const newTranscriptLength = newTranscript.length;
-          const prevTranscriptLength = previousTranscript.length;
+            if (newTranscriptLength === 0) return updatedMessages;
 
-          if (newTranscriptLength === 0) return updatedMessages;
+            if (newTranscriptLength > prevTranscriptLength) {
+              const newMsg = newTranscript[newTranscriptLength - 1];
+              updatedMessages.push({
+                speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+                text: newMsg.content,
+              });
+            } else if (newTranscriptLength === prevTranscriptLength) {
+              const newMsg = newTranscript[newTranscriptLength - 1];
+              const lastMsgIndex = updatedMessages.length - 1;
 
-          if (newTranscriptLength > prevTranscriptLength) {
-            const newMsg = newTranscript[newTranscriptLength - 1];
-            updatedMessages.push({
-              speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
-              text: newMsg.content,
-            });
-          } else if (newTranscriptLength === prevTranscriptLength) {
-            const newMsg = newTranscript[newTranscriptLength - 1];
-            const lastMsgIndex = updatedMessages.length - 1;
-            
-            if (lastMsgIndex >= 0) {
-              const lastMsg = updatedMessages[lastMsgIndex];
-              if (lastMsg.speaker === (newMsg.role === 'agent' ? 'customer' : 'trainee')) {
-                updatedMessages[lastMsgIndex].text = newMsg.content;
-              } else {
-                updatedMessages.push({
-                  speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
-                  text: newMsg.content,
-                });
+              if (lastMsgIndex >= 0) {
+                const lastMsg = updatedMessages[lastMsgIndex];
+                if (lastMsg.speaker === (newMsg.role === 'agent' ? 'customer' : 'trainee')) {
+                  updatedMessages[lastMsgIndex].text = newMsg.content;
+                } else {
+                  updatedMessages.push({
+                    speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+                    text: newMsg.content,
+                  });
+                }
               }
             }
-          }
 
-          return updatedMessages;
-        });
+            return updatedMessages;
+          });
 
-        previousTranscriptRef.current = newTranscript;
-      }
-    });
+          previousTranscriptRef.current = newTranscript;
+        }
+      });
 
-    return () => {
-      webClient.stopCall();
-    };
-  }, []);
+      return () => {
+        webClient.stopCall();
+      };
+    }
+  }, [simulationType]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -95,27 +113,39 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      // Set call as active immediately and show "Ringing..." message
       setIsCallActive(true);
       setMessages([{
         speaker: 'customer',
-        text: 'Ringing...'
+        text: simulationType === 'audio' ? 'Connecting...' : '',
       }]);
 
-      const response = await axios.post('/api/simulations/start-audio-preview', {
-        user_id: 'user123',
-        sim_id: simulationId
-      });
-
-      console.log(response.data);
-
-      if (response.data.access_token) {
-        await webClient.startCall({
-          accessToken: response.data.access_token
+      if (simulationType === 'audio') {
+        const response = await axios.post('/api/simulations/start-audio-preview', {
+          user_id: 'user123',
+          sim_id: simulationId
         });
+
+        if (response.data.access_token) {
+          await webClient.startCall({
+            accessToken: response.data.access_token
+          });
+        }
+      } else {
+        const response = await axios.post('/api/simulations/start-chat-preview', {
+          user_id: 'user123',
+          sim_id: simulationId,
+          message: ''
+        });
+
+        if (response.data.response) {
+          setMessages([{
+            speaker: 'customer',
+            text: response.data.response
+          }]);
+        }
       }
     } catch (error) {
-      console.error('Error starting preview:', error);
+      console.error(`Error starting ${simulationType} preview:`, error);
       setIsCallActive(false);
       setMessages([]);
     } finally {
@@ -123,8 +153,49 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
     }
   };
 
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
+
+    const newMessage: Message = {
+      speaker: 'trainee',
+      text: inputMessage.trim()
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post('/api/simulations/start-chat-preview', {
+        user_id: 'user123',
+        sim_id: simulationId,
+        message: inputMessage.trim()
+      });
+
+      if (response.data.response) {
+        setMessages(prev => [...prev, {
+          speaker: 'customer',
+          text: response.data.response
+        }]);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   const handleEndCall = () => {
-    webClient.stopCall();
+    if (simulationType === 'audio') {
+      webClient.stopCall();
+    }
     setIsCallActive(false);
   };
 
@@ -141,7 +212,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
           <Typography variant="subtitle2" color="text.secondary">Customer</Typography>
           <Typography variant="subtitle2" color="text.secondary">Trainee</Typography>
         </Box>
-        
+
         <Box sx={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
           {!isCallActive ? (
             <Box sx={{
@@ -162,13 +233,17 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
                 p: 3,
                 mb: 3
               }}>
-                <HeadsetMic sx={{ fontSize: 48, color: '#4c6ef5' }} />
+                {simulationType === 'audio' ? (
+                  <HeadsetMic sx={{ fontSize: 48, color: '#4c6ef5' }} />
+                ) : (
+                  <SmartToyIcon sx={{ fontSize: 48, color: '#4c6ef5' }} />
+                )}
               </Box>
               <Typography variant="h5" sx={{ fontWeight: 600, color: '#1a1a1a', mb: 1 }}>
                 Preview Simulation
               </Typography>
               <Typography sx={{ color: '#666', mb: 2 }}>
-                Press start to preview the Audio Simulation
+                Press start to preview the simulation
               </Typography>
               <Button
                 variant="contained"
@@ -239,32 +314,83 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId }) => {
                   ))}
                 </Stack>
               </Box>
-              <Box sx={{ 
-                position: 'absolute', 
-                bottom: 0, 
-                left: 0, 
-                right: 0,
-                p: 2,
-                display: 'flex',
-                justifyContent: 'center',
-                borderTop: '1px solid',
-                borderColor: 'divider',
-                bgcolor: 'white'
-              }}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<CallEnd />}
-                  onClick={handleEndCall}
+
+              {simulationType === 'chat' ? (
+                <Box
                   sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    px: 4
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    p: 2,
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'white',
+                    display: 'flex',
+                    gap: 2,
                   }}
                 >
-                  End Call
-                </Button>
-              </Box>
+                  <TextField
+                    fullWidth
+                    multiline
+                    maxRows={4}
+                    placeholder="Type your message..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                  <IconButton
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !inputMessage.trim()}
+                    sx={{
+                      bgcolor: '#444CE7',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: '#3538CD',
+                      },
+                      '&.Mui-disabled': {
+                        bgcolor: '#F5F6FF',
+                        color: '#444CE7',
+                      },
+                    }}
+                  >
+                    <SendIcon />
+                  </IconButton>
+                </Box>
+              ) : (
+                <Box sx={{ 
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  p: 2,
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  bgcolor: 'white',
+                  display: 'flex',
+                  justifyContent: 'center',
+                }}>
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<CallEnd />}
+                    onClick={handleEndCall}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      px: 4
+                    }}
+                  >
+                    End Call
+                  </Button>
+                </Box>
+              )}
             </>
           )}
         </Box>

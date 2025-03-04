@@ -5,7 +5,7 @@ export type CreateSimulationPayload = {
   name: string;
   division_id: string;
   department_id: string;
-  type: string;
+  type: 'audio' | 'chat' | 'visual-audio' | 'visual-chat' | 'visual';
   script: Array<{
     script_sentence: string;
     role: string;

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 
 import {
   Stack,
@@ -538,8 +539,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ script = initialMessages })
                           borderTopLeftRadius: msg.role === 'Customer' ? 0 : undefined,
                         }}
                         // Dangerously set the HTML since Quill content is HTML
-                        dangerouslySetInnerHTML={{ __html: msg.message }}
-                      />
+                      >
+                        <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(msg.message) }} />
+                      </MessageBubble>
                     ) : (
                       <MessageBubble
                         className="bubble-content"

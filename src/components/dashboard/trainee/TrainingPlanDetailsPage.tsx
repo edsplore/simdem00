@@ -28,27 +28,63 @@ const TrainingPlanDetailsPage = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState('50');
-  const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
+  var [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
   const [expandedModules, setExpandedModules] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    const loadTrainingPlan = async () => {
-      if (user?.id) {
-        try {
-          user.id = 'userId11'; // For testing
-          const data = await fetchTrainingData(user.id);
-          const plan = data.training_plans.find(p => p.id === id);
-          if (plan) {
-            setTrainingPlan(plan);
+  // Simulating API response
+  const mockData = {
+    "user_id": "userId11",
+    "training_plans": [
+      {
+        "id": "45893",
+        "name": "Advanced Leadership Training",
+        "total_modules": 3,
+        "total_simulations": 5,
+        "est_time": 90,
+        "average_sim_score": 86,
+        "completion_percentage": 92,
+        "due_date": "2024-12-25",
+        "status": "ongoing",
+        "modules": [
+          {
+            "id": "M101",
+            "name": "Leadership Fundamentals",
+            "total_simulations": 2,
+            "average_score": 85,
+            "due_date": "2024-12-20",
+            "status": "ongoing",
+            "simulations": [
+              {
+                "simulation_id": "67c716139e65ee61e0882a29",
+                "name": "Decision Making",
+                "highest_attempt_score": 87,
+                "due_date": "2024-12-18",
+                "status": "finished"
+              },
+              {
+                "simulation_id": "67c716139e65ee61e0882a29",
+                "name": "Conflict Resolution",
+                "highest_attempt_score": 82,
+                "due_date": "2024-12-19",
+                "status": "ongoing"
+              }
+            ]
           }
-        } catch (error) {
-          console.error('Error loading training plan:', error);
-        }
+        ]
       }
-    };
+    ]
+  };
 
-    loadTrainingPlan();
-  }, [id, user?.id]);
+  // Find the correct training plan based on the URL param `id`
+  const selectedPlan = mockData.training_plans.find(plan => plan.id === id);
+
+  // Set the state with the selected plan
+  if (selectedPlan) {
+    setTrainingPlan(selectedPlan);
+  }
+}, [id]); // Runs when `id` changes
+
 
   const getStatusColor = (status: Module['status']) => {
     switch (status) {

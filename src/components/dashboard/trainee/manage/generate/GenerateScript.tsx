@@ -13,7 +13,7 @@ interface SimulationData {
   division: string;
   department: string;
   tags: string[];
-  simulationType: string;
+  simulationType: 'audio' | 'chat' | 'visual-audio' | 'visual-chat' | 'visual';
 }
 
 interface Message {
@@ -129,7 +129,7 @@ export default function GenerateScript() {
           <StyledTab label="Settings" />
           <StyledTab label="Preview" className="" />
         </StyledTabs>
-        
+
         {isScriptLoaded && tabValue === 0 && (
           <Button
             variant="contained"
@@ -171,6 +171,7 @@ export default function GenerateScript() {
               <SettingsTab 
                 simulationId={simulationResponse?.id}
                 prompt={simulationResponse?.prompt}
+                simulationType={simulationData?.simulationType}
                 simulationData={simulationData}
               />
             )}

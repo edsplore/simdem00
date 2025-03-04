@@ -83,12 +83,14 @@ const AttemptCard = styled(Card)<AttemptCardProps>(({ theme, selected }) => ({
 }));
 
 
+import ChatSimulationPage from './simulation/ChatSimulationPage';
 
 const SimulationAttemptPage = () => {
   const [selectedLevel, setSelectedLevel] = useState('Level 01');
   const [selectedAttempt, setSelectedAttempt] = useState<'Test' | 'Practice'>('Test');
   const [currentSimIndex, setCurrentSimIndex] = useState(0);
   const [showStartPage, setShowStartPage] = useState(false);
+  const [simulationType, setSimulationType] = useState<'audio' | 'chat'>('audio');
 
   const simulations: SimulationCard[] = [
     { id: '1', title: 'Humana_MS_PCP Change', simType: 'Audio', status: 'Completed' },
@@ -122,11 +124,24 @@ const SimulationAttemptPage = () => {
   };
 
   const handleContinue = () => {
+    setSimulationType(selectedAttempt === 'Test' ? 'audio' : 'chat');
     setShowStartPage(true);
   };
 
   if (showStartPage) {
     const currentSim = simulations[currentSimIndex];
+    if (simulationType === 'chat') {
+      return (
+        <ChatSimulationPage
+          simulationId={currentSim.id}
+          simulationName={currentSim.title}
+          level={selectedLevel}
+          simType={currentSim.simType}
+          attemptType={selectedAttempt}
+          onBackToList={() => setShowStartPage(false)}
+        />
+      );
+    }
     return (
       <SimulationStartPage
         simulationId={currentSim.id}

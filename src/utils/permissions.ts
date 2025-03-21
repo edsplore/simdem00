@@ -89,8 +89,8 @@ export const MODULE_PERMISSION_MAP = {
   '/playback': 'playback',
   '/manage-simulations': 'simulations',
   '/manage-training-plan': 'training_plan',
-  '/assign-simulations': 'training',
-  '/settings': 'training',
+  '/assign-simulations': 'trainee',
+  '/settings': 'trainee',
 };
 
 export const hasPermission = (path: string): boolean => {

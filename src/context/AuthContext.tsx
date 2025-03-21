@@ -16,33 +16,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
-  
+
   const updateUserFromToken = useCallback(() => {
     const decodedToken = authService.getUserFromToken();
     if (decodedToken) {
-      const workspaceKey = 'new workspace-2025-1033';
-      const workspaceData = decodedToken[workspaceKey];
-      
-      // Determine role based on permissions
+      // Get workspace data - handle both formats
+      const workspaceData = decodedToken['new workspace-2025-1033'] || decodedToken['WS-1'];
+
+      // Default to trainee
       let role: UserRole = 'trainee';
-      if (workspaceData?.roles?.uam?.includes('WORKSPACE_ADMIN')) {
+
+      // Check for admin roles first
+      if (workspaceData?.roles?.uam?.includes('WORKSPACE_ADMIN') || 
+          workspaceData?.roles?.simulator?.includes('WORKSPACE_ADMIN')) {
         role = 'super_admin';
-      } else if (workspaceData?.roles?.simulator?.includes('manager')) {
+      } 
+      // Then check for org admin
+      else if (workspaceData?.roles?.simulator?.includes('manager')) {
         role = 'org_admin';
-      } else if (workspaceData?.roles?.simulator?.includes('trainer')) {
+      }
+      // Then trainer
+      else if (workspaceData?.roles?.simulator?.includes('trainer')) {
         role = 'trainer';
-      } else if (workspaceData?.roles?.simulator?.includes('creator')) {
+      }
+      // Then creator
+      else if (workspaceData?.roles?.simulator?.includes('creator')) {
         role = 'creator';
       }
+      // Default remains trainee if no other role matches
 
-      setUser({
+      // Log the role determination
+      console.log('Role determination:', {
+        workspaceData: workspaceData?.roles,
+        assignedRole: role
+      });
+
+      const user = {
         id: decodedToken.user_id,
         email: decodedToken.sub,
         name: `${decodedToken.first_name} ${decodedToken.last_name}`,
         role: role,
-      });
+      }
+
+      console.log('Setting user:', user);
+
+      setUser(user);
       setIsAuthenticated(true);
     } else {
+      console.log('No valid token found, clearing user state');
       setUser(null);
       setIsAuthenticated(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Container,
   Stack,
@@ -21,6 +21,7 @@ import {
   Tab,
   SelectChangeEvent,
   TablePagination,
+  CircularProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -30,46 +31,52 @@ import {
 import DashboardContent from '../../DashboardContent';
 import ActionsMenu from './ActionsMenu';
 import CreateSimulationDialog from './CreateSimulationDialog';
-import { SimulationData } from './types';
+import { fetchSimulations, Simulation } from '../../../../services/simulations';
+import { useAuth } from '../../../../context/AuthContext';
 
-const simulationData: SimulationData[] = Array(6)
-  .fill(null)
-  .map((_, index) => ({
-    id: '82840',
-    name: 'Humana_MS_PCP Change',
-    version: 'v1.2',
-    level: 'Lvl 02',
-    type: 'Visual-Audio',
-    status: index < 3 ? 'Published' : index < 5 ? 'Draft' : 'Archive',
-    tags: ['Tag 01', 'Tag 02'],
-    estTime: '15 mins',
-    lastModified: 'Dec 20, 2024',
-    modifiedBy: {
-      name: 'John Doe',
-      email: 'johndoe@humana.com',
-    },
-    createdOn: 'Dec 20, 2024',
-    createdBy: {
-      name: 'John Doe',
-      email: 'johndoe@humana.com',
-    },
-    isLocked: index === 1,
-  }));
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 const ManageSimulationsPage = () => {
+  const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState('All Tags');
-  const [selectedDepartment, setSelectedDepartment] = useState(
-    'All Departments & Divisions'
-  );
+  const [selectedDepartment, setSelectedDepartment] = useState('All Departments & Divisions');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedRow, setSelectedRow] = useState<SimulationData | null>(null);
+  const [selectedRow, setSelectedRow] = useState<Simulation | null>(null);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadSimulations = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchSimulations(user?.id || 'user123');
+        setSimulations(data);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load simulations');
+        console.error('Error loading simulations:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSimulations();
+  }, [user?.id]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
@@ -101,9 +108,9 @@ const ManageSimulationsPage = () => {
 
   // Filter data based on current tab and search query
   const filteredData = useMemo(() => {
-    return simulationData.filter((row) => {
+    return simulations.filter((row) => {
       // First apply tab filter
-      if (currentTab !== 'All' && row.status !== currentTab) {
+      if (currentTab !== 'All' && row.status.toLowerCase() !== currentTab.toLowerCase()) {
         return false;
       }
 
@@ -111,14 +118,14 @@ const ManageSimulationsPage = () => {
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
         return (
-          row.name.toLowerCase().includes(searchLower) ||
+          row.sim_name.toLowerCase().includes(searchLower) ||
           row.id.toLowerCase().includes(searchLower)
         );
       }
 
       return true;
     });
-  }, [currentTab, searchQuery]);
+  }, [currentTab, searchQuery, simulations]);
 
   return (
     <DashboardContent>
@@ -148,15 +155,15 @@ const ManageSimulationsPage = () => {
                   textTransform: 'none',
                   minWidth: 'auto',
                   px: 3,
-                  bgcolor: '#F9FAFB', // Background color for all tabs
-                  color: '#AEAFB0', // Default text color
-                  borderRadius: 1, // Optional: Add some border radius for better aesthetics
+                  bgcolor: '#F9FAFB',
+                  color: '#AEAFB0',
+                  borderRadius: 1,
                   '&:hover': {
-                    bgcolor: '#EDEFF1', // Optional: Add hover effect
+                    bgcolor: '#EDEFF1',
                   },
                   '&.Mui-selected': {
-                    color: '#323232', // Text color for the selected tab
-                    fontWeight: 'bold', // Optional: Make selected tab text bold
+                    color: '#323232',
+                    fontWeight: 'bold',
                   },
                 },
               }}
@@ -180,18 +187,16 @@ const ManageSimulationsPage = () => {
             </Button>
           </Stack>
 
-
           {/* Filters */}
           <Stack
             direction="row"
             spacing={2}
             alignItems="center"
-            justifyContent="space-between" // Align items within the stack
+            justifyContent="space-between"
             sx={{
-              bgcolor: '#F9FAFB', // Background color for the whole stack
-              p: 1.5, // Optional: Add padding for better spacing
-              borderRadius: 2, // Optional: Add rounded corners for the stack itself
-
+              bgcolor: '#F9FAFB',
+              p: 1.5,
+              borderRadius: 2,
             }}
           >
             <TextField
@@ -201,10 +206,10 @@ const ManageSimulationsPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               sx={{
                 width: 300,
-                bgcolor: '#FFFFFF', // Background color for TextField
-                borderRadius: 10, // Border radius for TextField
+                bgcolor: '#FFFFFF',
+                borderRadius: 10,
                 '& .MuiInputBase-root': {
-                  borderRadius: 2, // Ensure the borderRadius applies to the input area
+                  borderRadius: 2,
                 },
               }}
               InputProps={{
@@ -214,15 +219,15 @@ const ManageSimulationsPage = () => {
               }}
             />
 
-            <Stack direction="row" spacing={2} sx={{ ml: 'auto' }}> {/* Align select menus to the right */}
+            <Stack direction="row" spacing={2} sx={{ ml: 'auto' }}>
               <Select
                 value={selectedTags}
                 onChange={(e: SelectChangeEvent) => setSelectedTags(e.target.value)}
                 size="small"
                 sx={{
                   minWidth: 120,
-                  bgcolor: '#FFFFFF', // Background color for Select menus
-                  borderRadius: 2, // Border radius for Select menus
+                  bgcolor: '#FFFFFF',
+                  borderRadius: 2,
                 }}
               >
                 <MenuItem value="All Tags">All Tags</MenuItem>
@@ -235,8 +240,8 @@ const ManageSimulationsPage = () => {
                 size="small"
                 sx={{
                   minWidth: 200,
-                  bgcolor: '#FFFFFF', // Background color for Select menus
-                  borderRadius: 2, // Border radius for Select menus
+                  bgcolor: '#FFFFFF',
+                  borderRadius: 2,
                 }}
               >
                 <MenuItem value="All Departments & Divisions">
@@ -249,8 +254,8 @@ const ManageSimulationsPage = () => {
                 size="small"
                 sx={{
                   minWidth: 120,
-                  bgcolor: '#FFFFFF', // Background color for Select menus
-                  borderRadius: 2, // Border radius for Select menus
+                  bgcolor: '#FFFFFF',
+                  borderRadius: 2,
                 }}
               >
                 <MenuItem value="All Status">All Status</MenuItem>
@@ -261,8 +266,8 @@ const ManageSimulationsPage = () => {
                 size="small"
                 sx={{
                   minWidth: 120,
-                  bgcolor: '#FFFFFF', // Background color for Select menus
-                  borderRadius: 2, // Border radius for Select menus
+                  bgcolor: '#FFFFFF',
+                  borderRadius: 2,
                 }}
               >
                 <MenuItem value="Created By">Created By</MenuItem>
@@ -270,7 +275,15 @@ const ManageSimulationsPage = () => {
             </Stack>
           </Stack>
 
-          {/* Update TableContainer to hide scrollbar */}
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box sx={{ textAlign: 'center', my: 4, color: 'error.main' }}>
+              <Typography>{error}</Typography>
+            </Box>
+          ) : (
           <TableContainer
             component={Paper}
             variant="outlined"
@@ -311,17 +324,17 @@ const ManageSimulationsPage = () => {
                       <TableCell>{row.id}</TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1} alignItems="center">
-                          {row.name}
-                          {row.isLocked && (
+                          {row.sim_name}
+                          {row.islocked && (
                             <LockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                           )}
                         </Stack>
                       </TableCell>
-                      <TableCell>{row.version}</TableCell>
-                      <TableCell>{row.level}</TableCell>
+                      <TableCell>v{row.version}</TableCell>
+                      <TableCell>Lvl 02</TableCell>
                       <TableCell>
                         <Chip
-                          label={row.type}
+                          label={row.sim_type}
                           size="small"
                           sx={{ bgcolor: '#F5F6FF', color: '#444CE7' }}
                         />
@@ -361,33 +374,33 @@ const ManageSimulationsPage = () => {
                       <TableCell>{row.estTime}</TableCell>
                       <TableCell>
                         <Stack>
-                          <Typography variant="body2">{row.lastModified}</Typography>
+                          <Typography variant="body2">{formatDate(row.last_modified)}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            12:13pm IST
+                            {new Date(row.last_modified).toLocaleTimeString()}
                           </Typography>
                         </Stack>
                       </TableCell>
                       <TableCell>
                         <Stack>
-                          <Typography variant="body2">{row.modifiedBy.name}</Typography>
+                          <Typography variant="body2">{row.modified_by}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {row.modifiedBy.email}
+                            {row.modified_by}@everailabs.com
                           </Typography>
                         </Stack>
                       </TableCell>
                       <TableCell>
                         <Stack>
-                          <Typography variant="body2">{row.createdOn}</Typography>
+                          <Typography variant="body2">{formatDate(row.created_on)}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            12:13pm IST
+                            {new Date(row.created_on).toLocaleTimeString()}
                           </Typography>
                         </Stack>
                       </TableCell>
                       <TableCell>
                         <Stack>
-                          <Typography variant="body2">{row.createdBy.name}</Typography>
+                          <Typography variant="body2">{row.created_by}</Typography>
                           <Typography variant="caption" color="text.secondary">
-                            {row.createdBy.email}
+                            {row.created_by}@everailabs.com
                           </Typography>
                         </Stack>
                       </TableCell>
@@ -410,11 +423,10 @@ const ManageSimulationsPage = () => {
                 rowsPerPage={rowsPerPage}
                 onRowsPerPageChange={handleChangeRowsPerPage}
                 rowsPerPageOptions={[10, 20, 50, 100]}
-               
               />
             </Box>
           </TableContainer>
-
+          )}
         </Stack>
       </Container>
 
@@ -428,7 +440,7 @@ const ManageSimulationsPage = () => {
         open={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
       />
-          </DashboardContent>
+    </DashboardContent>
   );
 };
 

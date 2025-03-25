@@ -1,5 +1,7 @@
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useAuth } from '../../../../context/AuthContext';
+import { createModule } from '../../../../services/modules';
 import {
   Dialog,
   DialogTitle,
@@ -20,7 +22,10 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Alert,
+  ClickAwayListener,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -28,6 +33,7 @@ import {
   Search as SearchIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
+import { fetchSimulations, type Simulation } from '../../../../services/simulations';
 
 interface SimulationItem {
   id: string;
@@ -46,18 +52,41 @@ interface CreateModuleDialogProps {
 }
 
 const availableTags = ['Tag 01', 'Tag 02', 'Tag 03', 'Tag 04', 'Tag 05'];
-const availableSimulations: SimulationItem[] = [
-  { id: 'SIM 007', name: 'Humana_Processing Refills transition to RTE' },
-  { id: 'SIM 008', name: 'Humana_Customer Service Basics' },
-  { id: 'SIM 009', name: 'Humana_Claims Processing Overview' },
-  { id: 'SIM 010', name: 'Humana_Member Authentication Process' },
-  { id: 'SIM 011', name: 'Humana_Benefits Verification' },
-];
 
 const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
   open,
   onClose,
 }) => {
+  const { user } = useAuth();
+  const [simulations, setSimulations] = React.useState<Simulation[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showSimulationsList, setShowSimulationsList] = React.useState(false);
+  const searchFieldRef = React.useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const loadSimulations = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchSimulations(user?.id || 'user123');
+        setSimulations(data);
+      } catch (err) {
+        setError('Failed to load simulations');
+        console.error('Error loading simulations:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (open) {
+      loadSimulations();
+    }
+  }, [open, user?.id]);
+
   const {
     control,
     handleSubmit,
@@ -74,10 +103,31 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
   });
 
   const selectedSimulations = watch('selectedSimulations');
+  const filteredSimulations = simulations.filter(sim => 
+    sim.sim_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const onSubmit = (data: CreateModuleFormData) => {
-    console.log('Form data:', data);
-    onClose();
+  const onSubmit = async (data: CreateModuleFormData) => {
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      
+      const response = await createModule({
+        user_id: user?.id || 'user123',
+        module_name: data.name,
+        tags: data.tags,
+        simulations: data.selectedSimulations.map(sim => sim.id)
+      });
+
+      if (response.status === 'success') {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error creating module:', error);
+      setSubmitError('Failed to create module. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeSimulation = (simulationToRemove: SimulationItem) => {
@@ -88,11 +138,11 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
     );
   };
 
-  const isSimulationSelected = (simulation: SimulationItem) => {
+  const isSimulationSelected = (simulation: Simulation) => {
     return selectedSimulations.some(selected => selected.id === simulation.id);
   };
 
-  const handleSimulationToggle = (simulation: SimulationItem) => {
+  const handleSimulationToggle = (simulation: Simulation) => {
     const currentSimulations = selectedSimulations;
     const isCurrentlySelected = isSimulationSelected(simulation);
 
@@ -100,7 +150,7 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
     if (isCurrentlySelected) {
       newSimulations = currentSimulations.filter(selected => selected.id !== simulation.id);
     } else {
-      newSimulations = [...currentSimulations, simulation];
+      newSimulations = [...currentSimulations, { id: simulation.id, name: simulation.sim_name }];
     }
 
     setValue('selectedSimulations', newSimulations, { shouldValidate: true });
@@ -174,7 +224,6 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
       <DialogContent sx={{ p: 3, pt: '24px !important' }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
-            <Stack direction="row" spacing={2}>
               <Controller
                 name="name"
                 control={control}
@@ -184,18 +233,11 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
                     {...field}
                     label="Module Name"
                     required
-                    sx={{ width: '50%' }}
+                    fullWidth
                     size="medium"
                   />
                 )}
               />
-              <TextField
-                value="MOD007"
-                label="Module Plan ID"
-                disabled
-                sx={{ width: '50%' }}
-              />
-            </Stack>
 
             <Controller
               name="tags"
@@ -242,11 +284,10 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
 
             <Box>
               <Stack spacing={2}>
-                <Typography variant="subtitle1">
-                  Add Simulations
-                </Typography>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="subtitle1">
+                    Add Simulations
+                  </Typography>
                   <Chip
                     label={`${selectedSimulations.length} Sims`}
                     sx={{
@@ -256,60 +297,104 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
                       height: 28,
                     }}
                   />
-                </Box>
+                </Stack>
 
-                <Controller
-                  name="selectedSimulations"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      {...field}
-                      multiple
-                      fullWidth
-                      displayEmpty
-                      renderValue={() => (
-                        <Typography color="text.secondary">
-                          Search Simulation
-                        </Typography>
-                      )}
-                      startAdornment={<SearchIcon sx={{ ml: 1, color: 'text.secondary' }} />}
-                      onChange={() => {}}
-                    >
-                      {availableSimulations.map((simulation) => (
-                        <MenuItem 
-                          key={simulation.id} 
-                          value={simulation}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleSimulationToggle(simulation);
+                <Box position="relative" ref={searchFieldRef}>
+                  <ClickAwayListener onClickAway={() => setShowSimulationsList(false)}>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search simulations..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowSimulationsList(true);
+                        }}
+                        onClick={() => setShowSimulationsList(true)}
+                        InputProps={{
+                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                        }}
+                      />
+                      {showSimulationsList && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute',
+                            zIndex: 1300,
+                            width: searchFieldRef.current?.offsetWidth || '100%',
+                            left: 0,
+                            mt: 0.5,
+                            bgcolor: 'background.paper',
+                            borderRadius: 1,
+                            boxShadow: 3,
+                            maxHeight: 300,
+                            minHeight: filteredSimulations.length > 0 ? 250 : 'auto',
+                            overflow: 'auto',
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              backgroundColor: '#E5E7EB',
+                              borderRadius: '4px',
+                            },
                           }}
-                          sx={{ width: '100%' }}
                         >
-                          <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>
-                            <Checkbox 
-                              checked={isSimulationSelected(simulation)}
-                              sx={{ p: 0, mr: 1 }}
-                            />
-                            <Typography variant="body2" sx={{ width: 80 }}>
-                              {simulation.id}
+                          {isLoading ? (
+                            <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                              <CircularProgress size={24} />
+                            </Box>
+                          ) : error ? (
+                            <Typography sx={{ p: 2, color: 'error.main' }}>{error}</Typography>
+                          ) : filteredSimulations.length === 0 ? (
+                            <Typography sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
+                              No matches found
                             </Typography>
-                            <Typography variant="body2" sx={{ flex: 1 }}>
-                              {simulation.name}
-                            </Typography>
-                            <Chip
-                              label="Sim"
-                              size="small"
-                              sx={{
-                                bgcolor: '#F5F6FF',
-                                color: '#444CE7',
-                              }}
-                            />
-                          </Stack>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
+                          ) : (
+                            filteredSimulations.map((simulation) => (
+                              <Box
+                                key={simulation.id}
+                                onClick={() => {
+                                  handleSimulationToggle(simulation);
+                                  setShowSimulationsList(false);
+                                }}
+                                sx={{
+                                  p: 1.5,
+                                  cursor: 'pointer',
+                                  '&:hover': { bgcolor: '#F5F6FF' },
+                                  display: 'grid',
+                                  gridTemplateColumns: 'auto 80px 1fr auto',
+                                  alignItems: 'center', 
+                                  gap: 2,
+                                  width: '100%'
+                                }}
+                              >
+                                <Checkbox 
+                                  checked={isSimulationSelected(simulation)}
+                                  sx={{ p: 0 }}
+                                />
+                                <Typography variant="body2" noWrap>
+                                  {simulation.id.slice(-6)}
+                                </Typography>
+                                <Typography variant="body2" noWrap>
+                                  {simulation.sim_name}
+                                </Typography>
+                                <Chip
+                                  label="Sim"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: '#F5F6FF',
+                                    color: '#444CE7',
+                                    justifySelf: 'end'
+                                  }}
+                                />
+                              </Box>
+                            ))
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </ClickAwayListener>
+                </Box>
 
                 {selectedSimulations.length > 0 && (
                   <TableContainer component={Paper} variant="outlined">
@@ -325,7 +410,7 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
                       <TableBody>
                         {selectedSimulations.map((simulation) => (
                           <TableRow key={simulation.id}>
-                            <TableCell>{simulation.id}</TableCell>
+                            <TableCell>{simulation.id.slice(-6)}</TableCell>
                             <TableCell>{simulation.name}</TableCell>
                             <TableCell>
                               <Chip
@@ -355,7 +440,7 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
               type="submit"
               variant="contained"
               fullWidth
-              disabled={!isValid}
+              disabled={!isValid || isSubmitting}
               sx={{
                 mt: 2,
                 py: 1.5,
@@ -370,8 +455,13 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
                 },
               }}
             >
-              Create Module
+              {isSubmitting ? 'Creating...' : 'Create Module'}
             </Button>
+            {submitError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {submitError}
+              </Alert>
+            )}
           </Stack>
         </form>
       </DialogContent>

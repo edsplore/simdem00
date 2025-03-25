@@ -21,7 +21,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://fa29a0b7-ceb0-4265-b5e7-329be013efb3-00-29mtjv18wa4j8.sisko.replit.dev',
+        target: 'https://everise-backend-staging.replit.app',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
         secure: false,

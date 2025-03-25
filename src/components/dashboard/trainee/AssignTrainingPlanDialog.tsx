@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
+import { fetchTrainingPlans, type TrainingPlan } from '../../../services/trainingPlans';
+import { fetchUsers, type User } from '../../../services/users';
+import { createAssignment } from '../../../services/assignments';
 import {
   Dialog,
   DialogTitle,
@@ -15,82 +19,67 @@ import {
   MenuItem,
   Chip,
   Checkbox,
+  ClickAwayListener,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Book as BookIcon,
+  Search as SearchIcon,
   Person as PersonIcon,
   Group as GroupIcon,
 } from '@mui/icons-material';
+import { useAuth } from '../../../context/AuthContext';
 
-type AssignTrainingPlanFormData = {
+interface Assignee {
+  id: string;
+  name: string;
+  email?: string;
+  type: 'team' | 'trainee';
+}
+
+interface CreateTrainingPlanFormData {
   name: string;
   trainingPlan: string;
   startDate: string;
   dueDate: string;
   assignTo: string[];
-};
+  onAssignmentCreated?: () => void;
+}
 
-type AssignTrainingPlanDialogProps = {
-  open: boolean;
-  onClose: () => void;
-};
-
-type TrainingPlan = {
-  id: string;
-  name: string;
-  simCount: number;
-};
-
-type Assignee = {
-  id: string;
-  name: string;
-  email?: string;
-  type: 'team' | 'trainee';
-};
-
-const trainingPlans: TrainingPlan[] = [
-  { id: 'TRP 007', name: 'Humana_Inbound Authentication', simCount: 8 },
-  { id: 'TRP 007', name: 'Humana_Inbound Authentication', simCount: 8 },
-  { id: 'TRP 007', name: 'Humana_Inbound Authentication', simCount: 8 },
-  { id: 'TRP 007', name: 'Humana_Inbound Authentication', simCount: 8 },
-  { id: 'TRP 007', name: 'Humana_Inbound Authentication', simCount: 8 },
-];
-
-const assignees: Assignee[] = [
+const teamAssignees: Assignee[] = [
   { id: 'team1', name: 'Team 01', type: 'team' },
   { id: 'team2', name: 'Team 02', type: 'team' },
-  { 
-    id: 'trainee1', 
-    name: 'John Baker', 
-    email: 'john.baker@everailabs.com', 
-    type: 'trainee' 
-  },
-  { 
-    id: 'trainee2', 
-    name: 'John Doe', 
-    email: 'john.baker@everailabs.com', 
-    type: 'trainee' 
-  },
-  { 
-    id: 'trainee3', 
-    name: 'Lana Steiner', 
-    email: 'lanasteiner@everailabs.com', 
-    type: 'trainee' 
-  },
 ];
 
 const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   open,
   onClose,
+  onAssignmentCreated,
 }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [trainingPlans, setTrainingPlans] = useState<TrainingPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showTrainingPlansList, setShowTrainingPlansList] = useState(false);
+  const searchFieldRef = useRef<HTMLDivElement>(null);
+  const [selectedPlan, setSelectedPlan] = useState<TrainingPlan | null>(null);
+  const [assignees, setAssignees] = useState<Assignee[]>(teamAssignees);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
+  const [showAssigneesList, setShowAssigneesList] = useState(false);
+
   const {
     control,
     handleSubmit,
     formState: { isValid },
     watch,
     setValue,
-  } = useForm<AssignTrainingPlanFormData>({
+  } = useForm<CreateTrainingPlanFormData>({
     mode: 'onChange',
     defaultValues: {
       name: '',
@@ -101,11 +90,91 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
     },
   });
 
-  const selectedAssignees = watch('assignTo');
+  useEffect(() => {
+    const loadTrainingPlans = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchTrainingPlans(user?.id || 'user123');
+        setTrainingPlans(data);
+      } catch (err) {
+        setError('Failed to load training plans');
+        console.error('Error loading training plans:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const onSubmit = (data: AssignTrainingPlanFormData) => {
-    console.log('Form data:', data);
-    onClose();
+    if (open) {
+      loadTrainingPlans();
+    }
+  }, [open, user?.id]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await fetchUsers();
+        const userAssignees: Assignee[] = users.map(user => ({
+          id: user.user_id,
+          name: user.fullName,
+          email: user.email,
+          type: 'trainee'
+        }));
+        setAssignees([...teamAssignees, ...userAssignees]);
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    };
+
+    if (open) {
+      loadUsers();
+    }
+  }, [open]);
+
+  const selectedAssignees = watch('assignTo');
+  const filteredPlans = trainingPlans.filter(plan => 
+    plan.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAssignees = assignees.filter(assignee => 
+    assignee.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) ||
+    (assignee.email && assignee.email.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+  );
+
+  const onSubmit = async (data: CreateTrainingPlanFormData) => {
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      // Split assignees into teams and trainees
+      const teams = data.assignTo.filter(id => 
+        assignees.find(a => a.id === id)?.type === 'team'
+      );
+      const trainees = data.assignTo.filter(id => 
+        assignees.find(a => a.id === id)?.type === 'trainee'
+      );
+
+      const response = await createAssignment({
+        user_id: user?.id || 'user123',
+        name: data.name,
+        type: 'TrainingPlan',
+        id: data.trainingPlan,
+        start_date: data.startDate,
+        end_date: data.dueDate,
+        team_id: teams,
+        trainee_id: trainees
+      });
+
+      if (response.status === 'success') {
+        onAssignmentCreated?.();
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error creating assignment:', error);
+      setSubmitError('Failed to create assignment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getSelectedAssigneeName = (id: string) => {
@@ -113,7 +182,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   };
 
   const handleDeleteAssignee = (assigneeId: string, event: React.MouseEvent) => {
-    event.stopPropagation(); // Prevent dropdown from opening
+    event.stopPropagation();
     const newValue = selectedAssignees.filter(id => id !== assigneeId);
     setValue('assignTo', newValue, { shouldValidate: true });
   };
@@ -202,80 +271,135 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                 )}
               />
 
-              <TextField
-                value="ASN007"
-                label="Assignment ID"
-                disabled
-                fullWidth
-              />
-
               <Controller
                 name="trainingPlan"
                 control={control}
                 rules={{ required: true }}
-                render={({ field }) => (
-                  <Select
-                    {...field}
-                    displayEmpty
-                    fullWidth
-                    renderValue={(selected) => {
-                      if (!selected) {
-                        return (
-                          <Typography color="text.secondary">
-                            Select Training Plan *
-                          </Typography>
-                        );
-                      }
-                      const selectedPlan = trainingPlans.find(plan => plan.id === selected);
-                      return selectedPlan?.name || '';
-                    }}
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          maxHeight: 300,
-                        },
-                      },
-                    }}
-                  >
-                    {trainingPlans.map((plan) => (
-                      <MenuItem 
-                        key={plan.id} 
-                        value={plan.id}
-                        sx={{
-                          py: 1.5,
-                          px: 2,
-                          '&:hover': {
+                render={({ field }) => {
+                  const selectedPlanDetails = selectedPlan ? (
+                    <Stack spacing={0.5} sx={{ width: '100%' }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body2" color="text.secondary">
+                          {selectedPlan.id.slice(-6)}
+                        </Typography>
+                        <Chip
+                          label={`Training plan | ${selectedPlan.added_object.length} Items`}
+                          size="small"
+                          sx={{
                             bgcolor: '#F5F6FF',
-                          },
-                        }}
-                      >
-                        <Stack spacing={0.5} sx={{ width: '100%' }}>
-                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Typography variant="body2" color="text.secondary">
-                              {plan.id}
-                            </Typography>
-                            <Chip
-                              label={`Training plan | ${plan.simCount} Sim`}
-                              size="small"
-                              sx={{
-                                bgcolor: '#F5F6FF',
-                                color: '#444CE7',
-                                height: 24,
-                                '& .MuiChip-label': {
-                                  px: 1,
-                                  fontSize: '12px',
-                                },
+                            color: '#444CE7',
+                            height: 24,
+                            '& .MuiChip-label': {
+                              px: 1,
+                              fontSize: '12px',
+                            },
+                          }}
+                        />
+                      </Stack>
+                      <Typography variant="body1">
+                        {selectedPlan.name}
+                      </Typography>
+                    </Stack>
+                  ) : null;
+
+                  return (
+                    <Box position="relative" ref={searchFieldRef}>
+                      <ClickAwayListener onClickAway={() => setShowTrainingPlansList(false)}>
+                        <Box>
+                          <TextField
+                            {...field}
+                            fullWidth
+                            placeholder="Search training plans..."
+                            value={searchQuery}
+                            onChange={(e) => {
+                              setSearchQuery(e.target.value);
+                              setShowTrainingPlansList(true);
+                            }}
+                            onClick={() => setShowTrainingPlansList(true)}
+                            InputProps={{
+                              startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                            }}
+                          />
+                          {selectedPlanDetails && !showTrainingPlansList && (
+                            <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                              {selectedPlanDetails}
+                            </Box>
+                          )}
+                          {showTrainingPlansList && (
+                            <Box 
+                              sx={{ 
+                                position: 'absolute',
+                                zIndex: 1300,
+                                width: '100%',
+                                left: 0,
+                                mt: 0.5,
+                                bgcolor: 'background.paper',
+                                borderRadius: 1,
+                                boxShadow: 3,
+                                maxHeight: 300,
+                                minHeight: filteredPlans.length > 0 ? 250 : 'auto',
+                                overflow: 'auto',
                               }}
-                            />
-                          </Stack>
-                          <Typography variant="body1">
-                            {plan.name}
-                          </Typography>
-                        </Stack>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                )}
+                            >
+                              {isLoading ? (
+                                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                                  <CircularProgress size={24} />
+                                </Box>
+                              ) : error ? (
+                                <Typography sx={{ p: 2, color: 'error.main' }}>{error}</Typography>
+                              ) : filteredPlans.length === 0 ? (
+                                <Typography sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
+                                  No matches found
+                                </Typography>
+                              ) : (
+                                filteredPlans.map((plan) => (
+                                  <Box
+                                    key={plan.id}
+                                    onClick={() => {
+                                      field.onChange(plan.id);
+                                      setSelectedPlan(plan);
+                                      setShowTrainingPlansList(false);
+                                      setSearchQuery('');
+                                    }}
+                                    sx={{
+                                      p: 1.5,
+                                      cursor: 'pointer',
+                                      '&:hover': { bgcolor: '#F5F6FF' },
+                                    }}
+                                  >
+                                    <Stack spacing={0.5}>
+                                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="body2" color="text.secondary">
+                                          {plan.id.slice(-6)}
+                                        </Typography>
+                                        <Chip
+                                          label={`Training plan | ${plan.added_object.length} Items`}
+                                          size="small"
+                                          sx={{
+                                            bgcolor: '#F5F6FF',
+                                            color: '#444CE7',
+                                            height: 24,
+                                            '& .MuiChip-label': {
+                                              px: 1,
+                                              fontSize: '12px',
+                                            },
+                                          }}
+                                        />
+                                      </Stack>
+                                      <Typography variant="body1">
+                                        {plan.name}
+                                      </Typography>
+                                    </Stack>
+                                  </Box>
+                                ))
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      </ClickAwayListener>
+                    </Box>
+                  );
+                }}
               />
 
               <Stack direction="row" spacing={2}>
@@ -320,8 +444,10 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                   <Select
                     {...field}
                     multiple
-                    displayEmpty
                     fullWidth
+                    displayEmpty
+                    onOpen={() => setShowAssigneesList(true)}
+                    onClose={() => setShowAssigneesList(false)}
                     renderValue={(selected) => {
                       if (selected.length === 0) {
                         return (
@@ -379,6 +505,18 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                       },
                     }}
                   >
+                    <Box sx={{ p: 2, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search users..."
+                        value={assigneeSearchQuery}
+                        onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                        InputProps={{
+                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                        }}
+                      />
+                    </Box>
                     {assignees.map((assignee) => (
                       <MenuItem
                         key={assignee.id}

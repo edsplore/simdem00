@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   Stack,
@@ -21,6 +21,8 @@ import {
   TablePagination,
   IconButton,
   Chip,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -29,74 +31,22 @@ import {
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
+import AssignModuleDialog from './AssignModuleDialog';
+import AssignSimulationsDialog from './AssignSimulationsDialog';
+import { fetchAssignments, type Assignment } from '../../../services/assignments';
+import { useAuth } from '../../../context/AuthContext';
 
-type AssignmentData = {
-  id: string;
-  name: string;
-  trainingPlan: string;
-  modules: {
-    count: number;
-    sims: number;
-  };
-  trainees: number;
-  startDate: string;
-  dueDate: string;
-  status: 'In Progress';
-  estTime: string;
-  lastModified: {
-    date: string;
-    time: string;
-  };
-  modifiedBy: {
-    name: string;
-    email: string;
-  };
-  createdOn: {
-    date: string;
-    time: string;
-  };
-  createdBy: {
-    name: string;
-    email: string;
-  };
-  isLocked?: boolean;
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'Not set';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 
-const assignmentData: AssignmentData[] = Array(6)
-  .fill(null)
-  .map((_, index) => ({
-    id: '45789',
-    name: 'New Assignment 01',
-    trainingPlan: 'New Training Plan 01',
-    modules: {
-      count: 4,
-      sims: 12,
-    },
-    trainees: 24,
-    startDate: '2 Jan 2025',
-    dueDate: '1 Feb 2025',
-    status: 'In Progress',
-    estTime: '1h 30m',
-    lastModified: {
-      date: 'Dec 20, 2024',
-      time: '12:13pm IST',
-    },
-    modifiedBy: {
-      name: 'John Doe',
-      email: 'johndoe@humana.com',
-    },
-    createdOn: {
-      date: 'Dec 20, 2024',
-      time: '12:13pm IST',
-    },
-    createdBy: {
-      name: 'John Doe',
-      email: 'johndoe@humana.com',
-    },
-    isLocked: index === 1,
-  }));
-
 const AssignSimulationsPage = () => {
+  const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState('All Tags');
@@ -105,9 +55,44 @@ const AssignSimulationsPage = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
+  const [isSimulationDialogOpen, setIsSimulationDialogOpen] = useState(false);
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const getButtonText = () => {
+    switch (currentTab) {
+      case 'Modules':
+        return 'Assign Module';
+      case 'Simulations':
+        return 'Assign Simulation';
+      default:
+        return 'Assign Training Plan';
+    }
+  };
+
+  useEffect(() => {
+    const loadAssignments = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchAssignments();
+        setAssignments(data);
+      } catch (err) {
+        setError('Failed to load assignments');
+        console.error('Error loading assignments:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAssignments();
+  }, []);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
+    setPage(0);
   };
 
   const handleChangePage = (_: unknown, newPage: number) => {
@@ -120,17 +105,63 @@ const AssignSimulationsPage = () => {
   };
 
   const handleOpenAssignDialog = () => {
-    setIsAssignDialogOpen(true);
+    if (currentTab === 'Modules') {
+      setIsModuleDialogOpen(true);
+    } else if (currentTab === 'Simulations') {
+      setIsSimulationDialogOpen(true);
+    } else {
+      setIsAssignDialogOpen(true);
+    }
   };
 
   const handleCloseAssignDialog = () => {
     setIsAssignDialogOpen(false);
   };
 
-  const filteredData = assignmentData.filter((item) => {
-    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+  const handleCloseModuleDialog = () => {
+    setIsModuleDialogOpen(false);
+  };
+
+  const handleCloseSimulationDialog = () => {
+    setIsSimulationDialogOpen(false);
+  };
+
+  const handleAssignmentCreated = () => {
+    // Refresh the assignments list
+    const loadAssignments = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchAssignments();
+        setAssignments(data);
+      } catch (err) {
+        setError('Failed to load assignments');
+        console.error('Error loading assignments:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAssignments();
+  };
+
+  const filteredData = assignments.filter((item) => {
+    // First apply tab filter
+    if (currentTab === 'Training Plans' && item.type !== 'TrainingPlan') {
       return false;
     }
+    if (currentTab === 'Modules' && item.type !== 'Module') {
+      return false;
+    }
+    if (currentTab === 'Simulations' && item.type !== 'Simulation') {
+      return false;
+    }
+
+    // Then apply search filter
+    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
     return true;
   });
 
@@ -189,7 +220,7 @@ const AssignSimulationsPage = () => {
                 borderRadius: 2,
               }}
             >
-              Assign Training Plan
+              {getButtonText()}
             </Button>
           </Stack>
 
@@ -266,6 +297,15 @@ const AssignSimulationsPage = () => {
           </Stack>
 
           {/* Table */}
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box sx={{ textAlign: 'center', my: 4 }}>
+              <Alert severity="error">{error}</Alert>
+            </Box>
+          ) : (
           <TableContainer
             component={Paper}
             variant="outlined"
@@ -289,13 +329,12 @@ const AssignSimulationsPage = () => {
                   <TableRow>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>ID No.</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Assignment Name</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Training Plan</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>No. of Modules</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Type</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Teams</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Trainees</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Start Date</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Due Date</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Status</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Est. Time</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Last Modified</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Modified by</TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created On</TableCell>
@@ -310,21 +349,24 @@ const AssignSimulationsPage = () => {
                       <TableRow key={index}>
                         <TableCell>{row.id}</TableCell>
                         <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            {row.name}
-                            {row.isLocked && (
-                              <LockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                            )}
-                          </Stack>
+                          {row.name || 'Untitled Assignment'}
                         </TableCell>
-                        <TableCell>{row.trainingPlan}</TableCell>
-                        <TableCell>{`${row.modules.count} Modules | ${row.modules.sims} Sims`}</TableCell>
-                        <TableCell>{row.trainees}</TableCell>
-                        <TableCell>{row.startDate}</TableCell>
-                        <TableCell>{row.dueDate}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={row.type}
+                            size="small"
+                            sx={{
+                              bgcolor: '#F5F6FF',
+                              color: '#444CE7',
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{row.team_id?.length || 0} Teams</TableCell>
+                        <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
+                        <TableCell>{formatDate(row.start_date)}</TableCell>
+                        <TableCell>{formatDate(row.end_date)}</TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={1} alignItems="center">
-                            <LockIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                             <Chip
                               label={row.status}
                               size="small"
@@ -335,36 +377,35 @@ const AssignSimulationsPage = () => {
                             />
                           </Stack>
                         </TableCell>
-                        <TableCell>{row.estTime}</TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.lastModified.date}</Typography>
+                            <Typography variant="body2">{formatDate(row.last_modified_at)}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {row.lastModified.time}
+                              {new Date(row.last_modified_at).toLocaleTimeString()}
                             </Typography>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.modifiedBy.name}</Typography>
+                            <Typography variant="body2">{row.last_modified_by}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {row.modifiedBy.email}
+                              {row.last_modified_by}@everailabs.com
                             </Typography>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.createdOn.date}</Typography>
+                            <Typography variant="body2">{formatDate(row.created_at)}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {row.createdOn.time}
+                              {new Date(row.created_at).toLocaleTimeString()}
                             </Typography>
                           </Stack>
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.createdBy.name}</Typography>
+                            <Typography variant="body2">{row.created_by}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {row.createdBy.email}
+                              {row.created_by}@everailabs.com
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -395,12 +436,24 @@ const AssignSimulationsPage = () => {
               />
             </Box>
           </TableContainer>
+          )}
         </Stack>
       </Container>
 
       <AssignTrainingPlanDialog
         open={isAssignDialogOpen}
         onClose={handleCloseAssignDialog}
+        onAssignmentCreated={handleAssignmentCreated}
+      />
+      <AssignModuleDialog
+        open={isModuleDialogOpen}
+        onClose={handleCloseModuleDialog}
+        onAssignmentCreated={handleAssignmentCreated}
+      />
+      <AssignSimulationsDialog
+        open={isSimulationDialogOpen}
+        onClose={handleCloseSimulationDialog}
+        onAssignmentCreated={handleAssignmentCreated}
       />
     </DashboardContent>
   );

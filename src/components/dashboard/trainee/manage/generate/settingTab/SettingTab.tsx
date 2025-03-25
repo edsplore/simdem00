@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Stack, Typography, Box, List, ListItem, ListItemText, Card, styled, Button } from '@mui/material';
 import axios from 'axios';
 import AdvancedSettings from './AdvancedSetting';
@@ -6,19 +6,16 @@ import VoiceAndScoreSettings from './VoiceScoreSetting';
 import PreviewTab from '../PreviewTab';
 
 const NavItem = styled(ListItem)(({ theme }) => ({
-  borderRadius: theme.spacing(1),
+  cursor: 'pointer',
   '&:hover': {
     backgroundColor: '#F5F6FF',
-  },
-  '&.active': {
-    backgroundColor: '#F5F6FF',
-    color: '#444CE7',
   },
 }));
 
 interface SettingsTabProps {
   simulationId?: string;
   prompt?: string;
+  simulationType?: string;
   simulationData?: {
     name: string;
     division: string;
@@ -26,13 +23,43 @@ interface SettingsTabProps {
     tags: string[];
     simulationType: string;
   };
+  onPublish?: () => void;
   script?: any[];
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulationData, script }) => {
+const SettingsTab: React.FC<SettingsTabProps> = ({
+  simulationId,
+  prompt,
+  simulationType = 'audio',
+  simulationData,
+  onPublish,
+  script
+}) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [publishedSimId, setPublishedSimId] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState("Simulation Type");
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // Smoothly scroll to a section when clicked
+  const scrollToSection = (sectionId: string) => {
+    if (mainContentRef.current) {
+      const section = mainContentRef.current.querySelector(
+        `[data-section="${sectionId}"]`
+      );
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  };
+
+  // When section is changed, scroll to it
+  useEffect(() => {
+    scrollToSection(activeSection);
+  }, [activeSection]);
+
+  // Check if the simulation is a visual type
+  const isVisualType = simulationType?.includes('visual');
 
   const handlePublish = async () => {
     if (!simulationId || !simulationData) return;
@@ -111,10 +138,13 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
       );
 
       console.log(response.data);
-      
+
       if (response.data.status === 'success') {
         setPublishedSimId(simulationId);
         setShowPreview(true);
+        if (onPublish) {
+          onPublish();
+        }
       }
     } catch (error) {
       console.error('Error publishing simulation:', error);
@@ -124,8 +154,53 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
   };
 
   if (showPreview && publishedSimId) {
-    return <PreviewTab simulationId={publishedSimId} />;
+    return (
+      <PreviewTab 
+        simulationId={publishedSimId}
+        simulationType={simulationType as 'audio' | 'chat'}
+      />
+    );
   }
+
+  // Build navigation items based on simulation type
+  const getNavigationItems = () => {
+    // Core items for all simulation types
+    const coreItems = [
+      "Simulation Type",
+      "Hide Agent Script",
+      "Hide Customer Script",
+      "Hide Keyword Scores",
+      "Hide Sentiment Scores",
+      "Enable Post Simulations Survey",
+      "AI Powered Pauses and Feedback",
+      "Estimated Time to Attempt",
+      "Key Objectives",
+      "Quick Tips",
+      "Overview Video",
+    ];
+
+    // Add visual-specific items for visual types
+    if (isVisualType) {
+      coreItems.splice(4, 0, "Hide Highlights");
+      coreItems.splice(5, 0, "Hide Coaching Tips");
+    } else {
+      // For non-visual types, add their specific items
+      coreItems.splice(5, 0, "Hide Coaching Tips");
+    }
+
+    return coreItems;
+  };
+
+  // Voice items are the same for all types
+  const voiceItems = ["AI Customer Voice", "Conversation Prompt"];
+
+  // Score items are the same for all types
+  const scoreItems = [
+    "Simulation Completion",
+    "Number of Repetition Allowed",
+    "Simulation Scoring Metrics",
+    "Sym Practice"
+  ];
 
   return (
     <Box
@@ -153,7 +228,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
           <Box>
             <Typography variant="h5">Settings</Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage your hotspot, score, voice, and simulation settings
+              Manage your {isVisualType ? "hotspot, " : ""}score, voice, and simulation settings
             </Typography>
           </Box>
           <Button
@@ -205,56 +280,30 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
                 <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
                   Advance Settings
                 </Typography>
-                <Button
-                  onClick={() => {
-                    console.log("Practice mode set to 'limited'");
-                  }}
-                  sx={{
-                    borderRadius: "20px",
-                    border: "1px solid",
-                    borderColor: "#143FDA",
-                    color: "#143FDA",
-                    backgroundColor: "transparent",
-                    width: "65%",
-                    justifyContent: "center",
-                    "&:hover": {
-                      borderColor: "#143FDA",
-                      color: "#143FDA",
-                    },
-                  }}
-                >
-                  Simulation Type
-                </Button>
 
                 <List disablePadding>
-                  {[
-                    'Hide Agent Script',
-                    'Hide Customer Script',
-                    'Hide Keyword Scores',
-                    'Hide Sentiment Scores',
-                    'Hide Highlights',
-                    'Hide Coaching Tips',
-                    'Enable Post Simulations Survey',
-                    'AI Powered Pauses and Feedback',
-                    'Estimated Time to Attempt',
-                    'Key Objectives',
-                    'Quick Tips',
-                    'Overview Video',
-                  ].map((item) => (
+                  {getNavigationItems().map((item) => (
                     <NavItem
                       key={item}
                       button
-                      className={item === 'Simulation Type' ? 'active' : ''}
+                      className={item === activeSection ? 'active' : ''}
                       sx={{
                         textAlign: "left",
-                        padding: "8px 0",
+                        padding: "8px 16px",
+                        borderRadius: "20px",
+                        ...(item === activeSection && {
+                          border: "1px solid #0037ff",
+                          color: "#0037ff",
+                          backgroundColor: "transparent"
+                        })
                       }}
+                      onClick={() => setActiveSection(item)}
                     >
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
                           variant: 'body2',
-                          fontWeight: item === 'Simulation Type' ? 600 : 400,
+                          fontWeight: item === activeSection ? 600 : 400,
                         }}
                       />
                     </NavItem>
@@ -268,19 +317,28 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
                   Voice & Prompt Settings
                 </Typography>
                 <List disablePadding>
-                  {['AI Customer Voice', 'Conversation Prompt'].map((item) => (
+                  {voiceItems.map((item) => (
                     <NavItem
                       key={item}
                       button
+                      className={item === activeSection ? 'active' : ''}
                       sx={{
                         textAlign: "left",
-                        padding: "8px 0",
+                        padding: "8px 16px",
+                        borderRadius: "20px",
+                        ...(item === activeSection && {
+                          border: "1px solid #0037ff",
+                          color: "#0037ff",
+                          backgroundColor: "transparent"
+                        })
                       }}
+                      onClick={() => setActiveSection(item)}
                     >
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
                           variant: 'body2',
+                          fontWeight: item === activeSection ? 600 : 400,
                         }}
                       />
                     </NavItem>
@@ -294,19 +352,28 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
                   Score Settings
                 </Typography>
                 <List disablePadding>
-                  {['Simulation Completion', 'Number of Repetition Allowed', 'Simulation Scoring Metrics', 'Sym Practice'].map((item) => (
+                  {scoreItems.map((item) => (
                     <NavItem
                       key={item}
                       button
+                      className={item === activeSection ? 'active' : ''}
                       sx={{
                         textAlign: "left",
-                        padding: "8px 0",
+                        padding: "8px 16px",
+                        borderRadius: "20px",
+                        ...(item === activeSection && {
+                          border: "1px solid #0037ff",
+                          color: "#0037ff",
+                          backgroundColor: "transparent"
+                        })
                       }}
+                      onClick={() => setActiveSection(item)}
                     >
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
                           variant: 'body2',
+                          fontWeight: item === activeSection ? 600 : 400,
                         }}
                       />
                     </NavItem>
@@ -318,6 +385,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
 
           {/* Main Content */}
           <Box
+            ref={mainContentRef}
             sx={{
               flex: 1,
               px: 10,
@@ -330,8 +398,72 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ simulationId, prompt, simulat
               'scrollbar-width': 'none',
             }}
           >
-            <AdvancedSettings />
-            <VoiceAndScoreSettings prompt={prompt} />
+            <Typography variant="h6" sx={{ mt: 2, mb: 4, color: "#666666" }}>
+              {simulationType?.includes('visual')
+                ? "Visual Simulation Settings"
+                : simulationType === 'audio'
+                ? "Audio Simulation Settings"
+                : "Chat Simulation Settings"}
+            </Typography>
+
+            <AdvancedSettings 
+              // Pass properly structured settings object with default values
+              settings={{
+                simulationType: simulationType || 'audio',
+                levels: {
+                  hideAgentScript: { lvl1: false, lvl2: false, lvl3: false },
+                  hideCustomerScript: { lvl1: false, lvl2: false, lvl3: false },
+                  hideKeywordScores: { lvl1: false, lvl2: false, lvl3: false },
+                  hideSentimentScores: { lvl1: true, lvl2: true, lvl3: false },
+                  hideHighlights: { lvl1: false, lvl2: false, lvl3: false },
+                  hideCoachingTips: { lvl1: true, lvl2: true, lvl3: false },
+                  enablePostSurvey: { lvl1: true, lvl2: false, lvl3: false },
+                  aiPoweredPauses: { lvl1: true, lvl2: true, lvl3: false }
+                },
+                estimatedTime: { enabled: true, value: '15 mins' },
+                objectives: { 
+                  enabled: true, 
+                  text: '1: Learn basic customer service.\n2: Understand refund process.' 
+                },
+                quickTips: { 
+                  enabled: true, 
+                  text: '1: Listen to the customer carefully.\n2: Be polite and empathetic.\n3: Provide accurate information.' 
+                },
+                overviewVideo: { enabled: false }
+              }}
+              onSettingsChange={() => {}}
+              simulationType={simulationType}
+              activeSection={activeSection}
+            />
+
+            <VoiceAndScoreSettings 
+              // Pass properly structured settings object with default values
+              prompt={prompt}
+              settings={{
+                voice: {
+                  language: 'English',
+                  accent: 'American',
+                  gender: 'Male',
+                  ageGroup: 'Middle Aged',
+                  voiceId: ''
+                },
+                scoring: {
+                  simulationScore: 'best',
+                  keywordScore: '20',
+                  clickScore: '80',
+                  practiceMode: 'limited',
+                  repetitionsAllowed: '3',
+                  repetitionsNeeded: '2',
+                  scoringMetrics: {
+                    enabled: true,
+                    keywordScore: '20%',
+                    clickScore: '80%'
+                  }
+                }
+              }}
+              onSettingsChange={() => {}}
+              activeSection={activeSection}
+            />
           </Box>
         </Box>
       </Stack>

@@ -1,5 +1,9 @@
 import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
+import { useAuth } from '../../../../context/AuthContext';
+import { createTrainingPlan } from '../../../../services/trainingPlans';
+import { fetchModules, type Module } from '../../../../services/modules';
+import { fetchSimulations, type Simulation } from '../../../../services/simulations';
 import {
   Dialog,
   DialogTitle,
@@ -21,46 +25,82 @@ import {
   TableHead,
   TableRow,
   Paper,
+  Alert,
+  ClickAwayListener,
   Checkbox,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Book as BookIcon,
   Search as SearchIcon,
-  DragIndicator as DragIndicatorIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
 
-type SimulationItem = {
+interface Item {
   id: string;
   name: string;
-  type: 'Sim' | 'Module';
+  type: 'module' | 'simulation';
   simCount?: number;
 }
 
-type CreateTrainingPlanFormData = {
+interface CreateTrainingPlanFormData {
   name: string;
   tags: string[];
-  selectedItems: SimulationItem[];
+  selectedItems: Item[];
 }
 
-type CreateTrainingPlanDialogProps = {
+interface CreateTrainingPlanDialogProps {
   open: boolean;
   onClose: () => void;
 }
 
-const availableTags = ['Tag 1', 'Tag 2', 'Tag 3', 'Tag 4', 'Tag 5'];
-const availableItems: SimulationItem[] = [
-  { id: 'SIM 007', name: 'Humana_Processing Refills transition to RTE', type: 'Sim' },
-  { id: 'MOD 007', name: 'Humana_Inbound Authentication', type: 'Module', simCount: 2 },
-  { id: 'SIM 008', name: 'Humana_Customer Service Basics', type: 'Sim' },
-  { id: 'MOD 008', name: 'Humana_Claims Processing', type: 'Module', simCount: 3 },
-];
+const availableTags = ['Tag 01', 'Tag 02', 'Tag 03', 'Tag 04', 'Tag 05'];
 
 const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
   open,
   onClose,
 }) => {
+  const { user } = useAuth();
+  const [items, setItems] = React.useState<Item[]>([]);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [showItemsList, setShowItemsList] = React.useState(false);
+  const searchFieldRef = React.useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const loadItems = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const [modulesData, simulationsData] = await Promise.all([
+          fetchModules(user?.id || 'user123'),
+          fetchSimulations(user?.id || 'user123')
+        ]);
+
+        const combinedItems: Item[] = [
+          ...modulesData.map(m => ({ id: m.id, name: m.name, type: 'module' as const, simCount: m.simulations_id.length })),
+          ...simulationsData.map(s => ({ id: s.id, name: s.sim_name, type: 'simulation' as const }))
+        ];
+
+        setItems(combinedItems);
+      } catch (err) {
+        setError('Failed to load items');
+        console.error('Error loading items:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (open) {
+      loadItems();
+    }
+  }, [open, user?.id]);
+
   const {
     control,
     handleSubmit,
@@ -70,28 +110,50 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
   } = useForm<CreateTrainingPlanFormData>({
     mode: 'onChange',
     defaultValues: {
-      name: '',
+      name: 'Untitled Training Plan 01',
       tags: [],
       selectedItems: [],
     },
   });
 
   const selectedItems = watch('selectedItems');
+  const filteredItems = items.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const getModuleAndSimCount = () => {
-    const modules = selectedItems.filter(item => item.type === 'Module').length;
-    const sims = selectedItems.filter(item => item.type === 'Sim').length;
+    const modules = selectedItems.filter(item => item.type === 'module').length;
+    const sims = selectedItems.filter(item => item.type === 'simulation').length;
     return { modules, sims };
   };
 
-  const { modules, sims } = getModuleAndSimCount();
+  const onSubmit = async (data: CreateTrainingPlanFormData) => {
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      
+      const response = await createTrainingPlan({
+        user_id: user?.id || 'user123',
+        training_plan_name: data.name,
+        tags: data.tags,
+        added_object: data.selectedItems.map(item => ({
+          type: item.type,
+          id: item.id
+        }))
+      });
 
-  const onSubmit = (data: CreateTrainingPlanFormData) => {
-    console.log('Form data:', data);
-    onClose();
+      if (response.status === 'success') {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error creating training plan:', error);
+      setSubmitError('Failed to create training plan. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const removeItem = (itemToRemove: SimulationItem) => {
+  const removeItem = (itemToRemove: Item) => {
     setValue(
       'selectedItems',
       selectedItems.filter(item => item.id !== itemToRemove.id),
@@ -99,15 +161,15 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
     );
   };
 
-  const isItemSelected = (item: SimulationItem) => {
+  const isItemSelected = (item: Item): boolean => {
     return selectedItems.some(selected => selected.id === item.id);
   };
 
-  const handleItemToggle = (item: SimulationItem) => {
+  const handleItemToggle = (item: Item) => {
     const currentItems = selectedItems;
     const isCurrentlySelected = isItemSelected(item);
 
-    let newItems: SimulationItem[];
+    let newItems: Item[] = [];
     if (isCurrentlySelected) {
       newItems = currentItems.filter(selected => selected.id !== item.id);
     } else {
@@ -116,6 +178,8 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
     setValue('selectedItems', newItems, { shouldValidate: true });
   };
+
+  const { modules, sims } = getModuleAndSimCount();
 
   return (
     <Dialog
@@ -185,7 +249,6 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
       <DialogContent sx={{ p: 3, pt: '24px !important' }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
-            <Stack direction="row" spacing={2}>
               <Controller
                 name="name"
                 control={control}
@@ -195,18 +258,9 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                     {...field}
                     label="Training Plan Name"
                     required
-                    sx={{ width: '50%' }}
-                    size="medium"
-                  />
-                )}
-              />
-              <TextField
-                value="TRP007"
-                label="Training Plan ID"
-                disabled
-                sx={{ width: '50%' }}
-              />
-            </Stack>
+                    fullWidth
+                    size="medium" />
+                )} />
 
             <Controller
               name="tags"
@@ -253,11 +307,10 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
             <Box>
               <Stack spacing={2}>
-                <Typography variant="subtitle1">
-                  Add Simulations and Modules
-                </Typography>
-                
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography variant="subtitle1">
+                    Add Simulations and Modules
+                  </Typography>
                   <Chip
                     label={`${modules} Modules | ${sims} Sims`}
                     sx={{
@@ -267,60 +320,104 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                       height: 28,
                     }}
                   />
-                </Box>
+                </Stack>
 
-                <Controller
-                  name="selectedItems"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      {...field}
-                      multiple
-                      fullWidth
-                      displayEmpty
-                      renderValue={() => (
-                        <Typography color="text.secondary">
-                          Search Sim or Modules
-                        </Typography>
-                      )}
-                      startAdornment={<SearchIcon sx={{ ml: 1, color: 'text.secondary' }} />}
-                      onChange={() => {}}
-                    >
-                      {availableItems.map((item) => (
-                        <MenuItem 
-                          key={item.id} 
-                          value={item}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleItemToggle(item);
+                <Box position="relative" ref={searchFieldRef}>
+                  <ClickAwayListener onClickAway={() => setShowItemsList(false)}>
+                    <Box>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search simulations or modules..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowItemsList(true);
+                        }}
+                        onClick={() => setShowItemsList(true)}
+                        InputProps={{
+                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                        }}
+                      />
+                      {showItemsList && (
+                        <Box 
+                          sx={{ 
+                            position: 'absolute',
+                            zIndex: 1300,
+                            width: searchFieldRef.current?.offsetWidth || '100%',
+                            left: 0,
+                            mt: 0.5,
+                            bgcolor: 'background.paper',
+                            borderRadius: 1,
+                            boxShadow: 3,
+                            maxHeight: 300,
+                            minHeight: filteredItems.length > 0 ? 250 : 'auto',
+                            overflow: 'auto',
+                            '&::-webkit-scrollbar': {
+                              width: '8px',
+                            },
+                            '&::-webkit-scrollbar-thumb': {
+                              backgroundColor: '#E5E7EB',
+                              borderRadius: '4px',
+                            },
                           }}
-                          sx={{ width: '100%' }}
                         >
-                          <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>
-                            <Checkbox 
-                              checked={isItemSelected(item)}
-                              sx={{ p: 0, mr: 1 }}
-                            />
-                            <Typography variant="body2" sx={{ width: 80 }}>
-                              {item.id}
+                          {isLoading ? (
+                            <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                              <CircularProgress size={24} />
+                            </Box>
+                          ) : error ? (
+                            <Typography sx={{ p: 2, color: 'error.main' }}>{error}</Typography>
+                          ) : filteredItems.length === 0 ? (
+                            <Typography sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
+                              No matches found
                             </Typography>
-                            <Typography variant="body2" sx={{ flex: 1 }}>
-                              {item.name}
-                            </Typography>
-                            <Chip
-                              label={item.type === 'Module' ? `Module | ${item.simCount} Sim` : 'Sim'}
-                              size="small"
-                              sx={{
-                                bgcolor: '#F5F6FF',
-                                color: '#444CE7',
-                              }}
-                            />
-                          </Stack>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                />
+                          ) : (
+                            filteredItems.map((item) => (
+                              <Box
+                                key={item.id}
+                                onClick={() => {
+                                  handleItemToggle(item);
+                                  setShowItemsList(false);
+                                }}
+                                sx={{
+                                  p: 1.5,
+                                  cursor: 'pointer',
+                                  '&:hover': { bgcolor: '#F5F6FF' },
+                                  display: 'grid',
+                                  gridTemplateColumns: 'auto 80px 1fr auto',
+                                  alignItems: 'center', 
+                                  gap: 2,
+                                  width: '100%'
+                                }}
+                              >
+                                <Checkbox 
+                                  checked={isItemSelected(item)}
+                                  sx={{ p: 0 }}
+                                />
+                                <Typography variant="body2" noWrap>
+                                  {item.id.slice(-6)}
+                                </Typography>
+                                <Typography variant="body2" noWrap>
+                                  {item.name}
+                                </Typography>
+                                <Chip
+                                  label={item.type === 'module' ? `Module | ${item.simCount} Sim` : 'Sim'}
+                                  size="small"
+                                  sx={{
+                                    bgcolor: '#F5F6FF',
+                                    color: '#444CE7',
+                                    justifySelf: 'end'
+                                  }}
+                                />
+                              </Box>
+                            ))
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </ClickAwayListener>
+                </Box>
 
                 {selectedItems.length > 0 && (
                   <TableContainer component={Paper} variant="outlined">
@@ -340,7 +437,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
                               <Chip
-                                label={item.type === 'Module' ? `Module | ${item.simCount} Sim` : 'Sim'}
+                                label={item.type === 'module' ? `Module | ${item.simCount} Sim` : 'Sim'}
                                 size="small"
                                 sx={{
                                   bgcolor: '#F5F6FF',
@@ -366,7 +463,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
               type="submit"
               variant="contained"
               fullWidth
-              disabled={!isValid}
+              disabled={!isValid || isSubmitting}
               sx={{
                 mt: 2,
                 py: 1.5,
@@ -381,8 +478,13 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                 },
               }}
             >
-              Create Training Plan
+              {isSubmitting ? 'Creating...' : 'Create Training Plan'}
             </Button>
+            {submitError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {submitError}
+              </Alert>
+            )}
           </Stack>
         </form>
       </DialogContent>

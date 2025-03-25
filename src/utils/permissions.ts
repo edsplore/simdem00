@@ -1,4 +1,4 @@
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 // JSON Web Token
 // {
@@ -89,8 +89,8 @@ export const MODULE_PERMISSION_MAP = {
   '/playback': 'playback',
   '/manage-simulations': 'simulations',
   '/manage-training-plan': 'training_plan',
-  '/assign-simulations': 'training',
-  '/settings': 'training',
+  '/assign-simulations': 'trainee',
+  '/settings': 'trainee',
 };
 
 export const hasPermission = (path: string): boolean => {
@@ -98,7 +98,7 @@ export const hasPermission = (path: string): boolean => {
     const token = localStorage.getItem('token');
     if (!token) return false;
 
-    const decoded: TokenData = jwt_decode(token);
+    const decoded: TokenData = jwtDecode(token);
     const workspacePermissions = decoded['WS-2025-1001']?.permissions?.simulator;
 
     if (!workspacePermissions) return false;
@@ -119,7 +119,7 @@ export const canWrite = (path: string): boolean => {
     const token = localStorage.getItem('token');
     if (!token) return false;
 
-    const decoded: TokenData = jwt_decode(token);
+    const decoded: TokenData = jwtDecode(token);
     const workspacePermissions = decoded['WS-2025-1001']?.permissions?.simulator;
 
     if (!workspacePermissions) return false;

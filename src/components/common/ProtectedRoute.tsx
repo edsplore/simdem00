@@ -16,17 +16,29 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, user } = useAuth();
 
+  // If not authenticated, show unauthorized
   if (!isAuthenticated) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/dashboard" />;
   }
 
-  if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" />;
+  // If no user object, wait for it
+  if (!user) {
+    return null;
   }
 
-  // Check if user has permission to access this route
+  // Check role-based access
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    console.log('Role access denied:', {
+      userRole: user.role,
+      allowedRoles,
+    });
+    return <Navigate to="/dashboard" />;
+  }
+
+  // Check permission-based access
   // if (!hasPermission(path)) {
-  //   return <Navigate to="/unauthorized" />;
+  //   console.log('Permission denied for path:', path);
+  //   return <Navigate to="/dashboard" />;
   // }
 
   return <>{children}</>;

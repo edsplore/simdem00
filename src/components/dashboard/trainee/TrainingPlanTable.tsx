@@ -12,11 +12,16 @@ import {
   Pagination,
   Box,
   styled,
+  CircularProgress,
+  Alert,
+  Tooltip,
 } from '@mui/material';
 import type { TrainingPlan } from '../../../types/training';
 
 interface TrainingPlanTableProps {
   trainingPlans: TrainingPlan[];
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -33,12 +38,17 @@ const HeaderChip = styled(Chip)(({ theme }) => ({
   fontSize: '0.75rem',
 }));
 
-const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({ trainingPlans }) => {
+const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({ 
+  trainingPlans, 
+  isLoading = false,
+  error = null 
+}) => {
   const navigate = useNavigate();
   const [rowsPerPage, setRowsPerPage] = useState('50');
   const [searchQuery, setSearchQuery] = useState('');
   const [timeFilter, setTimeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+
 
   const totalSimulations = trainingPlans.reduce(
     (acc, plan) => acc + plan.total_simulations,
@@ -124,6 +134,15 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({ trainingPlans }) 
         </Stack>
       </Paper>
 
+      {isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Box sx={{ textAlign: 'center', my: 4 }}>
+          <Alert severity="error">{error}</Alert>
+        </Box>
+      ) : (
       <StyledPaper>
         <Grid container sx={{ p: 2, bgcolor: 'grey.50' }}>
           <Grid item xs={1.5}>
@@ -165,7 +184,11 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({ trainingPlans }) 
             onClick={() => navigate(`/training/${plan.id}`)}
           >
             <Grid item xs={1.5}>
-              <Typography variant="body2">{plan.id}</Typography>
+              <Tooltip title={plan.id} placement="top">
+                <Typography variant="body2" sx={{ cursor: 'help' }}>
+                  {plan.id.slice(0, 2)}...{plan.id.slice(-3)}
+                </Typography>
+              </Tooltip>
             </Grid>
             <Grid item xs={2.5}>
               <Stack spacing={0.5}>
@@ -226,31 +249,31 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({ trainingPlans }) 
             </Grid>
           </Grid>
         ))}
-      </StyledPaper>
-
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Rows per page:
-          </Typography>
-          <Select
-            value={rowsPerPage}
-            onChange={(e) => setRowsPerPage(e.target.value)}
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="body2" color="text.secondary">
+              Rows per page:
+            </Typography>
+            <Select
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(e.target.value)}
+              size="small"
+              sx={{ minWidth: 70 }}
+            >
+              <MenuItem value="10">10</MenuItem>
+              <MenuItem value="20">20</MenuItem>
+              <MenuItem value="50">50</MenuItem>
+              <MenuItem value="100">100</MenuItem>
+            </Select>
+          </Stack>
+          <Pagination
+            count={Math.ceil(filteredPlans.length / parseInt(rowsPerPage))}
+            shape="rounded"
             size="small"
-            sx={{ minWidth: 70 }}
-          >
-            <MenuItem value="10">10</MenuItem>
-            <MenuItem value="20">20</MenuItem>
-            <MenuItem value="50">50</MenuItem>
-            <MenuItem value="100">100</MenuItem>
-          </Select>
+          />
         </Stack>
-        <Pagination
-          count={Math.ceil(filteredPlans.length / parseInt(rowsPerPage))}
-          shape="rounded"
-          size="small"
-        />
-      </Stack>
+      </StyledPaper>
+      )}
     </Stack>
   );
 };

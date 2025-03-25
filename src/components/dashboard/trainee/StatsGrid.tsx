@@ -55,57 +55,57 @@ const CircularProgress = ({ value }: { value: number }) => {
 };
 
 const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
-  // const statsData = [
-  //   {
-  //     title: 'Simulations Completed',
-  //     value: `${stats.simulation_completed.completed_simulations}/${stats.simulation_completed.total_simulations}`,
-  //     subtitle: `Total ${stats.simulation_completed.total_simulations} Simulations`,
-  //     progress: stats.simulation_completed.percentage,
-  //   },
-  //   {
-  //     title: 'On Time Completion',
-  //     value: `${stats.timely_completion.percentage}%`,
-  //     subtitle: `${stats.timely_completion.completed_simulations} simulations`,
-  //     backgroundIcon: '/completion.svg',
-  //   },
-  //   {
-  //     title: 'Average Sim Score',
-  //     value: `${stats.average_sim_score}%`,
-  //     backgroundIcon: '/average.svg',
-  //   },
-  //   {
-  //     title: 'Highest Sim Score',
-  //     value: `${stats.highest_sim_score}%`,
-  //     backgroundIcon: '/highest.svg',
-  //   },
-  // ];
-
   const statsData = [
-  {
-    title: 'Simulations Completed',
-    value: '18/32',
-    subtitle: 'Total 7 Modules',
-    progress: 56,
-  },
-  {
-    title: 'On Time Completion',
-    value: '74%',
-    subtitle: '16 simulations',
-    backgroundIcon: '/src/assets/completion.svg',
-  },
-  {
-    title: 'Average Sim Score',
-    value: '89%',
-    trend: { value: -4, label: 'vs last week' },
-    backgroundIcon: '/src/assets/average.svg',
-  },
-  {
-    title: 'Highest Sim Score',
-    value: '94%',
-    trend: { value: 2, label: 'vs last week' },
-    backgroundIcon: '/src/assets/highest.svg',
-  },
-];
+    {
+      title: 'Simulations Completed',
+      value: `${stats.simulation_completed.completed_simulations}/${stats.simulation_completed.total_simulations}`,
+      subtitle: `Total ${stats.simulation_completed.total_simulations} Simulations`,
+      progress: stats.simulation_completed.percentage,
+    },
+    {
+      title: 'On Time Completion',
+      value: `${stats.timely_completion.percentage}%`,
+      subtitle: `${stats.timely_completion.completed_simulations} simulations`,
+      backgroundIcon: '/src/assets/completion.svg',
+    },
+    {
+      title: 'Average Sim Score',
+      value: `${stats.average_sim_score}%`,
+      backgroundIcon: '/src/assets/average.svg',
+    },
+    {
+      title: 'Highest Sim Score',
+      value: `${stats.highest_sim_score}%`,
+      backgroundIcon: '/src/assets/highest.svg',
+    },
+  ];
+
+//   const statsData = [
+//   {
+//     title: 'Simulations Completed',
+//     value: '18/32',
+//     subtitle: 'Total 7 Modules',
+//     progress: 56,
+//   },
+//   {
+//     title: 'On Time Completion',
+//     value: '74%',
+//     subtitle: '16 simulations',
+//     backgroundIcon: '/src/assets/completion.svg',
+//   },
+//   {
+//     title: 'Average Sim Score',
+//     value: '89%',
+//     trend: { value: -4, label: 'vs last week' },
+//     backgroundIcon: '/src/assets/average.svg',
+//   },
+//   {
+//     title: 'Highest Sim Score',
+//     value: '94%',
+//     trend: { value: 2, label: 'vs last week' },
+//     backgroundIcon: '/src/assets/highest.svg',
+//   },
+// ];
 
 
   return (
@@ -153,7 +153,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
                             variant="h4"
                             sx={{ display: 'flex', alignItems: 'baseline' }}
                           >
-                            {stats.simulation_completed.completed_simulations}
+                            {stats?.simulation_completed?.completed_simulations}
                             <Typography
                               component="span"
                               sx={{
@@ -162,7 +162,7 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
                                 ml: 0.5,
                               }}
                             >
-                              /{stats.simulation_completed.total_simulations}
+                              /{stats?.simulation_completed?.total_simulations}
                             </Typography>
                           </Typography>
                           <Typography variant="body2" color="text.secondary">

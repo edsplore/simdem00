@@ -118,7 +118,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       );
 
       console.log(response.data);
-      
+
       if (response.data.status === 'success') {
         setPublishedSimId(simulationId);
         setShowPreview(true);

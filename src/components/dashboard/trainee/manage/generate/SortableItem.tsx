@@ -38,12 +38,17 @@ const ImagePreview = styled(Card)(({ theme }) => ({
 
 const ThumbnailContainer = styled(Box)(({ theme }) => ({
   width: '280px',
-  height: '180px',
+  height: '200px',
   overflow: 'hidden',
   borderRadius: theme.spacing(1),
   position: 'relative',
   '&:hover .image-actions': {
     opacity: 1,
+  },
+  '& img': {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
   },
 }));
 
@@ -86,11 +91,6 @@ export default function SortableItem({
           component="img"
           src={image.url}
           alt={image.name}
-          sx={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
         />
         <Box
           className="image-actions"

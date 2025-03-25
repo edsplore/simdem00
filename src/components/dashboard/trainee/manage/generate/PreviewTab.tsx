@@ -31,7 +31,10 @@ interface PreviewTabProps {
 
 const webClient = new RetellWebClient();
 
-const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 'audio' }) => {
+const PreviewTab: React.FC<PreviewTabProps> = ({
+  simulationId,
+  simulationType = 'audio',
+}) => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStarting, setIsStarting] = useState(false);
@@ -212,7 +215,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
           <Typography variant="subtitle2" color="text.secondary">Customer</Typography>
           <Typography variant="subtitle2" color="text.secondary">Trainee</Typography>
         </Box>
-        
+
         <Box sx={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
           {!isCallActive ? (
             <Box sx={{

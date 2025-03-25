@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { fetchModules, type Module } from '../../../services/modules';
+import { fetchUsers, type User } from '../../../services/users';
 import { createAssignment } from '../../../services/assignments';
 import {
   Dialog,
@@ -52,27 +53,9 @@ interface AssignModuleDialogProps {
   onAssignmentCreated?: () => void;
 }
 
-const assignees: Assignee[] = [
+const teamAssignees: Assignee[] = [
   { id: 'team1', name: 'Team 01', type: 'team' },
   { id: 'team2', name: 'Team 02', type: 'team' },
-  { 
-    id: 'trainee1', 
-    name: 'John Baker', 
-    email: 'john.baker@everailabs.com', 
-    type: 'trainee' 
-  },
-  { 
-    id: 'trainee2', 
-    name: 'John Doe', 
-    email: 'john.baker@everailabs.com', 
-    type: 'trainee' 
-  },
-  { 
-    id: 'trainee3', 
-    name: 'Lana Steiner', 
-    email: 'lanasteiner@everailabs.com', 
-    type: 'trainee' 
-  },
 ];
 
 const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
@@ -91,6 +74,9 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   const [showModulesList, setShowModulesList] = useState(false);
   const searchFieldRef = useRef<HTMLDivElement>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [assignees, setAssignees] = useState<Assignee[]>(teamAssignees);
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
+  const [showAssigneesList, setShowAssigneesList] = useState(false);
 
   const {
     control,
@@ -129,9 +115,35 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     }
   }, [open, user?.id]);
 
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const users = await fetchUsers();
+        const userAssignees: Assignee[] = users.map(user => ({
+          id: user.user_id,
+          name: user.fullName,
+          email: user.email,
+          type: 'trainee'
+        }));
+        setAssignees([...teamAssignees, ...userAssignees]);
+      } catch (err) {
+        console.error('Error loading users:', err);
+      }
+    };
+
+    if (open) {
+      loadUsers();
+    }
+  }, [open]);
+
   const selectedAssignees = watch('assignTo');
   const filteredModules = modules.filter(module => 
     module.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredAssignees = assignees.filter(assignee => 
+    assignee.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) ||
+    (assignee.email && assignee.email.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
   );
 
   const onSubmit = async (data: CreateModuleFormData) => {
@@ -437,8 +449,10 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                   <Select
                     {...field}
                     multiple
-                    displayEmpty
                     fullWidth
+                    displayEmpty
+                    onOpen={() => setShowAssigneesList(true)}
+                    onClose={() => setShowAssigneesList(false)}
                     renderValue={(selected) => {
                       if (selected.length === 0) {
                         return (
@@ -496,6 +510,18 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                       },
                     }}
                   >
+                    <Box sx={{ p: 2, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search users..."
+                        value={assigneeSearchQuery}
+                        onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                        InputProps={{
+                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                        }}
+                      />
+                    </Box>
                     {assignees.map((assignee) => (
                       <MenuItem
                         key={assignee.id}

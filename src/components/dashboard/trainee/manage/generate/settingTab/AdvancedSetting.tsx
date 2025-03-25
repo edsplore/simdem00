@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
   Box,
@@ -67,7 +67,14 @@ interface SimulationType {
   icon: React.ReactNode;
 }
 
-interface AdvancedSettingsFormData {
+interface AdvancedSettingsProps {
+  settings: SimulationSettings;
+  onSettingsChange: (settings: SimulationSettings) => void;
+  simulationType?: string;
+  activeSection?: string;
+}
+
+interface FormData {
   simulationType: string;
   settings: {
     [key: string]: {
@@ -192,39 +199,70 @@ const defaultSettings = {
   },
 };
 
-const AdvancedSettings = () => {
-  const { control, handleSubmit, watch } = useForm<AdvancedSettingsFormData>({
+const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
+  settings,
+  onSettingsChange,
+  simulationType: initialSimType,
+  activeSection
+}) => {
+  const { control, handleSubmit, watch } = useForm<FormData>({
     defaultValues: {
-      simulationType: 'audio',
+      simulationType: initialSimType || 'audio',
       settings: Object.fromEntries(
         Object.entries(defaultSettings).map(([key, value]) => [
           key,
-          value.levels,
+          settings.levels?.[key] || value.levels,
         ])
       ),
       estimatedTime: {
-        enabled: false,
-        value: '10 mins',
+        enabled: settings.estimatedTime?.enabled || false,
+        value: settings.estimatedTime?.value || '10 mins',
       },
       objectives: {
-        enabled: false,
-        text: '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
+        enabled: settings.objectives?.enabled || false,
+        text:
+          settings.objectives?.text ||
+          '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
       },
       overviewVideo: {
-        enabled: false,
+        enabled: settings.overviewVideo?.enabled || false,
       },
       quickTips: {
-        enabled: false,
-        text: '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
+        enabled: settings.quickTips?.enabled || false,
+        text:
+          settings.quickTips?.text ||
+          '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
       },
     },
   });
 
-  const onSubmit = (data: AdvancedSettingsFormData) => {
-    console.log('Form data:', data);
-  };
+  // Watch for form changes and update settings
+  useEffect(() => {
+    const subscription = watch((value) => {
+      onSettingsChange({
+        ...settings,
+        simulationType: value.simulationType,
+        levels: value.settings,
+        estimatedTime: value.estimatedTime,
+        objectives: value.objectives,
+        quickTips: value.quickTips,
+        overviewVideo: value.overviewVideo,
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, settings, onSettingsChange]);
 
-  const selectedSimType = watch('simulationType');
+  const onSubmit = (data: FormData) => {
+    onSettingsChange({
+      ...settings,
+      simulationType: data.simulationType,
+      levels: data.settings,
+      estimatedTime: data.estimatedTime,
+      objectives: data.objectives,
+      quickTips: data.quickTips,
+      overviewVideo: data.overviewVideo,
+    });
+  };
 
   return (
     <Box sx={{ maxWidth: 1100, mx: 'auto', p: 1 }}>
@@ -237,7 +275,7 @@ const AdvancedSettings = () => {
           {/* Simulation Type Card */}
           <Card sx={{ px: 3, py: 2, borderRadius: 5, boxShadow: 2 }}>
             <Stack spacing={1}>
-              <Typography variant="h6" sx={{ color: 'black' }}>
+              <Typography variant="h6" sx={{ color: 'black' }} data-section="Simulation Type">
                 Simulation Type
               </Typography>
               <Typography variant="body2" sx={{ color: '#9C9C9D' }}>
@@ -330,7 +368,7 @@ const AdvancedSettings = () => {
               </TableHead>
               <TableBody>
                 {Object.entries(defaultSettings).map(([key, setting]) => (
-                  <TableRow key={setting.id}>
+                  <TableRow key={setting.id} data-section={setting.name}>
                     <TableCell>
                       <Stack spacing={0.5}>
                         <Typography variant="body2" fontWeight="medium">
@@ -364,7 +402,7 @@ const AdvancedSettings = () => {
           </TableContainer>
 
           {/* Estimated Time Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
+          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Estimated Time to Attempt">
             <Stack
               direction="row"
               spacing={2}
@@ -411,7 +449,7 @@ const AdvancedSettings = () => {
           </Card>
 
           {/* Objectives Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
+          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Key Objectives">
             <Stack
               direction="row"
               spacing={2}
@@ -471,7 +509,7 @@ const AdvancedSettings = () => {
           </Card>
 
           {/* Overview Video Card */}
-          <Card>
+          <Card data-section="Overview Video">
             <CardContent>
               <Box
                 sx={{
@@ -481,7 +519,10 @@ const AdvancedSettings = () => {
                 }}
               >
                 <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 'bold' }}
+                  >
                     Overview Video
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -539,7 +580,7 @@ const AdvancedSettings = () => {
           </Card>
 
           {/* Quick Tips Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}>
+          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Quick Tips">
             <Stack
               direction="row"
               spacing={2}

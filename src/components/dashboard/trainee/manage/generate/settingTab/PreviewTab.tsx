@@ -122,8 +122,10 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
       if (simulationType === 'audio') {
         const response = await axios.post('/api/simulations/start-audio-preview', {
           user_id: 'user123',
-          sim_id: simulationId
+          sim_id: simulationId  // Make sure to include the simulation ID
         });
+
+        console.log('Audio preview response:', response.data);
 
         if (response.data.access_token) {
           await webClient.startCall({
@@ -133,7 +135,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
       } else {
         const response = await axios.post('/api/simulations/start-chat-preview', {
           user_id: 'user123',
-          sim_id: simulationId,
+          sim_id: simulationId,  // Make sure to include the simulation ID
           message: ''
         });
 
@@ -168,7 +170,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
     try {
       const response = await axios.post('/api/simulations/start-chat-preview', {
         user_id: 'user123',
-        sim_id: simulationId,
+        sim_id: simulationId,  // Make sure to include the simulation ID
         message: inputMessage.trim()
       });
 
@@ -212,7 +214,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
           <Typography variant="subtitle2" color="text.secondary">Customer</Typography>
           <Typography variant="subtitle2" color="text.secondary">Trainee</Typography>
         </Box>
-        
+
         <Box sx={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
           {!isCallActive ? (
             <Box sx={{

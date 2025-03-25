@@ -85,9 +85,10 @@ const MessageBubble = styled('div')(({ theme }) => ({
 
 interface ScriptEditorProps {
   script?: Message[];
+  onScriptUpdate?: (script: Message[]) => void;
 }
 
-const ScriptEditor: React.FC<ScriptEditorProps> = ({ script = initialMessages }) => {
+const ScriptEditor: React.FC<ScriptEditorProps> = ({ script = initialMessages, onScriptUpdate }) => {
   const theme = useTheme();
 
   // ----------------------------
@@ -158,7 +159,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ script = initialMessages })
   };
 
   const deleteMessage = (id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id));
+    const updatedMessages = messages.filter((m) => m.id !== id);
+    setMessages(updatedMessages);
+    onScriptUpdate?.(updatedMessages);
   };
 
   // ----------------------------
@@ -263,11 +266,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({ script = initialMessages })
 
   const handleSaveEdit = (id: string) => {
     // Save the updated HTML + updated keywords
-    setMessages((prev) =>
-      prev.map((m) =>
+    const updatedMessages = messages.map((m) =>
         m.id === id ? { ...m, message: draftText, keywords: editingKeywords } : m
-      )
     );
+    setMessages(updatedMessages);
+    onScriptUpdate?.(updatedMessages);
     setEditingId(null);
     setShowKeywordPopper(false);
   };

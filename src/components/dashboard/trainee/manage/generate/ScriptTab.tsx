@@ -11,7 +11,7 @@ import {
   Select,
   styled,
   MenuItem,
-  ListItemIcon,
+  ListItemIcon
 } from '@mui/material';
 import {
   SmartToy,
@@ -20,10 +20,12 @@ import {
   AudioFile,
   Mic,
   PlayArrow,
-  ChatBubble
+  ChatBubble,
+  Lock as LockIcon
 } from '@mui/icons-material';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import ManageHistoryIcon from '@mui/icons-material/ManageHistory';
+import { useSimulationWizard } from '../../../../../context/SimulationWizardContext';
 import AIScriptGenerator from './AIScriptGenerator';
 import ScriptEditor from './ScriptEditor';
 import axios from 'axios';
@@ -37,9 +39,7 @@ interface Message {
 
 interface ScriptTabProps {
   simulationType?: string;
-  onScriptLoad: (script: Message[]) => void;
-  isScriptLoaded: boolean;
-  onScriptUpdate: (script: Message[]) => void;
+  isLocked?: boolean;
 }
 
 const OptionCard = styled(Box)(({ theme }) => ({
@@ -68,14 +68,14 @@ const ActionButton = styled(Button)(({ theme }) => ({
 
 const ScriptTab: React.FC<ScriptTabProps> = ({
   simulationType,
-  onScriptLoad,
-  isScriptLoaded,
-  onScriptUpdate,
+  isLocked = false,
 }) => {
   const [showAIGenerator, setShowAIGenerator] = useState(false);
-  const [generatedScript, setGeneratedScript] = useState<Message[] | null>(null);
+  const [showSavedScript, setShowSavedScript] = useState(false);
   const [currentRole, setCurrentRole] = useState<'Customer' | 'Trainee'>('Trainee');
+  const [showBackButton, setShowBackButton] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const { scriptData, setScriptData } = useSimulationWizard();
 
   const handleScriptUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -88,8 +88,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
       message: 'Processing file... Please wait.',
       keywords: [],
     }];
-    setGeneratedScript(loadingScript);
-    onScriptLoad(loadingScript);
+    setScriptData(loadingScript);
 
     try {
       const content = await file.text();
@@ -114,9 +113,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         throw new Error('No valid dialogue content found in the file. Please check the format.');
       }
 
-      setGeneratedScript(messages);
-      onScriptLoad(messages);
-      onScriptUpdate(messages);
+      setScriptData(messages);
 
     } catch (error: any) {
       console.error('Error processing file:', error);
@@ -126,9 +123,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         message: `Error: ${error.message || 'Failed to process file. Please check the format and try again.'}`,
         keywords: [],
       }];
-      setGeneratedScript(errorScript);
-      onScriptLoad(errorScript);
-      onScriptUpdate(errorScript);
+      setScriptData(errorScript);
     }
   };
 
@@ -145,9 +140,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         message: 'Error: File size exceeds 10MB limit. Please upload a smaller file.',
         keywords: [],
       }];
-      setGeneratedScript(errorScript);
-      onScriptLoad(errorScript);
-      onScriptUpdate(errorScript);
+      setScriptData(errorScript);
       return;
     }
 
@@ -163,9 +156,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         message: 'Processing audio file... This may take a few minutes.',
         keywords: [],
       }];
-      setGeneratedScript(loadingScript);
-      onScriptLoad(loadingScript);
-      onScriptUpdate(loadingScript);
+      setScriptData(loadingScript);
 
       // Make direct API call without /api prefix
       const response = await axios.post(
@@ -196,9 +187,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         }));
 
         console.log('Transformed Script:', transformedScript);
-        setGeneratedScript(transformedScript);
-        onScriptLoad(transformedScript);
-        onScriptUpdate(transformedScript);
+        setScriptData(transformedScript);
       } else {
         throw new Error('Invalid response format from server');
       }
@@ -222,9 +211,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         keywords: [],
       }];
 
-      setGeneratedScript(errorScript);
-      onScriptLoad(errorScript);
-      onScriptUpdate(errorScript);
+      setScriptData(errorScript);
     }
   };
 
@@ -237,36 +224,99 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         keywords: [],
       };
 
-      setGeneratedScript((prev) => {
-        const messages = prev || [];
-        const newMessages = [...messages, newMessage];
-        onScriptLoad(newMessages);
-        onScriptUpdate(newMessages);
-        return newMessages;
-      });
-
+      setScriptData((prev) => [...prev, newMessage]);
       setInputMessage('');
     }
   };
 
   const handleScriptGenerated = (script: Message[]) => {
     console.log('Received script:', script);
-    setGeneratedScript(script);
     setShowAIGenerator(false);
-    onScriptLoad(script);
-    onScriptUpdate(script);
+    setScriptData(script);
   };
 
-  if (isScriptLoaded && generatedScript) {
-    return <ScriptEditor script={generatedScript} />;
+  if (scriptData.length > 0 && !isLocked && !showSavedScript) {
+    return (
+      <Stack spacing={2}>
+        <Button
+          variant="text"
+          onClick={() => {
+            setScriptData([]);
+            setShowAIGenerator(false);
+          }}
+          sx={{
+            alignSelf: 'flex-start',
+            color: 'text.secondary',
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          ← Back to script options
+        </Button>
+        <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
+      </Stack>
+    );
+  }
+
+  if (showSavedScript) {
+    return <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />;
   }
 
   if (showAIGenerator) {
-    return <AIScriptGenerator onScriptGenerated={handleScriptGenerated} />;
+    return (
+      <Stack spacing={2}>
+        <Button
+          variant="text"
+          onClick={() => setShowAIGenerator(false)}
+          sx={{
+            alignSelf: 'flex-start',
+            color: 'text.secondary',
+            '&:hover': {
+              bgcolor: 'action.hover',
+            },
+          }}
+        >
+          ← Back to script options
+        </Button>
+        <AIScriptGenerator onScriptGenerated={handleScriptGenerated} />
+      </Stack>
+    );
   }
 
   return (
     <Stack spacing={4}>
+      {isLocked && (
+        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Box sx={{ 
+            bgcolor: '#ECFDF3', 
+            p: 2, 
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flex: 1
+          }}>
+            <LockIcon sx={{ color: 'success.main' }} />
+            <Typography color="success.main">
+              Script is locked and ready for visuals
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            onClick={() => setShowSavedScript(true)}
+            sx={{
+              bgcolor: '#444CE7',
+              '&:hover': { bgcolor: '#3538CD' },
+              borderRadius: 2,
+              px: 4,
+            }}
+          >
+            View Script
+          </Button>
+        </Stack>
+      )}
+
       <Box
         sx={{
           display: 'grid',

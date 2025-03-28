@@ -13,13 +13,15 @@ import {
   MenuItem,
   Pagination,
   Box,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DashboardContent from '../DashboardContent';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchTrainingData } from '../../../services/training';
+import { fetchTrainingPlanDetails } from '../../../services/training';
 import type { Module, TrainingPlan, Simulation } from '../../../types/training';
 
 const TrainingPlanDetailsPage = () => {
@@ -28,62 +30,30 @@ const TrainingPlanDetailsPage = () => {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState('50');
-  var [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
+  const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
   const [expandedModules, setExpandedModules] = useState<{ [key: string]: boolean }>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  // Simulating API response
-  const mockData = {
-    "user_id": "userId11",
-    "training_plans": [
-      {
-        "id": "45893",
-        "name": "Advanced Leadership Training",
-        "total_modules": 3,
-        "total_simulations": 5,
-        "est_time": 90,
-        "average_sim_score": 86,
-        "completion_percentage": 92,
-        "due_date": "2024-12-25",
-        "status": "ongoing",
-        "modules": [
-          {
-            "id": "M101",
-            "name": "Leadership Fundamentals",
-            "total_simulations": 2,
-            "average_score": 85,
-            "due_date": "2024-12-20",
-            "status": "ongoing",
-            "simulations": [
-              {
-                "simulation_id": "67c716139e65ee61e0882a29",
-                "name": "Decision Making",
-                "highest_attempt_score": 87,
-                "due_date": "2024-12-18",
-                "status": "finished"
-              },
-              {
-                "simulation_id": "67c716139e65ee61e0882a29",
-                "name": "Conflict Resolution",
-                "highest_attempt_score": 82,
-                "due_date": "2024-12-19",
-                "status": "ongoing"
-              }
-            ]
-          }
-        ]
+    const loadTrainingPlanDetails = async () => {
+      if (!id || !user?.id) return;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchTrainingPlanDetails(user.id, id);
+        setTrainingPlan(data);
+      } catch (err) {
+        console.error('Error loading training plan details:', err);
+        setError('Failed to load training plan details');
+      } finally {
+        setIsLoading(false);
       }
-    ]
-  };
+    };
 
-  // Find the correct training plan based on the URL param `id`
-  const selectedPlan = mockData.training_plans.find(plan => plan.id === id);
-
-  // Set the state with the selected plan
-  if (selectedPlan) {
-    setTrainingPlan(selectedPlan);
-  }
-}, [id]); // Runs when `id` changes
+    loadTrainingPlanDetails();
+  }, [id, user?.id]);
 
 
   const getStatusColor = (status: Module['status']) => {
@@ -112,11 +82,33 @@ const TrainingPlanDetailsPage = () => {
     module.name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
+  if (isLoading) {
+    return (
+      <DashboardContent>
+        <Container>
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </DashboardContent>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardContent>
+        <Container>
+          <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>
+        </Container>
+      </DashboardContent>
+    );
+  }
+
   if (!trainingPlan) {
     return (
       <DashboardContent>
         <Container>
-          <Typography>Loading...</Typography>
+          <Alert severity="info" sx={{ mt: 4 }}>Training plan not found</Alert>
         </Container>
       </DashboardContent>
     );

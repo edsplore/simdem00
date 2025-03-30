@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -7,13 +7,13 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+} from "@dnd-kit/sortable";
 import {
   Box,
   Typography,
@@ -25,7 +25,7 @@ import {
   Divider,
   Menu,
   MenuItem,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Upload as UploadIcon,
   Delete as DeleteIcon,
@@ -33,12 +33,12 @@ import {
   Description as DescriptionIcon,
   ChevronRight as ChevronRightIcon,
   Message as MessageIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
-import { useSimulationWizard } from '../../../../../context/SimulationWizardContext';
-import SortableItem from './SortableItem';
-import ImageHotspot from './ImageHotspot';
-import HotspotSequence, { SequenceItem } from './HotspotSequence';
+import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
+import SortableItem from "./SortableItem";
+import ImageHotspot from "./ImageHotspot";
+import HotspotSequence, { SequenceItem } from "./HotspotSequence";
 
 interface Hotspot {
   id: string;
@@ -46,19 +46,20 @@ interface Hotspot {
   type: string;
   text?: string;
   hotkey?: string;
+  hotspotType: string;
 }
 interface ScriptMessage {
   id: string;
   text: string;
-  role: 'Customer' | 'Trainee';
+  role: "Customer" | "Trainee";
   visualId: string;
   order: number;
 }
 interface VisualImage {
   id: string;
-  url: string;  // Local URL for display
+  url: string; // Local URL for display
   name: string;
-  file?: File;  // Store the actual file reference
+  file?: File; // Store the actual file reference
   sequence: SequenceItem[]; // Combined sequence of hotspots and messages
 }
 
@@ -70,19 +71,19 @@ interface VisualsTabProps {
 }
 
 const DropZone = styled(Box)(({ theme }) => ({
-  border: '2px dashed #DEE2FC',
+  border: "2px dashed #DEE2FC",
   borderRadius: theme.spacing(2),
   padding: theme.spacing(4),
-  backgroundColor: '#FCFCFE',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  textAlign: 'center',
-  cursor: 'pointer',
-  transition: 'border-color 0.2s ease-in-out',
-  minHeight: '320px',
-  '&:hover': {
+  backgroundColor: "#FCFCFE",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  cursor: "pointer",
+  transition: "border-color 0.2s ease-in-out",
+  minHeight: "320px",
+  "&:hover": {
     borderColor: theme.palette.primary.main,
   },
 }));
@@ -92,17 +93,18 @@ export default function VisualsTab({
   onImagesUpdate,
   onComplete,
   createSimulation,
-  simulationType
+  simulationType,
 }: VisualsTabProps) {
   const { scriptData } = useSimulationWizard();
 
   // Initialize images with empty sequence array if not exists
-  const initializedImages = images.map(img => ({
+  const initializedImages = images.map((img) => ({
     ...img,
-    sequence: img.sequence || []
+    sequence: img.sequence || [],
   }));
 
-  const [visualImages, setVisualImages] = useState<VisualImage[]>(initializedImages);
+  const [visualImages, setVisualImages] =
+    useState<VisualImage[]>(initializedImages);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
 
@@ -113,7 +115,9 @@ export default function VisualsTab({
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   // For the "Add Script Message" menu
-  const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(null);
+  const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
+    null,
+  );
 
   // Update parent when visualImages changes
   useEffect(() => {
@@ -126,22 +130,24 @@ export default function VisualsTab({
   const addHotspotToSequence = (imageId: string, hotspot: Hotspot) => {
     if (!imageId) return;
 
-    setVisualImages(currentImages => currentImages.map(img => {
-      if (img.id === imageId) {
-        const newSequenceItem: SequenceItem = {
-          id: `hotspot-${hotspot.id}`,
-          type: 'hotspot',
-          content: hotspot,
-          timestamp: Date.now()
-        };
+    setVisualImages((currentImages) =>
+      currentImages.map((img) => {
+        if (img.id === imageId) {
+          const newSequenceItem: SequenceItem = {
+            id: `hotspot-${hotspot.id}`,
+            type: "hotspot",
+            content: hotspot,
+            timestamp: Date.now(),
+          };
 
-        return {
-          ...img,
-          sequence: [...img.sequence, newSequenceItem]
-        };
-      }
-      return img;
-    }));
+          return {
+            ...img,
+            sequence: [...img.sequence, newSequenceItem],
+          };
+        }
+        return img;
+      }),
+    );
   };
 
   /** Get the selected image object. */
@@ -154,24 +160,28 @@ export default function VisualsTab({
   const handleSequenceReorder = (newSequence: SequenceItem[]) => {
     if (!selectedImageId) return;
 
-    setVisualImages(currentImages => currentImages.map(img => {
-      if (img.id === selectedImageId) {
-        return {
-          ...img,
-          sequence: newSequence
-        };
-      }
-      return img;
-    }));
+    setVisualImages((currentImages) =>
+      currentImages.map((img) => {
+        if (img.id === selectedImageId) {
+          return {
+            ...img,
+            sequence: newSequence,
+          };
+        }
+        return img;
+      }),
+    );
   };
 
   // For the "Add Script Message" menu
   // Filter out messages that have already been assigned to a visual
   const unassignedMessages = scriptData.filter((msg) => {
-    return !visualImages.some((img) => 
-      img.sequence.some((item) => 
-        item.type === 'message' && (item.content as ScriptMessage).id === msg.id
-      )
+    return !visualImages.some((img) =>
+      img.sequence.some(
+        (item) =>
+          item.type === "message" &&
+          (item.content as ScriptMessage).id === msg.id,
+      ),
     );
   });
 
@@ -183,12 +193,16 @@ export default function VisualsTab({
     setScriptMenuAnchor(null);
   };
 
-  const handleAddMessage = (message: { id: string; role: string; message: string }) => {
+  const handleAddMessage = (message: {
+    id: string;
+    role: string;
+    message: string;
+  }) => {
     if (!selectedImageId) return;
 
     const newMsg: ScriptMessage = {
       id: message.id,
-      role: message.role as 'Customer' | 'Trainee',
+      role: message.role as "Customer" | "Trainee",
       text: message.message,
       visualId: selectedImageId,
       order: 0, // We're not using this anymore as we rely on sequence order
@@ -196,20 +210,22 @@ export default function VisualsTab({
 
     const newSequenceItem: SequenceItem = {
       id: `message-${message.id}`,
-      type: 'message',
+      type: "message",
       content: newMsg,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    setVisualImages(currentImages => currentImages.map(img => {
-      if (img.id === selectedImageId) {
-        return {
-          ...img,
-          sequence: [...img.sequence, newSequenceItem]
-        };
-      }
-      return img;
-    }));
+    setVisualImages((currentImages) =>
+      currentImages.map((img) => {
+        if (img.id === selectedImageId) {
+          return {
+            ...img,
+            sequence: [...img.sequence, newSequenceItem],
+          };
+        }
+        return img;
+      }),
+    );
 
     handleCloseScriptMenu();
   };
@@ -219,7 +235,7 @@ export default function VisualsTab({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleThumbnailsDragEnd = (event: DragEndEvent) => {
@@ -238,13 +254,13 @@ export default function VisualsTab({
 
   // Image Upload
   const handleFiles = (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
     const newImages = imageFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       url: URL.createObjectURL(file),
       name: file.name,
       file: file, // Store the actual File reference
-      sequence: [] // Initialize with empty sequence
+      sequence: [], // Initialize with empty sequence
     }));
     setVisualImages([...visualImages, ...newImages]);
   };
@@ -282,46 +298,64 @@ export default function VisualsTab({
     if (visualImages.length === 0) return;
 
     // Structure slides data as JSON
-    const slidesData = visualImages.map(img => {
+    const slidesData = visualImages.map((img) => {
       // Extract all necessary data from each image
       return {
         imageId: img.id,
         imageName: img.name,
         // Include the full ordered sequence with both hotspots and messages
-        sequence: img.sequence.map(item => {
-          if (item.type === 'hotspot') {
+        sequence: img.sequence.map((item) => {
+          if (item.type === "hotspot") {
             const hotspot = item.content as Hotspot;
-            return {
-              type: 'hotspot',
+
+            console.log("Processing hotspot coordinates:", hotspot.coordinates);
+
+            // Start with the base hotspot data structure
+            const hotspotData: any = {
+              type: "hotspot",
               id: hotspot.id,
               name: hotspot.name,
-              hotspotType: hotspot.type,
+              hotspotType: hotspot.hotspotType,
               coordinates: {
-                x: hotspot.x,
-                y: hotspot.y,
-                width: hotspot.width,
-                height: hotspot.height
+                // Ensure we explicitly access and use numbers for each coordinate
+                x: Number(hotspot.coordinates?.x || 0),
+                y: Number(hotspot.coordinates?.y || 0),
+                width: Number(hotspot.coordinates?.width || 0),
+                height: Number(hotspot.coordinates?.height || 0),
               },
-              settings: hotspot.settings || {
-                font: 'Inter',
-                fontSize: 16,
-                buttonColor: '#00AB55',
-                textColor: '#FFFFFF',
-                timeoutDuration: 2,
-                highlightField: false,
-                enableHotkey: false
-              }
+              settings: hotspot.settings || {},
             };
+
+            // Log the final coordinates for debugging
+            console.log(
+              "Final hotspotData coordinates:",
+              hotspotData.coordinates,
+            );
+
+            // Add options array for dropdown type
+            if (hotspot.hotspotType === "dropdown" && hotspot.options) {
+              hotspotData.options = hotspot.options;
+            }
+
+            // Set default settings based on hotspot type if not provided
+            if (
+              !hotspot.settings ||
+              Object.keys(hotspot.settings).length === 0
+            ) {
+              // [settings initialization code...]
+            }
+
+            return hotspotData;
           } else {
             const message = item.content as ScriptMessage;
             return {
-              type: 'message',
+              type: "message",
               id: message.id,
               role: message.role,
-              text: message.text
+              text: message.text,
             };
           }
-        })
+        }),
       };
     });
 
@@ -329,7 +363,7 @@ export default function VisualsTab({
     const formData = new FormData();
 
     // Add the slides data as JSON
-    formData.append('slidesData', JSON.stringify(slidesData));
+    formData.append("slidesData", JSON.stringify(slidesData));
 
     // Add image files with corresponding IDs
     visualImages.forEach((image, index) => {
@@ -340,10 +374,10 @@ export default function VisualsTab({
 
     // For visual-audio types, create the simulation here
     // For other types, just move to the next step
-    if (simulationType === 'visual-audio' && createSimulation) {
+    if (simulationType === "visual-audio" && createSimulation) {
       const response = await createSimulation(formData);
-      if (response && response.status === 'success') {
-        console.log('Simulation created with slides:', response);
+      if (response && response.status === "success") {
+        console.log("Simulation created with slides:", response);
       }
     }
 
@@ -363,97 +397,119 @@ export default function VisualsTab({
     if (!imageId) return;
 
     // Find the current image
-    const currentImage = visualImages.find(img => img.id === imageId);
+    const currentImage = visualImages.find((img) => img.id === imageId);
     if (!currentImage) return;
 
     // Find all sequence items that are hotspots
-    const currentHotspotItems = currentImage.sequence.filter(item => item.type === 'hotspot');
-    const currentHotspots = currentHotspotItems.map(item => item.content as Hotspot);
+    const currentHotspotItems = currentImage.sequence.filter(
+      (item) => item.type === "hotspot",
+    );
+    const currentHotspots = currentHotspotItems.map(
+      (item) => item.content as Hotspot,
+    );
 
     // Identify deleted hotspots
     const deletedHotspots = currentHotspots.filter(
-      oldHotspot => !newHotspots.some(newHotspot => newHotspot.id === oldHotspot.id)
+      (oldHotspot) =>
+        !newHotspots.some((newHotspot) => newHotspot.id === oldHotspot.id),
     );
 
     // Identify new hotspots
     const addedHotspots = newHotspots.filter(
-      newHotspot => !currentHotspots.some(oldHotspot => oldHotspot.id === newHotspot.id)
+      (newHotspot) =>
+        !currentHotspots.some((oldHotspot) => oldHotspot.id === newHotspot.id),
     );
 
     // Updated hotspots (existing but modified)
-    const updatedHotspots = newHotspots.filter(
-      newHotspot => currentHotspots.some(oldHotspot => oldHotspot.id === newHotspot.id)
+    const updatedHotspots = newHotspots.filter((newHotspot) =>
+      currentHotspots.some((oldHotspot) => oldHotspot.id === newHotspot.id),
     );
 
     // Update the image's sequence
-    setVisualImages(currentImages => currentImages.map(img => {
-      if (img.id === imageId) {
-        // Remove deleted hotspot items
-        let updatedSequence = img.sequence.filter(
-          item => !(item.type === 'hotspot' && deletedHotspots.some(h => h.id === (item.content as Hotspot).id))
-        );
+    setVisualImages((currentImages) =>
+      currentImages.map((img) => {
+        if (img.id === imageId) {
+          // Remove deleted hotspot items
+          let updatedSequence = img.sequence.filter(
+            (item) =>
+              !(
+                item.type === "hotspot" &&
+                deletedHotspots.some(
+                  (h) => h.id === (item.content as Hotspot).id,
+                )
+              ),
+          );
 
-        // Add new hotspots to the end of the sequence
-        addedHotspots.forEach(hotspot => {
-          updatedSequence.push({
-            id: `hotspot-${hotspot.id}`,
-            type: 'hotspot',
-            content: hotspot,
-            timestamp: Date.now()
+          // Add new hotspots to the end of the sequence
+          addedHotspots.forEach((hotspot) => {
+            updatedSequence.push({
+              id: `hotspot-${hotspot.id}`,
+              type: "hotspot",
+              content: hotspot,
+              timestamp: Date.now(),
+            });
           });
-        });
 
-        // Update existing hotspots
-        updatedSequence = updatedSequence.map(item => {
-          if (item.type === 'hotspot') {
-            const hotspot = item.content as Hotspot;
-            const updatedHotspot = updatedHotspots.find(h => h.id === hotspot.id);
-            if (updatedHotspot) {
-              return {
-                ...item,
-                content: updatedHotspot
-              };
+          // Update existing hotspots
+          updatedSequence = updatedSequence.map((item) => {
+            if (item.type === "hotspot") {
+              const hotspot = item.content as Hotspot;
+              const updatedHotspot = updatedHotspots.find(
+                (h) => h.id === hotspot.id,
+              );
+              if (updatedHotspot) {
+                return {
+                  ...item,
+                  content: updatedHotspot,
+                };
+              }
             }
-          }
-          return item;
-        });
+            return item;
+          });
 
-        return {
-          ...img,
-          sequence: updatedSequence
-        };
-      }
-      return img;
-    }));
+          return {
+            ...img,
+            sequence: updatedSequence,
+          };
+        }
+        return img;
+      }),
+    );
   };
 
   // Edit / Delete a single hotspot or message from the sequence
-  const handleDeleteItem = (id: string, type: 'hotspot' | 'message') => {
+  const handleDeleteItem = (id: string, type: "hotspot" | "message") => {
     if (!selectedImageId) return;
 
-    setVisualImages(currentImages => currentImages.map(img => {
-      if (img.id === selectedImageId) {
-        return {
-          ...img,
-          sequence: img.sequence.filter(item => 
-            !(item.type === type && (item.content as any).id === id)
-          )
-        };
-      }
-      return img;
-    }));
+    setVisualImages((currentImages) =>
+      currentImages.map((img) => {
+        if (img.id === selectedImageId) {
+          return {
+            ...img,
+            sequence: img.sequence.filter(
+              (item) =>
+                !(item.type === type && (item.content as any).id === id),
+            ),
+          };
+        }
+        return img;
+      }),
+    );
   };
 
-  const handleEditItem = (id: string, type: 'hotspot' | 'message') => {
+  const handleEditItem = (id: string, type: "hotspot" | "message") => {
     if (!selectedImageId) return;
 
-    if (type === 'hotspot') {
+    if (type === "hotspot") {
       // Find the hotspot in the sequence
-      const selectedImage = visualImages.find(img => img.id === selectedImageId);
+      const selectedImage = visualImages.find(
+        (img) => img.id === selectedImageId,
+      );
       if (!selectedImage) return;
 
       const hotspotItem = selectedImage.sequence.find(
-        item => item.type === 'hotspot' && (item.content as Hotspot).id === id
+        (item) =>
+          item.type === "hotspot" && (item.content as Hotspot).id === id,
       );
 
       if (hotspotItem) {
@@ -477,7 +533,7 @@ export default function VisualsTab({
             if (!selectedImageId) return;
             setScriptMenuAnchor(e.currentTarget);
           }}
-          sx={{ bgcolor: '#444CE7', '&:hover': { bgcolor: '#3538CD' } }}
+          sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}
         >
           Add Script Message
         </Button>
@@ -487,8 +543,8 @@ export default function VisualsTab({
           onClick={handleSaveAndContinue}
           disabled={visualImages.length === 0}
           sx={{
-            bgcolor: '#444CE7',
-            '&:hover': { bgcolor: '#3538CD' },
+            bgcolor: "#444CE7",
+            "&:hover": { bgcolor: "#3538CD" },
             borderRadius: 2,
             px: 4,
           }}
@@ -521,15 +577,13 @@ export default function VisualsTab({
                   message: msg.message,
                 })
               }
-              sx={{ py: 2, borderBottom: '1px solid', borderColor: 'divider' }}
+              sx={{ py: 2, borderBottom: "1px solid", borderColor: "divider" }}
             >
-              <Stack spacing={1} sx={{ width: '100%' }}>
+              <Stack spacing={1} sx={{ width: "100%" }}>
                 <Typography variant="caption" color="text.secondary">
                   {msg.role}
                 </Typography>
-                <Typography variant="body2">
-                  {msg.message}
-                </Typography>
+                <Typography variant="body2">{msg.message}</Typography>
               </Stack>
             </MenuItem>
           ))}
@@ -538,15 +592,29 @@ export default function VisualsTab({
 
       {visualImages.length === 0 ? (
         <DropZone onDrop={handleDrop} onDragOver={handleDragOver}>
-          <DescriptionIcon sx={{ fontSize: 80, color: '#DEE2FC', mb: 2 }} />
-          <Typography variant="h5" sx={{ color: '#0F174F', mb: 2 }} gutterBottom fontWeight="800">
+          <DescriptionIcon sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
+          <Typography
+            variant="h5"
+            sx={{ color: "#0F174F", mb: 2 }}
+            gutterBottom
+            fontWeight="800"
+          >
             Add Visuals
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '13px', mb: 2 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontSize: "13px", mb: 2 }}
+          >
             Drag and drop your images here in .png, .jpeg format
           </Typography>
 
-          <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%', my: 2 }}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
+            sx={{ width: "100%", my: 2 }}
+          >
             <Divider sx={{ flex: 1 }} />
             <Typography variant="body2" color="text.secondary">
               OR
@@ -559,11 +627,11 @@ export default function VisualsTab({
             component="label"
             startIcon={<UploadIcon />}
             sx={{
-              bgcolor: '#444CE7',
-              color: 'white',
+              bgcolor: "#444CE7",
+              color: "white",
               py: 1.5,
               px: 4,
-              '&:hover': { bgcolor: '#3538CD' },
+              "&:hover": { bgcolor: "#3538CD" },
             }}
           >
             Upload
@@ -577,25 +645,32 @@ export default function VisualsTab({
           </Button>
         </DropZone>
       ) : (
-        <Stack spacing={3} sx={{ height: 'calc(100vh - 250px)' }}>
-          <Box sx={{ display: 'flex', gap: 4, flex: 1 }}>
+        <Stack spacing={3} sx={{ height: "calc(100vh - 250px)" }}>
+          <Box sx={{ display: "flex", gap: 4, flex: 1 }}>
             {/* Left sidebar: thumbnails */}
             <Box sx={{ width: 280 }}>
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleThumbnailsDragEnd}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleThumbnailsDragEnd}
+              >
                 <SortableContext
                   items={visualImages.map((img) => img.id)}
                   strategy={verticalListSortingStrategy}
                 >
                   <Box
                     sx={{
-                      maxHeight: 'calc(100vh - 400px)',
-                      overflowY: 'auto',
-                      '&::-webkit-scrollbar': { width: '4px' },
-                      '&::-webkit-scrollbar-track': { background: '#F1F1F1', borderRadius: '10px' },
-                      '&::-webkit-scrollbar-thumb': {
-                        background: '#DEE2FC',
-                        borderRadius: '10px',
-                        '&:hover': { background: '#444CE7' },
+                      maxHeight: "calc(100vh - 400px)",
+                      overflowY: "auto",
+                      "&::-webkit-scrollbar": { width: "4px" },
+                      "&::-webkit-scrollbar-track": {
+                        background: "#F1F1F1",
+                        borderRadius: "10px",
+                      },
+                      "&::-webkit-scrollbar-thumb": {
+                        background: "#DEE2FC",
+                        borderRadius: "10px",
+                        "&:hover": { background: "#444CE7" },
                       },
                     }}
                   >
@@ -622,12 +697,12 @@ export default function VisualsTab({
                 component="label"
                 sx={{
                   mt: 2,
-                  borderStyle: 'dashed',
-                  borderColor: '#DEE2FC',
-                  color: '#444CE7',
-                  '&:hover': {
-                    borderColor: '#444CE7',
-                    bgcolor: '#F5F6FF',
+                  borderStyle: "dashed",
+                  borderColor: "#DEE2FC",
+                  color: "#444CE7",
+                  "&:hover": {
+                    borderColor: "#444CE7",
+                    bgcolor: "#F5F6FF",
                   },
                 }}
               >
@@ -643,26 +718,28 @@ export default function VisualsTab({
             </Box>
 
             {/* Main content area */}
-            <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
+            <Box sx={{ flex: 1, display: "flex", position: "relative" }}>
               {selectedImageId ? (
                 <Box
                   ref={mainContentRef}
                   sx={{
-                    height: '100%',
-                    bgcolor: '#F9FAFB',
+                    height: "100%",
+                    bgcolor: "#F9FAFB",
                     borderRadius: 2,
                     p: 4,
                     flex: 1,
-                    transition: 'all 0.3s ease',
+                    transition: "all 0.3s ease",
                     // If sequence is expanded, we'll leave space for it:
-                    marginRight: isSequenceExpanded ? '340px' : '40px',
+                    marginRight: isSequenceExpanded ? "340px" : "40px",
                   }}
                 >
                   <ImageHotspot
-                    imageUrl={selectedImage?.url || ''}
-                    hotspots={selectedImage?.sequence
-                      .filter(item => item.type === 'hotspot')
-                      .map(item => item.content as Hotspot) || []}
+                    imageUrl={selectedImage?.url || ""}
+                    hotspots={
+                      selectedImage?.sequence
+                        .filter((item) => item.type === "hotspot")
+                        .map((item) => item.content as Hotspot) || []
+                    }
                     editingHotspot={editingHotspot}
                     onHotspotsChange={(newHs) => {
                       if (!selectedImageId) return;
@@ -676,10 +753,10 @@ export default function VisualsTab({
               ) : (
                 <Box
                   sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%',
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
                     flex: 1,
                   }}
                 >
@@ -692,34 +769,36 @@ export default function VisualsTab({
               {selectedImageId && (
                 <Box
                   sx={{
-                    position: 'absolute',
+                    position: "absolute",
                     right: 0,
                     top: 0,
-                    height: '100%',
-                    display: 'flex',
-                    transition: 'all 0.3s ease',
+                    height: "100%",
+                    display: "flex",
+                    transition: "all 0.3s ease",
                   }}
                 >
                   {/* Toggle arrow (on the left side of the sequence panel) */}
                   <Box
                     sx={{
                       width: 40,
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'relative',
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      position: "relative",
                       zIndex: 2,
                     }}
                   >
                     <IconButton
                       onClick={() => setIsSequenceExpanded(!isSequenceExpanded)}
                       sx={{
-                        bgcolor: '#F5F6FF',
-                        '&:hover': { bgcolor: '#EEF0FF' },
+                        bgcolor: "#F5F6FF",
+                        "&:hover": { bgcolor: "#EEF0FF" },
                         // If expanded, arrow points right => rotate(180)
-                        transform: isSequenceExpanded ? 'rotate(180deg)' : 'none',
-                        transition: 'transform 0.3s ease',
+                        transform: isSequenceExpanded
+                          ? "rotate(180deg)"
+                          : "none",
+                        transition: "transform 0.3s ease",
                       }}
                     >
                       <ChevronRightIcon />
@@ -729,16 +808,18 @@ export default function VisualsTab({
                   {/* Sequence panel */}
                   <Box
                     sx={{
-                      transform: isSequenceExpanded ? 'translateX(0)' : 'translateX(100%)',
-                      transition: 'transform 0.3s ease',
-                      position: 'absolute',
+                      transform: isSequenceExpanded
+                        ? "translateX(0)"
+                        : "translateX(100%)",
+                      transition: "transform 0.3s ease",
+                      position: "absolute",
                       right: 0,
                       top: 0,
-                      height: '100%',
+                      height: "100%",
                       width: 320,
-                      borderLeft: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: '#F9FAFB',
+                      borderLeft: "1px solid",
+                      borderColor: "divider",
+                      bgcolor: "#F9FAFB",
                     }}
                   >
                     <HotspotSequence

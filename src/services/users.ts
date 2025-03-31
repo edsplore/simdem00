@@ -11,7 +11,7 @@ export interface User {
 
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    const response = await axios.get('https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users', {
+    const response = await axios.get('https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users', {
       params: {
         status: 'ACTIVE'
       }

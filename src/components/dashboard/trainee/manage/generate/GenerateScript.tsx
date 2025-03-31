@@ -107,41 +107,75 @@ const GenerateScriptContent = () => {
   });
   const location = useLocation();
   const simulationData = location.state?.simulationData as SimulationData;
-  const isVisualType = simulationData?.simulationType?.includes('visual');
 
-  // Update enabled tabs based on state changes
+  // Check different types of visual simulations
+  const isVisualAudioOrChat = simulationData?.simulationType === 'visual-audio' || 
+                              simulationData?.simulationType === 'visual-chat';
+  const isVisualOnly = simulationData?.simulationType === 'visual';
+  const isVisualType = isVisualAudioOrChat || isVisualOnly;
+
+  // Update enabled tabs based on state changes and simulation type
   useEffect(() => {
-    setEnabledTabs(prev => ({
-      ...prev,
-      visuals: isScriptLocked,
-      settings: isScriptLocked && visualImages.length > 0,
-      preview: isPublished
-    }));
-  }, [isScriptLocked, visualImages.length, isPublished]);
+    setEnabledTabs(prev => {
+      // For 'visual' type, we skip the script tab and start with visuals
+      if (isVisualOnly) {
+        return {
+          script: false, // Disable script tab for visual type
+          visuals: true, // Always enabled for visual type
+          settings: visualImages.length > 0,
+          preview: isPublished
+        };
+      }
+      // For other types (audio, chat, visual-audio, visual-chat)
+      return {
+        script: true,
+        visuals: isScriptLocked && isVisualType,
+        settings: (isScriptLocked && visualImages.length > 0) || (isScriptLocked && !isVisualType),
+        preview: isPublished
+      };
+    });
+  }, [isScriptLocked, visualImages.length, isPublished, isVisualOnly, isVisualType]);
+
+  // Initialize the tab value for visual type to skip script tab
+  useEffect(() => {
+    if (isVisualOnly && tabValue === 0) {
+      // Start at visuals tab for visual type
+      setTabValue(0);
+    }
+  }, [isVisualOnly, tabValue]);
 
   // Get tabs based on simulation type
   const tabs = useMemo(() => {
-    const baseTabs = [
-      { label: 'Script', value: 0 }
-    ];
-
-    // Only add Visuals tab for visual types
-    if (isVisualType) {
-      baseTabs.push({ label: 'Visuals', value: 1 });
-      baseTabs.push({ label: 'Settings', value: 2 });
-      baseTabs.push({ label: 'Preview', value: 3 });
+    if (isVisualOnly) {
+      // Skip Script tab for visual-only type
+      return [
+        { label: 'Visuals', value: 0 },
+        { label: 'Settings', value: 1 },
+        { label: 'Preview', value: 2 }
+      ];
+    } else if (isVisualAudioOrChat) {
+      return [
+        { label: 'Script', value: 0 },
+        { label: 'Visuals', value: 1 },
+        { label: 'Settings', value: 2 },
+        { label: 'Preview', value: 3 }
+      ];
     } else {
-      // For audio and chat, go straight from Script to Settings
-      baseTabs.push({ label: 'Settings', value: 1 });
-      baseTabs.push({ label: 'Preview', value: 2 });
+      // For audio and chat, no visuals tab
+      return [
+        { label: 'Script', value: 0 },
+        { label: 'Settings', value: 1 },
+        { label: 'Preview', value: 2 }
+      ];
     }
-
-    return baseTabs;
-  }, [isVisualType]);
+  }, [isVisualOnly, isVisualAudioOrChat]);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     // Check if the tab is enabled before allowing the change
-    const tabKeys = ['script', 'visuals', 'settings', 'preview'];
+    const tabKeys = isVisualOnly 
+      ? ['visuals', 'settings', 'preview'] 
+      : ['script', 'visuals', 'settings', 'preview'];
+
     if (!enabledTabs[tabKeys[newValue]]) {
       return;
     }
@@ -152,9 +186,16 @@ const GenerateScriptContent = () => {
     setScriptData(script);
   }, [setScriptData]);
 
-  // Modified to handle both visual and non-visual simulation types
+  // Modified to handle different simulation types
   const handleContinue = async () => {
-    if (!simulationData || !scriptData.length) return;
+    // For visual type, we don't need script data
+    if (isVisualOnly) {
+      // Move directly to visuals tab, which is index 0 for visual type
+      setTabValue(0);
+      return;
+    }
+
+    if (!simulationData || (!isVisualOnly && !scriptData.length)) return;
 
     if (!simulationData.division || !simulationData.department) {
       console.error('Missing required fields: division or department');
@@ -164,7 +205,7 @@ const GenerateScriptContent = () => {
     setIsLoading(true);
 
     try {
-      // Lock the script for all types
+      // Lock the script for all types except visual
       setIsScriptLocked(true);
 
       // For non-visual types (audio, chat), create simulation directly here
@@ -200,9 +241,9 @@ const GenerateScriptContent = () => {
           setTabValue(settingsTabIndex);
         }
       } 
-      // For visual types, just move to visuals tab
-      else {
-        // Visuals tab is always at index 1 for visual types
+      // For visual-audio and visual-chat types, just move to visuals tab
+      else if (isVisualAudioOrChat) {
+        // Visuals tab is always at index 1 for visual-audio and visual-chat types
         setTabValue(1); 
       }
     } catch (error) {
@@ -214,16 +255,19 @@ const GenerateScriptContent = () => {
 
   // Function to create simulation with slides (called from VisualsTab)
   const createSimulationWithSlides = async (formData: FormData) => {
-    if (!simulationData || !scriptData.length) return null;
+    if (!simulationData) return null;
+
+    // For visual type, we don't need script data
+    if (!isVisualOnly && !scriptData.length) return null;
 
     setIsLoading(true);
     try {
-      // Transform script data to match API format
-      const formattedScript = scriptData.map(msg => ({
+      // Transform script data to match API format if not visual-only type
+      const formattedScript = !isVisualOnly ? scriptData.map(msg => ({
         script_sentence: msg.message,
         role: msg.role.toLowerCase() === 'trainee' ? 'assistant' : msg.role.toLowerCase(),
         keywords: msg.keywords || []
-      }));
+      })) : [];
 
       // Add script data and other required fields to formData
       formData.append('user_id', 'user123'); // This should come from your auth context
@@ -231,7 +275,12 @@ const GenerateScriptContent = () => {
       formData.append('division_id', simulationData.division || '');
       formData.append('department_id', simulationData.department || '');
       formData.append('type', simulationData.simulationType.toLowerCase());
-      formData.append('script', JSON.stringify(formattedScript));
+
+      // Only add script for non-visual types
+      if (!isVisualOnly) {
+        formData.append('script', JSON.stringify(formattedScript));
+      }
+
       formData.append('tags', JSON.stringify(simulationData.tags));
 
       // Use a modified create simulation function that accepts FormData
@@ -259,13 +308,115 @@ const GenerateScriptContent = () => {
     }
   };
 
+  // Determine which component to render based on tab value and simulation type
+  const renderTabContent = () => {
+    // For visual type, the first tab is Visuals
+    if (isVisualOnly) {
+      if (tabValue === 0) {
+        return (
+          <VisualsTab 
+            images={visualImages}
+            onImagesUpdate={setVisualImages}
+            createSimulation={createSimulationWithSlides}
+            simulationType={simulationData?.simulationType}
+            onComplete={() => {
+              if (visualImages.length > 0) {
+                // Move to settings tab
+                const settingsTabIndex = tabs.findIndex(tab => tab.label === 'Settings');
+                setTabValue(settingsTabIndex);
+              }
+            }}
+          />
+        );
+      } else if (tabValue === 1) {
+        // Settings tab for visual type
+        return (
+          <SettingsTab 
+            simulationId={simulationResponse?.id}
+            prompt={simulationResponse?.prompt}
+            simulationType={simulationData?.simulationType}
+            simulationData={simulationData}
+            onPublish={() => {
+              setIsPublished(true);
+              // Move to preview tab
+              const previewTabIndex = tabs.findIndex(tab => tab.label === 'Preview');
+              setTabValue(previewTabIndex);
+            }}
+          />
+        );
+      } else if (tabValue === 2) {
+        // Preview tab for visual type
+        return (
+          <PreviewTab 
+            simulationId={simulationResponse?.id || ''} 
+            simulationType={simulationData?.simulationType}
+          />
+        );
+      }
+    } else {
+      // For all other types
+      if (tabValue === 0) {
+        return (
+          <ScriptTab 
+            simulationType={simulationData?.simulationType}
+            isLocked={isScriptLocked}
+          />
+        );
+      } else if (isVisualAudioOrChat && tabValue === 1) {
+        return (
+          <VisualsTab 
+            images={visualImages}
+            onImagesUpdate={setVisualImages}
+            createSimulation={createSimulationWithSlides}
+            simulationType={simulationData?.simulationType}
+            onComplete={() => {
+              if (visualImages.length > 0) {
+                // Move to settings tab
+                const settingsTabIndex = tabs.findIndex(tab => tab.label === 'Settings');
+                setTabValue(settingsTabIndex);
+              }
+            }}
+          />
+        );
+      } else if ((isVisualAudioOrChat && tabValue === 2) || (!isVisualType && tabValue === 1)) {
+        return (
+          <SettingsTab 
+            simulationId={simulationResponse?.id}
+            prompt={simulationResponse?.prompt}
+            simulationType={simulationData?.simulationType}
+            simulationData={simulationData}
+            onPublish={() => {
+              setIsPublished(true);
+              // Move to preview tab
+              const previewTabIndex = tabs.findIndex(tab => tab.label === 'Preview');
+              setTabValue(previewTabIndex);
+            }}
+          />
+        );
+      } else if ((isVisualAudioOrChat && tabValue === 3) || (!isVisualType && tabValue === 2)) {
+        return (
+          <PreviewTab 
+            simulationId={simulationResponse?.id || ''} 
+            simulationType={simulationData?.simulationType}
+          />
+        );
+      }
+    }
+
+    return null;
+  };
+
   return (
     <Box sx={{ bgcolor: '#F9FAFB', minHeight: 'calc(100vh - 64px)' }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 4, py: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <StyledTabs value={tabValue} onChange={handleTabChange}>
             {tabs.map((tab, index) => {
-              const tabKey = ['script', 'visuals', 'settings', 'preview'][index];
+              // For visual type, we map differently
+              const tabKey = isVisualOnly
+                ? ['visuals', 'settings', 'preview'][index]
+                : ['script', 'visuals', 'settings', 'preview'][index];
+
               return (
                 <StyledTab
                   key={tab.label}
@@ -279,12 +430,12 @@ const GenerateScriptContent = () => {
               );
             })}
           </StyledTabs>
-          {isScriptLocked && (
+          {(!isVisualOnly && isScriptLocked) && (
             <LockIcon sx={{ color: 'success.main', fontSize: 20 }} />
           )}
         </Stack>
 
-        {scriptData.length > 0 && tabValue === 0 && (
+        {scriptData.length > 0 && tabValue === 0 && !isVisualOnly && (
           <Button
             variant="contained"
             onClick={async () => {
@@ -315,57 +466,7 @@ const GenerateScriptContent = () => {
           }}
         >
           <CardContent sx={{ p: 4 }}>
-            {tabValue === 0 && (
-              <ScriptTab 
-                simulationType={simulationData?.simulationType}
-                isLocked={isScriptLocked}
-              />
-            )}
-            {/* Only render VisualsTab for visual simulation types */}
-            {isVisualType && tabValue === 1 && (
-              <VisualsTab 
-                images={visualImages}
-                onImagesUpdate={setVisualImages}
-                createSimulation={createSimulationWithSlides}
-                simulationType={simulationData?.simulationType}
-                onComplete={() => {
-                  if (visualImages.length > 0) {
-                    // For visual-audio types, API call is handled in VisualsTab
-                    // For other visual types, we'll handle it here
-                    if (simulationData?.simulationType !== 'visual-audio' && 
-                        simulationData?.simulationType?.includes('visual')) {
-                      // TODO: Create simulation for visual types that aren't visual-audio
-                      // This will be handled by the createSimulation method passed to VisualsTab
-                    }
-                    // Move to settings tab
-                    const settingsTabIndex = tabs.findIndex(tab => tab.label === 'Settings');
-                    setTabValue(settingsTabIndex);
-                  }
-                }}
-              />
-            )}
-            {/* Render SettingsTab at the correct index based on simulation type */}
-            {((isVisualType && tabValue === 2) || (!isVisualType && tabValue === 1)) && (
-              <SettingsTab 
-                simulationId={simulationResponse?.id}
-                prompt={simulationResponse?.prompt}
-                simulationType={simulationData?.simulationType}
-                simulationData={simulationData}
-                onPublish={() => {
-                  setIsPublished(true);
-                  // Move to preview tab - index depends on simulation type
-                  const previewTabIndex = tabs.findIndex(tab => tab.label === 'Preview');
-                  setTabValue(previewTabIndex);
-                }}
-              />
-            )}
-            {/* Render PreviewTab at the correct index based on simulation type */}
-            {((isVisualType && tabValue === 3) || (!isVisualType && tabValue === 2)) && 
-              <PreviewTab 
-                simulationId={simulationResponse?.id || ''} 
-                simulationType={simulationData?.simulationType as 'audio' | 'chat'}
-              />
-            }
+            {renderTabContent()}
           </CardContent>
         </Card>
       </Box>

@@ -3,10 +3,7 @@ import { TrainingData } from '../types/training';
 
 export const fetchTrainingPlanDetails = async (userId: string, planId: string) => {
   try {
-    const response = await axios.post('/api/fetch-training-plan-details', {
-      user_id: userId,
-      training_plan_id: planId
-    });
+    const response = await axios.get(`/api/training-plans/fetch/${planId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching training plan details:', error);

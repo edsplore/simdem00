@@ -32,7 +32,10 @@ class AuthService {
       console.log('Attempting to refresh token...');
       
       const response = await axios.post(REFRESH_TOKEN_URL, '', {
-        withCredentials: true // This ensures cookies are sent with the request
+        withCredentials: true, // This ensures cookies are sent with the request
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        }
       });
       
       console.log('Refresh token response:', {

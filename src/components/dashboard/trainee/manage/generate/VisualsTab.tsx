@@ -25,6 +25,7 @@ import {
   Divider,
   Menu,
   MenuItem,
+  Tooltip,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -33,6 +34,7 @@ import {
   Description as DescriptionIcon,
   ChevronRight as ChevronRightIcon,
   Message as MessageIcon,
+  Info as InfoIcon,
 } from "@mui/icons-material";
 
 import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
@@ -68,6 +70,7 @@ interface VisualsTabProps {
   onImagesUpdate?: (images: VisualImage[]) => void;
   onComplete?: () => void;
   createSimulation?: (slides: any[]) => Promise<any>;
+  simulationType?: string;
 }
 
 const DropZone = styled(Box)(({ theme }) => ({
@@ -118,6 +121,13 @@ export default function VisualsTab({
   const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
     null,
   );
+
+  // Check if the simulation type is visual-audio or visual-chat to ensure same behavior
+  const isVisualAudioOrChat =
+    simulationType === "visual-audio" || simulationType === "visual-chat";
+
+  // Check if this is pure "visual" type (no script)
+  const isPureVisual = simulationType === "visual";
 
   // Update parent when visualImages changes
   useEffect(() => {
@@ -372,9 +382,9 @@ export default function VisualsTab({
       }
     });
 
-    // For visual-audio types, create the simulation here
-    // For other types, just move to the next step
-    if (simulationType === "visual-audio" && createSimulation) {
+    // Call create simulation for all visual-related types
+    if (createSimulation) {
+      console.log(`Creating simulation for ${simulationType} type`);
       const response = await createSimulation(formData);
       if (response && response.status === "success") {
         console.log("Simulation created with slides:", response);
@@ -525,18 +535,31 @@ export default function VisualsTab({
     <Stack spacing={4}>
       {/* Top row: "Add Script Message" + "Save and Continue" */}
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Button
-          variant="contained"
-          startIcon={<MessageIcon />}
-          disabled={!selectedImageId || scriptData.length === 0}
-          onClick={(e) => {
-            if (!selectedImageId) return;
-            setScriptMenuAnchor(e.currentTarget);
-          }}
-          sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}
-        >
-          Add Script Message
-        </Button>
+        {isPureVisual ? (
+          // For pure visual type, show information instead of Add Script Message button
+          <Tooltip title="Script messages are not available in Visual type simulations">
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <InfoIcon sx={{ color: "text.disabled" }} />
+              <Typography variant="body2" color="text.disabled">
+                No script messages in Visual type
+              </Typography>
+            </Box>
+          </Tooltip>
+        ) : (
+          // For visual-audio and visual-chat, show the Add Script Message button
+          <Button
+            variant="contained"
+            startIcon={<MessageIcon />}
+            disabled={!selectedImageId || scriptData.length === 0}
+            onClick={(e) => {
+              if (!selectedImageId) return;
+              setScriptMenuAnchor(e.currentTarget);
+            }}
+            sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}
+          >
+            Add Script Message
+          </Button>
+        )}
 
         <Button
           variant="contained"
@@ -552,42 +575,48 @@ export default function VisualsTab({
           Save and Continue
         </Button>
 
-        {/* Menu listing unassigned script messages */}
-        <Menu
-          anchorEl={scriptMenuAnchor}
-          open={Boolean(scriptMenuAnchor)}
-          onClose={() => setScriptMenuAnchor(null)}
-          PaperProps={{
-            sx: {
-              maxHeight: 300,
-              width: 400,
-            },
-          }}
-        >
-          {unassignedMessages.length === 0 && (
-            <MenuItem disabled>No unassigned messages left</MenuItem>
-          )}
-          {unassignedMessages.map((msg) => (
-            <MenuItem
-              key={msg.id}
-              onClick={() =>
-                handleAddMessage({
-                  id: msg.id,
-                  role: msg.role,
-                  message: msg.message,
-                })
-              }
-              sx={{ py: 2, borderBottom: "1px solid", borderColor: "divider" }}
-            >
-              <Stack spacing={1} sx={{ width: "100%" }}>
-                <Typography variant="caption" color="text.secondary">
-                  {msg.role}
-                </Typography>
-                <Typography variant="body2">{msg.message}</Typography>
-              </Stack>
-            </MenuItem>
-          ))}
-        </Menu>
+        {/* Menu listing unassigned script messages - only for non-visual type */}
+        {!isPureVisual && (
+          <Menu
+            anchorEl={scriptMenuAnchor}
+            open={Boolean(scriptMenuAnchor)}
+            onClose={() => setScriptMenuAnchor(null)}
+            PaperProps={{
+              sx: {
+                maxHeight: 300,
+                width: 400,
+              },
+            }}
+          >
+            {unassignedMessages.length === 0 && (
+              <MenuItem disabled>No unassigned messages left</MenuItem>
+            )}
+            {unassignedMessages.map((msg) => (
+              <MenuItem
+                key={msg.id}
+                onClick={() =>
+                  handleAddMessage({
+                    id: msg.id,
+                    role: msg.role,
+                    message: msg.message,
+                  })
+                }
+                sx={{
+                  py: 2,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Stack spacing={1} sx={{ width: "100%" }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {msg.role}
+                  </Typography>
+                  <Typography variant="body2">{msg.message}</Typography>
+                </Stack>
+              </MenuItem>
+            ))}
+          </Menu>
+        )}
       </Stack>
 
       {visualImages.length === 0 ? (

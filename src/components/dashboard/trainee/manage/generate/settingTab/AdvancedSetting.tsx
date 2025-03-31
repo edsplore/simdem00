@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import React, { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
 import {
   Box,
   Stack,
@@ -21,41 +21,41 @@ import {
   TextField,
   CardContent,
   Button,
-} from '@mui/material';
+} from "@mui/material";
 import {
   AudioFile,
   Visibility,
   ChatBubble,
   PlayCircle,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 // Styled components remain the same...
 const StyledSwitch = styled(Switch)(({ theme }) => ({
   width: 44,
   height: 24,
   padding: 0,
-  '& .MuiSwitch-switchBase': {
+  "& .MuiSwitch-switchBase": {
     padding: 0,
     margin: 2,
-    transitionDuration: '300ms',
-    '&.Mui-checked': {
-      transform: 'translateX(20px)',
-      color: '#fff',
-      '& + .MuiSwitch-track': {
-        backgroundColor: '#444CE7',
+    transitionDuration: "300ms",
+    "&.Mui-checked": {
+      transform: "translateX(20px)",
+      color: "#fff",
+      "& + .MuiSwitch-track": {
+        backgroundColor: "#444CE7",
         opacity: 1,
         border: 0,
       },
     },
   },
-  '& .MuiSwitch-thumb': {
-    boxSizing: 'border-box',
+  "& .MuiSwitch-thumb": {
+    boxSizing: "border-box",
     width: 20,
     height: 20,
   },
-  '& .MuiSwitch-track': {
+  "& .MuiSwitch-track": {
     borderRadius: 26 / 2,
-    backgroundColor: '#E9E9EA',
+    backgroundColor: "#E9E9EA",
     opacity: 1,
   },
 }));
@@ -102,99 +102,99 @@ interface FormData {
 
 const simulationTypes: SimulationType[] = [
   {
-    id: 'audio',
-    title: 'Audio',
-    description: 'Interactive audio call session simulation',
-    icon: <AudioFile sx={{ fontSize: 24, color: '#444CE7' }} />,
+    id: "audio",
+    title: "Audio",
+    description: "Interactive audio call session simulation",
+    icon: <AudioFile sx={{ fontSize: 24, color: "#444CE7" }} />,
   },
   {
-    id: 'visual-audio',
-    title: 'Visual - Audio',
-    description: 'Audio simulation with click-through visuals',
-    icon: <Visibility sx={{ fontSize: 24, color: '#444CE7' }} />,
+    id: "visual-audio",
+    title: "Visual - Audio",
+    description: "Audio simulation with click-through visuals",
+    icon: <Visibility sx={{ fontSize: 24, color: "#444CE7" }} />,
   },
   {
-    id: 'chat',
-    title: 'Chat',
-    description: 'Interactive text chat simulation',
-    icon: <ChatBubble sx={{ fontSize: 24, color: '#444CE7' }} />,
+    id: "chat",
+    title: "Chat",
+    description: "Interactive text chat simulation",
+    icon: <ChatBubble sx={{ fontSize: 24, color: "#444CE7" }} />,
   },
   {
-    id: 'visual-chat',
-    title: 'Visual - Chat',
-    description: 'Chat Simulation with click-through visuals',
-    icon: <Visibility sx={{ fontSize: 24, color: '#444CE7' }} />,
+    id: "visual-chat",
+    title: "Visual - Chat",
+    description: "Chat Simulation with click-through visuals",
+    icon: <Visibility sx={{ fontSize: 24, color: "#444CE7" }} />,
   },
   {
-    id: 'visual',
-    title: 'Visual Only',
-    description: 'Click-through visuals only',
-    icon: <Visibility sx={{ fontSize: 24, color: '#444CE7' }} />,
+    id: "visual",
+    title: "Visual Only",
+    description: "Click-through visuals with hotspots",
+    icon: <Visibility sx={{ fontSize: 24, color: "#444CE7" }} />,
   },
 ];
 
 const defaultSettings = {
   simulationLevels: {
-    id: 'simulationLevels',
-    name: 'Choose Simulation Levels',
+    id: "simulationLevels",
+    name: "Choose Simulation Levels",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
   practice: {
-    id: 'practice',
-    name: 'Enable Practice',
+    id: "practice",
+    name: "Enable Practice",
     levels: { lvl1: true, lvl2: false, lvl3: false },
   },
   hideAgentScript: {
-    id: 'hideAgentScript',
-    name: 'Hide Agent Script',
+    id: "hideAgentScript",
+    name: "Hide Agent Script",
     description:
-      'This will hide the agent responses from the conversation script',
+      "This will hide the agent responses from the conversation script",
     levels: { lvl1: true, lvl2: false, lvl3: false },
   },
   hideCustomerScript: {
-    id: 'hideCustomerScript',
-    name: 'Hide Customer Script',
+    id: "hideCustomerScript",
+    name: "Hide Customer Script",
     description:
-      'This will hide the customer responses in the conversation script',
+      "This will hide the customer responses in the conversation script",
     levels: { lvl1: false, lvl2: true, lvl3: false },
   },
   hideKeywordScores: {
-    id: 'hideKeywordScores',
-    name: 'Hide Keyword Scores',
-    description: 'This will hide the keyword scoring from the agent',
+    id: "hideKeywordScores",
+    name: "Hide Keyword Scores",
+    description: "This will hide the keyword scoring from the agent",
     levels: { lvl1: false, lvl2: false, lvl3: false },
   },
   hideSentimentScores: {
-    id: 'hideSentimentScores',
-    name: 'Hide Sentiment Scores',
-    description: 'This will hide the sentiments scoring from the agent',
+    id: "hideSentimentScores",
+    name: "Hide Sentiment Scores",
+    description: "This will hide the sentiments scoring from the agent",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
   hideHighlights: {
-    id: 'hideHighlights',
-    name: 'Hide Highlights',
+    id: "hideHighlights",
+    name: "Hide Highlights",
     description:
-      'This will hide the frame around the highlights. Hotspots will still be active',
+      "This will hide the frame around the highlights. Hotspots will still be active",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
   hideCoachingTips: {
-    id: 'hideCoachingTips',
-    name: 'Hide Coaching Tips',
-    description: 'This will hide and disable coaching tips',
+    id: "hideCoachingTips",
+    name: "Hide Coaching Tips",
+    description: "This will hide and disable coaching tips",
     levels: { lvl1: false, lvl2: false, lvl3: false },
   },
   enablePostSurvey: {
-    id: 'enablePostSurvey',
-    name: 'Enable Post Simulations Survey',
+    id: "enablePostSurvey",
+    name: "Enable Post Simulations Survey",
     description:
-      'This will enable the post simulation survey upon first completion attempt',
+      "This will enable the post simulation survey upon first completion attempt",
     levels: { lvl1: false, lvl2: false, lvl3: false },
   },
   aiPoweredPauses: {
-    id: 'aiPoweredPauses',
-    name: 'AI Powered Pauses and Feedback',
+    id: "aiPoweredPauses",
+    name: "AI Powered Pauses and Feedback",
     description:
-      'This will enable the post simulation survey upon first completion attempt',
+      "This will enable the post simulation survey upon first completion attempt",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
 };
@@ -203,26 +203,26 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   settings,
   onSettingsChange,
   simulationType: initialSimType,
-  activeSection
+  activeSection,
 }) => {
   const { control, handleSubmit, watch } = useForm<FormData>({
     defaultValues: {
-      simulationType: initialSimType || 'audio',
+      simulationType: initialSimType || "audio",
       settings: Object.fromEntries(
         Object.entries(defaultSettings).map(([key, value]) => [
           key,
           settings.levels?.[key] || value.levels,
-        ])
+        ]),
       ),
       estimatedTime: {
         enabled: settings.estimatedTime?.enabled || false,
-        value: settings.estimatedTime?.value || '10 mins',
+        value: settings.estimatedTime?.value || "10 mins",
       },
       objectives: {
         enabled: settings.objectives?.enabled || false,
         text:
           settings.objectives?.text ||
-          '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
+          "1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.",
       },
       overviewVideo: {
         enabled: settings.overviewVideo?.enabled || false,
@@ -231,10 +231,19 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         enabled: settings.quickTips?.enabled || false,
         text:
           settings.quickTips?.text ||
-          '1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.',
+          "1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.",
       },
     },
   });
+
+  // Check if the current simulation type is visual-audio, visual-chat, or visual
+  const isVisualAudioOrChat =
+    initialSimType === "visual-audio" || initialSimType === "visual-chat";
+  const isVisualOnly = initialSimType === "visual";
+  const isAnyVisualType = isVisualAudioOrChat || isVisualOnly;
+
+  // Check if simulation has script
+  const hasScript = initialSimType !== "visual";
 
   // Watch for form changes and update settings
   useEffect(() => {
@@ -265,20 +274,24 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   };
 
   return (
-    <Box sx={{ maxWidth: 1100, mx: 'auto', p: 1 }}>
+    <Box sx={{ maxWidth: 1100, mx: "auto", p: 1 }}>
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack spacing={2}>
-          <Typography sx={{ color: '#9C9C9D', fontWeight: 'medium' }}>
+          <Typography sx={{ color: "#9C9C9D", fontWeight: "medium" }}>
             ADVANCE SETTINGS
           </Typography>
 
           {/* Simulation Type Card */}
           <Card sx={{ px: 3, py: 2, borderRadius: 5, boxShadow: 2 }}>
             <Stack spacing={1}>
-              <Typography variant="h6" sx={{ color: 'black' }} data-section="Simulation Type">
+              <Typography
+                variant="h6"
+                sx={{ color: "black" }}
+                data-section="Simulation Type"
+              >
                 Simulation Type
               </Typography>
-              <Typography variant="body2" sx={{ color: '#9C9C9D' }}>
+              <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
                 Configure simulation type for this simulation
               </Typography>
 
@@ -288,8 +301,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                 render={({ field }) => (
                   <Box
                     sx={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      display: "grid",
+                      gridTemplateColumns: "repeat(2, 1fr)",
                       gap: 2,
                     }}
                   >
@@ -299,15 +312,15 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                         onClick={() => field.onChange(type.id)}
                         sx={{
                           p: 2,
-                          border: '2px solid',
+                          border: "2px solid",
                           borderColor:
-                            field.value === type.id ? '#444CE7' : '#E9E9EA',
+                            field.value === type.id ? "#444CE7" : "#E9E9EA",
                           borderRadius: 4,
-                          cursor: 'pointer',
+                          cursor: "pointer",
                           bgcolor:
-                            field.value === type.id ? '#FFFFFF' : 'transparent',
-                          '&:hover': {
-                            bgcolor: '#F5F6FF',
+                            field.value === type.id ? "#FFFFFF" : "transparent",
+                          "&:hover": {
+                            bgcolor: "#F5F6FF",
                           },
                         }}
                       >
@@ -316,11 +329,11 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                             sx={{
                               width: 40,
                               height: 40,
-                              borderRadius: '50%',
-                              bgcolor: '#F5F6FF',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
+                              borderRadius: "50%",
+                              bgcolor: "#F5F6FF",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
                             }}
                           >
                             {type.icon}
@@ -331,8 +344,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                               sx={{
                                 color:
                                   field.value === type.id
-                                    ? '#444CE7'
-                                    : 'inherit',
+                                    ? "#444CE7"
+                                    : "inherit",
                                 fontWeight: 600,
                               }}
                             >
@@ -358,51 +371,80 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
             sx={{ borderRadius: 2 }}
           >
             <Table>
-              <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+              <TableHead sx={{ bgcolor: "#F9FAFB" }}>
                 <TableRow>
-                  <TableCell sx={{ width: '30%' }}>Settings</TableCell>
+                  <TableCell sx={{ width: "30%" }}>Settings</TableCell>
                   <TableCell align="center">Lvl 01</TableCell>
                   <TableCell align="center">Lvl 02</TableCell>
                   <TableCell align="center">Lvl 03</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {Object.entries(defaultSettings).map(([key, setting]) => (
-                  <TableRow key={setting.id} data-section={setting.name}>
-                    <TableCell>
-                      <Stack spacing={0.5}>
-                        <Typography variant="body2" fontWeight="medium">
-                          {setting.name}
-                        </Typography>
-                        {setting.description && (
-                          <Typography variant="caption" color="text.secondary">
-                            {setting.description}
+                {Object.entries(defaultSettings).map(([key, setting]) => {
+                  // Only show hideHighlights and hideCoachingTips for visual types
+                  if (
+                    (key === "hideHighlights" || key === "hideCoachingTips") &&
+                    !isAnyVisualType
+                  ) {
+                    return null;
+                  }
+
+                  // Hide script-related settings for visual type
+                  if (
+                    (key === "hideAgentScript" ||
+                      key === "hideCustomerScript" ||
+                      key === "hideKeywordScores" ||
+                      key === "hideSentimentScores") &&
+                    isVisualOnly
+                  ) {
+                    return null;
+                  }
+
+                  return (
+                    <TableRow key={setting.id} data-section={setting.name}>
+                      <TableCell>
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2" fontWeight="medium">
+                            {setting.name}
                           </Typography>
-                        )}
-                      </Stack>
-                    </TableCell>
-                    {['lvl1', 'lvl2', 'lvl3'].map((level) => (
-                      <TableCell key={level} align="center">
-                        <Controller
-                          name={`settings.${key}.${level}`}
-                          control={control}
-                          render={({ field }) => (
-                            <StyledSwitch
-                              checked={field.value}
-                              onChange={(e) => field.onChange(e.target.checked)}
-                            />
+                          {setting.description && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {setting.description}
+                            </Typography>
                           )}
-                        />
+                        </Stack>
                       </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                      {["lvl1", "lvl2", "lvl3"].map((level) => (
+                        <TableCell key={level} align="center">
+                          <Controller
+                            name={`settings.${key}.${level}`}
+                            control={control}
+                            render={({ field }) => (
+                              <StyledSwitch
+                                checked={field.value}
+                                onChange={(e) =>
+                                  field.onChange(e.target.checked)
+                                }
+                              />
+                            )}
+                          />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </TableContainer>
 
           {/* Estimated Time Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Estimated Time to Attempt">
+          <Card
+            sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}
+            data-section="Estimated Time to Attempt"
+          >
             <Stack
               direction="row"
               spacing={2}
@@ -412,11 +454,11 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
               <Box>
                 <Typography
                   variant="h6"
-                  sx={{ fontWeight: 'bold', color: 'black' }}
+                  sx={{ fontWeight: "bold", color: "black" }}
                 >
                   Estimated Time to Attempt
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#9C9C9D' }}>
+                <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
                   Estimated time required to complete this simulation by Trainee
                 </Typography>
               </Box>
@@ -449,7 +491,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
           </Card>
 
           {/* Objectives Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Key Objectives">
+          <Card
+            sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}
+            data-section="Key Objectives"
+          >
             <Stack
               direction="row"
               spacing={2}
@@ -459,11 +504,11 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
               <Box>
                 <Typography
                   variant="h6"
-                  sx={{ fontWeight: 'bold', color: 'black' }}
+                  sx={{ fontWeight: "bold", color: "black" }}
                 >
                   Key Objectives
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#9C9C9D' }}>
+                <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
                   This will show the key objective of the simulation
                 </Typography>
               </Box>
@@ -492,13 +537,13 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     fullWidth
                     variant="outlined"
                     sx={{
-                      backgroundColor: '#FFFFFF',
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#444CE7',
+                      backgroundColor: "#FFFFFF",
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#444CE7",
                         },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#444CE7',
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#444CE7",
                         },
                       },
                     }}
@@ -513,16 +558,13 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
             <CardContent>
               <Box
                 sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
                 <Box>
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 'bold' }}
-                  >
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
                     Overview Video
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
@@ -545,13 +587,13 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
               <Box
                 sx={{
                   mt: 4,
-                  border: '2px dashed',
-                  borderColor: 'divider',
+                  border: "2px dashed",
+                  borderColor: "divider",
                   borderRadius: 2,
                   p: 3,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
                   gap: 2,
                 }}
               >
@@ -559,19 +601,19 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                   sx={{
                     height: 48,
                     width: 48,
-                    borderRadius: '50%',
-                    bgcolor: '#F5F6FF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    borderRadius: "50%",
+                    bgcolor: "#F5F6FF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
                 >
-                  <PlayCircle sx={{ fontSize: 24, color: '#444CE7' }} />
+                  <PlayCircle sx={{ fontSize: 24, color: "#444CE7" }} />
                 </Box>
                 <Button
                   fullWidth
                   variant="contained"
-                  sx={{ bgcolor: '#444CE7' }}
+                  sx={{ bgcolor: "#444CE7" }}
                 >
                   Upload Video
                 </Button>
@@ -580,7 +622,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
           </Card>
 
           {/* Quick Tips Card */}
-          <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3 }} data-section="Quick Tips">
+          <Card
+            sx={{ p: 2, borderRadius: 2, boxShadow: 3 }}
+            data-section="Quick Tips"
+          >
             <Stack
               direction="row"
               spacing={2}
@@ -590,11 +635,11 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
               <Box>
                 <Typography
                   variant="h6"
-                  sx={{ fontWeight: 'bold', color: 'black' }}
+                  sx={{ fontWeight: "bold", color: "black" }}
                 >
                   Quick Tips
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#9C9C9D' }}>
+                <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
                   This will show the key Quick Tips of the simulation before the
                   training
                 </Typography>
@@ -624,13 +669,13 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     fullWidth
                     variant="outlined"
                     sx={{
-                      backgroundColor: '#FFFFFF',
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#444CE7',
+                      backgroundColor: "#FFFFFF",
+                      "& .MuiOutlinedInput-root": {
+                        "&:hover fieldset": {
+                          borderColor: "#444CE7",
                         },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#444CE7',
+                        "&.Mui-focused fieldset": {
+                          borderColor: "#444CE7",
                         },
                       },
                     }}

@@ -58,20 +58,25 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     scrollToSection(activeSection);
   }, [activeSection]);
 
-  // Check if the simulation is a visual type
-  const isVisualType = simulationType?.includes('visual');
+  // Check simulation type categories
+  const isVisualAudioOrChat = simulationType === 'visual-audio' || simulationType === 'visual-chat';
+  const isVisualOnly = simulationType === 'visual';
+  const isAnyVisualType = isVisualAudioOrChat || isVisualOnly;
+  const hasScript = simulationType !== 'visual'; // Visual type doesn't have script
 
   const handlePublish = async () => {
     if (!simulationId || !simulationData) return;
 
     setIsPublishing(true);
     try {
-      // Transform script to required format by removing 'id' field
-      const transformedScript = script?.map(({ id, ...rest }) => ({
-        ...rest,
-        script_sentence: rest.message,
-        role: rest.role.toLowerCase() === 'trainee' ? 'assistant' : rest.role.toLowerCase()
-      }));
+      // Transform script to required format by removing 'id' field - but only if there's a script
+      const transformedScript = hasScript && script 
+        ? script.map(({ id, ...rest }) => ({
+            ...rest,
+            script_sentence: rest.message,
+            role: rest.role.toLowerCase() === 'trainee' ? 'assistant' : rest.role.toLowerCase()
+          }))
+        : [];
 
       const payload = {
         user_id: "userId1",
@@ -110,7 +115,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           "Be polite and empathetic.",
           "Provide accurate information."
         ],
-        voice_id: "11labs-Adrian",
+        voice_id: hasScript ? "11labs-Adrian" : "",
         language: "English",
         mood: "Neutral",
         voice_speed: "Normal",
@@ -120,8 +125,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         final_simulation_score_criteria: "Best of three",
         simulation_scoring_metrics: {
           is_enabled: true,
-          keyword_score: 20,
-          click_score: 80
+          keyword_score: hasScript ? 20 : 0,
+          click_score: hasScript ? 80 : 100
         },
         sim_practice: {
           is_unlimited: false,
@@ -157,7 +162,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     return (
       <PreviewTab 
         simulationId={publishedSimId}
-        simulationType={simulationType as 'audio' | 'chat'}
+        simulationType={simulationType as 'audio' | 'chat' | 'visual-audio' | 'visual-chat' | 'visual'}
       />
     );
   }
@@ -167,10 +172,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     // Core items for all simulation types
     const coreItems = [
       "Simulation Type",
-      "Hide Agent Script",
-      "Hide Customer Script",
-      "Hide Keyword Scores",
-      "Hide Sentiment Scores",
       "Enable Post Simulations Survey",
       "AI Powered Pauses and Feedback",
       "Estimated Time to Attempt",
@@ -179,20 +180,27 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       "Overview Video",
     ];
 
-    // Add visual-specific items for visual types
-    if (isVisualType) {
-      coreItems.splice(4, 0, "Hide Highlights");
-      coreItems.splice(5, 0, "Hide Coaching Tips");
-    } else {
-      // For non-visual types, add their specific items
-      coreItems.splice(5, 0, "Hide Coaching Tips");
+    // Items specific to visual types (visual-audio, visual-chat, visual)
+    if (isAnyVisualType) {
+      coreItems.splice(3, 0, "Hide Highlights");
+      coreItems.splice(4, 0, "Hide Coaching Tips");
+    }
+
+    // Items specific to types with script (audio, chat, visual-audio, visual-chat)
+    if (hasScript) {
+      coreItems.splice(1, 0, "Hide Agent Script");
+      coreItems.splice(2, 0, "Hide Customer Script");
+      coreItems.splice(3, 0, "Hide Keyword Scores");
+      coreItems.splice(4, 0, "Hide Sentiment Scores");
     }
 
     return coreItems;
   };
 
-  // Voice items are the same for all types
-  const voiceItems = ["AI Customer Voice", "Conversation Prompt"];
+  // Voice items - only for types with script
+  const voiceItems = hasScript 
+    ? ["AI Customer Voice", "Conversation Prompt"] 
+    : [];
 
   // Score items are the same for all types
   const scoreItems = [
@@ -228,7 +236,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           <Box>
             <Typography variant="h5">Settings</Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage your {isVisualType ? "hotspot, " : ""}score, voice, and simulation settings
+              Manage your {isAnyVisualType ? "hotspot, " : ""}{hasScript ? "voice, " : ""}score, and simulation settings
             </Typography>
           </Box>
           <Button
@@ -311,40 +319,42 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                 </List>
               </Stack>
 
-              {/* Voice & Prompt Settings Navigation */}
-              <Stack spacing={2}>
-                <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
-                  Voice & Prompt Settings
-                </Typography>
-                <List disablePadding>
-                  {voiceItems.map((item) => (
-                    <NavItem
-                      key={item}
-                      button
-                      className={item === activeSection ? 'active' : ''}
-                      sx={{
-                        textAlign: "left",
-                        padding: "8px 16px",
-                        borderRadius: "20px",
-                        ...(item === activeSection && {
-                          border: "1px solid #0037ff",
-                          color: "#0037ff",
-                          backgroundColor: "transparent"
-                        })
-                      }}
-                      onClick={() => setActiveSection(item)}
-                    >
-                      <ListItemText
-                        primary={item}
-                        primaryTypographyProps={{
-                          variant: 'body2',
-                          fontWeight: item === activeSection ? 600 : 400,
+              {/* Voice & Prompt Settings Navigation - Only for types with script */}
+              {hasScript && (
+                <Stack spacing={2}>
+                  <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
+                    Voice & Prompt Settings
+                  </Typography>
+                  <List disablePadding>
+                    {voiceItems.map((item) => (
+                      <NavItem
+                        key={item}
+                        button
+                        className={item === activeSection ? 'active' : ''}
+                        sx={{
+                          textAlign: "left",
+                          padding: "8px 16px",
+                          borderRadius: "20px",
+                          ...(item === activeSection && {
+                            border: "1px solid #0037ff",
+                            color: "#0037ff",
+                            backgroundColor: "transparent"
+                          })
                         }}
-                      />
-                    </NavItem>
-                  ))}
-                </List>
-              </Stack>
+                        onClick={() => setActiveSection(item)}
+                      >
+                        <ListItemText
+                          primary={item}
+                          primaryTypographyProps={{
+                            variant: 'body2',
+                            fontWeight: item === activeSection ? 600 : 400,
+                          }}
+                        />
+                      </NavItem>
+                    ))}
+                  </List>
+                </Stack>
+              )}
 
               {/* Score Settings Navigation */}
               <Stack spacing={2}>
@@ -399,8 +409,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             }}
           >
             <Typography variant="h6" sx={{ mt: 2, mb: 4, color: "#666666" }}>
-              {simulationType?.includes('visual')
-                ? "Visual Simulation Settings"
+              {isVisualAudioOrChat
+                ? simulationType === 'visual-audio' 
+                  ? "Visual-Audio Simulation Settings"
+                  : "Visual-Chat Simulation Settings"
+                : isVisualOnly
+                ? "Visual Simulation Settings" 
                 : simulationType === 'audio'
                 ? "Audio Simulation Settings"
                 : "Chat Simulation Settings"}
@@ -436,34 +450,37 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               activeSection={activeSection}
             />
 
-            <VoiceAndScoreSettings 
-              // Pass properly structured settings object with default values
-              prompt={prompt}
-              settings={{
-                voice: {
-                  language: 'English',
-                  accent: 'American',
-                  gender: 'Male',
-                  ageGroup: 'Middle Aged',
-                  voiceId: ''
-                },
-                scoring: {
-                  simulationScore: 'best',
-                  keywordScore: '20',
-                  clickScore: '80',
-                  practiceMode: 'limited',
-                  repetitionsAllowed: '3',
-                  repetitionsNeeded: '2',
-                  scoringMetrics: {
-                    enabled: true,
-                    keywordScore: '20%',
-                    clickScore: '80%'
+            {/* Only render Voice settings for types with script */}
+            {hasScript && (
+              <VoiceAndScoreSettings 
+                // Pass properly structured settings object with default values
+                prompt={prompt}
+                settings={{
+                  voice: {
+                    language: 'English',
+                    accent: 'American',
+                    gender: 'Male',
+                    ageGroup: 'Middle Aged',
+                    voiceId: ''
+                  },
+                  scoring: {
+                    simulationScore: 'best',
+                    keywordScore: hasScript ? '20' : '0', // No keywords for visual type
+                    clickScore: hasScript ? '80' : '100', // All points from clicks for visual type
+                    practiceMode: 'limited',
+                    repetitionsAllowed: '3',
+                    repetitionsNeeded: '2',
+                    scoringMetrics: {
+                      enabled: true,
+                      keywordScore: hasScript ? '20%' : '0%',
+                      clickScore: hasScript ? '80%' : '100%'
+                    }
                   }
-                }
-              }}
-              onSettingsChange={() => {}}
-              activeSection={activeSection}
-            />
+                }}
+                onSettingsChange={() => {}}
+                activeSection={activeSection}
+              />
+            )}
           </Box>
         </Box>
       </Stack>

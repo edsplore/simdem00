@@ -9,59 +9,7 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
 }
-const sampleToken = {
-    "sub": "user123@weareverise.com",
-    "first_name": "Akshat",
-    "last_name": "Girdhar",
-    "division": "EverAI Product",
-    "department": "Product Design dev",
-    "reporting_to": "charlie.white@weareverise.com",
-    "user_id": "user123@weareverise.com",
-    "WS-1": {
-        "roles": {
-            "simulator": ["manager", "trainer","WORKSPACE_ADMIN"],
-            "qa_coaching": ["coach", "admin"],
-            "knowledge_miner": ["analyst", "manager"]
-        },
-        "permissions": {
-            "simulator": {
-                "training": ["read", "write"],
-                "playback": ["read"],
-                "dashboard_admin": ["read", "write"],
-                "dashboard_trainee": ["read"]
-            },
-            "qa_coaching": {
-                "training": ["read", "write"]
-            },
-            "knowledge_miner": {
-                "miner_module": ["read", "write"]
-            }
-        }
-    },
-    "WS-2025-1002": {
-        "roles": {
-            "simulator": ["manager", "trainer"],
-            "qa_coaching": ["coach", "admin"],
-            "knowledge_miner": ["analyst", "manager"]
-        },
-        "permissions": {
-            "simulator": {
-                "training": ["read", "write"],
-                "playback": ["read"],
-                "dashboard_admin": ["read", "write"],
-                "dashboard_trainee": ["read"]
-            },
-            "qa_coaching": {
-                "training": ["read", "write"]
-            },
-            "knowledge_miner": {
-                "miner_module": ["read", "write"]
-            }
-        }
-    },
-    "iat": 1612435154,  
-    "exp": 1612445154  
-  };
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -70,11 +18,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isInitialized, setIsInitialized] = useState(false);
 
   const updateUserFromToken = useCallback(() => {
-    //Uncomment before deploying
-    // const decodedToken = authService.getUserFromToken();
-
-    // Comment before deploying
-    const decodedToken = sampleToken;
+    const decodedToken = authService.getUserFromToken();
     if (decodedToken) {
       // Get workspace data - handle both formats
       const workspaceData = decodedToken['new workspace-2025-1033'] || decodedToken['WS-1'];

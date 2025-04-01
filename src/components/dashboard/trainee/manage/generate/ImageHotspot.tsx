@@ -849,7 +849,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  <FormControlLabel
+                  {/* <FormControlLabel
                     control={
                       <Checkbox
                         size="small"
@@ -870,7 +870,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     label={
                       <Typography variant="body2">Advance On Select</Typography>
                     }
-                  />
+                  /> */}
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Dropdown Options
                   </Typography>
@@ -916,7 +916,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               )}
 
               {/* Checkbox-specific settings */}
-              {currentHotspot?.hotspotType === "checkbox" && (
+              {/* {currentHotspot?.hotspotType === "checkbox" && (
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -937,7 +937,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     <Typography variant="body2">Advance On Check</Typography>
                   }
                 />
-              )}
+              )} */}
 
               {/* TextField-specific settings */}
               {currentHotspot?.hotspotType === "textfield" && (
@@ -958,7 +958,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  <TextField
+                  {/* <TextField
                     size="small"
                     fullWidth
                     label="Text Color"
@@ -1015,7 +1015,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                         </InputAdornment>
                       ),
                     }}
-                  />
+                  /> */}
                 </Stack>
               )}
 
@@ -1107,7 +1107,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  <FormControl fullWidth size="small">
+                  {/* <FormControl fullWidth size="small">
                     <InputLabel>Tip Position</InputLabel>
                     <Select
                       label="Tip Position"
@@ -1131,12 +1131,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       <MenuItem value="left">Left</MenuItem>
                       <MenuItem value="right">Right</MenuItem>
                     </Select>
-                  </FormControl>
+                  </FormControl> */}
                 </Stack>
               )}
 
               {/* Button-specific settings (shown for button type only) */}
-              {(currentHotspot?.hotspotType === "button" ||
+              {/* {(currentHotspot?.hotspotType === "button" ||
                 !currentHotspot?.hotspotType) && (
                 <Stack spacing={1.5}>
                   <Stack direction="row" spacing={1}>
@@ -1187,7 +1187,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     />
                   </Stack>
                 </Stack>
-              )}
+              )} */}
             </Stack>
 
             {/* Actions */}

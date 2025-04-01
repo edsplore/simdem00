@@ -810,7 +810,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                       Coaching Tip
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 3 }}>
-                      {currentItem.tipText ||
+                      {currentItem.settings.tipText ||
                         currentItem.text ||
                         currentItem.name ||
                         "This is a coaching tip to help guide you through the interface."}

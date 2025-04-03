@@ -5,7 +5,9 @@ export interface User {
   role: UserRole;
 }
 
-export type UserRole = 'super_admin' | 'org_admin' | 'trainer' | 'trainee' | 'creator';
+// export type UserRole = 'super_admin' | 'org_admin' | 'trainer' | 'trainee' | 'creator';
+
+export type UserRole = 'workspace_admin' | 'manager' | 'org_admin' | 'trainee' | 'creator';
 
 export interface LoginCredentials {
   email: string;

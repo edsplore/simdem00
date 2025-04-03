@@ -32,6 +32,13 @@ interface SimulationStartPageProps {
   onBackToList: () => void;
 }
 
+interface AudioResponse {
+  id: string;
+  status: string;
+  access_token: string;
+  response: string | null;
+}
+
 const webClient = new RetellWebClient();
 
 const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
@@ -119,9 +126,10 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
         text: 'Connecting...'
       }]);
 
-      const response = await axios.post('/api/simulations/start-audio-preview', {
-        user_id: 'user123',
-        sim_id: '67979f3e44831733ed7d9ee6'
+      const response = await axios.post<AudioResponse>('/api/simulations/start-audio', {
+        user_id: 'member2',
+        sim_id: simulationId,
+        assignment_id: '679fc6ffcbee8fef61c99eb1'
       });
 
       if (response.data.access_token) {
@@ -138,10 +146,14 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
     }
   };
 
+  const handleEndCall = () => {
+    webClient.stopCall();
+    setIsCallActive(false);
+  };
+
   return (
     <Box sx={{ height: '100vh', bgcolor: 'white', py: 0, px: 0 }}>
       {/* Header */}
-
       <Box sx={{ maxWidth: '900px', mx: 'auto', borderRadius: '16px' }}>
         <Stack
           direction="row"
@@ -173,7 +185,6 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
         </Stack>
       </Box>
 
-
       <Card sx={{ maxWidth: '900px', minHeight: '600px', mx: 'auto', mt: 1, borderRadius: '16px' }}>
         <Box sx={{
           p: 2,
@@ -199,15 +210,12 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
               my: 10,
               border: "1px solid #DEE2FD",
               borderRadius: 4
-
-
             }}>
               <Box sx={{
                 bgcolor: '#f5f7ff',
                 borderRadius: '50%',
                 p: 2,
                 mb: 2,
-
               }}>
                 <SmartToyIcon sx={{ fontSize: 48, color: '#DEE2FD' }} />
               </Box>
@@ -219,7 +227,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
               </Typography>
               <Button
                 variant="contained"
-                startIcon={<PlayArrowIcon sx={{ color: "#DEE2FD" }} />}
+                startIcon={<PlayArrowIcon />}
                 onClick={handleStart}
                 disabled={isStarting}
                 sx={{
@@ -249,9 +257,6 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
                   py: 1.5,
                   borderRadius: 2,
                   fontSize: '16px',
-                  '&:hover': {
-                    bgcolor: '#002ed4',
-                  }
                 }}
               >
                 Back to Sim List
@@ -294,7 +299,6 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
                     >
                       <Typography variant="body1">{message.text}</Typography>
                     </Box>
-
                     {message.speaker === 'trainee' && (
                       <Avatar
                         src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
@@ -303,10 +307,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
                     )}
                   </Stack>
                 ))}
-
-
               </Stack>
-
             </Box>
           )}
         </Box>
@@ -339,9 +340,6 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
             <span style={{ fontWeight: "normal" }}> 00:21</span>
           </Typography>
 
-
-
-
           <IconButton
             sx={{
               bgcolor: "#EFF1FA",
@@ -353,6 +351,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
           </IconButton>
 
           <IconButton
+            onClick={handleEndCall}
             sx={{
               bgcolor: "#E6352B",
               "&:hover": { bgcolor: "#E6352B" },

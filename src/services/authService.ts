@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+// Staging
+// const REFRESH_TOKEN_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
 
+//Dev
 const REFRESH_TOKEN_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
+
 const TOKEN_KEY = 'access_token';
 
 interface DecodedToken {
@@ -12,7 +16,7 @@ interface DecodedToken {
   division: string;
   department: string;
   reporting_to: string;
-  'new workspace-2025-1033': {
+  'Product Development-2025-1001': {
     roles: {
       [key: string]: string[];
     };

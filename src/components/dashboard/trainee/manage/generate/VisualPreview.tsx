@@ -705,56 +705,42 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                 )}
             </Box>
 
-            {/* Coaching tip overlay */}
-            {currentItem?.type === "hotspot" &&
+            {/* Coaching tip button */}
+            {imageLoaded &&
+              currentItem?.type === "hotspot" &&
               (currentItem.hotspotType === "coaching" ||
                 currentItem.hotspotType === "coachingtip") &&
-              showCoachingTip && (
+              currentItem.coordinates && (
                 <Box
                   onClick={handleHotspotClick}
                   sx={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    bgcolor: "rgba(0,0,0,0.5)",
-                    zIndex: 1300,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    position: "absolute",
+                    cursor: "pointer",
+                    left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                    top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                    width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                    zIndex: 50,
                   }}
                 >
-                  <Paper
+                  <Button
+                    fullWidth
+                    variant="contained"
                     sx={{
-                      maxWidth: "80%",
-                      width: 500,
-                      p: 4,
-                      borderRadius: 2,
-                      bgcolor: "#1e293b",
+                      height: "100%",
+                      backgroundColor: "#1e293b",
                       color: "white",
-                      textAlign: "center",
+                      "&:hover": {
+                        backgroundColor: "#0f172a",
+                      },
+                      boxShadow: highlightHotspot ? 4 : 0,
+                      border: highlightHotspot ? "2px solid white" : "none",
                     }}
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    <Typography variant="h6" gutterBottom>
-                      Coaching Tip
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 3 }}>
-                      {currentItem.settings.tipText ||
-                        currentItem.text ||
-                        currentItem.name ||
-                        "This is a coaching tip to help guide you through the interface."}
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      color="inherit"
-                      onClick={handleHotspotClick}
-                      sx={{ color: "#1e293b" }}
-                    >
-                      Continue
-                    </Button>
-                  </Paper>
+                    {currentItem.settings?.tipText ||
+                      currentItem.name ||
+                      "Coaching Tip"}
+                  </Button>
                 </Box>
               )}
           </Box>

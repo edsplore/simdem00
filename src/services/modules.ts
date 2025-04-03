@@ -45,3 +45,13 @@ export const fetchModules = async (userId: string): Promise<Module[]> => {
     throw error;
   }
 };
+
+export const fetchModuleDetails = async (moduleId: string): Promise<Module> => {
+  try {
+    const response = await axios.get(`/api/modules/fetch/${moduleId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching module details:', error);
+    throw error;
+  }
+};

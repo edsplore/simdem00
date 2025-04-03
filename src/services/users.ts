@@ -9,9 +9,15 @@ export interface User {
   fullName: string;
 }
 
+// Staging
+// const LIST_USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
+
+//Dev
+const LIST_USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
+
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    const response = await axios.get('https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users', {
+    const response = await axios.get(LIST_USERS_URL, {
       params: {
         status: 'ACTIVE'
       }

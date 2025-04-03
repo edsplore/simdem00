@@ -219,12 +219,12 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                   />
                 )}
               />
-              <TextField
+              {/* <TextField
                 value="SIM007"
                 label="Simulation ID"
                 disabled
                 sx={{ flex: 1 }}
-              />
+              /> */}
             </Stack>
 
             <Stack direction="row" spacing={2}>

@@ -299,7 +299,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
           }}>
             <LockIcon sx={{ color: 'success.main' }} />
             <Typography color="success.main">
-              Script is locked and ready for visuals
+              Script is in place.
             </Typography>
           </Box>
           <Button

@@ -7,31 +7,32 @@ import {
   Stack,
   Card,
   Avatar,
-  TextField,
   IconButton,
-  CircularProgress,
-  Paper,
   Chip,
+  Paper,
 } from '@mui/material';
 import {
+  PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
-  Send as SendIcon,
+  Phone,
+  Pause,
+  CallEnd,
   AccessTime as AccessTimeIcon,
   SignalCellularAlt as SignalIcon,
   SentimentSatisfiedAlt as SatisfiedIcon,
   Psychology as PsychologyIcon,
   BatteryChargingFull as EnergyIcon,
-  CallEnd as CallEndIcon,
 } from '@mui/icons-material';
-import { useAuth } from '../../../../context/AuthContext'; // Update path as needed
+import { RetellWebClient } from 'retell-client-js-sdk';
+// Import useAuth hook from your context
+import { useAuth } from '../../../../context/AuthContext'; // Update this path based on your project structure
 
 interface Message {
   speaker: 'customer' | 'trainee';
   text: string;
-  timestamp?: Date;
 }
 
-interface ChatSimulationPageProps {
+interface AudioSimulationPageProps {
   simulationId: string;
   simulationName: string;
   level: string;
@@ -40,33 +41,36 @@ interface ChatSimulationPageProps {
   onBackToList: () => void;
 }
 
-interface ChatResponse {
+interface AudioResponse {
   id: string;
   status: string;
-  access_token: string | null;
+  access_token: string;
   response: string | null;
+  call_id: string | null;
 }
 
-interface EndChatResponse {
+interface EndCallResponse {
   id: string;
   status: string;
   scores: {
-    SimAccuracy: number;
-    KeywordScore: number;
-    ClickScore: number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
+    'Sim Accuracy': number;
+    'Keyword Score': number;
+    'Click Score': number;
+    'Confidence': number;
+    'Energy': number;
+    'Concentration': number;
   };
   duration: number;
   transcript: string;
   audio_url: string;
 }
 
+const webClient = new RetellWebClient();
+
 // Minimum passing score threshold
 const MIN_PASSING_SCORE = 85;
 
-const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
+const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   simulationId,
   simulationName,
   level,
@@ -74,35 +78,101 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   attemptType,
   onBackToList,
 }) => {
-  // Get authenticated user
+  // Get authenticated user using useAuth hook
   const { user } = useAuth();
   const userId = user?.id || '';
   const userName = user?.name || 'User';
 
-  const [isStarted, setIsStarted] = useState(false);
+  const [isCallActive, setIsCallActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isEndingChat, setIsEndingChat] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isEndingCall, setIsEndingCall] = useState(false);
   const [simulationProgressId, setSimulationProgressId] = useState<string | null>(null);
+  const [callId, setCallId] = useState<string | null>(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndChatResponse['scores'] | null>(null);
+  const [scores, setScores] = useState<EndCallResponse['scores'] | null>(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.SimAccuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores['Sim Accuracy'] >= MIN_PASSING_SCORE : false;
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [messages]);
+    webClient.on('conversationStarted', (event) => {
+      console.log('Conversation started:', event);
+      if (event.call_id) {
+        setCallId(event.call_id);
+      }
+    });
+
+    webClient.on('conversationEnded', ({ code, reason }) => {
+      console.log('Conversation ended:', code, reason);
+      // Only call handleEndCall if not already ending the call
+      if (!isEndingCall) {
+        handleEndCall();
+      }
+    });
+
+    webClient.on('error', (error) => {
+      console.error('WebRTC error:', error);
+      handleEndCall();
+    });
+
+    webClient.on('update', (update) => {
+      if (update.transcript) {
+        const newTranscript = update.transcript;
+        const previousTranscript = previousTranscriptRef.current || [];
+
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages];
+          const newTranscriptLength = newTranscript.length;
+          const prevTranscriptLength = previousTranscript.length;
+
+          if (newTranscriptLength === 0) return updatedMessages;
+
+          if (newTranscriptLength > prevTranscriptLength) {
+            const newMsg = newTranscript[newTranscriptLength - 1];
+            updatedMessages.push({
+              speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+              text: newMsg.content,
+            });
+          } else if (newTranscriptLength === prevTranscriptLength) {
+            const newMsg = newTranscript[newTranscriptLength - 1];
+            const lastMsgIndex = updatedMessages.length - 1;
+
+            if (lastMsgIndex >= 0) {
+              const lastMsg = updatedMessages[lastMsgIndex];
+              if (lastMsg.speaker === (newMsg.role === 'agent' ? 'customer' : 'trainee')) {
+                updatedMessages[lastMsgIndex].text = newMsg.content;
+              } else {
+                updatedMessages.push({
+                  speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+                  text: newMsg.content,
+                });
+              }
+            }
+          }
+
+          return updatedMessages;
+        });
+
+        previousTranscriptRef.current = newTranscript;
+      }
+    });
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      webClient.stopCall();
+    };
+  }, [isEndingCall]); // Added isEndingCall as a dependency
 
   useEffect(() => {
-    if (isStarted && !timerRef.current) {
+    if (isCallActive && !timerRef.current) {
       timerRef.current = setInterval(() => {
         setElapsedTime(prev => prev + 1);
       }, 1000);
@@ -114,7 +184,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         timerRef.current = null;
       }
     };
-  }, [isStarted]);
+  }, [isCallActive]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -134,142 +204,166 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       return;
     }
 
-    setIsStarted(true);
+    setIsStarting(true);
     try {
-      console.log('Starting chat simulation...');
-      // Initial API call to start chat simulation
-      const response = await axios.post<ChatResponse>('/api/simulations/start-chat', {
+      setIsCallActive(true);
+      setMessages([{
+        speaker: 'customer',
+        text: 'Connecting...'
+      }]);
+
+      const response = await axios.post<AudioResponse>('/api/simulations/start-audio', {
         user_id: userId,
         sim_id: simulationId,
         assignment_id: '679fc6ffcbee8fef61c99eb1'
       });
 
-      console.log('Start chat response:', response.data);
+      console.log('Start audio response:', response.data);
 
-      if (response.data.id) {
+      if (response.data.access_token) {
         setSimulationProgressId(response.data.id);
-        // Wait for initial response
-        const initialResponse = await axios.post<ChatResponse>('/api/simulations/start-chat', {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: '679fc6ffcbee8fef61c99eb1',
-          message: '',
-          usersimulationprogress_id: response.data.id
+        setCallId(response.data.call_id)
+        await webClient.startCall({
+          accessToken: response.data.access_token
         });
-
-        console.log('Initial message response:', initialResponse.data);
-
-        if (initialResponse.data.response) {
-          setMessages([{
-            speaker: 'customer',
-            text: initialResponse.data.response,
-            timestamp: new Date()
-          }]);
-        }
       }
     } catch (error) {
-      console.error('Error starting chat:', error);
-      setIsStarted(false);
+      console.error('Error starting simulation:', error);
+      setIsCallActive(false);
+      setMessages([]);
+    } finally {
+      setIsStarting(false);
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !simulationProgressId || !userId) return;
-
-    const newMessage: Message = {
-      speaker: 'trainee',
-      text: inputMessage.trim(),
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, newMessage]);
-    setInputMessage('');
-    setIsLoading(true);
+  // Create a dedicated function for making the end audio API call
+  const makeEndAudioApiCall = async (params: {
+    user_id: string;
+    simulation_id: string;
+    usersimulationprogress_id: string;
+    call_id: string;
+  }) => {
+    console.log('ATTEMPTING END AUDIO API CALL with params:', JSON.stringify(params, null, 2));
 
     try {
-      console.log('Sending message:', inputMessage);
-      const response = await axios.post<ChatResponse>('/api/simulations/start-chat', {
-        user_id: userId,
-        sim_id: simulationId,
-        assignment_id: '679fc6ffcbee8fef61c99eb1',
-        message: inputMessage.trim(),
-        usersimulationprogress_id: simulationProgressId
+      // Using explicit URL and setting timeout
+      const endpointUrl = '/api/simulations/end-audio';
+      console.log(`Making POST request to ${endpointUrl}`);
+
+      const response = await axios.post<EndCallResponse>(endpointUrl, params, {
+        timeout: 10000, // 10 second timeout
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
 
-      console.log('Message response:', response.data);
-
-      if (response.data.response) {
-        setMessages(prev => [...prev, {
-          speaker: 'customer',
-          text: response.data.response || '',
-          timestamp: new Date()
-        }]);
-      }
+      console.log('END AUDIO API SUCCESS:', JSON.stringify(response.data, null, 2));
+      return response.data;
     } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setIsLoading(false);
+      // More detailed error logging
+      console.error('END AUDIO API ERROR:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Response status:', error.response?.status);
+        console.error('Response data:', JSON.stringify(error.response?.data, null, 2));
+        console.error('Request config:', JSON.stringify(error.config, null, 2));
+      }
+      throw error;
     }
   };
 
-  const handleEndChat = async () => {
-    if (!simulationProgressId || !userId) {
-      console.error('Missing required IDs to end chat');
+  // Handle end call implementation
+  const handleEndCall = async () => {
+    console.log('🔴 END CALL BUTTON PRESSED');
+
+    // Prevent multiple simultaneous end call attempts
+    if (isEndingCall) {
+      console.log('Already ending call, ignoring duplicate request');
       return;
     }
 
-    setIsEndingChat(true);
+    // Verify user ID exists
+    if (!userId) {
+      console.error('Error: User ID is required to end simulation');
+      return;
+    }
+
+    setIsEndingCall(true);
+
+    // Stop the WebRTC call first
+    console.log('Stopping WebRTC call');
+    webClient.stopCall();
 
     // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+      console.log('Timer stopped');
     }
 
-    try {
-      // Format chat history for API
-      const chatHistory = messages.map(msg => ({
-        sentence: msg.text,
-        role: msg.speaker === 'customer' ? 'Customer' : 'Trainee'
-      }));
+    // Update UI state
+    setIsCallActive(false);
 
-      console.log('Ending chat with history:', chatHistory);
+    // Log current state to help with debugging
+    console.log('Call end state:', {
+      simulationId,
+      simulationProgressId,
+      callId,
+      userId,
+      isCallActive: false
+    });
 
-      const response = await axios.post<EndChatResponse>('/api/simulations/end-chat', {
-        user_id: userId,
-        simulation_id: simulationId,
-        usersimulationprogress_id: simulationProgressId,
-        chat_history: chatHistory
-      });
+    // Ensure we have the required IDs
+    if (!simulationProgressId) {
+      console.error('⚠️ Missing simulationProgressId for end call API');
+      setIsEndingCall(false);
+      return;
+    }
 
-      console.log('End chat response:', response.data);
+    if (!callId) {
+      console.error('⚠️ Missing callId for end call API');
+      setIsEndingCall(false);
+      return;
+    }
 
-      if (response.data.scores) {
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
-        setShowCompletionScreen(true);
+    const apiParams = {
+      user_id: userId,  // Use authenticated user ID instead of hardcoded value
+      simulation_id: simulationId,
+      usersimulationprogress_id: simulationProgressId,
+      call_id: callId
+    };
+
+    console.log('API Parameters prepared:', apiParams);
+
+    // Use a timeout to ensure the API call runs even if there are issues with the state updates
+    setTimeout(async () => {
+      try {
+        console.log('Executing end-audio API call');
+        const response = await makeEndAudioApiCall(apiParams);
+
+        if (response && response.scores) {
+          console.log('Setting scores and showing completion screen');
+          setScores(response.scores);
+          setDuration(response.duration || elapsedTime);
+          setShowCompletionScreen(true);
+        } else {
+          console.warn('No scores received in response');
+        }
+      } catch (error) {
+        console.error('Failed to end audio simulation:', error);
+        // Show an error message to the user if needed
+      } finally {
+        console.log('End call flow completed');
+        setIsEndingCall(false);
       }
-    } catch (error) {
-      console.error('Error ending chat:', error);
-    } finally {
-      setIsEndingChat(false);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
+    }, 500); // Small delay to ensure state updates have propagated
   };
 
   const handleRestartSim = () => {
     setShowCompletionScreen(false);
-    setIsStarted(false);
+    setIsCallActive(false);
     setMessages([]);
     setElapsedTime(0);
     setScores(null);
-    setSimulationProgressId(null);
   };
 
   const handleViewPlayback = () => {
@@ -451,7 +545,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.SimAccuracy)}%` : '86%'}
+                  {scores ? `${Math.round(scores['Sim Accuracy'])}%` : '86%'}
                 </Typography>
               </Box>
 
@@ -513,8 +607,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Confidence >= 80 ? 'High' : 
-                   scores && scores.Confidence >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores['Confidence'] >= 80 ? 'High' : 
+                   scores && scores['Confidence'] >= 60 ? 'Medium' : 'Low'}
                 </Typography>
               </Box>
 
@@ -545,8 +639,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Concentration >= 80 ? 'High' : 
-                   scores && scores.Concentration >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores['Concentration'] >= 80 ? 'High' : 
+                   scores && scores['Concentration'] >= 60 ? 'Medium' : 'Low'}
                 </Typography>
               </Box>
 
@@ -577,8 +671,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Energy >= 80 ? 'High' : 
-                   scores && scores.Energy >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores['Energy'] >= 80 ? 'High' : 
+                   scores && scores['Energy'] >= 60 ? 'Medium' : 'Low'}
                 </Typography>
               </Box>
             </Box>
@@ -658,7 +752,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         </Stack>
       </Box>
 
-      <Card sx={{ maxWidth: '900px', minHeight: '600px', mx: 'auto', mt: 1, borderRadius: '16px', position: 'relative' }}>
+      <Card sx={{ maxWidth: '900px', minHeight: '600px', mx: 'auto', mt: 1, borderRadius: '16px' }}>
         <Box sx={{
           p: 2,
           borderBottom: '1px solid',
@@ -671,7 +765,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         </Box>
 
         <Box sx={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
-          {!isStarted ? (
+          {!isCallActive ? (
             <Box sx={{
               display: 'flex',
               flexDirection: 'column',
@@ -696,13 +790,13 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                 Start Simulation
               </Typography>
               <Typography sx={{ color: '#666', mb: 4 }}>
-                Press start to attempt the Chat Simulation
+                Press start to attempt the Audio Simulation
               </Typography>
               <Button
                 variant="contained"
-                startIcon={<SmartToyIcon />}
+                startIcon={<PlayArrowIcon />}
                 onClick={handleStart}
-                disabled={!userId}
+                disabled={isStarting || !userId}
                 sx={{
                   bgcolor: '#0037ff',
                   color: 'white',
@@ -716,7 +810,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   }
                 }}
               >
-                Start Simulation
+                {isStarting ? 'Starting...' : 'Start Simulation'}
               </Button>
               <Button
                 variant="text"
@@ -736,150 +830,112 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
               </Button>
             </Box>
           ) : (
-            <>
-              <Box
-                ref={chatContainerRef}
-                sx={{
-                  height: 'calc(100% - 80px)',
-                  overflowY: 'auto',
-                  px: 3,
-                  py: 2,
-                  '&::-webkit-scrollbar': { display: 'none' },
-                  scrollbarWidth: 'none',
-                }}
-              >
-                <Stack spacing={2}>
-                  {messages.map((message, index) => (
-                    <Stack
-                      key={index}
-                      direction="row"
-                      spacing={2}
-                      justifyContent={message.speaker === 'customer' ? 'flex-start' : 'flex-end'}
-                      alignItems="flex-start"
+            <Box
+              ref={chatContainerRef}
+              sx={{
+                height: 'calc(100% - 80px)',
+                overflowY: 'auto',
+                px: 3,
+                py: 2,
+                '&::-webkit-scrollbar': { display: 'none' },
+                scrollbarWidth: 'none',
+              }}
+            >
+              <Stack spacing={2}>
+                {messages.map((message, index) => (
+                  <Stack
+                    key={index}
+                    direction="row"
+                    spacing={2}
+                    justifyContent={message.speaker === 'customer' ? 'flex-start' : 'flex-end'}
+                    alignItems="flex-start"
+                  >
+                    {message.speaker === 'customer' && (
+                      <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
+                    )}
+                    <Box
+                      sx={{
+                        maxWidth: '70%',
+                        bgcolor: '#FAFAFF',
+                        p: 2,
+                        borderRadius: 3,
+                        border: '2px solid #6D7295',
+                        borderTopLeftRadius: message.speaker === 'customer' ? 0 : 3,
+                        borderTopRightRadius: message.speaker === 'trainee' ? 0 : 3,
+                      }}
                     >
-                      {message.speaker === 'customer' && (
-                        <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
-                      )}
-                      <Box
-                        sx={{
-                          maxWidth: '70%',
-                          bgcolor: '#FAFAFF',
-                          p: 2,
-                          borderRadius: 3,
-                          border: '2px solid #6D7295',
-                          borderTopLeftRadius: message.speaker === 'customer' ? 0 : 3,
-                          borderTopRightRadius: message.speaker === 'trainee' ? 0 : 3,
-                        }}
-                      >
-                        <Typography variant="body1">{message.text}</Typography>
-                      </Box>
-                      {message.speaker === 'trainee' && (
-                        <Avatar
-                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-                          sx={{ width: 32, height: 32 }}
-                        />
-                      )}
-                    </Stack>
-                  ))}
-                </Stack>
-              </Box>
-
-              <Box
-                sx={{
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  p: 2,
-                  borderTop: '1px solid',
-                  borderColor: 'divider',
-                  bgcolor: 'white',
-                  display: 'flex',
-                  gap: 2,
-                }}
-              >
-                <TextField
-                  fullWidth
-                  multiline
-                  maxRows={4}
-                  placeholder="Type your message..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isLoading || isEndingChat}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
-                  }}
-                />
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim() || isEndingChat}
-                    sx={{
-                      bgcolor: '#444CE7',
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: '#3538CD',
-                      },
-                      '&.Mui-disabled': {
-                        bgcolor: '#F5F6FF',
-                        color: '#444CE7',
-                      },
-                    }}
-                  >
-                    {isLoading ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
-                  </IconButton>
-                  <IconButton
-                    onClick={handleEndChat}
-                    disabled={isEndingChat || messages.length < 2}
-                    sx={{
-                      bgcolor: "#E6352B",
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: "#C82333",
-                      },
-                      '&.Mui-disabled': {
-                        bgcolor: "#FFD1CF",
-                      },
-                    }}
-                  >
-                    {isEndingChat ? <CircularProgress size={24} color="inherit" /> : <CallEndIcon />}
-                  </IconButton>
-                </Stack>
-              </Box>
-            </>
+                      <Typography variant="body1">{message.text}</Typography>
+                    </Box>
+                    {message.speaker === 'trainee' && (
+                      <Avatar
+                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                        sx={{ width: 32, height: 32 }}
+                      />
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
           )}
         </Box>
-
-        {/* Loading overlay for ending chat */}
-        {isEndingChat && (
-          <Box
+        {isCallActive && (
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={2}
             sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'rgba(255, 255, 255, 0.8)',
-              zIndex: 10,
+              maxWidth: 900,
+              margin: '0 auto',
+              p: 2,
+              bgcolor: "#F9FAFB",
+              borderTop: "1px solid #E5E7EB",
+              borderRadius: 3,
             }}
           >
-            <CircularProgress size={60} sx={{ mb: 2 }} />
-            <Typography variant="h6" sx={{ mb: 1 }}>Processing Simulation</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Calculating your performance scores...
+            <IconButton
+              sx={{
+                bgcolor: "#D8F3D2",
+                "&:hover": { bgcolor: "#D8F3D2" },
+                mr: 1,
+              }}
+            >
+              <Phone sx={{ color: "#2E7D16" }} />
+            </IconButton>
+
+            <Typography variant="subtitle1" sx={{ color: "black", flexGrow: 1 }}>
+              <span style={{ fontWeight: "normal" }}>Call with </span>
+              <span style={{ fontWeight: "bold" }}>Lewis Simmons</span>
+              <span style={{ fontWeight: "normal" }}> {formatTime(elapsedTime)}</span>
             </Typography>
-          </Box>
+
+            <IconButton
+              sx={{
+                bgcolor: "#EFF1FA",
+                "&:hover": { bgcolor: "#EFF1FA" },
+                ml: 2,
+              }}
+            >
+              <Pause sx={{ color: "#343F8A" }} />
+            </IconButton>
+
+            <IconButton
+              onClick={handleEndCall}
+              disabled={isEndingCall}
+              sx={{
+                bgcolor: "#E6352B",
+                "&:hover": { bgcolor: "#E6352B" },
+                "&.Mui-disabled": {
+                  bgcolor: "#FFD1CF",
+                }
+              }}
+            >
+              <CallEnd sx={{ color: "white" }} />
+            </IconButton>
+          </Stack>
         )}
       </Card>
     </Box>
   );
 };
 
-export default ChatSimulationPage;
+export default AudioSimulationPage;

@@ -75,7 +75,7 @@ const App: React.FC = () => {
                 <Route
                   path="/dashboard"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/dashboard">
+                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/dashboard">
                       <TraineeDashboard />
                     </ProtectedRoute>
                   }
@@ -83,7 +83,7 @@ const App: React.FC = () => {
                 <Route
                   path="/training"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/training">
+                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
                       <TrainingPlanPage />
                     </ProtectedRoute>
                   }
@@ -91,7 +91,7 @@ const App: React.FC = () => {
                 <Route
                   path="/training/:id"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/training">
+                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
                       <TrainingPlanDetailsPage />
                     </ProtectedRoute>
                   }
@@ -99,7 +99,7 @@ const App: React.FC = () => {
                 <Route
                   path="/playback"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin']} path="/playback">
+                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin']} path="/playback">
                       <PlaybackPage />
                     </ProtectedRoute>
                   }
@@ -107,7 +107,7 @@ const App: React.FC = () => {
                 <Route
                   path="/playback/:id"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/playback">
+                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/playback">
                       <PlaybackDetailPage />
                     </ProtectedRoute>
                   }
@@ -115,7 +115,7 @@ const App: React.FC = () => {
                 <Route
                   path="/manage-simulations"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/manage-simulations">
+                    <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-simulations">
                       <ManageSimulationsPage />
                     </ProtectedRoute>
                   }
@@ -123,7 +123,7 @@ const App: React.FC = () => {
                 <Route
                   path="/generate-scripts"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/manage-simulations">
+                    <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-simulations">
                       <GenerateScript />
                     </ProtectedRoute>
                   }
@@ -131,7 +131,7 @@ const App: React.FC = () => {
                 <Route 
                   path="/simulation/:id/attempt" 
                   element={
-                     <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/training">
+                     <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
                       <SimulationAttemptPage />
                     </ProtectedRoute>
                   } 
@@ -139,7 +139,7 @@ const App: React.FC = () => {
                 <Route 
                   path="/manage-training-plan" 
                   element={
-                     <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/manage-training-plan">
+                     <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-training-plan">
                       <ManageTrainingPlanPage />
                     </ProtectedRoute>
                   } 
@@ -147,7 +147,7 @@ const App: React.FC = () => {
                 <Route
                   path="/assign-simulations"
                   element={
-                    <ProtectedRoute allowedRoles={['trainee', 'trainer', 'creator', 'org_admin', 'super_admin']} path="/assign-simulations">
+                    <ProtectedRoute allowedRoles={['manager', 'creator', 'workspace_admin']} path="/assign-simulations">
                       <AssignSimulationsPage />
                     </ProtectedRoute>
                   }

@@ -1,153 +1,92 @@
-import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
-  Box,
+  Stack,
   Container,
   Typography,
   Button,
-  Stack,
-  IconButton,
-  styled,
+  Box,
   Card,
-  Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
-  PlayCircle as PlayCircleIcon,
-  Headphones as HeadphonesIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  Settings as SettingsIcon,
+  PlayArrow as PlayArrowIcon,
+  SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
-
 import DashboardContent from '../DashboardContent';
+import ChatSimulationPage from './simulation/ChatSimulationPage';
+import AudioSimulationPage from './simulation/AudioSimulationPage';
+import { fetchSimulationById } from '../../../services/simulations';
+import type { Simulation } from '../../../types/training';
 import SimulationStartPage from './simulation/SimulationStartPage';
 
-
-interface SimulationCard {
-  id: string;
-  title: string;
-  simType: string;
-  status: 'Completed' | 'Not Started';
-}
-
-
-type AttemptCardProps = {
-  selected: boolean; // Custom prop for the selected state
-  onClick: () => void; // Click handler
-  children: React.ReactNode; // Children for card content
-};
-
-
-const LevelButton = styled(Button)(({ theme }) => ({
-  padding: theme.spacing(0.5, 2.5),
-  borderRadius: 30,
-  textTransform: 'none',
-  fontWeight: 500,
-  border: '1px solid',
-  borderColor: theme.palette.divider,
-  '&.selected': {
-    borderColor: theme.palette.primary.main,
-    color: theme.palette.primary.main,
-    backgroundColor: 'transparent',
-  },
-}));
-
-const AttemptCard = styled(Card)<AttemptCardProps>(({ theme, selected }) => ({
-  padding: theme.spacing(1),
-  width: "33%",
-  border: selected ? `3px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
-  borderRadius: theme.spacing(2),
-  cursor: "pointer",
-  transition: theme.transitions.create(["border", "color", "background-color"], {
-    duration: theme.transitions.duration.short,
-  }),
-  backgroundColor: "white",
-  color: selected ? theme.palette.primary.main : "black",
-  "& .MuiSvgIcon-root": {
-    color: selected ? theme.palette.primary.main : theme.palette.text.secondary,
-    transition: theme.transitions.create("color", {
-      duration: theme.transitions.duration.short,
-    }),
-  },
-  "& .MuiTypography-body2": {
-    color: selected ? theme.palette.primary.main : "gray",
-    transition: theme.transitions.create("color", {
-      duration: theme.transitions.duration.short,
-    }),
-  },
-  "&:hover": {
-    borderColor: theme.palette.primary.main,
-    backgroundColor: theme.palette.background.paper,
-  },
-}));
-
-
-import ChatSimulationPage from './simulation/ChatSimulationPage';
-
 const SimulationAttemptPage = () => {
+  const { id: simulationId } = useParams<{ id: string }>();
   const [selectedLevel, setSelectedLevel] = useState('Level 01');
   const [selectedAttempt, setSelectedAttempt] = useState<'Test' | 'Practice'>('Test');
-  const [currentSimIndex, setCurrentSimIndex] = useState(0);
   const [showStartPage, setShowStartPage] = useState(false);
-  const [simulationType, setSimulationType] = useState<'audio' | 'chat'>('audio');
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const simulations: SimulationCard[] = [
-    { id: '1', title: 'Humana_MS_PCP Change', simType: 'Audio', status: 'Completed' },
-    { id: '2', title: 'Humana_MS_PCP Change', simType: 'Audio', status: 'Completed' },
-    { id: '3', title: 'Humana_MS_PCP Not Change', simType: 'Audio', status: 'Not Started' },
-    { id: '4', title: 'Humana_MS_PCP Change', simType: 'Audio', status: 'Not Started' },
-    { id: '5', title: 'Humana_MS_PCP Change', simType: 'Audio', status: 'Not Started' },
-  ];
+  useEffect(() => {
+    const loadSimulation = async () => {
+      if (!simulationId) return;
 
-  const cards = [
-    {
-      key: "Test",
-      icon: <SettingsIcon />,
-      title: "Test",
-      subtitle: "Subtitle goes here",
-    },
-    {
-      key: "Practice",
-      icon: <PlayCircleIcon />,
-      title: "Practice",
-      subtitle: "Subtitle goes here",
-    },
-  ];
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await fetchSimulationById(simulationId);
+        setSimulation(data);
+      } catch (err) {
+        console.error('Error loading simulation:', err);
+        setError('Failed to load simulation');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handlePrevSim = () => {
-    setCurrentSimIndex((prev) => Math.max(0, prev - 1));
-  };
-
-  const handleNextSim = () => {
-    setCurrentSimIndex((prev) => Math.min(simulations.length - 1, prev + 1));
-  };
+    loadSimulation();
+  }, [simulationId]);
 
   const handleContinue = () => {
-    setSimulationType(selectedAttempt === 'Test' ? 'audio' : 'chat');
+    if (!simulation) return;
     setShowStartPage(true);
   };
 
-  if (showStartPage) {
-    const currentSim = simulations[currentSimIndex];
-    if (simulationType === 'chat') {
-      return (
-        <ChatSimulationPage
-          simulationId={currentSim.id}
-          simulationName={currentSim.title}
-          level={selectedLevel}
-          simType={currentSim.simType}
-          attemptType={selectedAttempt}
-          onBackToList={() => setShowStartPage(false)}
-        />
-      );
-    }
+  if (isLoading) {
     return (
-      <SimulationStartPage
-        simulationId={currentSim.id}
-        simulationName={currentSim.title}
+      <DashboardContent>
+        <Container>
+          <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+            <CircularProgress />
+          </Box>
+        </Container>
+      </DashboardContent>
+    );
+  }
+
+  if (error || !simulation) {
+    return (
+      <DashboardContent>
+        <Container>
+          <Alert severity="error" sx={{ mt: 4 }}>
+            {error || 'Simulation not found'}
+          </Alert>
+        </Container>
+      </DashboardContent>
+    );
+  }
+
+  if (showStartPage) {
+    const SimulationComponent = simulation.sim_type === 'chat' ? ChatSimulationPage : AudioSimulationPage;
+    return (
+      <SimulationComponent
+        simulationId={simulation.id}
+        simulationName={simulation.sim_name}
         level={selectedLevel}
-        simType={currentSim.simType}
+        simType={simulation.sim_type}
         attemptType={selectedAttempt}
         onBackToList={() => setShowStartPage(false)}
       />
@@ -157,195 +96,81 @@ const SimulationAttemptPage = () => {
   return (
     <DashboardContent>
       <Container maxWidth="lg" sx={{ py: 2, bgcolor: '#F3F5F5' }}>
-        {/* Simulation Carousel */}
-        <Box sx={{ mb: 1.5, position: 'relative' }}>
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ position: 'relative', px: 6 }}>
-            <IconButton
-              onClick={handlePrevSim}
-              disabled={currentSimIndex === 0}
-              sx={{
-                position: 'absolute',
-                left: 0,
-                backgroundColor: 'white',
-                borderRadius: '0 50% 50% 0', // Top-right and bottom-right rounded
-                boxShadow: 1,
-                '&:hover': {
-                  backgroundColor: '#f4f4f4',
-                },
-              }}
-            >
-              <ChevronLeftIcon />
-            </IconButton>
-
-            <Box
-              id="carousel"
-              sx={{
-                display: 'flex',
-                overflowX: 'scroll',
-                whiteSpace: 'nowrap',
-                scrollBehavior: 'smooth',
-                scrollbarWidth: 'none', // For Firefox
-                '&::-webkit-scrollbar': { display: 'none' }, // For Chrome and other Webkit browsers
-                flex: 1,
-              }}
-            >
-              {simulations.map((sim, index) => (
-                <Card
-                  key={sim.id}
-                  sx={{
-                    minWidth: 290,
-                    p: 2,
-                    border: '2px solid #343F8A',
-                    borderColor: index === currentSimIndex ? 'primary.main' : 'divider',
-                    borderRadius: 2,
-                    transform: `scale(${index === currentSimIndex ? 1 : 0.9})`,
-                    transition: 'all 0.3s',
-                    backgroundColor: sim.status === 'Completed' ? '#FFFFFF' : '#FFFFFF',
-                    mx: 1, // Add spacing between cards
-                    display: 'inline-block',
-                  }}
-                >
-                  <Stack spacing={1}>
-                    <Typography
-                      variant="subtitle1"
-                      sx={{ color: index === currentSimIndex ? '#343F8A' : '#000000CC' }}
-                    >
-                      {index + 1}. {sim.title}
-                    </Typography>
-                    <Stack direction="row" justifyContent="left" gap={2}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          backgroundColor: '#F2F4F7',
-                          px: 1, py: 0.4,
-                          borderRadius: 3,
-                          color: '#344054',
-                        }}
-                      >
-                        Sim Type: {sim.simType}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          px: 1, py: 0.4,
-                          borderRadius: 3,
-                          color: sim.status === 'Completed' ? 'success.main' : '#B54708',
-                          backgroundColor: sim.status === 'Completed' ? '#ECFDF3' : '#FFFAEB',
-
-                        }}
-                      >
-                        {sim.status}
-                      </Typography>
-                    </Stack>
-                  </Stack>
-                </Card>
-              ))}
-            </Box>
-
-
-            <IconButton
-              onClick={handleNextSim}
-              disabled={currentSimIndex === simulations.length - 1}
-              sx={{
-                position: 'absolute',
-                right: 0,
-                backgroundColor: 'white',
-                borderRadius: '50% 0 0 50%', // Top-left and bottom-left rounded
-                boxShadow: 1,
-                '&:hover': {
-                  backgroundColor: '#f4f4f4',
-                },
-              }}
-            >
-              <ChevronRightIcon />
-            </IconButton>
-          </Stack>
-        </Box>
-
-
-
-        {/* Main Content */}
-        <Card sx={{ p: 2, borderRadius: 3, }}>
-
-
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              height: "100vh", // Full viewport height
-            }}
-          >
+        <Card sx={{ p: 2, borderRadius: 3 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", height: "100vh" }}>
             <Stack spacing={1.5} maxWidth="md" sx={{ width: "100%" }}>
-              <Box
-                sx={{
-                  border: "1px solid #0F174F99",
-                  borderRadius: 5,
-                  p: 2,
-                }}
-              >
+              <Box sx={{ border: "1px solid #0F174F99", borderRadius: 5, p: 2 }}>
                 {/* Title and Actions */}
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="h2" sx={{ fontWeight: "bold" }}>
-                    {simulations[currentSimIndex].title}
+                    {simulation.sim_name}
                   </Typography>
                   <Stack direction="row" spacing={2}>
                     <Button
-                      startIcon={<PlayCircleIcon />}
+                      startIcon={<PlayArrowIcon />}
                       variant="text"
                       sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
                     >
                       Overview Video
                     </Button>
-                    <Button
-                      startIcon={<HeadphonesIcon />}
-                      variant="text"
-                      sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
-                    >
-                      Headset Settings
-                    </Button>
                   </Stack>
                 </Stack>
 
-                {/* Divider */}
-                <Divider sx={{ my: 3 }} />
-
                 {/* Level Selection */}
-                <Box>
+                <Box sx={{ mt: 3 }}>
                   <Typography variant="subtitle2" sx={{ color: "#0F174F99" }} gutterBottom>
                     Select Level:
                   </Typography>
                   <Stack direction="row" spacing={2}>
                     {["Level 01", "Level 02", "Level 03"].map((level) => (
-                      <LevelButton
+                      <Button
                         key={level}
-                        className={selectedLevel === level ? "selected" : ""}
                         onClick={() => setSelectedLevel(level)}
                         sx={{
                           border: selectedLevel === level ? "2px solid #001EEE" : "1px solid #0F174F99",
                           color: selectedLevel === level ? "#001EEE" : "black",
                           fontWeight: selectedLevel === level ? "bold" : "normal",
                           backgroundColor: selectedLevel === level ? "#FAFAFF" : "white",
-
-
+                          borderRadius: "20px",
+                          px: 3,
                         }}
                       >
                         {level}
-                      </LevelButton>
+                      </Button>
                     ))}
                   </Stack>
                 </Box>
 
                 {/* Attempt Type Selection */}
-                <Box mt={3}>
+                <Box sx={{ mt: 3 }}>
                   <Typography variant="subtitle2" sx={{ color: "#0F174F99" }} gutterBottom>
                     Attempt as:
                   </Typography>
                   <Stack direction="row" spacing={3}>
-                    {cards.map((card) => (
-                      <AttemptCard
-                        key={card.key}
-                        selected={selectedAttempt === card.key}
-                        onClick={() => setSelectedAttempt(card.key as "Test" | "Practice")}
+                    {[
+                      {
+                        key: 'Test',
+                        icon: <SmartToyIcon />,
+                        title: 'Test',
+                        subtitle: 'Subtitle goes here'
+                      },
+                      {
+                        key: 'Practice',
+                        icon: <PlayArrowIcon />,
+                        title: 'Practice',
+                        subtitle: 'Subtitle goes here'
+                      }
+                    ].map((option) => (
+                      <Card
+                        key={option.key}
+                        onClick={() => setSelectedAttempt(option.key as 'Test' | 'Practice')}
+                        sx={{
+                          flex: 1,
+                          p: 2,
+                          cursor: 'pointer',
+                          border: selectedAttempt === option.key ? '2px solid #001EEE' : '1px solid #0F174F99',
+                          bgcolor: selectedAttempt === option.key ? '#FAFAFF' : 'white',
+                        }}
                       >
                         <Stack direction="row" spacing={2} alignItems="center">
                           <Box
@@ -359,33 +184,24 @@ const SimulationAttemptPage = () => {
                               justifyContent: "center",
                             }}
                           >
-                            {card.icon}
+                            {option.icon}
                           </Box>
                           <Stack spacing={0.5}>
-                            <Typography variant="h4">{card.title}</Typography>
-                            <Typography variant="body2">{card.subtitle}</Typography>
+                            <Typography variant="h4">{option.title}</Typography>
+                            <Typography variant="body2">{option.subtitle}</Typography>
                           </Stack>
                         </Stack>
-                      </AttemptCard>
+                      </Card>
                     ))}
                   </Stack>
                 </Box>
 
-
-                {/* Learning Objectives and Quick Tips */}
-                <Box mt={3}>
+                {/* Learning Objectives */}
+                <Box sx={{ mt: 3 }}>
                   <Typography variant="subtitle2" sx={{ color: "#0F174F99" }} gutterBottom>
                     You will learn
                   </Typography>
-
-                  <Box
-                    sx={{
-                      border: "1px solid #0F174F99", // Border with the color you specified
-                      borderRadius: "8px", // Curved border
-                      padding: 1, // Padding to give some space around the content
-                      width: "28%",
-                    }}
-                  >
+                  <Box sx={{ border: "1px solid #0F174F99", borderRadius: "8px", p: 1, width: "28%" }}>
                     <Stack spacing={0}>
                       <Typography variant="body2" sx={{ fontSize: "13px" }} color="text.secondary">
                         1. Product and Service Knowledge
@@ -400,14 +216,11 @@ const SimulationAttemptPage = () => {
                   </Box>
                 </Box>
 
-
                 {/* Continue Button */}
                 <Button
                   variant="contained"
                   size="large"
                   fullWidth
-
-
                   onClick={handleContinue}
                   disabled={!selectedLevel || !selectedAttempt}
                   sx={{
@@ -429,34 +242,21 @@ const SimulationAttemptPage = () => {
               </Box>
 
               {/* Quick Tips */}
-              <Box
-                sx={{
-                  border: "1px solid grey",
-                  borderRadius: 3,  // Rounded corners for the entire box
-                  p: 1.5,
-                }}
-              >
+              <Box sx={{ border: "1px solid grey", borderRadius: 3, p: 1.5 }}>
                 <Typography
                   variant="subtitle1"
                   gutterBottom
                   sx={{
-                    backgroundColor: "#F9FAFB",
+                    bgcolor: "#F9FAFB",
                     display: "flex",
                     alignItems: "center",
-                    padding: "4px 12px",
-                    width: "100%",  // Ensures the background spans the full width
-                    marginTop: "-3px",  // Removes the gap between the box and the heading
-                    borderRadius: "3px 3px 0 0",  // Rounded top corners of the heading
+                    p: "4px 12px",
+                    width: "100%",
+                    mt: "-3px",
+                    borderRadius: "3px 3px 0 0",
                   }}
                 >
-                  <LightbulbIcon
-                    sx={{
-                      fontWeight: "bold",
-                      color: "#0F174F99",
-                      marginRight: 1,
-                    }}
-                  />
-                  Some quick tips for easy navigation
+                  Quick Tips
                 </Typography>
                 <Stack spacing={0}>
                   <Typography variant="body2" color="text.secondary" sx={{ fontSize: "13px" }}>
@@ -467,15 +267,11 @@ const SimulationAttemptPage = () => {
                   </Typography>
                 </Stack>
               </Box>
-
             </Stack>
           </Box>
-
-
         </Card>
-
-      </Container >
-    </DashboardContent >
+      </Container>
+    </DashboardContent>
   );
 };
 

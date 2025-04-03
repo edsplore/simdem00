@@ -22,6 +22,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import DashboardContent from '../DashboardContent';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchTrainingPlanDetails } from '../../../services/training';
+import { fetchModuleDetails } from '../../../services/modules';
 import type { Module, TrainingPlan, Simulation } from '../../../types/training';
 
 const TrainingPlanDetailsPage = () => {
@@ -31,7 +32,10 @@ const TrainingPlanDetailsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState('50');
   const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [expandedModules, setExpandedModules] = useState<{ [key: string]: boolean }>({});
+  const [moduleSimulations, setModuleSimulations] = useState<{ [key: string]: Simulation[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +47,37 @@ const TrainingPlanDetailsPage = () => {
         setIsLoading(true);
         setError(null);
         const data = await fetchTrainingPlanDetails(user.id, id);
+
+        // Separate modules and simulations
+        const newModules: Module[] = [];
+        const newSimulations: Simulation[] = [];
+
+        data.added_object.forEach(obj => {
+          if (obj.type === 'module') {
+            newModules.push({
+              id: obj.id,
+              name: `Module ${obj.id.slice(-4)}`,
+              total_simulations: 0,
+              average_score: 0,
+              status: 'not_started',
+              simulations: []
+            });
+          } else {
+            newSimulations.push({
+              simulation_id: obj.id,
+              name: `Simulation ${obj.id.slice(-4)}`,
+              type: 'audio',
+              level: 'Level 1',
+              est_time: 15,
+              status: 'not_started',
+              highest_attempt_score: null
+            });
+          }
+        });
+
         setTrainingPlan(data);
+        setModules(newModules);
+        setSimulations(newSimulations);
       } catch (err) {
         console.error('Error loading training plan details:', err);
         setError('Failed to load training plan details');
@@ -55,8 +89,37 @@ const TrainingPlanDetailsPage = () => {
     loadTrainingPlanDetails();
   }, [id, user?.id]);
 
+  const handleModuleExpand = async (moduleId: string) => {
+    setExpandedModules(prev => ({
+      ...prev,
+      [moduleId]: !prev[moduleId]
+    }));
 
-  const getStatusColor = (status: Module['status']) => {
+    // If already expanded, don't fetch again
+    if (expandedModules[moduleId] && moduleSimulations[moduleId]) return;
+
+    try {
+      const moduleData = await fetchModuleDetails(moduleId);
+      const simulations = moduleData.simulations_id.map(simId => ({
+        simulation_id: simId,
+        name: `Simulation ${simId.slice(-4)}`,
+        type: 'audio',
+        level: 'Level 1',
+        est_time: 15,
+        status: 'not_started' as const,
+        highest_attempt_score: null
+      }));
+
+      setModuleSimulations(prev => ({
+        ...prev,
+        [moduleId]: simulations
+      }));
+    } catch (err) {
+      console.error(`Error loading module ${moduleId} details:`, err);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'ongoing':
         return { bg: '#EEF4FF', color: '#3538CD' };
@@ -67,20 +130,9 @@ const TrainingPlanDetailsPage = () => {
     }
   };
 
-  const toggleModule = (moduleId: string) => {
-    setExpandedModules(prev => ({
-      ...prev,
-      [moduleId]: !prev[moduleId]
-    }));
+  const handleSimulationClick = (simulationId: string) => {
+    navigate(`/simulation/${simulationId}/attempt`);
   };
-
-  const handleSimulationClick = (simulation: Simulation) => {
-    navigate(`/simulation/${simulation.simulation_id}/attempt`);
-  };
-
-  const filteredModules = trainingPlan?.modules.filter(module =>
-    module.name.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
 
   if (isLoading) {
     return (
@@ -152,14 +204,11 @@ const TrainingPlanDetailsPage = () => {
 
             <Paper variant="outlined">
               <Grid container sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Grid item xs={3}>
-                  <Typography variant="subtitle2" color="text.secondary">Module</Typography>
-                </Grid>
-                <Grid item xs={1}>
-                  <Typography variant="subtitle2" color="text.secondary">No. of Sims</Typography>
+                <Grid item xs={4}>
+                  <Typography variant="subtitle2" color="text.secondary">Name</Typography>
                 </Grid>
                 <Grid item xs={2}>
-                  <Typography variant="subtitle2" color="text.secondary">ID No.</Typography>
+                  <Typography variant="subtitle2" color="text.secondary">Type</Typography>
                 </Grid>
                 <Grid item xs={2}>
                   <Typography variant="subtitle2" color="text.secondary">Assignment</Typography>
@@ -175,7 +224,8 @@ const TrainingPlanDetailsPage = () => {
                 </Grid>
               </Grid>
 
-              {filteredModules.map((module) => (
+              {/* Render Modules */}
+              {modules.map((module) => (
                 <React.Fragment key={module.id}>
                   <Grid
                     container
@@ -188,9 +238,9 @@ const TrainingPlanDetailsPage = () => {
                       },
                       cursor: 'pointer',
                     }}
-                    onClick={() => toggleModule(module.id)}
+                    onClick={() => handleModuleExpand(module.id)}
                   >
-                    <Grid item xs={3}>
+                    <Grid item xs={4}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <IconButton size="small">
                           <ExpandMoreIcon 
@@ -203,11 +253,15 @@ const TrainingPlanDetailsPage = () => {
                         <Typography>{module.name}</Typography>
                       </Stack>
                     </Grid>
-                    <Grid item xs={1}>
-                      <Typography>{module.total_simulations} Sims</Typography>
-                    </Grid>
                     <Grid item xs={2}>
-                      <Typography>{module.id}</Typography>
+                      <Chip
+                        label="module"
+                        size="small"
+                        sx={{
+                          bgcolor: '#F5F6FF',
+                          color: '#444CE7',
+                        }}
+                      />
                     </Grid>
                     <Grid item xs={2}>
                       <Typography>Module Assignment</Typography>
@@ -219,15 +273,15 @@ const TrainingPlanDetailsPage = () => {
                             module.average_score >= 60 ? 'warning.main' : 'error.main'
                         }}
                       >
-                        {module.average_score}%
+                        {module.average_score ? `${module.average_score}%` : 'NA'}
                       </Typography>
                     </Grid>
                     <Grid item xs={2}>
-                      <Typography>{module.due_date || 'No due date'}</Typography>
+                      <Typography>No due date</Typography>
                     </Grid>
                     <Grid item xs={1}>
                       <Chip
-                        label={module.status.replace('_', ' ')}
+                        label={module.status}
                         size="small"
                         sx={{
                           bgcolor: getStatusColor(module.status).bg,
@@ -237,8 +291,8 @@ const TrainingPlanDetailsPage = () => {
                     </Grid>
                   </Grid>
 
-                  {/* Simulations List */}
-                  {expandedModules[module.id] && module.simulations.map((sim) => (
+                  {/* Module's Simulations */}
+                  {expandedModules[module.id] && moduleSimulations[module.id]?.map((sim) => (
                     <Grid
                       container
                       key={sim.simulation_id}
@@ -253,26 +307,26 @@ const TrainingPlanDetailsPage = () => {
                           cursor: 'pointer',
                         },
                       }}
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent module toggle
-                        handleSimulationClick(sim);
-                      }}
+                      onClick={() => handleSimulationClick(sim.simulation_id)}
                     >
-                      <Grid item xs={3}>
-                        <Typography variant="body2">{sim.name}</Typography>
-                      </Grid>
-                      <Grid item xs={1}>
-                        <Typography variant="body2">-</Typography>
+                      <Grid item xs={4}>
+                        <Typography>{sim.name}</Typography>
                       </Grid>
                       <Grid item xs={2}>
-                        <Typography variant="body2">{sim.simulation_id}</Typography>
+                        <Chip
+                          label="simulation"
+                          size="small"
+                          sx={{
+                            bgcolor: '#F5F6FF',
+                            color: '#444CE7',
+                          }}
+                        />
                       </Grid>
                       <Grid item xs={2}>
-                        <Typography variant="body2">Simulation Task</Typography>
+                        <Typography>Simulation Task</Typography>
                       </Grid>
                       <Grid item xs={1}>
                         <Typography
-                          variant="body2"
                           sx={{
                             color: sim.highest_attempt_score && sim.highest_attempt_score >= 80 ? 'success.main' :
                               sim.highest_attempt_score && sim.highest_attempt_score >= 60 ? 'warning.main' : 'error.main'
@@ -282,11 +336,11 @@ const TrainingPlanDetailsPage = () => {
                         </Typography>
                       </Grid>
                       <Grid item xs={2}>
-                        <Typography variant="body2">{sim.due_date || 'No due date'}</Typography>
+                        <Typography>No due date</Typography>
                       </Grid>
                       <Grid item xs={1}>
                         <Chip
-                          label={sim.status.replace('_', ' ')}
+                          label={sim.status}
                           size="small"
                           sx={{
                             bgcolor: getStatusColor(sim.status).bg,
@@ -297,6 +351,64 @@ const TrainingPlanDetailsPage = () => {
                     </Grid>
                   ))}
                 </React.Fragment>
+              ))}
+
+              {/* Render Standalone Simulations */}
+              {simulations.map((sim) => (
+                <Grid
+                  container
+                  key={sim.simulation_id}
+                  sx={{
+                    p: 2,
+                    borderBottom: 1,
+                    borderColor: 'divider',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      cursor: 'pointer',
+                    },
+                  }}
+                  onClick={() => handleSimulationClick(sim.simulation_id)}
+                >
+                  <Grid item xs={4}>
+                    <Typography>{sim.name}</Typography>
+                  </Grid>
+                  <Grid item xs={2}>
+                    <Chip
+                      label="simulation"
+                      size="small"
+                      sx={{
+                        bgcolor: '#F5F6FF',
+                        color: '#444CE7',
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={2}>
+                    <Typography>Simulation Task</Typography>
+                  </Grid>
+                  <Grid item xs={1}>
+                    <Typography
+                      sx={{
+                        color: sim.highest_attempt_score && sim.highest_attempt_score >= 80 ? 'success.main' :
+                          sim.highest_attempt_score && sim.highest_attempt_score >= 60 ? 'warning.main' : 'error.main'
+                      }}
+                    >
+                      {sim.highest_attempt_score ? `${sim.highest_attempt_score}%` : 'NA'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={2}>
+                    <Typography>No due date</Typography>
+                  </Grid>
+                  <Grid item xs={1}>
+                    <Chip
+                      label={sim.status}
+                      size="small"
+                      sx={{
+                        bgcolor: getStatusColor(sim.status).bg,
+                        color: getStatusColor(sim.status).color,
+                      }}
+                    />
+                  </Grid>
+                </Grid>
               ))}
             </Paper>
 
@@ -318,7 +430,7 @@ const TrainingPlanDetailsPage = () => {
                 </Select>
               </Stack>
               <Pagination
-                count={Math.ceil(filteredModules.length / parseInt(rowsPerPage))}
+                count={Math.ceil((modules.length + simulations.length) / parseInt(rowsPerPage))}
                 shape="rounded"
                 size="small"
               />

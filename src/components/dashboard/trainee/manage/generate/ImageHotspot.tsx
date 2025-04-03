@@ -16,6 +16,8 @@ import {
   FormControl,
   Chip,
   InputAdornment,
+  Popover,
+  Slider,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -98,6 +100,85 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   });
   const [newOption, setNewOption] = useState("");
   const [optionsList, setOptionsList] = useState<string[]>([]);
+
+  // For RGBA color picker
+  const [colorPickerAnchorEl, setColorPickerAnchorEl] =
+    useState<HTMLElement | null>(null);
+  const [rgbaColor, setRgbaColor] = useState<{
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  }>({ r: 255, g: 193, b: 7, a: 0.8 });
+
+  // Parse RGBA color string to components
+  const parseRgba = (rgbaStr: string) => {
+    // Default fallback
+    let result = { r: 255, g: 193, b: 7, a: 0.8 };
+
+    try {
+      // Parse "rgba(r, g, b, a)" format
+      const match = rgbaStr.match(
+        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/,
+      );
+      if (match) {
+        result = {
+          r: parseInt(match[1], 10),
+          g: parseInt(match[2], 10),
+          b: parseInt(match[3], 10),
+          a: parseFloat(match[4]),
+        };
+      }
+    } catch (e) {
+      console.error("Error parsing RGBA color:", e);
+    }
+
+    return result;
+  };
+
+  // Convert RGBA components to string
+  const rgbaToString = (rgba: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  }) => {
+    return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
+  };
+
+  // Handle opening the color picker
+  const handleOpenColorPicker = (event: React.MouseEvent<HTMLElement>) => {
+    setColorPickerAnchorEl(event.currentTarget);
+
+    // Parse current color on open
+    if (currentHotspot?.settings?.highlightColor) {
+      setRgbaColor(parseRgba(currentHotspot.settings.highlightColor));
+    }
+  };
+
+  // Handle closing the color picker
+  const handleCloseColorPicker = () => {
+    setColorPickerAnchorEl(null);
+  };
+
+  // Update hotspot with new color when slider changes
+  const handleColorChange = (rgba: {
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+  }) => {
+    setRgbaColor(rgba);
+
+    // Update the hotspot with the new color
+    setCurrentHotspot((prev) => ({
+      ...prev,
+      settings: {
+        ...prev?.settings,
+        highlightColor: rgbaToString(rgba),
+      },
+    }));
+  };
 
   // Log coordinates for debugging
   useEffect(() => {
@@ -1055,38 +1136,171 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     ),
                     endAdornment: (
                       <InputAdornment position="end">
-                        <input
-                          type="color"
-                          value={
-                            currentHotspot?.settings?.highlightColor?.replace(
-                              /[^#\w]/g,
-                              "",
-                            ) || "#FFC107"
-                          }
-                          onChange={(e) =>
-                            setCurrentHotspot((prev) => ({
-                              ...prev,
-                              settings: {
-                                ...prev?.settings,
-                                highlightColor:
-                                  e.target.value.replace(/^#/, "rgba(") +
-                                  ", 0.8)",
-                              },
-                            }))
-                          }
-                          style={{
-                            width: 24,
-                            height: 24,
-                            border: "none",
-                            padding: 0,
-                            background: "none",
-                          }}
-                        />
+                        <IconButton
+                          size="small"
+                          onClick={handleOpenColorPicker}
+                          sx={{ color: "primary.main" }}
+                        >
+                          <ColorLensIcon fontSize="small" />
+                        </IconButton>
                       </InputAdornment>
                     ),
+                    readOnly: true, // Make the text field read-only since we're using a custom color picker
                   }}
                 />
               )}
+
+              {/* RGBA Color Picker Popover */}
+              <Popover
+                open={Boolean(colorPickerAnchorEl)}
+                anchorEl={colorPickerAnchorEl}
+                onClose={handleCloseColorPicker}
+                anchorOrigin={{
+                  vertical: "bottom",
+                  horizontal: "center",
+                }}
+                transformOrigin={{
+                  vertical: "top",
+                  horizontal: "center",
+                }}
+              >
+                <Paper sx={{ p: 2, width: 300 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    RGBA Color Picker
+                  </Typography>
+
+                  <Stack spacing={2} sx={{ mt: 2 }}>
+                    <Box>
+                      <Typography variant="caption" gutterBottom>
+                        Red: {rgbaColor.r}
+                      </Typography>
+                      <Slider
+                        value={rgbaColor.r}
+                        min={0}
+                        max={255}
+                        onChange={(_, value) =>
+                          handleColorChange({
+                            ...rgbaColor,
+                            r: value as number,
+                          })
+                        }
+                        sx={{
+                          color: "red",
+                          "& .MuiSlider-thumb": {
+                            bgcolor: "white",
+                            border: "2px solid currentColor",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" gutterBottom>
+                        Green: {rgbaColor.g}
+                      </Typography>
+                      <Slider
+                        value={rgbaColor.g}
+                        min={0}
+                        max={255}
+                        onChange={(_, value) =>
+                          handleColorChange({
+                            ...rgbaColor,
+                            g: value as number,
+                          })
+                        }
+                        sx={{
+                          color: "green",
+                          "& .MuiSlider-thumb": {
+                            bgcolor: "white",
+                            border: "2px solid currentColor",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" gutterBottom>
+                        Blue: {rgbaColor.b}
+                      </Typography>
+                      <Slider
+                        value={rgbaColor.b}
+                        min={0}
+                        max={255}
+                        onChange={(_, value) =>
+                          handleColorChange({
+                            ...rgbaColor,
+                            b: value as number,
+                          })
+                        }
+                        sx={{
+                          color: "blue",
+                          "& .MuiSlider-thumb": {
+                            bgcolor: "white",
+                            border: "2px solid currentColor",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box>
+                      <Typography variant="caption" gutterBottom>
+                        Alpha: {rgbaColor.a.toFixed(2)}
+                      </Typography>
+                      <Slider
+                        value={rgbaColor.a}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        onChange={(_, value) =>
+                          handleColorChange({
+                            ...rgbaColor,
+                            a: value as number,
+                          })
+                        }
+                        sx={{
+                          color: "grey",
+                          "& .MuiSlider-thumb": {
+                            bgcolor: "white",
+                            border: "2px solid currentColor",
+                          },
+                        }}
+                      />
+                    </Box>
+
+                    <Box
+                      sx={{
+                        height: 48,
+                        bgcolor: rgbaToString(rgbaColor),
+                        borderRadius: 1,
+                        boxShadow: 1,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          bgcolor: "rgba(255,255,255,0.8)",
+                          px: 1,
+                          py: 0.5,
+                          borderRadius: 1,
+                        }}
+                      >
+                        {rgbaToString(rgbaColor)}
+                      </Typography>
+                    </Box>
+
+                    <Button
+                      variant="contained"
+                      onClick={handleCloseColorPicker}
+                      sx={{ mt: 2 }}
+                    >
+                      Apply Color
+                    </Button>
+                  </Stack>
+                </Paper>
+              </Popover>
 
               {/* Coaching-specific settings */}
               {currentHotspot?.hotspotType === "coaching" && (

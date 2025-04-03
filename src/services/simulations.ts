@@ -26,3 +26,13 @@ export const fetchSimulations = async (userId: string): Promise<Simulation[]> =>
     throw error;
   }
 };
+
+export const fetchSimulationById = async (simulationId: string): Promise<Simulation> => {
+  try {
+    const response = await axios.get(`/api/simulations/fetch/${simulationId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching simulation:', error);
+    throw error;
+  }
+};

@@ -1,4 +1,5 @@
 import { jwtDecode } from 'jwt-decode';
+import { authService } from '../services/authService';
 
 // JSON Web Token
 // {
@@ -71,7 +72,7 @@ interface WorkspacePermissions {
 }
 
 interface TokenData {
-  'WS-2025-1001': {
+  'WS-1': {
     permissions: {
       simulator?: {
         [key: string]: string[];
@@ -95,11 +96,13 @@ export const MODULE_PERMISSION_MAP = {
 
 export const hasPermission = (path: string): boolean => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) return false;
+    // const token = localStorage.getItem('token');
+    // if (!token) return false;
+    const decoded = authService.getUserFromToken();
+    if (!decoded) return false;
 
-    const decoded: TokenData = jwtDecode(token);
-    const workspacePermissions = decoded['WS-2025-1001']?.permissions?.simulator;
+    // const decoded: TokenData = jwtDecode(token);
+    const workspacePermissions = decoded['WS-1']?.permissions?.simulator;
 
     if (!workspacePermissions) return false;
 
@@ -120,7 +123,7 @@ export const canWrite = (path: string): boolean => {
     if (!token) return false;
 
     const decoded: TokenData = jwtDecode(token);
-    const workspacePermissions = decoded['WS-2025-1001']?.permissions?.simulator;
+    const workspacePermissions = decoded['WS-1']?.permissions?.simulator;
 
     if (!workspacePermissions) return false;
 

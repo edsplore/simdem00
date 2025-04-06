@@ -22,6 +22,7 @@ import {
   SelectChangeEvent,
   TablePagination,
   CircularProgress,
+  TableSortLabel,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -33,6 +34,9 @@ import ActionsMenu from './ActionsMenu';
 import CreateSimulationDialog from './CreateSimulationDialog';
 import { fetchSimulations, Simulation } from '../../../../services/simulations';
 import { useAuth } from '../../../../context/AuthContext';
+
+type Order = 'asc' | 'desc';
+type OrderBy = 'sim_name' | 'version' | 'sim_type' | 'status' | 'tags' | 'estTime' | 'last_modified' | 'modified_by' | 'created_on' | 'created_by';
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -59,6 +63,8 @@ const ManageSimulationsPage = () => {
   const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<Order>('asc');
+  const [orderBy, setOrderBy] = useState<OrderBy>('sim_name');
 
   useEffect(() => {
     const loadSimulations = async () => {
@@ -95,6 +101,12 @@ const ManageSimulationsPage = () => {
     setSelectedRow(null);
   };
 
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -126,6 +138,63 @@ const ManageSimulationsPage = () => {
       return true;
     });
   }, [currentTab, searchQuery, simulations]);
+
+  const sortedData = useMemo(() => {
+    if (!filteredData.length) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (orderBy) {
+        case 'sim_name':
+          aValue = a.sim_name || '';
+          bValue = b.sim_name || '';
+          break;
+        case 'version':
+          aValue = a.version || '';
+          bValue = b.version || '';
+          break;
+        case 'sim_type':
+          aValue = a.sim_type || '';
+          bValue = b.sim_type || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'tags':
+          aValue = a.tags.join(',') || '';
+          bValue = b.tags.join(',') || '';
+          break;
+        case 'estTime':
+          aValue = a.est_time || '';
+          bValue = b.est_time || '';
+          break;
+        case 'last_modified':
+          aValue = new Date(a.last_modified || 0).getTime();
+          bValue = new Date(b.last_modified || 0).getTime();
+          break;
+        case 'modified_by':
+          aValue = a.modified_by || '';
+          bValue = b.modified_by || '';
+          break;
+        case 'created_on':
+          aValue = new Date(a.created_on || 0).getTime();
+          bValue = new Date(b.created_on || 0).getTime();
+          break;
+        case 'created_by':
+          aValue = a.created_by || '';
+          bValue = b.created_by || '';
+          break;
+        default:
+          aValue = a.sim_name || '';
+          bValue = b.sim_name || '';
+      }
+
+      const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
+      return order === 'asc' ? result : -result;
+    });
+  }, [filteredData, order, orderBy]);
 
   return (
     <DashboardContent>
@@ -292,37 +361,128 @@ const ManageSimulationsPage = () => {
               overflow: 'hidden',
             }}
           >
-            <Box sx={{
-              overflow: 'auto',
-              '&::-webkit-scrollbar': {
-                display: 'none',
-              },
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}>
-              <Table sx={{ minWidth: 1700, borderRadius: 2, overflow: 'hidden' }}>
+            <Box 
+              sx={{ 
+                overflow: 'auto',
+                '&::-webkit-scrollbar': {
+                  height: '8px',
+                },
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: '#f1f1f1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: '#c1c1c1',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: '#a8a8a8',
+                  },
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#c1c1c1 #f1f1f1',
+              }}
+            >
+              <Table sx={{ minWidth: 1500, borderRadius: 2, overflow: 'hidden', tableLayout: 'fixed' }}>
                 <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                   <TableRow>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Sim ID</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Sim Name</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Version</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Level</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Sim Type</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Status</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Tags</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Est. Time</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Last Modified</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Modified by</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created On</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created by</TableCell>
-                    <TableCell align="right" sx={{ color: '#959697', padding: '6px 16px' }}>Actions</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 250 }}>
+                      <TableSortLabel
+                        active={orderBy === 'sim_name'}
+                        direction={orderBy === 'sim_name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('sim_name')}
+                      >
+                        Sim Name
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 100 }}>
+                      <TableSortLabel
+                        active={orderBy === 'version'}
+                        direction={orderBy === 'version' ? order : 'asc'}
+                        onClick={() => handleRequestSort('version')}
+                      >
+                        Version
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 100 }}>Level</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 120 }}>
+                      <TableSortLabel
+                        active={orderBy === 'sim_type'}
+                        direction={orderBy === 'sim_type' ? order : 'asc'}
+                        onClick={() => handleRequestSort('sim_type')}
+                      >
+                        Sim Type
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 120 }}>
+                      <TableSortLabel
+                        active={orderBy === 'status'}
+                        direction={orderBy === 'status' ? order : 'asc'}
+                        onClick={() => handleRequestSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 200 }}>
+                      <TableSortLabel
+                        active={orderBy === 'tags'}
+                        direction={orderBy === 'tags' ? order : 'asc'}
+                        onClick={() => handleRequestSort('tags')}
+                      >
+                        Tags
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 100 }}>
+                      <TableSortLabel
+                        active={orderBy === 'estTime'}
+                        direction={orderBy === 'estTime' ? order : 'asc'}
+                        onClick={() => handleRequestSort('estTime')}
+                      >
+                        Est. Time
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'last_modified'}
+                        direction={orderBy === 'last_modified' ? order : 'asc'}
+                        onClick={() => handleRequestSort('last_modified')}
+                      >
+                        Last Modified
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 150 }}>
+                      <TableSortLabel
+                        active={orderBy === 'modified_by'}
+                        direction={orderBy === 'modified_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('modified_by')}
+                      >
+                        Modified by
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_on'}
+                        direction={orderBy === 'created_on' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_on')}
+                      >
+                        Created On
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 150 }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_by'}
+                        direction={orderBy === 'created_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_by')}
+                      >
+                        Created by
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: '#959697', padding: '6px 16px', width: 100 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
+                  {sortedData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((row, index) => (
                     <TableRow key={index}>
-                      <TableCell>{row.id}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ minWidth: 250 }}>
                         <Stack direction="row" spacing={1} alignItems="center">
                           {row.sim_name}
                           {row.islocked && (
@@ -330,16 +490,16 @@ const ManageSimulationsPage = () => {
                           )}
                         </Stack>
                       </TableCell>
-                      <TableCell>v{row.version}</TableCell>
+                      <TableCell sx={{ width: 100 }}>v{row.version}</TableCell>
                       <TableCell>Lvl 02</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ width: 120 }}>
                         <Chip
                           label={row.sim_type}
                           size="small"
                           sx={{ bgcolor: '#F5F6FF', color: '#444CE7' }}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ width: 120 }}>
                         <Chip
                           label={row.status}
                           size="small"
@@ -359,20 +519,31 @@ const ManageSimulationsPage = () => {
                           }}
                         />
                       </TableCell>
-                      <TableCell>
-                        <Stack direction="row" spacing={1}>
-                          {row.tags.map((tag, i) => (
-                            <Chip
-                              key={i}
-                              label={tag}
-                              size="small"
-                              sx={{ bgcolor: '#F5F6FF', color: '#444CE7' }}
-                            />
-                          ))}
+                      <TableCell sx={{ width: 200 }}>
+                        <Stack direction="row" spacing={1} sx={{ maxWidth: 180 }}>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {row.tags.map((tag, i) => (
+                              <Chip
+                                key={i}
+                                label={tag}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: '#F5F6FF', 
+                                  color: '#444CE7',
+                                  maxWidth: '100%',
+                                  '& .MuiChip-label': {
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }
+                                }}
+                              />
+                            ))}
+                          </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell>{row.estTime}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ width: 100 }}>{row.estTime}</TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
                         <Stack>
                           <Typography variant="body2">{formatDate(row.last_modified)}</Typography>
                           <Typography variant="caption" color="text.secondary">
@@ -380,15 +551,12 @@ const ManageSimulationsPage = () => {
                           </Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>
                         <Stack>
-                          <Typography variant="body2">{row.modified_by}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {row.modified_by}@everailabs.com
-                          </Typography>
+                          <Typography variant="body2" noWrap>{row.modified_by}</Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ minWidth: 180 }}>
                         <Stack>
                           <Typography variant="body2">{formatDate(row.created_on)}</Typography>
                           <Typography variant="caption" color="text.secondary">
@@ -396,15 +564,12 @@ const ManageSimulationsPage = () => {
                           </Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ minWidth: 150 }}>
                         <Stack>
-                          <Typography variant="body2">{row.created_by}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {row.created_by}@everailabs.com
-                          </Typography>
+                          <Typography variant="body2" noWrap>{row.created_by}</Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="right" sx={{ width: 100 }}>
                         <IconButton size="small" onClick={(event) => handleMenuOpen(event, row)}>
                           <MoreVertIcon />
                         </IconButton>
@@ -414,7 +579,12 @@ const ManageSimulationsPage = () => {
                 </TableBody>
               </Table>
             </Box>
-            <Box sx={{ bgcolor: '#F9FAFB', borderTop: '1px solid rgba(224, 224, 224, 1)' }}>
+            <Box 
+              sx={{ 
+                bgcolor: '#F9FAFB', 
+                borderTop: '1px solid rgba(224, 224, 224, 1)' 
+              }}
+            >
               <TablePagination
                 component="div"
                 count={filteredData.length}

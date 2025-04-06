@@ -139,10 +139,12 @@ const defaultSettings = {
     name: "Choose Simulation Levels",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
-  practice: {
-    id: "practice",
+  enablePractice: {
+    // This is the practice setting
+    id: "enablePractice",
     name: "Enable Practice",
-    levels: { lvl1: true, lvl2: false, lvl3: false },
+    description: "This will enable practice mode for users",
+    levels: { lvl1: true, lvl2: true, lvl3: true },
   },
   hideAgentScript: {
     id: "hideAgentScript",
@@ -205,7 +207,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   simulationType: initialSimType,
   activeSection,
 }) => {
-  const { control, handleSubmit, watch } = useForm<FormData>({
+  const { control, handleSubmit, watch, setValue } = useForm<FormData>({
     defaultValues: {
       simulationType: initialSimType || "audio",
       settings: Object.fromEntries(
@@ -222,7 +224,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         enabled: settings.objectives?.enabled || false,
         text:
           settings.objectives?.text ||
-          "1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.",
+          "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
       },
       overviewVideo: {
         enabled: settings.overviewVideo?.enabled || false,
@@ -231,19 +233,27 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         enabled: settings.quickTips?.enabled || false,
         text:
           settings.quickTips?.text ||
-          "1:Ensure effective communication through different media.\n2: Develop decision-making skills through realistic scenarios.\n3: Improve response time and adaptability in different situations.\n4: Reinforce learning through interactive feedback and analysis.",
+          "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
       },
     },
   });
 
   // Check if the current simulation type is visual-audio, visual-chat, or visual
+  const simType = watch("simulationType");
   const isVisualAudioOrChat =
-    initialSimType === "visual-audio" || initialSimType === "visual-chat";
-  const isVisualOnly = initialSimType === "visual";
+    simType === "visual-audio" || simType === "visual-chat";
+  const isVisualOnly = simType === "visual";
   const isAnyVisualType = isVisualAudioOrChat || isVisualOnly;
 
   // Check if simulation has script
-  const hasScript = initialSimType !== "visual";
+  const hasScript = simType !== "visual";
+
+  // Log form states for debugging
+  useEffect(() => {
+    const formSettings = watch("settings");
+    console.log("Current form settings:", formSettings);
+    console.log("Enable Practice settings:", formSettings.enablePractice);
+  }, [watch]);
 
   // Watch for form changes and update settings
   useEffect(() => {
@@ -260,6 +270,22 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     });
     return () => subscription.unsubscribe();
   }, [watch, settings, onSettingsChange]);
+
+  // When settings prop changes, update form
+  useEffect(() => {
+    if (settings.levels) {
+      // Update all level settings from props
+      Object.entries(settings.levels).forEach(([key, value]) => {
+        setValue(`settings.${key}`, value);
+      });
+
+      // Specifically log the enablePractice setting
+      console.log(
+        "Settings.levels.enablePractice:",
+        settings.levels.enablePractice,
+      );
+    }
+  }, [settings, setValue]);
 
   const onSubmit = (data: FormData) => {
     onSettingsChange({
@@ -389,12 +415,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     return null;
                   }
 
-                  // Hide script-related settings for visual type
+                  // Hide agent script and customer script settings for visual type only
                   if (
                     (key === "hideAgentScript" ||
-                      key === "hideCustomerScript" ||
-                      key === "hideKeywordScores" ||
-                      key === "hideSentimentScores") &&
+                      key === "hideCustomerScript") &&
                     isVisualOnly
                   ) {
                     return null;
@@ -424,10 +448,14 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                             control={control}
                             render={({ field }) => (
                               <StyledSwitch
-                                checked={field.value}
-                                onChange={(e) =>
-                                  field.onChange(e.target.checked)
-                                }
+                                checked={field.value || false}
+                                onChange={(e) => {
+                                  console.log(
+                                    `Switching ${key}.${level} to:`,
+                                    e.target.checked,
+                                  );
+                                  field.onChange(e.target.checked);
+                                }}
                               />
                             )}
                           />
@@ -536,6 +564,11 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     rows={5}
                     fullWidth
                     variant="outlined"
+                    placeholder="Enter each objective on a separate line without numbering.
+Example:
+Learn basic customer service
+Understand refund process"
+                    helperText="Each line will be treated as a separate objective. Do not add numbering."
                     sx={{
                       backgroundColor: "#FFFFFF",
                       "& .MuiOutlinedInput-root": {
@@ -548,6 +581,61 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                       },
                     }}
                   />
+
+                  {/* Preview section */}
+                  <Box
+                    sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Preview (how it will appear):
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      {field.value
+                        .split("\n")
+                        .filter((line) => line.trim())
+                        .map((line, index) => {
+                          // Remove any existing numbering pattern like "1:", "2:", etc.
+                          const cleanLine = line.replace(
+                            /^\d+[\s:.)-]*\s*/,
+                            "",
+                          );
+                          return (
+                            <Typography
+                              key={index}
+                              variant="body2"
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 0.5,
+                              }}
+                            >
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: "50%",
+                                  bgcolor: "primary.main",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                  mr: 1,
+                                }}
+                              >
+                                {index + 1}
+                              </Box>
+                              {cleanLine}
+                            </Typography>
+                          );
+                        })}
+                    </Box>
+                  </Box>
                 </Box>
               )}
             />
@@ -668,6 +756,12 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     rows={5}
                     fullWidth
                     variant="outlined"
+                    placeholder="Enter each tip on a separate line without numbering.
+Example:
+Listen to the customer carefully
+Be polite and empathetic
+Provide accurate information"
+                    helperText="Each line will be treated as a separate tip. Do not add numbering."
                     sx={{
                       backgroundColor: "#FFFFFF",
                       "& .MuiOutlinedInput-root": {
@@ -680,6 +774,61 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                       },
                     }}
                   />
+
+                  {/* Preview section */}
+                  <Box
+                    sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      gutterBottom
+                    >
+                      Preview (how it will appear):
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      {field.value
+                        .split("\n")
+                        .filter((line) => line.trim())
+                        .map((line, index) => {
+                          // Remove any existing numbering pattern like "1:", "2:", etc.
+                          const cleanLine = line.replace(
+                            /^\d+[\s:.)-]*\s*/,
+                            "",
+                          );
+                          return (
+                            <Typography
+                              key={index}
+                              variant="body2"
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                mb: 0.5,
+                              }}
+                            >
+                              <Box
+                                component="span"
+                                sx={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: "50%",
+                                  bgcolor: "primary.main",
+                                  color: "white",
+                                  fontSize: "0.8rem",
+                                  mr: 1,
+                                }}
+                              >
+                                {index + 1}
+                              </Box>
+                              {cleanLine}
+                            </Typography>
+                          );
+                        })}
+                    </Box>
+                  </Box>
                 </Box>
               )}
             />

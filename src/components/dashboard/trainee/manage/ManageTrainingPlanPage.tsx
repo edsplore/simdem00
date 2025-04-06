@@ -22,6 +22,7 @@ import {
   SelectChangeEvent,
   TablePagination,
   CircularProgress,
+  TableSortLabel,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -33,6 +34,9 @@ import CreateModuleDialog from './CreateModuleDialog';
 import { useAuth } from '../../../../context/AuthContext';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
 import { fetchModules, type Module } from '../../../../services/modules';
+
+type Order = 'asc' | 'desc';
+type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -57,13 +61,15 @@ const ManageTrainingPlanPage = () => {
   const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<Order>('asc');
+  const [orderBy, setOrderBy] = useState<OrderBy>('name');
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         if (currentTab === 'Training Plans') {
           const plans = await fetchTrainingPlans(user?.id || 'user123');
           setTrainingPlans(plans);
@@ -98,11 +104,62 @@ const ManageTrainingPlanPage = () => {
     setPage(0);
   };
 
-  const filteredData = currentTab === 'Training Plans' 
-    ? trainingPlans.filter(plan => 
-        !searchQuery || plan.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : modules.filter(module => 
-        !searchQuery || module.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const filteredData = currentTab === 'Training Plans'
+    ? trainingPlans.filter(plan =>
+      !searchQuery || plan.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : modules.filter(module =>
+      !searchQuery || module.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const sortedData = React.useMemo(() => {
+    if (!filteredData.length) return filteredData;
+
+    return [...filteredData].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (orderBy) {
+        case 'name':
+          aValue = a.name || '';
+          bValue = b.name || '';
+          break;
+        case 'tags':
+          aValue = a.tags.join(',') || '';
+          bValue = b.tags.join(',') || '';
+          break;
+        case 'estimated_time':
+          aValue = a.estimated_time || 0;
+          bValue = b.estimated_time || 0;
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at || 0).getTime();
+          bValue = new Date(b.created_at || 0).getTime();
+          break;
+        case 'created_by':
+          aValue = a.created_by || '';
+          bValue = b.created_by || '';
+          break;
+        case 'last_modified_at':
+          aValue = new Date(a.last_modified_at || 0).getTime();
+          bValue = new Date(b.last_modified_at || 0).getTime();
+          break;
+        case 'last_modified_by':
+          aValue = a.last_modified_by || '';
+          bValue = b.last_modified_by || '';
+          break;
+        default:
+          aValue = a.name || '';
+          bValue = b.name || '';
+      }
+
+      const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
+      return order === 'asc' ? result : -result;
+    });
+  }, [filteredData, order, orderBy]);
 
   return (
     <DashboardContent>
@@ -259,45 +316,121 @@ const ManageTrainingPlanPage = () => {
             <Box sx={{
               overflow: 'auto',
               '&::-webkit-scrollbar': {
-                display: 'none',
+                height: '8px',
               },
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: '#f1f1f1',
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#c1c1c1',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#a8a8a8',
+                },
+              },
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#c1c1c1 #f1f1f1',
             }}>
-              <Table>
+              <Table sx={{ minWidth: 1200, tableLayout: 'fixed' }}>
                 <TableHead sx={{ bgcolor: 'grey.50' }}>
                   <TableRow>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>ID No.</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>{currentTab === 'Training Plans' ? 'Training Plan' : 'Module'}</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Tags</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Est. Time</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created On</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created By</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Last Modified</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Modified By</TableCell>
-                    <TableCell align="right" sx={{ color: '#959697', padding: '6px 16px' }}>Actions</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 250 }}>
+                      <TableSortLabel
+                        active={orderBy === 'name'}
+                        direction={orderBy === 'name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('name')}
+                      >
+                        {currentTab === 'Training Plans' ? 'Training Plan' : 'Module'}
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 200 }}>
+                      <TableSortLabel
+                        active={orderBy === 'tags'}
+                        direction={orderBy === 'tags' ? order : 'asc'}
+                        onClick={() => handleRequestSort('tags')}
+                      >
+                        Tags
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 120 }}>
+                      <TableSortLabel
+                        active={orderBy === 'estimated_time'}
+                        direction={orderBy === 'estimated_time' ? order : 'asc'}
+                        onClick={() => handleRequestSort('estimated_time')}
+                      >
+                        Est. Time
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_at'}
+                        direction={orderBy === 'created_at' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_at')}
+                      >
+                        Created On
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 150 }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_by'}
+                        direction={orderBy === 'created_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_by')}
+                      >
+                        Created By
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'last_modified_at'}
+                        direction={orderBy === 'last_modified_at' ? order : 'asc'}
+                        onClick={() => handleRequestSort('last_modified_at')}
+                      >
+                        Last Modified
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 150 }}>
+                      <TableSortLabel
+                        active={orderBy === 'last_modified_by'}
+                        direction={orderBy === 'last_modified_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('last_modified_by')}
+                      >
+                        Modified By
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: '#959697', padding: '6px 16px', width: 100 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredData.slice(page * parseInt(rowsPerPage), page * parseInt(rowsPerPage) + parseInt(rowsPerPage)).map((item) => (
+                  {sortedData.slice(page * parseInt(rowsPerPage), page * parseInt(rowsPerPage) + parseInt(rowsPerPage)).map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>
+                      <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
+                      <TableCell sx={{ width: 200 }}>
                         <Stack direction="row" spacing={1}>
-                          {item.tags.map((tag, i) => (
-                            <Chip
-                              key={i}
-                              label={tag}
-                              size="small"
-                              sx={{ bgcolor: '#F5F6FF', color: '#444CE7' }}
-                            />
-                          ))}
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
+                            {item.tags.map((tag, i) => (
+                              <Chip
+                                key={i}
+                                label={tag}
+                                size="small"
+                                sx={{ 
+                                  bgcolor: '#F5F6FF', 
+                                  color: '#444CE7',
+                                  maxWidth: '100%',
+                                  '& .MuiChip-label': {
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                  }
+                                }}
+                              />
+                            ))}
+                          </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell>{item.estimated_time}m</TableCell>
+                      <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
                       <TableCell>
-                        <Stack>
+                        <Stack sx={{ minWidth: 180 }}>
                           <Typography variant="body2">{formatDate(item.created_at)}</Typography>
                           <Typography variant="caption" color="text.secondary">
                             {new Date(item.created_at).toLocaleTimeString()}
@@ -305,15 +438,12 @@ const ManageTrainingPlanPage = () => {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Stack>
-                          <Typography variant="body2">{item.created_by}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {item.created_by}@everailabs.com
-                          </Typography>
+                        <Stack sx={{ minWidth: 150 }}>
+                          <Typography variant="body2" noWrap>{item.created_by}</Typography>
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Stack>
+                        <Stack sx={{ minWidth: 180 }}>
                           <Typography variant="body2">{formatDate(item.last_modified_at)}</Typography>
                           <Typography variant="caption" color="text.secondary">
                             {new Date(item.last_modified_at).toLocaleTimeString()}
@@ -321,14 +451,11 @@ const ManageTrainingPlanPage = () => {
                         </Stack>
                       </TableCell>
                       <TableCell>
-                        <Stack>
-                          <Typography variant="body2">{item.last_modified_by}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {item.last_modified_by}@everailabs.com
-                          </Typography>
+                        <Stack sx={{ minWidth: 150 }}>
+                          <Typography variant="body2" noWrap>{item.last_modified_by}</Typography>
                         </Stack>
                       </TableCell>
-                      <TableCell align="right">
+                      <TableCell align="right" sx={{ width: 100 }}>
                         <IconButton size="small">
                           <MoreVertIcon />
                         </IconButton>

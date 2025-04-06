@@ -23,11 +23,11 @@ import {
   Chip,
   CircularProgress,
   Alert,
+  TableSortLabel,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   LockOutlined as LockIcon,
-  MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
@@ -45,6 +45,9 @@ const formatDate = (dateString: string) => {
   });
 };
 
+type Order = 'asc' | 'desc';
+type OrderBy = 'name' | 'type' | 'teams' | 'trainees' | 'start_date' | 'end_date' | 'status' | 'last_modified_at' | 'last_modified_by' | 'created_at' | 'created_by';
+
 const AssignSimulationsPage = () => {
   const { user } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
@@ -60,7 +63,30 @@ const AssignSimulationsPage = () => {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [order, setOrder] = useState<Order>('asc');
+  const [orderBy, setOrderBy] = useState<OrderBy>('name');
+
+  // Filter data based on current tab and search query
+  const filteredData = assignments.filter((item) => {
+    // First apply tab filter
+    if (currentTab === 'Training Plans' && item.type !== 'TrainingPlan') {
+      return false;
+    }
+    if (currentTab === 'Modules' && item.type !== 'Module') {
+      return false;
+    }
+    if (currentTab === 'Simulations' && item.type !== 'Simulation') {
+      return false;
+    }
+
+    // Then apply search filter
+    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+
+    return true;
+  });
+
   const getButtonText = () => {
     switch (currentTab) {
       case 'Modules':
@@ -145,25 +171,72 @@ const AssignSimulationsPage = () => {
     loadAssignments();
   };
 
-  const filteredData = assignments.filter((item) => {
-    // First apply tab filter
-    if (currentTab === 'Training Plans' && item.type !== 'TrainingPlan') {
-      return false;
-    }
-    if (currentTab === 'Modules' && item.type !== 'Module') {
-      return false;
-    }
-    if (currentTab === 'Simulations' && item.type !== 'Simulation') {
-      return false;
-    }
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
 
-    // Then apply search filter
-    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
+  const sortedData = React.useMemo(() => {
+    if (!filteredData.length) return filteredData;
 
-    return true;
-  });
+    return [...filteredData].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (orderBy) {
+        case 'name':
+          aValue = a.name || '';
+          bValue = b.name || '';
+          break;
+        case 'type':
+          aValue = a.type || '';
+          bValue = b.type || '';
+          break;
+        case 'teams':
+          aValue = a.team_id?.length || 0;
+          bValue = b.team_id?.length || 0;
+          break;
+        case 'trainees':
+          aValue = a.trainee_id?.length || 0;
+          bValue = b.trainee_id?.length || 0;
+          break;
+        case 'start_date':
+          aValue = new Date(a.start_date || 0).getTime();
+          bValue = new Date(b.start_date || 0).getTime();
+          break;
+        case 'end_date':
+          aValue = new Date(a.end_date || 0).getTime();
+          bValue = new Date(b.end_date || 0).getTime();
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'last_modified_at':
+          aValue = new Date(a.last_modified_at || 0).getTime();
+          bValue = new Date(b.last_modified_at || 0).getTime();
+          break;
+        case 'last_modified_by':
+          aValue = a.last_modified_by || '';
+          bValue = b.last_modified_by || '';
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at || 0).getTime();
+          bValue = new Date(b.created_at || 0).getTime();
+          break;
+        case 'created_by':
+          aValue = a.created_by || '';
+          bValue = b.created_by || '';
+          break;
+        default:
+          aValue = a.name || '';
+          bValue = b.name || '';
+      }
+
+      const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
+      return order === 'asc' ? result : -result;
+    });
+  }, [filteredData, order, orderBy]);
 
   return (
     <DashboardContent>
@@ -314,41 +387,137 @@ const AssignSimulationsPage = () => {
               overflow: 'hidden',
             }}
           >
-            <Box
-              sx={{
+            <Box 
+              sx={{ 
                 overflow: 'auto',
                 '&::-webkit-scrollbar': {
-                  display: 'none',
+                  height: '8px',
                 },
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
+                '&::-webkit-scrollbar-track': {
+                  backgroundColor: '#f1f1f1',
+                  borderRadius: '4px',
+                },
+                '&::-webkit-scrollbar-thumb': {
+                  backgroundColor: '#c1c1c1',
+                  borderRadius: '4px',
+                  '&:hover': {
+                    backgroundColor: '#a8a8a8',
+                  },
+                },
+                scrollbarWidth: 'thin',
+                scrollbarColor: '#c1c1c1 #f1f1f1',
               }}
             >
-              <Table sx={{ minWidth: 1700, borderRadius: 2, overflow: 'hidden' }}>
+              <Table sx={{ minWidth: 1500, borderRadius: 2, overflow: 'hidden', tableLayout: 'fixed' }}>
                 <TableHead sx={{ bgcolor: '#F9FAFB' }}>
                   <TableRow>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>ID No.</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Assignment Name</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Type</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Teams</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Trainees</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Start Date</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Due Date</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Status</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Last Modified</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Modified by</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created On</TableCell>
-                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>Created by</TableCell>
-                    <TableCell align="right" sx={{ color: '#959697', padding: '6px 16px' }}>Actions</TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 250 }}>
+                      <TableSortLabel
+                        active={orderBy === 'name'}
+                        direction={orderBy === 'name' ? order : 'asc'}
+                        onClick={() => handleRequestSort('name')}
+                      >
+                        Assignment Name
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'type'}
+                        direction={orderBy === 'type' ? order : 'asc'}
+                        onClick={() => handleRequestSort('type')}
+                      >
+                        Type
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'teams'}
+                        direction={orderBy === 'teams' ? order : 'asc'}
+                        onClick={() => handleRequestSort('teams')}
+                      >
+                        Teams
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'trainees'}
+                        direction={orderBy === 'trainees' ? order : 'asc'}
+                        onClick={() => handleRequestSort('trainees')}
+                      >
+                        Trainees
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'start_date'}
+                        direction={orderBy === 'start_date' ? order : 'asc'}
+                        onClick={() => handleRequestSort('start_date')}
+                      >
+                        Start Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'end_date'}
+                        direction={orderBy === 'end_date' ? order : 'asc'}
+                        onClick={() => handleRequestSort('end_date')}
+                      >
+                        Due Date
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'status'}
+                        direction={orderBy === 'status' ? order : 'asc'}
+                        onClick={() => handleRequestSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'last_modified_at'}
+                        direction={orderBy === 'last_modified_at' ? order : 'asc'}
+                        onClick={() => handleRequestSort('last_modified_at')}
+                      >
+                        Last Modified
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'last_modified_by'}
+                        direction={orderBy === 'last_modified_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('last_modified_by')}
+                      >
+                        Modified by
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_at'}
+                        direction={orderBy === 'created_at' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_at')}
+                      >
+                        Created On
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
+                      <TableSortLabel
+                        active={orderBy === 'created_by'}
+                        direction={orderBy === 'created_by' ? order : 'asc'}
+                        onClick={() => handleRequestSort('created_by')}
+                      >
+                        Created by
+                      </TableSortLabel>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredData
+                  {sortedData
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((row, index) => (
                       <TableRow key={index}>
-                        <TableCell>{row.id}</TableCell>
-                        <TableCell>
+                        <TableCell sx={{ minWidth: 250 }}>
                           {row.name || 'Untitled Assignment'}
                         </TableCell>
                         <TableCell>
@@ -377,7 +546,7 @@ const AssignSimulationsPage = () => {
                             />
                           </Stack>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ minWidth: 180 }}>
                           <Stack>
                             <Typography variant="body2">{formatDate(row.last_modified_at)}</Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -387,13 +556,10 @@ const AssignSimulationsPage = () => {
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.last_modified_by}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {row.last_modified_by}@everailabs.com
-                            </Typography>
+                            <Typography variant="body2" noWrap>{row.last_modified_by}</Typography>
                           </Stack>
                         </TableCell>
-                        <TableCell>
+                        <TableCell sx={{ minWidth: 180 }}>
                           <Stack>
                             <Typography variant="body2">{formatDate(row.created_at)}</Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -403,16 +569,8 @@ const AssignSimulationsPage = () => {
                         </TableCell>
                         <TableCell>
                           <Stack>
-                            <Typography variant="body2">{row.created_by}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {row.created_by}@everailabs.com
-                            </Typography>
+                            <Typography variant="body2" noWrap>{row.created_by}</Typography>
                           </Stack>
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small">
-                            <MoreVertIcon />
-                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}

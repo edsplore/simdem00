@@ -303,7 +303,6 @@ export default function VisualsTab({
     setEditingHotspot(null);
   };
 
-  // "Save and Continue" - Modified to structure slides and call API with FormData
   const handleSaveAndContinue = async () => {
     if (visualImages.length === 0) return;
 
@@ -385,6 +384,7 @@ export default function VisualsTab({
     // Call create simulation for all visual-related types
     if (createSimulation) {
       console.log(`Creating simulation for ${simulationType} type`);
+      // Let the parent component handle the navigation when createSimulation is called
       const response = await createSimulation(formData);
       if (response && response.status === "success") {
         console.log("Simulation created with slides:", response);

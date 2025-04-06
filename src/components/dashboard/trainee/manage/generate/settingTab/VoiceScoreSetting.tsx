@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
-import axios from 'axios';
-import WaveSurfer from 'wavesurfer.js';
+import axios from "axios";
+import WaveSurfer from "wavesurfer.js";
 import {
   Card,
   Typography,
@@ -41,7 +41,10 @@ interface VoiceScoreSettingProps {
   prompt?: string;
   settings: SimulationSettings;
   onSettingsChange: (settings: SimulationSettings) => void;
-  activeSection?: string; // If you want to use it for anything else
+  onPromptChange?: (prompt: string) => void; // This is important!
+  activeSection?: string;
+  showVoiceSettings?: boolean;
+  showPromptSettings?: boolean;
 }
 
 interface FormData {
@@ -49,10 +52,10 @@ interface FormData {
   accent: string;
   gender: string;
   ageGroup: string;
-  simulationScore: 'best' | 'last' | 'average';
+  simulationScore: "best" | "last" | "average";
   keywordScore: string;
   clickScore: string;
-  practiceMode: 'unlimited' | 'limited';
+  practiceMode: "unlimited" | "limited";
   repetitionsAllowed: string;
   repetitionsNeeded: string;
   scoringMetrics: {
@@ -66,17 +69,23 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   prompt,
   settings,
   onSettingsChange,
-  activeSection
+  onPromptChange,
+  activeSection,
+  showVoiceSettings = true,
+  showPromptSettings = true,
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>('');
+  // Initialize selectedVoice from settings, not empty
+  const [selectedVoice, setSelectedVoice] = useState<string>(
+    settings.voice.voiceId || "",
+  );
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const wavesurferRefs = useRef<{ [key: string]: WaveSurfer }>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
 
   const { control, handleSubmit, watch } = useForm<FormData>({
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
       language: settings.voice.language,
       accent: settings.voice.accent,
@@ -96,46 +105,68 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     },
   });
 
-  const accent = watch('accent');
-  const gender = watch('gender');
-  const ageGroup = watch('ageGroup');
-  const scoringMetricsEnabled = watch('scoringMetrics.enabled');
+  const accent = watch("accent");
+  const gender = watch("gender");
+  const ageGroup = watch("ageGroup");
+  const scoringMetricsEnabled = watch("scoringMetrics.enabled");
+
+  // Log when component mounts and when settings change
+  useEffect(() => {
+    console.log("VoiceScore component mounted with settings:", settings);
+    console.log("Initial voice ID:", settings.voice.voiceId);
+  }, []);
 
   const fetchVoices = async () => {
     try {
-      const response = await axios.post('/api/list-voices', {
-        user_id: 'user123'
+      const response = await axios.post("/api/list-voices", {
+        user_id: "user123",
       });
-      console.log(response.data);
+      console.log("API response - voices:", response.data);
       if (response.data.voices && Array.isArray(response.data.voices)) {
         setVoices(response.data.voices);
       }
     } catch (error) {
-      console.error('Error fetching voices:', error);
+      console.error("Error fetching voices:", error);
     }
   };
 
   useEffect(() => {
-    fetchVoices();
-  }, []);
+    if (showVoiceSettings) {
+      fetchVoices();
+    }
+  }, [showVoiceSettings]);
 
   useEffect(() => {
-    const filtered = voices.filter((voice) =>
-      voice.accent === accent &&
-      voice.gender.toLowerCase() === gender.toLowerCase() &&
-      voice.age === ageGroup
+    // If we have a voice ID from settings, select it
+    if (settings.voice.voiceId && settings.voice.voiceId !== selectedVoice) {
+      console.log(
+        "Updating selected voice from settings:",
+        settings.voice.voiceId,
+      );
+      setSelectedVoice(settings.voice.voiceId);
+    }
+  }, [settings.voice.voiceId]);
+
+  useEffect(() => {
+    const filtered = voices.filter(
+      (voice) =>
+        voice.accent === accent &&
+        voice.gender.toLowerCase() === gender.toLowerCase() &&
+        voice.age === ageGroup,
     );
     setFilteredVoices(filtered.slice(0, 3));
   }, [voices, accent, gender, ageGroup]);
 
   useEffect(() => {
+    if (!showVoiceSettings) return;
+
     filteredVoices.forEach((voice) => {
       if (!wavesurferRefs.current[voice.voice_id]) {
         const wavesurfer = WaveSurfer.create({
           container: `#waveform-${voice.voice_id}`,
-          waveColor: '#C2C2C2',
-          progressColor: '#444CE7',
-          cursorColor: 'transparent',
+          waveColor: "#C2C2C2",
+          progressColor: "#444CE7",
+          cursorColor: "transparent",
           barWidth: 4,
           barGap: 3,
           height: 40,
@@ -145,7 +176,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         wavesurfer.load(voice.preview_audio_url);
         wavesurferRefs.current[voice.voice_id] = wavesurfer;
 
-        wavesurfer.on('finish', () => {
+        wavesurfer.on("finish", () => {
           setIsPlaying((prev) => ({ ...prev, [voice.voice_id]: false }));
         });
       }
@@ -157,7 +188,22 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       });
       wavesurferRefs.current = {};
     };
-  }, [filteredVoices]);
+  }, [filteredVoices, showVoiceSettings]);
+
+  // Add effect to update parent component when voice selection changes
+  useEffect(() => {
+    // Update parent component with the selected voice ID immediately
+    if (selectedVoice) {
+      console.log("Voice ID changed, updating parent:", selectedVoice);
+      onSettingsChange({
+        ...settings,
+        voice: {
+          ...settings.voice,
+          voiceId: selectedVoice,
+        },
+      });
+    }
+  }, [selectedVoice]);
 
   const handlePlayPause = (voiceId: string) => {
     const wavesurfer = wavesurferRefs.current[voiceId];
@@ -189,6 +235,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   };
 
   const onSubmit = (data: FormData) => {
+    // Ensure we capture the current selectedVoice state
+    console.log("Form submitted with voice ID:", selectedVoice);
+
     onSettingsChange({
       ...settings,
       voice: {
@@ -196,7 +245,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         accent: data.accent,
         gender: data.gender,
         ageGroup: data.ageGroup,
-        voiceId: selectedVoice,
+        voiceId: selectedVoice, // Use the actual selected voice ID
       },
       scoring: {
         simulationScore: data.simulationScore,
@@ -213,176 +262,252 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
       <form onSubmit={handleSubmit(onSubmit)}>
-        {/* AI Customer Voice */}
-        <Card
-          sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }}
-          data-section="AI Customer Voice"
-        >
-          <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            AI Customer Voice
-            <Box component="span" sx={{ color: "primary.main", fontSize: "1.5rem" }}>
-              ⚡
-            </Box>
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Manage your AI customer voice settings
-          </Typography>
-
-          <Typography variant="subtitle1" gutterBottom>
-            Base Voice Parameters
-          </Typography>
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 3 }}>
-            <Controller
-              name="language"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel>Language</InputLabel>
-                  <Select {...field} label="Language">
-                    <MenuItem value="English">English</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="accent"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel>Accent</InputLabel>
-                  <Select {...field} label="Accent">
-                    <MenuItem value="American">American</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="gender"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel>Gender</InputLabel>
-                  <Select {...field} label="Gender">
-                    <MenuItem value="Male">Male</MenuItem>
-                    <MenuItem value="Female">Female</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-            <Controller
-              name="ageGroup"
-              control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <InputLabel>Age Group</InputLabel>
-                  <Select {...field} label="Age Group">
-                    <MenuItem value="Middle Aged">Middle Aged</MenuItem>
-                    <MenuItem value="Young">Young</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-          </Box>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={handleProcessVoice}
-            disabled={isProcessing}
+        {/* AI Customer Voice - only show if applicable */}
+        {showVoiceSettings && (
+          <Card
+            sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }}
+            data-section="AI Customer Voice"
           >
-            {isProcessing ? 'Processing...' : 'Process Base Voice'}
-          </Button>
-
-          {filteredVoices.length > 0 && (
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Available Voices
-              </Typography>
-              <RadioGroup
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
+              AI Customer Voice
+              <Box
+                component="span"
+                sx={{ color: "primary.main", fontSize: "1.5rem" }}
               >
-                <Stack spacing={2}>
-                  {filteredVoices.map((voice) => (
-                    <Box
-                      key={voice.voice_id}
-                      sx={{
-                        border: '1px solid',
-                        borderColor: selectedVoice === voice.voice_id ? '#444CE7' : 'divider',
-                        borderRadius: 2,
-                        p: 2,
-                      }}
-                    >
-                      <Stack spacing={2}>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <FormControlLabel
-                            value={voice.voice_id}
-                            control={<Radio />}
-                            label=""
-                          />
-                          <Avatar
-                            src={voice.avatar_url}
-                            alt={voice.voice_name}
-                            sx={{ width: 40, height: 40 }}
-                          />
-                          <Box flex={1}>
-                            <Typography variant="subtitle2">
-                              {voice.voice_name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {voice.accent} • {voice.gender} • {voice.age}
-                            </Typography>
-                          </Box>
-                          <IconButton
-                            onClick={() => handlePlayPause(voice.voice_id)}
-                            sx={{
-                              bgcolor: isPlaying[voice.voice_id] ? '#444CE7' : 'grey.200',
-                              color: isPlaying[voice.voice_id] ? 'white' : 'text.primary',
-                              '&:hover': {
-                                bgcolor: isPlaying[voice.voice_id] ? '#3538CD' : 'grey.300',
-                              },
-                            }}
-                          >
-                            {isPlaying[voice.voice_id] ? <Pause /> : <PlayArrow />}
-                          </IconButton>
-                        </Stack>
-                        <Box
-                          id={`waveform-${voice.voice_id}`}
-                          sx={{ width: '100%', bgcolor: '#F5F6FF', borderRadius: 1 }}
-                        />
-                      </Stack>
-                    </Box>
-                  ))}
-                </Stack>
-              </RadioGroup>
+                ⚡
+              </Box>
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 3 }}>
+              Manage your AI customer voice settings
+            </Typography>
+
+            <Typography variant="subtitle1" gutterBottom>
+              Base Voice Parameters
+            </Typography>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+                mb: 3,
+              }}
+            >
+              <Controller
+                name="language"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Language</InputLabel>
+                    <Select {...field} label="Language">
+                      <MenuItem value="English">English</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                name="accent"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Accent</InputLabel>
+                    <Select {...field} label="Accent">
+                      <MenuItem value="American">American</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                name="gender"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Gender</InputLabel>
+                    <Select {...field} label="Gender">
+                      <MenuItem value="Male">Male</MenuItem>
+                      <MenuItem value="Female">Female</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
+              <Controller
+                name="ageGroup"
+                control={control}
+                render={({ field }) => (
+                  <FormControl fullWidth>
+                    <InputLabel>Age Group</InputLabel>
+                    <Select {...field} label="Age Group">
+                      <MenuItem value="Middle Aged">Middle Aged</MenuItem>
+                      <MenuItem value="Young">Young</MenuItem>
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </Box>
-          )}
-        </Card>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleProcessVoice}
+              disabled={isProcessing}
+            >
+              {isProcessing ? "Processing..." : "Process Base Voice"}
+            </Button>
+
+            {filteredVoices.length > 0 && (
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Available Voices
+                </Typography>
+                <RadioGroup
+                  value={selectedVoice}
+                  onChange={(e) => {
+                    console.log("Selected voice changed to:", e.target.value);
+                    setSelectedVoice(e.target.value);
+                  }}
+                >
+                  <Stack spacing={2}>
+                    {filteredVoices.map((voice) => (
+                      <Box
+                        key={voice.voice_id}
+                        sx={{
+                          border: "1px solid",
+                          borderColor:
+                            selectedVoice === voice.voice_id
+                              ? "#444CE7"
+                              : "divider",
+                          borderRadius: 2,
+                          p: 2,
+                        }}
+                      >
+                        <Stack spacing={2}>
+                          <Stack
+                            direction="row"
+                            spacing={2}
+                            alignItems="center"
+                          >
+                            <FormControlLabel
+                              value={voice.voice_id}
+                              control={<Radio />}
+                              label=""
+                            />
+                            <Avatar
+                              src={voice.avatar_url}
+                              alt={voice.voice_name}
+                              sx={{ width: 40, height: 40 }}
+                            />
+                            <Box flex={1}>
+                              <Typography variant="subtitle2">
+                                {voice.voice_name}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {voice.accent} • {voice.gender} • {voice.age}
+                              </Typography>
+                            </Box>
+                            <IconButton
+                              onClick={() => handlePlayPause(voice.voice_id)}
+                              sx={{
+                                bgcolor: isPlaying[voice.voice_id]
+                                  ? "#444CE7"
+                                  : "grey.200",
+                                color: isPlaying[voice.voice_id]
+                                  ? "white"
+                                  : "text.primary",
+                                "&:hover": {
+                                  bgcolor: isPlaying[voice.voice_id]
+                                    ? "#3538CD"
+                                    : "grey.300",
+                                },
+                              }}
+                            >
+                              {isPlaying[voice.voice_id] ? (
+                                <Pause />
+                              ) : (
+                                <PlayArrow />
+                              )}
+                            </IconButton>
+                          </Stack>
+                          <Box
+                            id={`waveform-${voice.voice_id}`}
+                            sx={{
+                              width: "100%",
+                              bgcolor: "#F5F6FF",
+                              borderRadius: 1,
+                            }}
+                          />
+                        </Stack>
+                      </Box>
+                    ))}
+                  </Stack>
+                </RadioGroup>
+              </Box>
+            )}
+          </Card>
+        )}
 
         {/* Conversation Prompt */}
-        <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }} data-section="Conversation Prompt">
-          <Typography variant="h6" gutterBottom>
-            Conversation Prompt
-          </Typography>
-          <Typography color="text.secondary" sx={{ mb: 2 }}>
-            Edit your AI Customer conversation prompt
-          </Typography>
-          <TextField
-            fullWidth
-            multiline
-            rows={6}
-            value={prompt || ''}
-            label="Prompt"
-            disabled
-            sx={{
-              '& .MuiInputBase-root': {
-                backgroundColor: '#F9FAFB',
-              },
-            }}
-          />
-        </Card>
+        {showPromptSettings && (
+          <Card
+            sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }}
+            data-section="Conversation Prompt"
+          >
+            <Typography variant="h6" gutterBottom>
+              Conversation Prompt
+            </Typography>
+            <Typography color="text.secondary" sx={{ mb: 2 }}>
+              Edit your AI Customer conversation prompt
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={6}
+              value={prompt || ""}
+              label="Prompt"
+              onChange={(e) => {
+                console.log("Prompt change:", e.target.value);
+                if (onPromptChange) {
+                  onPromptChange(e.target.value);
+                }
+              }}
+              inputProps={{
+                style: { cursor: "text" },
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  backgroundColor: "#FFFFFF",
+                },
+                "& .MuiOutlinedInput-root": {
+                  "&:hover fieldset": {
+                    borderColor: "#444CE7",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#444CE7",
+                  },
+                },
+              }}
+            />
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ mt: 1, display: "block" }}
+            >
+              The conversation prompt helps guide the AI in how it should
+              respond during the simulation. You can customize this to match
+              your training scenarios.
+            </Typography>
+          </Card>
+        )}
 
         {/* Simulation Completion */}
-        <Card sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }} data-section="Simulation Completion">
+        <Card
+          sx={{ p: 2, borderRadius: 2, boxShadow: 3, mb: 3 }}
+          data-section="Simulation Completion"
+        >
           <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
             <Box>
               <Typography variant="h6">Simulation Completion</Typography>
@@ -411,7 +536,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             data-section="Number of Repetition Allowed"
           >
             <Box>
-              <Typography variant="h6">Number of Repetitions Allowed</Typography>
+              <Typography variant="h6">
+                Number of Repetitions Allowed
+              </Typography>
               <Typography color="text.secondary">
                 Set max no. of repetitions allowed for this simulation
               </Typography>
@@ -435,7 +562,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               Final Simulation Score
             </Typography>
             <Typography color="text.secondary" gutterBottom>
-              Set what will be the final score for this simulation if user do multiple attempts
+              Set what will be the final score for this simulation if user do
+              multiple attempts
             </Typography>
             <Controller
               name="simulationScore"
@@ -451,7 +579,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       color: field.value === "best" ? "#143FDA" : "gray",
                       backgroundColor: "transparent",
                       "&:hover": {
-                        borderColor: field.value === "best" ? "#143FDA" : "gray",
+                        borderColor:
+                          field.value === "best" ? "#143FDA" : "gray",
                         color: field.value === "best" ? "#143FDA" : "gray",
                       },
                     }}
@@ -467,7 +596,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       color: field.value === "last" ? "#143FDA" : "gray",
                       backgroundColor: "transparent",
                       "&:hover": {
-                        borderColor: field.value === "last" ? "#143FDA" : "gray",
+                        borderColor:
+                          field.value === "last" ? "#143FDA" : "gray",
                         color: field.value === "last" ? "#143FDA" : "gray",
                       },
                     }}
@@ -479,11 +609,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
-                      borderColor: field.value === "average" ? "#143FDA" : "gray",
+                      borderColor:
+                        field.value === "average" ? "#143FDA" : "gray",
                       color: field.value === "average" ? "#143FDA" : "gray",
                       backgroundColor: "transparent",
                       "&:hover": {
-                        borderColor: field.value === "average" ? "#143FDA" : "gray",
+                        borderColor:
+                          field.value === "average" ? "#143FDA" : "gray",
                         color: field.value === "average" ? "#143FDA" : "gray",
                       },
                     }}
@@ -499,7 +631,14 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
           {/* Simulation Scoring Metrics */}
           <Box sx={{ mb: 3 }} data-section="Simulation Scoring Metrics">
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
               <Typography variant="h6">Simulation Scoring Metrics</Typography>
               <Controller
                 name="scoringMetrics.enabled"
@@ -510,16 +649,23 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               />
             </Box>
             <Typography color="text.secondary" gutterBottom>
-              Set min. values needed on different scoring metrics for plan success
+              Set min. values needed on different scoring metrics for plan
+              success
             </Typography>
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <Box
+              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
+            >
               <Controller
                 name="scoringMetrics.keywordScore"
                 control={control}
                 render={({ field }) => (
                   <FormControl fullWidth>
                     <InputLabel>Keyword Score</InputLabel>
-                    <Select {...field} label="Keyword Score" disabled={!scoringMetricsEnabled}>
+                    <Select
+                      {...field}
+                      label="Keyword Score"
+                      disabled={!scoringMetricsEnabled}
+                    >
                       <MenuItem value="20%">20%</MenuItem>
                     </Select>
                   </FormControl>
@@ -531,7 +677,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 render={({ field }) => (
                   <FormControl fullWidth>
                     <InputLabel>Click Score</InputLabel>
-                    <Select {...field} label="Click Score" disabled={!scoringMetricsEnabled}>
+                    <Select
+                      {...field}
+                      label="Click Score"
+                      disabled={!scoringMetricsEnabled}
+                    >
                       <MenuItem value="80%">80%</MenuItem>
                     </Select>
                   </FormControl>
@@ -560,11 +710,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
-                      borderColor: field.value === "unlimited" ? "#143FDA" : "gray",
+                      borderColor:
+                        field.value === "unlimited" ? "#143FDA" : "gray",
                       color: field.value === "unlimited" ? "#143FDA" : "gray",
                       backgroundColor: "transparent",
                       "&:hover": {
-                        borderColor: field.value === "unlimited" ? "#143FDA" : "gray",
+                        borderColor:
+                          field.value === "unlimited" ? "#143FDA" : "gray",
                         color: field.value === "unlimited" ? "#143FDA" : "gray",
                       },
                     }}
@@ -576,11 +728,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
-                      borderColor: field.value === "limited" ? "#143FDA" : "gray",
+                      borderColor:
+                        field.value === "limited" ? "#143FDA" : "gray",
                       color: field.value === "limited" ? "#143FDA" : "gray",
                       backgroundColor: "transparent",
                       "&:hover": {
-                        borderColor: field.value === "limited" ? "#143FDA" : "gray",
+                        borderColor:
+                          field.value === "limited" ? "#143FDA" : "gray",
                         color: field.value === "limited" ? "#143FDA" : "gray",
                       },
                     }}

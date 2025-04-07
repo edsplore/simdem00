@@ -37,13 +37,13 @@ interface Hotspot {
     | "textfield"
     | "highlight"
     | "coaching";
-  coordinates: {
+  coordinates?: {
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  settings: {
+  settings?: {
     placeholder?: string;
     advanceOnSelect?: boolean;
     advanceOnCheck?: boolean;
@@ -536,6 +536,23 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     onHotspotsChange?.(newHotspots);
   };
 
+  // Helper function to safely scale coordinates
+  const scaleCoordinates = (coords?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
+    if (!coords) return null;
+
+    return {
+      left: (coords.x || 0) * imageScale,
+      top: (coords.y || 0) * imageScale,
+      width: (coords.width || 0) * imageScale,
+      height: (coords.height || 0) * imageScale,
+    };
+  };
+
   return (
     <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
       <Box
@@ -572,28 +589,49 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         />
 
         {/* Existing hotspots */}
-        {hotspots.map((hotspot) => (
-          <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!editMode || editingId !== hotspot.id) {
-                onEditHotspot?.(hotspot);
-              }
-            }}
-            key={hotspot.id}
-            sx={{
-              position: "absolute",
-              left: `${(hotspot.coordinates.x / originalImageSize.width) * 100}%`,
-              top: `${(hotspot.coordinates.y / originalImageSize.height) * 100}%`,
-              width: `${(hotspot.coordinates.width / originalImageSize.width) * 100}%`,
-              height: `${(hotspot.coordinates.height / originalImageSize.height) * 100}%`,
-              border: "2px solid #444CE7",
-              borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
-              backgroundColor: "rgba(68, 76, 231, 0.1)",
-              cursor: "pointer",
-            }}
-          />
-        ))}
+        {Array.isArray(hotspots) &&
+          hotspots.map((hotspot) => {
+            // Skip rendering if coordinates are missing or invalid
+            if (!hotspot || !hotspot.coordinates) {
+              console.warn(
+                "Skipping hotspot with missing coordinates:",
+                hotspot?.id,
+              );
+              return null;
+            }
+
+            const scaledCoords = scaleCoordinates(hotspot.coordinates);
+            if (!scaledCoords) {
+              console.warn(
+                "Failed to scale coordinates for hotspot:",
+                hotspot.id,
+              );
+              return null;
+            }
+
+            return (
+              <Box
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!editMode || editingId !== hotspot.id) {
+                    onEditHotspot?.(hotspot);
+                  }
+                }}
+                key={hotspot.id}
+                sx={{
+                  position: "absolute",
+                  left: `${(hotspot.coordinates.x / originalImageSize.width) * 100}%`,
+                  top: `${(hotspot.coordinates.y / originalImageSize.height) * 100}%`,
+                  width: `${(hotspot.coordinates.width / originalImageSize.width) * 100}%`,
+                  height: `${(hotspot.coordinates.height / originalImageSize.height) * 100}%`,
+                  border: "2px solid #444CE7",
+                  borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
+                  backgroundColor: "rgba(68, 76, 231, 0.1)",
+                  cursor: "pointer",
+                }}
+              />
+            );
+          })}
 
         {/* Currently drawing hotspot */}
         {currentHotspot && currentHotspot.coordinates && (
@@ -1441,6 +1479,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           </Stack>
         </Paper>
       )}
+
+      {/* Optional: Add a style tag for the keyword highlighting */}
+      <style jsx>{`
+        .keyword-highlight {
+          color: green;
+          background-color: #ccffd1;
+          padding: 0 2px;
+          border-radius: 2px;
+        }
+      `}</style>
     </Box>
   );
 };

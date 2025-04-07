@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
@@ -11,10 +11,10 @@ import {
   styled,
   Typography,
   CircularProgress,
+  Alert,
 } from "@mui/material";
-import { createSimulation } from "../../../../../services/simulationCreate";
-import type { CreateSimulationPayload } from "../../../../../services/simulationCreate";
-import { Lock as LockIcon } from "@mui/icons-material";
+import axios from "axios";
+import { Lock as LockIcon, Edit as EditIcon } from "@mui/icons-material";
 import {
   SimulationWizardProvider,
   useSimulationWizard,
@@ -23,7 +23,6 @@ import ScriptTab from "./ScriptTab";
 import VisualsTab from "./VisualsTab";
 import SettingsTab from "./settingTab/SettingTab";
 import PreviewTab from "./PreviewTab";
-import axios from "axios";
 
 interface TabState {
   script: boolean;
@@ -39,6 +38,97 @@ interface SimulationData {
   department: string;
   tags: string[];
   simulationType: "audio" | "chat" | "visual-audio" | "visual-chat" | "visual";
+  script?: Array<{
+    script_sentence: string;
+    role: string;
+    keywords: string[];
+  }>;
+  slidesData?: Array<{
+    imageId: string;
+    imageName: string;
+    imageUrl: string;
+    imageData?: string | null;
+    sequence: Array<{
+      type: string;
+      id: string;
+      name?: string;
+      hotspotType?: string;
+      coordinates?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      settings?: any;
+      role?: string;
+      text?: string;
+      options?: string[];
+      tipText?: string;
+    }>;
+  }>;
+  status?: string;
+  prompt?: string;
+  // Add level settings from the API response
+  levels?: {
+    lvl1?: {
+      isEnabled?: boolean;
+      enablePractice?: boolean;
+      hideAgentScript?: boolean;
+      hideCustomerScript?: boolean;
+      hideKeywordScores?: boolean;
+      hideSentimentScores?: boolean;
+      hideHighlights?: boolean;
+      hideCoachingTips?: boolean;
+      enablePostSimulationSurvey?: boolean;
+      aiPoweredPausesAndFeedback?: boolean;
+    };
+    lvl2?: {
+      isEnabled?: boolean;
+      enablePractice?: boolean;
+      hideAgentScript?: boolean;
+      hideCustomerScript?: boolean;
+      hideKeywordScores?: boolean;
+      hideSentimentScores?: boolean;
+      hideHighlights?: boolean;
+      hideCoachingTips?: boolean;
+      enablePostSimulationSurvey?: boolean;
+      aiPoweredPausesAndFeedback?: boolean;
+    };
+    lvl3?: {
+      isEnabled?: boolean;
+      enablePractice?: boolean;
+      hideAgentScript?: boolean;
+      hideCustomerScript?: boolean;
+      hideKeywordScores?: boolean;
+      hideSentimentScores?: boolean;
+      hideHighlights?: boolean;
+      hideCoachingTips?: boolean;
+      enablePostSimulationSurvey?: boolean;
+      aiPoweredPausesAndFeedback?: boolean;
+    };
+  };
+  est_time?: string;
+  estimated_time_to_attempt_in_mins?: number;
+  key_objectives?: string[];
+  quick_tips?: string[];
+  overviewVideo?: string;
+  overview_video?: string;
+  voice_id?: string;
+  language?: string;
+  voice_speed?: string;
+  mood?: string;
+  simulation_completion_repetition?: number;
+  simulation_max_repetition?: number;
+  final_simulation_score_criteria?: string;
+  simulation_scoring_metrics?: {
+    is_enabled?: boolean;
+    keyword_score?: number;
+    click_score?: number;
+  };
+  sim_practice?: {
+    is_unlimited?: boolean;
+    pre_requisite_limit?: number;
+  };
 }
 
 interface Message {
@@ -87,19 +177,55 @@ const StyledTab = styled(Tab)(({ theme }) => ({
   },
 }));
 
-// Helper function to create simulation with FormData
-const createSimulationWithFormData = async (formData: FormData) => {
-  const response = await axios.post("/api/simulations/create", formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
+// Helper function to create/update simulation with FormData
+const updateSimulationWithFormData = async (
+  simulationId: string,
+  formData: FormData,
+) => {
+  const response = await axios.put(
+    `/api/simulations/${simulationId}/update`,
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     },
-  });
+  );
   return response.data;
 };
 
+// Helper function to check if a string is a base64 data
+const isBase64String = (str: string): boolean => {
+  // Quick check for base64 pattern
+  return /^data:image\/[a-z]+;base64,|^[A-Za-z0-9+/=]+$/.test(str);
+};
+
+// Helper to convert base64 to blob URL
+const base64ToBlob = (base64Data: string): string => {
+  try {
+    // Determine if this is a full data URL or just base64
+    let dataUrl = base64Data;
+    if (!dataUrl.startsWith("data:")) {
+      dataUrl = `data:image/png;base64,${base64Data}`;
+    }
+
+    const fetchResponse = fetch(dataUrl);
+    const blob = fetchResponse.blob();
+    return URL.createObjectURL(blob);
+  } catch (e) {
+    console.error("Error converting base64 to blob:", e);
+    return "";
+  }
+};
+
 const GenerateScriptContent = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [tabValue, setTabValue] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const {
     scriptData,
     setScriptData,
@@ -119,14 +245,265 @@ const GenerateScriptContent = () => {
     settings: false,
     preview: false,
   });
-  const location = useLocation();
-  const simulationData = location.state?.simulationData as SimulationData;
+
+  const [loadedSimulation, setLoadedSimulation] =
+    useState<SimulationData | null>(null);
+
+  // Load simulation data on mount
+  useEffect(() => {
+    const loadSimulationData = async () => {
+      if (!id) {
+        setError("No simulation ID provided");
+        setInitialLoading(false);
+        return;
+      }
+
+      try {
+        setInitialLoading(true);
+        // Updated endpoint to match the actual API
+        const response = await axios.get(`/api/simulations/fetch/${id}`);
+
+        // Check if we have at least some data to work with
+        if (response.data) {
+          // Handle both response formats - with or without document wrapper
+          const responseData = response.data.document || response.data;
+
+          // Extract simulation data from the response
+          const simulation = responseData.simulation || responseData || {};
+
+          console.log("API Response simulation data:", simulation);
+
+          // Map level settings from the response format to our internal format
+          const mappedLevels = {
+            lvl1: simulation.lvl1 || {},
+            lvl2: simulation.lvl2 || {},
+            lvl3: simulation.lvl3 || {},
+          };
+
+          // Always proceed with whatever data we have - use defaults for missing parts
+          setLoadedSimulation({
+            id: simulation.id || simulation._id || id, // Fallback to route ID if API doesn't return it
+            name: simulation.sim_name || "New Simulation", // Changed to match API response
+            division: simulation.division_id || "",
+            department: simulation.department_id || "",
+            tags: simulation.tags || [],
+            simulationType: simulation.sim_type || "audio", // Changed to match API response
+            script: simulation.script || [],
+            slidesData: simulation.slidesData || [],
+            status: simulation.status || "draft",
+            prompt: simulation.prompt || "",
+            levels: mappedLevels,
+            // Map all other fields from the API response
+            est_time: simulation.est_time || "15",
+            estimated_time_to_attempt_in_mins:
+              simulation.estimated_time_to_attempt_in_mins || 15,
+            key_objectives: simulation.key_objectives || [
+              "Learn basic customer service",
+              "Understand refund process",
+            ],
+            quick_tips: simulation.quick_tips || [
+              "Listen to the customer carefully",
+              "Be polite and empathetic",
+              "Provide accurate information",
+            ],
+            overviewVideo: simulation.overview_video || "",
+            overview_video: simulation.overview_video || "",
+            voice_id: simulation.voice_id || "",
+            language: simulation.language || "English",
+            voice_speed: simulation.voice_speed || "Normal",
+            mood: simulation.mood || "Neutral",
+            simulation_completion_repetition:
+              simulation.simulation_completion_repetition || 3,
+            simulation_max_repetition:
+              simulation.simulation_max_repetition || 5,
+            final_simulation_score_criteria:
+              simulation.final_simulation_score_criteria || "Best of three",
+            simulation_scoring_metrics:
+              simulation.simulation_scoring_metrics || {
+                is_enabled: true,
+                keyword_score: 20,
+                click_score: 80,
+              },
+            sim_practice: simulation.sim_practice || {
+              is_unlimited: false,
+              pre_requisite_limit: 3,
+            },
+          });
+
+          // Initialize SimulationResponse with defaults for missing fields
+          setSimulationResponse({
+            id: simulation.id || simulation._id || id,
+            status: simulation.status || "draft",
+            prompt: simulation.prompt || "",
+          });
+
+          // Process script data if it exists
+          if (simulation.script && Array.isArray(simulation.script)) {
+            const transformedScript = simulation.script.map(
+              (scriptItem, index) => ({
+                id: `script-${Date.now()}-${index}`,
+                role: scriptItem.role === "assistant" ? "Trainee" : "Customer",
+                message: scriptItem.script_sentence || "",
+                keywords: scriptItem.keywords || [],
+              }),
+            );
+            setScriptData(transformedScript);
+
+            // If script exists and has items, consider it "locked" but still editable
+            if (transformedScript.length > 0) {
+              setIsScriptLocked(true);
+            }
+          } else {
+            // Set default empty script data
+            setScriptData([]);
+          }
+
+          // Enhanced processing of visual data (slides, images, sequences)
+          const processedImages = [];
+
+          // Check if we have slidesData
+          if (
+            simulation.slidesData &&
+            Array.isArray(simulation.slidesData) &&
+            simulation.slidesData.length > 0
+          ) {
+            console.log("Processing slidesData:", simulation.slidesData);
+
+            // Create a map of image data by id for quick lookup if images array exists
+            const imageDataMap = new Map();
+
+            if (responseData.images && Array.isArray(responseData.images)) {
+              responseData.images.forEach((img) => {
+                if (img.image_id && img.image_data) {
+                  imageDataMap.set(img.image_id, img.image_data);
+                }
+              });
+            }
+
+            // Process each slide
+            for (const slide of simulation.slidesData) {
+              if (!slide.imageId) continue;
+
+              // Initialize URL
+              let imageUrl = slide.imageUrl || "";
+
+              // Try to get image data from the map
+              const imageData = imageDataMap.get(slide.imageId);
+
+              // If we have image data and it's a URL or we need to process base64
+              if (imageData) {
+                if (!imageUrl || imageUrl === "/placeholder") {
+                  if (
+                    imageData.startsWith("/api/") ||
+                    imageData.startsWith("http")
+                  ) {
+                    // It's already a URL
+                    imageUrl = imageData;
+                  } else if (isBase64String(imageData)) {
+                    // Try to convert base64 to URL
+                    try {
+                      let base64Data = imageData;
+                      if (!base64Data.startsWith("data:")) {
+                        base64Data = `data:image/png;base64,${base64Data}`;
+                      }
+                      imageUrl = base64Data; // Just use the data URL directly
+                    } catch (e) {
+                      console.error("Error processing base64:", e);
+                    }
+                  }
+                }
+              }
+
+              // Make sure sequence is properly initialized
+              const sequence = slide.sequence || [];
+
+              // Add to processed images
+              processedImages.push({
+                id: slide.imageId,
+                url: imageUrl,
+                name: slide.imageName || `Image ${slide.imageId}`,
+                sequence: sequence,
+                file: undefined, // No file reference for loaded images
+              });
+            }
+          }
+          // If no slidesData but we have images array
+          else if (responseData.images && Array.isArray(responseData.images)) {
+            console.log("Processing just images array:", responseData.images);
+
+            // Process each image
+            for (let index = 0; index < responseData.images.length; index++) {
+              const image = responseData.images[index];
+              if (!image.image_id) continue;
+
+              let imageUrl = "";
+
+              // Process image data
+              if (image.image_data) {
+                if (
+                  image.image_data.startsWith("/api/") ||
+                  image.image_data.startsWith("http")
+                ) {
+                  imageUrl = image.image_data;
+                } else if (isBase64String(image.image_data)) {
+                  try {
+                    let base64Data = image.image_data;
+                    if (!base64Data.startsWith("data:")) {
+                      base64Data = `data:image/png;base64,${base64Data}`;
+                    }
+                    imageUrl = base64Data; // Just use the data URL directly
+                  } catch (e) {
+                    console.error("Error processing base64:", e);
+                  }
+                }
+              }
+
+              // Add to processed images
+              processedImages.push({
+                id: image.image_id,
+                url: imageUrl,
+                name: `Image ${index + 1}`,
+                sequence: [], // Empty sequence
+                file: undefined,
+              });
+            }
+          }
+
+          // Update visual images state
+          if (processedImages.length > 0) {
+            console.log("Setting processed visual images:", processedImages);
+            setVisualImages(processedImages);
+          } else {
+            setVisualImages([]);
+          }
+
+          // If status is published, set isPublished
+          if (simulation.status === "published") {
+            setIsPublished(true);
+          }
+        } else {
+          // No error - just log that no data was returned and proceed with defaults
+          console.warn("API returned no data, using defaults");
+        }
+      } catch (error) {
+        console.error("Error loading simulation:", error);
+        // Only show error for complete API failure, not for missing fields
+        setError(
+          "Failed to connect to the server. Please check your connection and try again.",
+        );
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadSimulationData();
+  }, [id]);
 
   // Check different types of visual simulations
+  const simulationType = loadedSimulation?.simulationType || "audio";
   const isVisualAudioOrChat =
-    simulationData?.simulationType === "visual-audio" ||
-    simulationData?.simulationType === "visual-chat";
-  const isVisualOnly = simulationData?.simulationType === "visual";
+    simulationType === "visual-audio" || simulationType === "visual-chat";
+  const isVisualOnly = simulationType === "visual";
   const isVisualType = isVisualAudioOrChat || isVisualOnly;
 
   // Update enabled tabs based on state changes and simulation type
@@ -137,7 +514,7 @@ const GenerateScriptContent = () => {
         return {
           script: false, // Disable script tab for visual type
           visuals: true, // Always enabled for visual type
-          settings: visualImages.length > 0 || isLoading,
+          settings: true, // Always enable settings tab
           preview: isPublished,
         };
       }
@@ -145,8 +522,8 @@ const GenerateScriptContent = () => {
       else if (isVisualAudioOrChat) {
         return {
           script: true,
-          visuals: isScriptLocked, // Enable visuals tab when script is locked
-          settings: (isScriptLocked && visualImages.length > 0) || isLoading,
+          visuals: true, // Always enabled for visual types
+          settings: true, // Always enable settings tab
           preview: isPublished,
         };
       }
@@ -155,7 +532,7 @@ const GenerateScriptContent = () => {
         return {
           script: true,
           visuals: false, // No visuals tab
-          settings: isScriptLocked || isLoading,
+          settings: true, // Always enable settings tab
           preview: isPublished,
         };
       }
@@ -227,6 +604,8 @@ const GenerateScriptContent = () => {
 
   // Modified to handle different simulation types and move to settings tab before processing
   const handleContinue = async () => {
+    if (!id || !loadedSimulation) return;
+
     // For visual type, we don't need script data
     if (isVisualOnly) {
       // Move directly to visuals tab, which is index 0 for visual type
@@ -234,12 +613,7 @@ const GenerateScriptContent = () => {
       return;
     }
 
-    if (!simulationData || (!isVisualOnly && !scriptData.length)) return;
-
-    if (!simulationData.division || !simulationData.department) {
-      console.error("Missing required fields: division or department");
-      return;
-    }
+    if (!loadedSimulation || (!isVisualOnly && !scriptData.length)) return;
 
     // First, lock the script
     setIsScriptLocked(true);
@@ -270,35 +644,61 @@ const GenerateScriptContent = () => {
         keywords: msg.keywords || [],
       }));
 
-      const payload: CreateSimulationPayload = {
+      // Update simulation with script - using the correct field names for the API
+      const response = await axios.put(`/api/simulations/${id}/update`, {
         user_id: "user123", // This should come from your auth context
-        name: simulationData.name,
-        division_id: simulationData.division || "",
-        department_id: simulationData.department || "",
-        type: simulationData.simulationType.toLowerCase(),
+        sim_name: loadedSimulation.name, // Changed 'name' to 'sim_name' to match API
+        division_id: loadedSimulation.division || "",
+        department_id: loadedSimulation.department || "",
+        sim_type: loadedSimulation.simulationType.toLowerCase(), // Changed 'type' to 'sim_type' to match API
         script: formattedScript,
-        tags: simulationData.tags,
-      };
+        tags: loadedSimulation.tags,
+      });
 
-      const response = await createSimulation(payload);
+      console.log("API update request sent with:", {
+        sim_name: loadedSimulation.name,
+        sim_type: loadedSimulation.simulationType.toLowerCase(),
+      });
 
-      if (response.status === "success") {
+      if (response.data) {
+        // Extract data from response, including prompt if available
+        // This handles both response formats (direct status or document wrapper)
+        const responseData = response.data.document || response.data;
+
+        // Check if we have a simulation object in the response
+        const simulationObj = responseData.simulation || responseData;
+
+        const responseStatus = simulationObj.status || "draft";
+        const responseId = simulationObj.id || simulationObj._id || id;
+        const responsePrompt = simulationObj.prompt || "";
+
+        // Log the prompt received from API response
+        console.log("Received prompt from API:", responsePrompt);
+        console.log("Full API response:", response.data);
+
+        // Update simulation response with all available data
         setSimulationResponse({
-          id: response.id,
-          status: response.status,
-          prompt: response.prompt,
+          id: responseId,
+          status: responseStatus,
+          prompt: responsePrompt,
         });
+
+        console.log(
+          "Updated simulationResponse state with prompt:",
+          responsePrompt,
+        );
       }
     } catch (error) {
       console.error("Error handling continue:", error);
+      setError("Failed to update simulation. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Function to create simulation with slides (called from VisualsTab)
-  const createSimulationWithSlides = async (formData: FormData) => {
-    if (!simulationData) return null;
+  // Function to update simulation with slides (called from VisualsTab)
+  const updateSimulationWithSlides = async (formData: FormData) => {
+    if (!id || !loadedSimulation) return null;
 
     // For visual type, we don't need script data
     if (!isVisualOnly && !scriptData.length) return null;
@@ -309,6 +709,18 @@ const GenerateScriptContent = () => {
 
     setIsLoading(true);
     try {
+      // Log what's in the FormData for debugging
+      console.log(
+        "FormData entries:",
+        [...formData.entries()].map((entry) => {
+          // Don't log file contents, just their presence
+          if (entry[1] instanceof File) {
+            return [entry[0], `File: ${(entry[1] as File).name}`];
+          }
+          return entry;
+        }),
+      );
+
       // Transform script data to match API format if not visual-only type
       const formattedScript = !isVisualOnly
         ? scriptData.map((msg) => ({
@@ -323,33 +735,61 @@ const GenerateScriptContent = () => {
 
       // Add script data and other required fields to formData
       formData.append("user_id", "user123"); // This should come from your auth context
-      formData.append("name", simulationData.name);
-      formData.append("division_id", simulationData.division || "");
-      formData.append("department_id", simulationData.department || "");
-      formData.append("type", simulationData.simulationType.toLowerCase());
+      formData.append("sim_name", loadedSimulation.name); // Changed to sim_name
+      formData.append("division_id", loadedSimulation.division || "");
+      formData.append("department_id", loadedSimulation.department || "");
+      formData.append(
+        "sim_type",
+        loadedSimulation.simulationType.toLowerCase(),
+      ); // Changed to sim_type
 
       // Only add script for non-visual types
       if (!isVisualOnly) {
         formData.append("script", JSON.stringify(formattedScript));
       }
 
-      formData.append("tags", JSON.stringify(simulationData.tags));
+      formData.append("tags", JSON.stringify(loadedSimulation.tags));
 
-      // Use a modified create simulation function that accepts FormData
-      const response = await createSimulationWithFormData(formData);
+      console.log("Sent visual update with fields:", {
+        sim_name: loadedSimulation.name,
+        sim_type: loadedSimulation.simulationType.toLowerCase(),
+      });
 
-      if (response.status === "success") {
+      // Use update API with the simulation ID
+      const response = await updateSimulationWithFormData(id, formData);
+
+      // Handle response with or without document wrapper
+      if (response) {
+        const responseData = response.document || response;
+
+        // Check if we have a simulation object in the response
+        const simulationObj = responseData.simulation || responseData;
+
+        const responseStatus = simulationObj.status || "draft";
+        const responseId = simulationObj.id || simulationObj._id || id;
+        const responsePrompt = simulationObj.prompt || "";
+
+        // Log the prompt received from API response
+        console.log("Received prompt from visual update API:", responsePrompt);
+        console.log("Full visual update API response:", response);
+
+        // Update simulation response with all available data
         setSimulationResponse({
-          id: response.id,
-          status: response.status,
-          prompt: response.prompt,
+          id: responseId,
+          status: responseStatus,
+          prompt: responsePrompt,
         });
 
+        console.log(
+          "Updated simulationResponse state with prompt from slides update:",
+          responsePrompt,
+        );
         return response;
       }
       return null;
     } catch (error) {
-      console.error("Error creating simulation:", error);
+      console.error("Error updating simulation:", error);
+      setError("Failed to update simulation with slides. Please try again.");
       return null;
     } finally {
       setIsLoading(false);
@@ -358,6 +798,40 @@ const GenerateScriptContent = () => {
 
   // Determine which component to render based on tab value and simulation type
   const renderTabContent = () => {
+    if (initialLoading) {
+      return (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "400px",
+          }}
+        >
+          <CircularProgress />
+          <Typography sx={{ ml: 2 }}>Loading simulation data...</Typography>
+        </Box>
+      );
+    }
+
+    // Only show error if it's a critical failure
+    if (error) {
+      return (
+        <Box sx={{ p: 4 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+          <Button
+            variant="contained"
+            onClick={() => navigate("/manage-simulations")}
+            sx={{ mt: 2 }}
+          >
+            Back to Manage Simulations
+          </Button>
+        </Box>
+      );
+    }
+
     // For visual type, the first tab is Visuals
     if (isVisualOnly) {
       if (tabValue === 0) {
@@ -365,8 +839,8 @@ const GenerateScriptContent = () => {
           <VisualsTab
             images={visualImages}
             onImagesUpdate={setVisualImages}
-            createSimulation={createSimulationWithSlides}
-            simulationType={simulationData?.simulationType}
+            createSimulation={updateSimulationWithSlides}
+            simulationType={loadedSimulation?.simulationType}
             onComplete={() => {
               if (visualImages.length > 0) {
                 // Move to settings tab
@@ -382,10 +856,10 @@ const GenerateScriptContent = () => {
         // Settings tab for visual type
         return (
           <SettingsTab
-            simulationId={simulationResponse?.id}
-            prompt={simulationResponse?.prompt}
-            simulationType={simulationData?.simulationType}
-            simulationData={simulationData}
+            simulationId={id}
+            prompt={simulationResponse?.prompt || ""} // Ensure we pass the prompt from the simulationResponse
+            simulationType={loadedSimulation?.simulationType}
+            simulationData={loadedSimulation}
             isLoading={isLoading}
             onPublish={() => {
               setIsPublished(true);
@@ -395,14 +869,15 @@ const GenerateScriptContent = () => {
               );
               setTabValue(previewTabIndex);
             }}
+            script={scriptData}
           />
         );
       } else if (tabValue === 2) {
         // Preview tab for visual type
         return (
           <PreviewTab
-            simulationId={simulationResponse?.id || ""}
-            simulationType={simulationData?.simulationType}
+            simulationId={id || ""}
+            simulationType={loadedSimulation?.simulationType}
           />
         );
       }
@@ -411,7 +886,7 @@ const GenerateScriptContent = () => {
       if (tabValue === 0) {
         return (
           <ScriptTab
-            simulationType={simulationData?.simulationType}
+            simulationType={loadedSimulation?.simulationType}
             isLocked={isScriptLocked}
           />
         );
@@ -420,8 +895,8 @@ const GenerateScriptContent = () => {
           <VisualsTab
             images={visualImages}
             onImagesUpdate={setVisualImages}
-            createSimulation={createSimulationWithSlides}
-            simulationType={simulationData?.simulationType}
+            createSimulation={updateSimulationWithSlides}
+            simulationType={loadedSimulation?.simulationType}
             onComplete={() => {
               if (visualImages.length > 0) {
                 // Move to settings tab
@@ -436,10 +911,10 @@ const GenerateScriptContent = () => {
       } else if (tabValue === 2) {
         return (
           <SettingsTab
-            simulationId={simulationResponse?.id}
-            prompt={simulationResponse?.prompt}
-            simulationType={simulationData?.simulationType}
-            simulationData={simulationData}
+            simulationId={id}
+            prompt={simulationResponse?.prompt || ""} // Ensure we pass the prompt from the simulationResponse
+            simulationType={loadedSimulation?.simulationType}
+            simulationData={loadedSimulation}
             isLoading={isLoading}
             onPublish={() => {
               setIsPublished(true);
@@ -449,13 +924,14 @@ const GenerateScriptContent = () => {
               );
               setTabValue(previewTabIndex);
             }}
+            script={scriptData}
           />
         );
       } else if (tabValue === 3) {
         return (
           <PreviewTab
-            simulationId={simulationResponse?.id || ""}
-            simulationType={simulationData?.simulationType}
+            simulationId={id || ""}
+            simulationType={loadedSimulation?.simulationType}
           />
         );
       }
@@ -464,17 +940,17 @@ const GenerateScriptContent = () => {
       if (tabValue === 0) {
         return (
           <ScriptTab
-            simulationType={simulationData?.simulationType}
+            simulationType={loadedSimulation?.simulationType}
             isLocked={isScriptLocked}
           />
         );
       } else if (tabValue === 1) {
         return (
           <SettingsTab
-            simulationId={simulationResponse?.id}
-            prompt={simulationResponse?.prompt}
-            simulationType={simulationData?.simulationType}
-            simulationData={simulationData}
+            simulationId={id}
+            prompt={simulationResponse?.prompt || ""} // Ensure we pass the prompt from the simulationResponse
+            simulationType={loadedSimulation?.simulationType}
+            simulationData={loadedSimulation}
             isLoading={isLoading}
             onPublish={() => {
               setIsPublished(true);
@@ -484,13 +960,14 @@ const GenerateScriptContent = () => {
               );
               setTabValue(previewTabIndex);
             }}
+            script={scriptData}
           />
         );
       } else if (tabValue === 2) {
         return (
           <PreviewTab
-            simulationId={simulationResponse?.id || ""}
-            simulationType={simulationData?.simulationType}
+            simulationId={id || ""}
+            simulationType={loadedSimulation?.simulationType}
           />
         );
       }
@@ -498,6 +975,23 @@ const GenerateScriptContent = () => {
 
     return null;
   };
+
+  if (!id) {
+    return (
+      <Box sx={{ p: 4 }}>
+        <Alert severity="error">
+          No simulation ID provided. Please select a simulation to edit.
+        </Alert>
+        <Button
+          variant="contained"
+          onClick={() => navigate("/manage-simulations")}
+          sx={{ mt: 2 }}
+        >
+          Back to Manage Simulations
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ bgcolor: "#F9FAFB", minHeight: "calc(100vh - 64px)" }}>
@@ -531,7 +1025,7 @@ const GenerateScriptContent = () => {
             }}
           >
             <Typography variant="body1" fontWeight={600} color="#1A3CB8">
-              {simulationData?.name || "New Simulation"}
+              {loadedSimulation?.name || "Loading..."}
             </Typography>
           </Box>
         </Stack>
@@ -550,8 +1044,9 @@ const GenerateScriptContent = () => {
             }}
           >
             <Typography variant="body2" fontWeight={600} color="#444CE7">
-              {simulationData?.simulationType.replace("-", " ").toUpperCase() ||
-                ""}
+              {loadedSimulation?.simulationType
+                .replace("-", " ")
+                .toUpperCase() || ""}
             </Typography>
           </Box>
         </Stack>
@@ -594,26 +1089,24 @@ const GenerateScriptContent = () => {
           )}
         </Stack>
 
-        {scriptData.length > 0 &&
-          tabValue === 0 &&
-          !isVisualOnly &&
-          !isScriptLocked && (
-            <Button
-              variant="contained"
-              onClick={async () => {
-                await handleContinue();
-              }}
-              disabled={isLoading}
-              sx={{
-                bgcolor: "#444CE7",
-                "&:hover": { bgcolor: "#3538CD" },
-                borderRadius: 2,
-                px: 4,
-              }}
-            >
-              {isLoading ? "Processing..." : "Save and Continue"}
-            </Button>
-          )}
+        {/* Actions for when we have script data */}
+        {scriptData.length > 0 && tabValue === 0 && !isVisualOnly && (
+          <Button
+            variant="contained"
+            onClick={async () => {
+              await handleContinue();
+            }}
+            disabled={isLoading}
+            sx={{
+              bgcolor: "#444CE7",
+              "&:hover": { bgcolor: "#3538CD" },
+              borderRadius: 2,
+              px: 4,
+            }}
+          >
+            {isLoading ? "Processing..." : "Save and Continue"}
+          </Button>
+        )}
       </Stack>
 
       <Box sx={{ px: 4 }}>

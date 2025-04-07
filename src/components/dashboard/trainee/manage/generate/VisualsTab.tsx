@@ -26,6 +26,8 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -35,6 +37,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Message as MessageIcon,
   Info as InfoIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 
 import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
@@ -49,7 +52,16 @@ interface Hotspot {
   text?: string;
   hotkey?: string;
   hotspotType: string;
+  coordinates?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  settings?: any;
+  options?: string[];
 }
+
 interface ScriptMessage {
   id: string;
   text: string;
@@ -57,6 +69,7 @@ interface ScriptMessage {
   visualId: string;
   order: number;
 }
+
 interface VisualImage {
   id: string;
   url: string; // Local URL for display
@@ -69,7 +82,7 @@ interface VisualsTabProps {
   images: VisualImage[];
   onImagesUpdate?: (images: VisualImage[]) => void;
   onComplete?: () => void;
-  createSimulation?: (slides: any[]) => Promise<any>;
+  createSimulation?: (formData: FormData) => Promise<any>;
   simulationType?: string;
 }
 
@@ -110,6 +123,9 @@ export default function VisualsTab({
     useState<VisualImage[]>(initializedImages);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // We'll keep the sequence panel default to collapsed
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
@@ -129,12 +145,73 @@ export default function VisualsTab({
   // Check if this is pure "visual" type (no script)
   const isPureVisual = simulationType === "visual";
 
+  // Set selected image to first image if available and none selected
+  useEffect(() => {
+    if (visualImages.length > 0 && !selectedImageId) {
+      setSelectedImageId(visualImages[0].id);
+    }
+  }, [visualImages, selectedImageId]);
+
+  // Update container width when ref is available
+  useEffect(() => {
+    if (mainContentRef.current) {
+      const updateContainerWidth = () => {
+        setContainerWidth(mainContentRef.current?.clientWidth || 0);
+      };
+
+      updateContainerWidth();
+      window.addEventListener("resize", updateContainerWidth);
+
+      return () => {
+        window.removeEventListener("resize", updateContainerWidth);
+      };
+    }
+  }, [mainContentRef]);
+
   // Update parent when visualImages changes
   useEffect(() => {
     if (onImagesUpdate) {
       onImagesUpdate(visualImages);
     }
   }, [visualImages, onImagesUpdate]);
+
+  // Update visualImages when images prop changes
+  useEffect(() => {
+    console.log("Images prop changed:", images);
+    if (images && images.length > 0) {
+      // Initialize sequences properly for each image
+      const processedImages = images.map((img) => {
+        // Make sure sequence items are properly typed
+        const processedSequence = (img.sequence || []).map((item) => {
+          // If this is a hotspot, ensure it has all required properties
+          if (item.type === "hotspot" && item.content) {
+            const hotspotContent = item.content as Hotspot;
+            // Ensure coordinates are numbers
+            if (hotspotContent.coordinates) {
+              hotspotContent.coordinates = {
+                x: Number(hotspotContent.coordinates.x || 0),
+                y: Number(hotspotContent.coordinates.y || 0),
+                width: Number(hotspotContent.coordinates.width || 0),
+                height: Number(hotspotContent.coordinates.height || 0),
+              };
+            }
+            return {
+              ...item,
+              content: hotspotContent,
+            };
+          }
+          return item;
+        });
+
+        return {
+          ...img,
+          sequence: processedSequence,
+        };
+      });
+
+      setVisualImages(processedImages);
+    }
+  }, [images]);
 
   /** Helper: add a hotspot to the selected image's sequence. */
   const addHotspotToSequence = (imageId: string, hotspot: Hotspot) => {
@@ -185,14 +262,21 @@ export default function VisualsTab({
 
   // For the "Add Script Message" menu
   // Filter out messages that have already been assigned to a visual
+  // FIX: Added null checks and safe type checking to prevent errors
   const unassignedMessages = scriptData.filter((msg) => {
-    return !visualImages.some((img) =>
-      img.sequence.some(
-        (item) =>
-          item.type === "message" &&
-          (item.content as ScriptMessage).id === msg.id,
-      ),
-    );
+    if (!msg || !msg.id) return false;
+
+    return !visualImages.some((img) => {
+      if (!img || !img.sequence) return false;
+
+      return img.sequence.some((item) => {
+        if (!item || item.type !== "message" || !item.content) return false;
+
+        // Safely access the ID with type checking
+        const messageContent = item.content as Partial<ScriptMessage>;
+        return messageContent.id === msg.id;
+      });
+    });
   });
 
   const handleOpenScriptMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -304,67 +388,69 @@ export default function VisualsTab({
   };
 
   const handleSaveAndContinue = async () => {
-    if (visualImages.length === 0) return;
+    if (visualImages.length === 0) {
+      setError("Please add at least one image before continuing");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
 
     // Structure slides data as JSON
     const slidesData = visualImages.map((img) => {
       // Extract all necessary data from each image
+      const sequence = img.sequence.map((item) => {
+        if (item.type === "hotspot") {
+          const hotspot = item.content as Hotspot;
+
+          console.log("Processing hotspot coordinates:", hotspot.coordinates);
+
+          // Start with the base hotspot data structure
+          const hotspotData: any = {
+            type: "hotspot",
+            id: hotspot.id,
+            name: hotspot.name,
+            hotspotType: hotspot.hotspotType,
+            coordinates: hotspot.coordinates
+              ? {
+                  // Ensure we explicitly access and use numbers for each coordinate
+                  x: Number(hotspot.coordinates.x || 0),
+                  y: Number(hotspot.coordinates.y || 0),
+                  width: Number(hotspot.coordinates.width || 0),
+                  height: Number(hotspot.coordinates.height || 0),
+                }
+              : undefined,
+            settings: hotspot.settings || {},
+          };
+
+          // Log the final coordinates for debugging
+          console.log(
+            "Final hotspotData coordinates:",
+            hotspotData.coordinates,
+          );
+
+          // Add options array for dropdown type
+          if (hotspot.hotspotType === "dropdown" && hotspot.options) {
+            hotspotData.options = hotspot.options;
+          }
+
+          return hotspotData;
+        } else {
+          const message = item.content as ScriptMessage;
+          return {
+            type: "message",
+            id: message.id,
+            role: message.role,
+            text: message.text,
+          };
+        }
+      });
+
       return {
         imageId: img.id,
         imageName: img.name,
-        // Include the full ordered sequence with both hotspots and messages
-        sequence: img.sequence.map((item) => {
-          if (item.type === "hotspot") {
-            const hotspot = item.content as Hotspot;
-
-            console.log("Processing hotspot coordinates:", hotspot.coordinates);
-
-            // Start with the base hotspot data structure
-            const hotspotData: any = {
-              type: "hotspot",
-              id: hotspot.id,
-              name: hotspot.name,
-              hotspotType: hotspot.hotspotType,
-              coordinates: {
-                // Ensure we explicitly access and use numbers for each coordinate
-                x: Number(hotspot.coordinates?.x || 0),
-                y: Number(hotspot.coordinates?.y || 0),
-                width: Number(hotspot.coordinates?.width || 0),
-                height: Number(hotspot.coordinates?.height || 0),
-              },
-              settings: hotspot.settings || {},
-            };
-
-            // Log the final coordinates for debugging
-            console.log(
-              "Final hotspotData coordinates:",
-              hotspotData.coordinates,
-            );
-
-            // Add options array for dropdown type
-            if (hotspot.hotspotType === "dropdown" && hotspot.options) {
-              hotspotData.options = hotspot.options;
-            }
-
-            // Set default settings based on hotspot type if not provided
-            if (
-              !hotspot.settings ||
-              Object.keys(hotspot.settings).length === 0
-            ) {
-              // [settings initialization code...]
-            }
-
-            return hotspotData;
-          } else {
-            const message = item.content as ScriptMessage;
-            return {
-              type: "message",
-              id: message.id,
-              role: message.role,
-              text: message.text,
-            };
-          }
-        }),
+        imageUrl: img.url,
+        sequence,
       };
     });
 
@@ -381,24 +467,35 @@ export default function VisualsTab({
       }
     });
 
-    // Call create simulation for all visual-related types
-    if (createSimulation) {
-      console.log(`Creating simulation for ${simulationType} type`);
-      // Let the parent component handle the navigation when createSimulation is called
-      const response = await createSimulation(formData);
-      if (response && response.status === "success") {
-        console.log("Simulation created with slides:", response);
+    try {
+      // Call create/update simulation for all visual-related types
+      if (createSimulation) {
+        console.log(
+          `Updating simulation with slides for ${simulationType} type`,
+        );
+        // Let the parent component handle the navigation when createSimulation is called
+        const response = await createSimulation(formData);
+        if (response && response.status === "success") {
+          console.log("Simulation updated with slides:", response);
+
+          // Call onComplete to move to the next step
+          if (onComplete) {
+            onComplete();
+          }
+        } else {
+          setError("Failed to update simulation. Please try again.");
+        }
+      } else {
+        setError("No update function provided");
       }
-    }
-
-    // Update parent with latest images data
-    if (onImagesUpdate) {
-      onImagesUpdate(visualImages);
-    }
-
-    // Call onComplete to move to the next step
-    if (onComplete) {
-      onComplete();
+    } catch (error) {
+      console.error("Error updating simulation:", error);
+      setError(
+        "An error occurred while updating the simulation. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+      setIsEditing(false); // Reset editing mode after saving
     }
   };
 
@@ -524,6 +621,7 @@ export default function VisualsTab({
 
       if (hotspotItem) {
         setEditingHotspot(hotspotItem.content as Hotspot);
+        setIsEditing(true);
       }
     } else {
       // Handle message editing if needed
@@ -531,8 +629,20 @@ export default function VisualsTab({
     }
   };
 
+  const handleToggleEditMode = () => {
+    setIsEditing(!isEditing);
+    setEditingHotspot(null);
+  };
+
   return (
     <Stack spacing={4}>
+      {/* Error alert */}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Top row: "Add Script Message" + "Save and Continue" */}
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         {isPureVisual ? (
@@ -550,7 +660,11 @@ export default function VisualsTab({
           <Button
             variant="contained"
             startIcon={<MessageIcon />}
-            disabled={!selectedImageId || scriptData.length === 0}
+            disabled={
+              !selectedImageId ||
+              !Array.isArray(scriptData) ||
+              scriptData.length === 0
+            }
             onClick={(e) => {
               if (!selectedImageId) return;
               setScriptMenuAnchor(e.currentTarget);
@@ -561,19 +675,39 @@ export default function VisualsTab({
           </Button>
         )}
 
-        <Button
-          variant="contained"
-          onClick={handleSaveAndContinue}
-          disabled={visualImages.length === 0}
-          sx={{
-            bgcolor: "#444CE7",
-            "&:hover": { bgcolor: "#3538CD" },
-            borderRadius: 2,
-            px: 4,
-          }}
-        >
-          Save and Continue
-        </Button>
+        {/* Actions for when we have images */}
+        {visualImages.length > 0 && (
+          <Stack direction="row" spacing={2}>
+            {/* Toggle Edit Mode button */}
+            <Button
+              variant="outlined"
+              startIcon={isEditing ? null : <EditIcon />}
+              onClick={handleToggleEditMode}
+              sx={{ mr: 2 }}
+            >
+              {isEditing ? "Cancel Editing" : "Edit Visuals"}
+            </Button>
+
+            {/* Always show Save and Continue */}
+            <Button
+              variant="contained"
+              onClick={handleSaveAndContinue}
+              disabled={visualImages.length === 0 || isSubmitting}
+              sx={{
+                bgcolor: "#444CE7",
+                "&:hover": { bgcolor: "#3538CD" },
+                borderRadius: 2,
+                px: 4,
+              }}
+            >
+              {isSubmitting ? (
+                <CircularProgress size={24} sx={{ color: "white" }} />
+              ) : (
+                "Save and Continue"
+              )}
+            </Button>
+          </Stack>
+        )}
 
         {/* Menu listing unassigned script messages - only for non-visual type */}
         {!isPureVisual && (
@@ -588,33 +722,35 @@ export default function VisualsTab({
               },
             }}
           >
-            {unassignedMessages.length === 0 && (
+            {!Array.isArray(unassignedMessages) ||
+            unassignedMessages.length === 0 ? (
               <MenuItem disabled>No unassigned messages left</MenuItem>
+            ) : (
+              unassignedMessages.map((msg) => (
+                <MenuItem
+                  key={msg.id}
+                  onClick={() =>
+                    handleAddMessage({
+                      id: msg.id,
+                      role: msg.role,
+                      message: msg.message,
+                    })
+                  }
+                  sx={{
+                    py: 2,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Stack spacing={1} sx={{ width: "100%" }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {msg.role}
+                    </Typography>
+                    <Typography variant="body2">{msg.message}</Typography>
+                  </Stack>
+                </MenuItem>
+              ))
             )}
-            {unassignedMessages.map((msg) => (
-              <MenuItem
-                key={msg.id}
-                onClick={() =>
-                  handleAddMessage({
-                    id: msg.id,
-                    role: msg.role,
-                    message: msg.message,
-                  })
-                }
-                sx={{
-                  py: 2,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Stack spacing={1} sx={{ width: "100%" }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {msg.role}
-                  </Typography>
-                  <Typography variant="body2">{msg.message}</Typography>
-                </Stack>
-              </MenuItem>
-            ))}
           </Menu>
         )}
       </Stack>

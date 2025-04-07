@@ -17,6 +17,7 @@ import {
 import DashboardContent from '../DashboardContent';
 import ChatSimulationPage from './simulation/ChatSimulationPage';
 import AudioSimulationPage from './simulation/AudioSimulationPage';
+import VisualAudioSimulationPage from './simulation/VisualAudioSimulationPage';
 import { fetchSimulationById } from '../../../services/simulations';
 import type { Simulation } from '../../../types/training';
 import SimulationStartPage from './simulation/SimulationStartPage';
@@ -80,13 +81,26 @@ const SimulationAttemptPage = () => {
   }
 
   if (showStartPage) {
-    const SimulationComponent = simulation.sim_type === 'chat' ? ChatSimulationPage : AudioSimulationPage;
+    let SimulationComponent;
+
+    console.log('Simulation Type:', simulation.simulation.sim_type)
+    console.log('Simulation Data:', simulation)
+
+    // Determine which simulation component to use based on sim_type
+    if (simulation.simulation.sim_type === 'chat') {
+      SimulationComponent = ChatSimulationPage;
+    } else if (simulation.simulation.sim_type === 'visual-audio') {
+      SimulationComponent = VisualAudioSimulationPage;
+    } else {
+      SimulationComponent = AudioSimulationPage;
+    }
+
     return (
       <SimulationComponent
-        simulationId={simulation.id}
-        simulationName={simulation.sim_name}
+        simulationId={simulation.simulation.id}
+        simulationName={simulation.simulation.sim_name}
         level={selectedLevel}
-        simType={simulation.sim_type}
+        simType={simulation.simulation.sim_type}
         attemptType={selectedAttempt}
         onBackToList={() => setShowStartPage(false)}
       />

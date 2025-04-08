@@ -26,6 +26,8 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  CircularProgress,
+  Alert,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -35,6 +37,7 @@ import {
   ChevronRight as ChevronRightIcon,
   Message as MessageIcon,
   Info as InfoIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
 
 import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
@@ -49,7 +52,16 @@ interface Hotspot {
   text?: string;
   hotkey?: string;
   hotspotType: string;
+  coordinates?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  settings?: any;
+  options?: string[];
 }
+
 interface ScriptMessage {
   id: string;
   text: string;
@@ -57,6 +69,7 @@ interface ScriptMessage {
   visualId: string;
   order: number;
 }
+
 interface VisualImage {
   id: string;
   url: string; // Local URL for display
@@ -69,7 +82,7 @@ interface VisualsTabProps {
   images: VisualImage[];
   onImagesUpdate?: (images: VisualImage[]) => void;
   onComplete?: () => void;
-  createSimulation?: (slides: any[]) => Promise<any>;
+  createSimulation?: (formData: FormData) => Promise<any>;
   simulationType?: string;
 }
 
@@ -91,6 +104,174 @@ const DropZone = styled(Box)(({ theme }) => ({
   },
 }));
 
+/**
+ * Attempts to detect the image type from binary data
+ * Returns the MIME type or defaults to 'image/png'
+ */
+const detectImageType = (binaryData: string): string => {
+  // Check for JPEG header (FF D8 FF)
+  if (
+    binaryData.length >= 3 &&
+    binaryData.charCodeAt(0) === 0xff &&
+    binaryData.charCodeAt(1) === 0xd8 &&
+    binaryData.charCodeAt(2) === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  // Check for PNG header (89 50 4E 47)
+  if (
+    binaryData.length >= 4 &&
+    binaryData.charCodeAt(0) === 0x89 &&
+    binaryData.charCodeAt(1) === 0x50 &&
+    binaryData.charCodeAt(2) === 0x4e &&
+    binaryData.charCodeAt(3) === 0x47
+  ) {
+    return "image/png";
+  }
+
+  // Default to PNG if can't detect
+  return "image/png";
+};
+
+/**
+ * Properly converts various image data formats to displayable URLs
+ * This improved version handles both PNG and JPEG binary data
+ * and aligns with how preview components handle images
+ */
+const processImageUrl = (imageData: string): string => {
+  if (!imageData) {
+    console.log("Empty image data");
+    return "";
+  }
+
+  // 1. Handle data URLs that might contain encoded blob URLs (this is our problem case)
+  if (imageData.startsWith("data:image")) {
+    const parts = imageData.split(",");
+    if (parts.length > 1) {
+      try {
+        const decoded = atob(parts[1]);
+        if (
+          decoded.startsWith("blob:") ||
+          decoded.startsWith("http:") ||
+          decoded.startsWith("https:")
+        ) {
+          console.log(
+            "Decoded blob URL from base64:",
+            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : ""),
+          );
+          return decoded; // Return the decoded URL
+        }
+      } catch (e) {
+        // Not base64 or couldn't decode, continue with other checks
+      }
+    }
+    return imageData; // Return the original data URL
+  }
+
+  // 2. Direct URLs (blob or http/https)
+  if (
+    imageData.startsWith("blob:") ||
+    imageData.startsWith("http:") ||
+    imageData.startsWith("https:") ||
+    imageData.startsWith("/api/")
+  ) {
+    return imageData;
+  }
+
+  // 3. Raw base64 data (not wrapped in data:image)
+  if (/^[A-Za-z0-9+/=]+$/.test(imageData.trim()) && imageData.length > 20) {
+    // Try to detect if this is JPEG or PNG base64 data
+    try {
+      const decoded = atob(imageData);
+      const mimeType = detectImageType(decoded);
+      return `data:${mimeType};base64,${imageData}`;
+    } catch (e) {
+      // If we can't decode it, default to PNG
+      return `data:image/png;base64,${imageData}`;
+    }
+  }
+
+  // 4. Binary data handling - like preview components would do
+  try {
+    // Try to detect image type from the binary data
+    const mimeType = detectImageType(imageData);
+
+    // For binary data direct output like preview components
+    return imageData;
+  } catch (e) {
+    console.error("Failed to process binary image data");
+    return "/api/placeholder/400/320";
+  }
+};
+
+// Debug utility to help identify image data issues
+const debugImageData = (data: string, label: string = "Image data") => {
+  if (!data) {
+    console.log(`${label}: [empty]`);
+    return;
+  }
+
+  // Show truncated data for long strings
+  if (data.length > 100) {
+    console.log(`${label} (${data.length} bytes): ${data.substring(0, 50)}...`);
+  } else {
+    console.log(`${label}: ${data}`);
+  }
+
+  // Check image type
+  if (data.length > 2) {
+    try {
+      const mimeType = detectImageType(data);
+      console.log(`${label} detected type: ${mimeType}`);
+    } catch (e) {
+      // Ignore errors in debug function
+    }
+  }
+
+  // Try to determine the type of data
+  if (data.startsWith("data:")) {
+    console.log(`${label} type: Data URL`);
+
+    // Check if it might be an encoded URL
+    const parts = data.split(",");
+    if (parts.length > 1) {
+      try {
+        const decoded = atob(parts[1]);
+        if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
+          console.log(
+            `${label} contains encoded URL: ${decoded.substring(0, 50)}...`,
+          );
+        }
+      } catch (e) {
+        // Not valid base64
+      }
+    }
+  } else if (data.startsWith("blob:")) {
+    console.log(`${label} type: Blob URL`);
+  } else if (data.startsWith("/api/") || data.startsWith("http")) {
+    console.log(`${label} type: External URL`);
+  } else if (/^[A-Za-z0-9+/=]+$/.test(data.trim())) {
+    // Try to decode it and see what it might be
+    try {
+      const decoded = atob(data);
+      if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
+        console.log(`${label} type: Base64-encoded URL!`);
+        console.log(`${label} decoded: ${decoded.substring(0, 50)}...`);
+      } else {
+        console.log(`${label} type: Base64 data`);
+      }
+    } catch (e) {
+      console.log(`${label} type: Looks like Base64 but couldn't decode`);
+    }
+  } else {
+    console.log(`${label} type: Binary data or other format`);
+    // For binary data, try to detect the image type
+    const mimeType = detectImageType(data);
+    console.log(`${label} probable image type: ${mimeType}`);
+  }
+};
+
 export default function VisualsTab({
   images = [],
   onImagesUpdate,
@@ -100,16 +281,13 @@ export default function VisualsTab({
 }: VisualsTabProps) {
   const { scriptData } = useSimulationWizard();
 
-  // Initialize images with empty sequence array if not exists
-  const initializedImages = images.map((img) => ({
-    ...img,
-    sequence: img.sequence || [],
-  }));
-
-  const [visualImages, setVisualImages] =
-    useState<VisualImage[]>(initializedImages);
+  // Initialize visualImages with proper initial state
+  const [visualImages, setVisualImages] = useState<VisualImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // We'll keep the sequence panel default to collapsed
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
@@ -125,9 +303,24 @@ export default function VisualsTab({
   // Check if the simulation type is visual-audio or visual-chat to ensure same behavior
   const isVisualAudioOrChat =
     simulationType === "visual-audio" || simulationType === "visual-chat";
-
   // Check if this is pure "visual" type (no script)
   const isPureVisual = simulationType === "visual";
+
+  // Update container width when ref is available
+  useEffect(() => {
+    if (mainContentRef.current) {
+      const updateContainerWidth = () => {
+        setContainerWidth(mainContentRef.current?.clientWidth || 0);
+      };
+
+      updateContainerWidth();
+      window.addEventListener("resize", updateContainerWidth);
+
+      return () => {
+        window.removeEventListener("resize", updateContainerWidth);
+      };
+    }
+  }, [mainContentRef]);
 
   // Update parent when visualImages changes
   useEffect(() => {
@@ -135,6 +328,185 @@ export default function VisualsTab({
       onImagesUpdate(visualImages);
     }
   }, [visualImages, onImagesUpdate]);
+
+  // Creates a map of images similar to what preview components use
+  const createImageMap = (): Map<string, string> => {
+    const imageMap = new Map<string, string>();
+
+    visualImages.forEach((img) => {
+      if (img.id && img.url) {
+        imageMap.set(img.id, img.url);
+      }
+    });
+
+    return imageMap;
+  };
+
+  // Crucial update: Process images prop into proper visualImages state
+  useEffect(() => {
+    console.log("Images prop changed:", images);
+    if (images && images.length > 0) {
+      // Transform the input images to our internal format
+      const processedImages = images.map((img) => {
+        // Validate the sequence data structure
+        const validSequence = Array.isArray(img.sequence) ? img.sequence : [];
+
+        // Process sequence items based on their format
+        const processedSequence = validSequence.map((item) => {
+          // Case 1: Item is already in the correct format with content property
+          if (
+            item.type &&
+            (item.type === "hotspot" || item.type === "message") &&
+            item.content
+          ) {
+            // For hotspots, ensure coordinates are properly formatted as numbers
+            if (item.type === "hotspot" && item.content.coordinates) {
+              item.content.coordinates = {
+                x: Number(item.content.coordinates.x || 0),
+                y: Number(item.content.coordinates.y || 0),
+                width: Number(item.content.coordinates.width || 0),
+                height: Number(item.content.coordinates.height || 0),
+              };
+            }
+            return item;
+          }
+
+          // Case 2: Item is from API format and needs conversion
+          else if (item.type === "hotspot") {
+            return {
+              id: `hotspot-${item.id || Date.now()}`,
+              type: "hotspot",
+              content: {
+                id: item.id || String(Date.now()),
+                name: item.name || "Untitled Hotspot",
+                type: "hotspot",
+                hotspotType: item.hotspotType || "button",
+                coordinates: item.coordinates
+                  ? {
+                      x: Number(item.coordinates.x || 0),
+                      y: Number(item.coordinates.y || 0),
+                      width: Number(item.coordinates.width || 0),
+                      height: Number(item.coordinates.height || 0),
+                    }
+                  : undefined,
+                settings: item.settings || {},
+                options: item.options || [],
+                text: item.text,
+              },
+              timestamp: Date.now(),
+            };
+          }
+
+          // Case 3: Item is a message from API format
+          else if (item.type === "message") {
+            return {
+              id: `message-${item.id || Date.now()}`,
+              type: "message",
+              content: {
+                id: item.id || String(Date.now()),
+                role: item.role || "Customer", // Keep original role
+                text: item.text || "",
+                visualId: img.id,
+                order: item.order || 0,
+              },
+              timestamp: Date.now(),
+            };
+          }
+
+          // Case 4: Unrecognized format - return as is
+          return item;
+        });
+
+        // Process the URL using our improved approach
+        let processedUrl = "";
+
+        if (img.url) {
+          // Debug the URL before processing
+          debugImageData(img.url, `Original URL for image ${img.id}`);
+
+          // Special handling for data URLs that might contain encoded blob URLs
+          if (img.url.startsWith("data:image")) {
+            const parts = img.url.split(",");
+            if (parts.length > 1) {
+              try {
+                const decoded = atob(parts[1]);
+                if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
+                  console.log(
+                    `Image ${img.id}: Found encoded URL in data URL:`,
+                    decoded.substring(0, 50) + "...",
+                  );
+                  processedUrl = decoded;
+                } else {
+                  // Regular data URL
+                  processedUrl = img.url;
+                }
+              } catch (e) {
+                // Not valid base64 or other error
+                processedUrl = img.url;
+              }
+            } else {
+              processedUrl = img.url;
+            }
+          }
+          // Handle direct URLs
+          else if (
+            img.url.startsWith("blob:") ||
+            img.url.startsWith("http") ||
+            img.url.startsWith("/api/")
+          ) {
+            processedUrl = img.url;
+          }
+          // For raw base64
+          else if (
+            /^[A-Za-z0-9+/=]+$/.test(img.url.trim()) &&
+            img.url.length > 20
+          ) {
+            // Try to determine the image type
+            try {
+              const decoded = atob(img.url);
+              const mimeType = detectImageType(decoded);
+              processedUrl = `data:${mimeType};base64,${img.url}`;
+            } catch (e) {
+              // Default to PNG if we can't determine
+              processedUrl = `data:image/png;base64,${img.url}`;
+            }
+          }
+          // For binary data - this approach matches preview components
+          else {
+            processedUrl = img.url; // Keep as is for binary data
+          }
+
+          // Debug the processed URL
+          debugImageData(processedUrl, `Processed URL for image ${img.id}`);
+        }
+        // For file objects, create a proper object URL
+        else if (img.file) {
+          processedUrl = URL.createObjectURL(img.file);
+          console.log(`Created object URL for file: ${img.name}`);
+        }
+
+        return {
+          id: img.id,
+          url: processedUrl,
+          name: img.name || `Image ${img.id}`,
+          file: img.file,
+          sequence: processedSequence,
+        };
+      });
+
+      console.log("Processed images:", processedImages);
+      setVisualImages(processedImages);
+
+      // Create and log the image map that would be used by preview components
+      const imageMap = createImageMap();
+      console.log("Image map (similar to preview components):", imageMap);
+
+      // Set selected image if none is selected
+      if (processedImages.length > 0 && !selectedImageId) {
+        setSelectedImageId(processedImages[0].id);
+      }
+    }
+  }, [images]);
 
   /** Helper: add a hotspot to the selected image's sequence. */
   const addHotspotToSequence = (imageId: string, hotspot: Hotspot) => {
@@ -183,16 +555,54 @@ export default function VisualsTab({
     );
   };
 
+  // Extract hotspots from the selected image for the ImageHotspot component
+  const getHotspotsForImageHotspot = () => {
+    if (!selectedImage || !selectedImage.sequence) return [];
+
+    return selectedImage.sequence
+      .filter((item) => item.type === "hotspot" && item.content)
+      .map((item) => {
+        // Ensure the content is properly formatted as a Hotspot
+        const hotspot = item.content as Hotspot;
+
+        // Ensure coordinates are properly formatted as numbers
+        if (hotspot.coordinates) {
+          hotspot.coordinates = {
+            x: Number(hotspot.coordinates.x || 0),
+            y: Number(hotspot.coordinates.y || 0),
+            width: Number(hotspot.coordinates.width || 0),
+            height: Number(hotspot.coordinates.height || 0),
+          };
+        }
+
+        // Return the properly formatted hotspot
+        return {
+          ...hotspot,
+          id: hotspot.id || String(Date.now()),
+          name: hotspot.name || "Untitled Hotspot",
+          type: hotspot.type || "hotspot",
+          hotspotType: hotspot.hotspotType || "button",
+          settings: hotspot.settings || {},
+        };
+      });
+  };
+
   // For the "Add Script Message" menu
   // Filter out messages that have already been assigned to a visual
   const unassignedMessages = scriptData.filter((msg) => {
-    return !visualImages.some((img) =>
-      img.sequence.some(
-        (item) =>
-          item.type === "message" &&
-          (item.content as ScriptMessage).id === msg.id,
-      ),
-    );
+    if (!msg || !msg.id) return false;
+
+    return !visualImages.some((img) => {
+      if (!img || !img.sequence) return false;
+
+      return img.sequence.some((item) => {
+        if (!item || item.type !== "message" || !item.content) return false;
+
+        // Safely access the ID with type checking
+        const messageContent = item.content as Partial<ScriptMessage>;
+        return messageContent.id === msg.id;
+      });
+    });
   });
 
   const handleOpenScriptMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -304,54 +714,50 @@ export default function VisualsTab({
   };
 
   const handleSaveAndContinue = async () => {
-    if (visualImages.length === 0) return;
+    if (visualImages.length === 0) {
+      setError("Please add at least one image before continuing");
+      return;
+    }
 
-    // Structure slides data as JSON
-    const slidesData = visualImages.map((img) => {
-      // Extract all necessary data from each image
-      return {
-        imageId: img.id,
-        imageName: img.name,
-        // Include the full ordered sequence with both hotspots and messages
-        sequence: img.sequence.map((item) => {
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Create FormData for multipart/form-data submission with files
+      const formData = new FormData();
+
+      // First check if we have actual file objects to upload
+      const hasFiles = visualImages.some((img) => img.file !== undefined);
+      console.log("Has files to upload:", hasFiles);
+
+      // Convert visualImages to slidesData format for API
+      const slidesData = visualImages.map((img, index) => {
+        // Extract all necessary data from each image
+        const sequence = img.sequence.map((item) => {
           if (item.type === "hotspot") {
             const hotspot = item.content as Hotspot;
 
-            console.log("Processing hotspot coordinates:", hotspot.coordinates);
-
             // Start with the base hotspot data structure
-            const hotspotData: any = {
+            const hotspotData = {
               type: "hotspot",
               id: hotspot.id,
               name: hotspot.name,
               hotspotType: hotspot.hotspotType,
-              coordinates: {
-                // Ensure we explicitly access and use numbers for each coordinate
-                x: Number(hotspot.coordinates?.x || 0),
-                y: Number(hotspot.coordinates?.y || 0),
-                width: Number(hotspot.coordinates?.width || 0),
-                height: Number(hotspot.coordinates?.height || 0),
-              },
+              coordinates: hotspot.coordinates
+                ? {
+                    // Ensure we explicitly access and use numbers for each coordinate
+                    x: Number(hotspot.coordinates.x || 0),
+                    y: Number(hotspot.coordinates.y || 0),
+                    width: Number(hotspot.coordinates.width || 0),
+                    height: Number(hotspot.coordinates.height || 0),
+                  }
+                : undefined,
               settings: hotspot.settings || {},
             };
-
-            // Log the final coordinates for debugging
-            console.log(
-              "Final hotspotData coordinates:",
-              hotspotData.coordinates,
-            );
 
             // Add options array for dropdown type
             if (hotspot.hotspotType === "dropdown" && hotspot.options) {
               hotspotData.options = hotspot.options;
-            }
-
-            // Set default settings based on hotspot type if not provided
-            if (
-              !hotspot.settings ||
-              Object.keys(hotspot.settings).length === 0
-            ) {
-              // [settings initialization code...]
             }
 
             return hotspotData;
@@ -364,41 +770,122 @@ export default function VisualsTab({
               text: message.text,
             };
           }
-        }),
-      };
-    });
+        });
 
-    // Create FormData for multipart/form-data submission with files
-    const formData = new FormData();
+        // Create a clean image URL that doesn't include any base64 data
+        // The server will use the uploaded file or existing server-side image
+        let cleanImageUrl = "";
+        if (img.url) {
+          // If it's a blob URL created from a file upload, don't include it
+          if (img.url.startsWith("blob:")) {
+            cleanImageUrl = ""; // Server will use the uploaded file instead
+          }
+          // If it's a data URL, don't include the full data in the JSON
+          else if (img.url.startsWith("data:")) {
+            cleanImageUrl = ""; // Server will use the uploaded file instead
+          }
+          // If it's an API URL, keep it as is
+          else if (img.url.startsWith("/api/") || img.url.startsWith("http")) {
+            cleanImageUrl = img.url;
+          }
+        }
 
-    // Add the slides data as JSON
-    formData.append("slidesData", JSON.stringify(slidesData));
+        // Return complete slide data object
+        return {
+          imageId: img.id,
+          imageName: img.name,
+          imageUrl: cleanImageUrl, // Use the clean URL or empty string
+          sequence,
+        };
+      });
 
-    // Add image files with corresponding IDs
-    visualImages.forEach((image, index) => {
-      if (image.file) {
-        formData.append(`slides[${index}]`, image.file, image.name);
+      // Add the slides data as JSON to FormData
+      console.log("Sending slidesData:", JSON.stringify(slidesData));
+      formData.append("slidesData", JSON.stringify(slidesData));
+
+      // Add file objects to FormData when available
+      let fileCount = 0;
+      visualImages.forEach((image, index) => {
+        if (image.file) {
+          fileCount++;
+          // Use a consistent naming convention for files
+          formData.append(`slides[${index}]`, image.file, image.name);
+        }
+      });
+      console.log(`Added ${fileCount} files to form data`);
+
+      // Debug what's in the FormData
+      for (const pair of formData.entries()) {
+        // Don't log the actual file content, just log that a file was included
+        if (pair[1] instanceof File) {
+          console.log(
+            `FormData contains file: ${pair[0]} - ${(pair[1] as File).name}`,
+          );
+        } else if (typeof pair[1] === "string" && pair[1].length > 100) {
+          console.log(
+            `FormData contains ${pair[0]} (large string, ${pair[1].length} chars)`,
+          );
+        } else {
+          console.log(`FormData contains: ${pair[0]} - ${pair[1]}`);
+        }
       }
-    });
 
-    // Call create simulation for all visual-related types
-    if (createSimulation) {
-      console.log(`Creating simulation for ${simulationType} type`);
-      // Let the parent component handle the navigation when createSimulation is called
-      const response = await createSimulation(formData);
-      if (response && response.status === "success") {
-        console.log("Simulation created with slides:", response);
+      // Call create/update simulation for all visual-related types
+      if (createSimulation) {
+        console.log(
+          `Updating simulation with slides for ${simulationType} type`,
+        );
+
+        // Call the update function
+        const response = await createSimulation(formData);
+
+        // Log the full response for debugging
+        console.log("API Response:", response);
+
+        // More robust response checking
+        if (response) {
+          // Check if the response has a status directly or in a nested structure
+          const status =
+            response.status ||
+            (response.document && response.document.status) ||
+            (response.simulation && response.simulation.status);
+
+          if (
+            status === "success" ||
+            status === "published" ||
+            status === "draft"
+          ) {
+            console.log("Simulation updated successfully with status:", status);
+
+            // Call onComplete to move to the next step
+            if (onComplete) {
+              onComplete();
+            }
+          } else {
+            console.error("API returned non-success status:", status);
+            setError(
+              `Failed to update simulation. Server returned: ${status || "unknown status"}`,
+            );
+          }
+        } else {
+          console.error("API returned empty response");
+          setError("Failed to update simulation. Empty response from server.");
+        }
+      } else {
+        setError("No update function provided");
       }
-    }
+    } catch (error) {
+      console.error("Error updating simulation:", error);
 
-    // Update parent with latest images data
-    if (onImagesUpdate) {
-      onImagesUpdate(visualImages);
-    }
-
-    // Call onComplete to move to the next step
-    if (onComplete) {
-      onComplete();
+      // More descriptive error message
+      if (error instanceof Error) {
+        setError(`Error updating simulation: ${error.message}`);
+      } else {
+        setError("An unexpected error occurred while updating the simulation.");
+      }
+    } finally {
+      setIsSubmitting(false);
+      setIsEditing(false); // Reset editing mode after saving
     }
   };
 
@@ -524,6 +1011,7 @@ export default function VisualsTab({
 
       if (hotspotItem) {
         setEditingHotspot(hotspotItem.content as Hotspot);
+        setIsEditing(true);
       }
     } else {
       // Handle message editing if needed
@@ -531,8 +1019,20 @@ export default function VisualsTab({
     }
   };
 
+  const handleToggleEditMode = () => {
+    setIsEditing(!isEditing);
+    setEditingHotspot(null);
+  };
+
   return (
     <Stack spacing={4}>
+      {/* Error alert */}
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       {/* Top row: "Add Script Message" + "Save and Continue" */}
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         {isPureVisual ? (
@@ -550,7 +1050,11 @@ export default function VisualsTab({
           <Button
             variant="contained"
             startIcon={<MessageIcon />}
-            disabled={!selectedImageId || scriptData.length === 0}
+            disabled={
+              !selectedImageId ||
+              !Array.isArray(scriptData) ||
+              scriptData.length === 0
+            }
             onClick={(e) => {
               if (!selectedImageId) return;
               setScriptMenuAnchor(e.currentTarget);
@@ -561,19 +1065,39 @@ export default function VisualsTab({
           </Button>
         )}
 
-        <Button
-          variant="contained"
-          onClick={handleSaveAndContinue}
-          disabled={visualImages.length === 0}
-          sx={{
-            bgcolor: "#444CE7",
-            "&:hover": { bgcolor: "#3538CD" },
-            borderRadius: 2,
-            px: 4,
-          }}
-        >
-          Save and Continue
-        </Button>
+        {/* Actions for when we have images */}
+        {visualImages.length > 0 && (
+          <Stack direction="row" spacing={2}>
+            {/* Toggle Edit Mode button */}
+            <Button
+              variant="outlined"
+              startIcon={isEditing ? null : <EditIcon />}
+              onClick={handleToggleEditMode}
+              sx={{ mr: 2 }}
+            >
+              {isEditing ? "Cancel Editing" : "Edit Visuals"}
+            </Button>
+
+            {/* Always show Save and Continue */}
+            <Button
+              variant="contained"
+              onClick={handleSaveAndContinue}
+              disabled={visualImages.length === 0 || isSubmitting}
+              sx={{
+                bgcolor: "#444CE7",
+                "&:hover": { bgcolor: "#3538CD" },
+                borderRadius: 2,
+                px: 4,
+              }}
+            >
+              {isSubmitting ? (
+                <CircularProgress size={24} sx={{ color: "white" }} />
+              ) : (
+                "Save and Continue"
+              )}
+            </Button>
+          </Stack>
+        )}
 
         {/* Menu listing unassigned script messages - only for non-visual type */}
         {!isPureVisual && (
@@ -588,33 +1112,35 @@ export default function VisualsTab({
               },
             }}
           >
-            {unassignedMessages.length === 0 && (
+            {!Array.isArray(unassignedMessages) ||
+            unassignedMessages.length === 0 ? (
               <MenuItem disabled>No unassigned messages left</MenuItem>
+            ) : (
+              unassignedMessages.map((msg) => (
+                <MenuItem
+                  key={msg.id}
+                  onClick={() =>
+                    handleAddMessage({
+                      id: msg.id,
+                      role: msg.role,
+                      message: msg.message,
+                    })
+                  }
+                  sx={{
+                    py: 2,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
+                >
+                  <Stack spacing={1} sx={{ width: "100%" }}>
+                    <Typography variant="caption" color="text.secondary">
+                      {msg.role}
+                    </Typography>
+                    <Typography variant="body2">{msg.message}</Typography>
+                  </Stack>
+                </MenuItem>
+              ))
             )}
-            {unassignedMessages.map((msg) => (
-              <MenuItem
-                key={msg.id}
-                onClick={() =>
-                  handleAddMessage({
-                    id: msg.id,
-                    role: msg.role,
-                    message: msg.message,
-                  })
-                }
-                sx={{
-                  py: 2,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Stack spacing={1} sx={{ width: "100%" }}>
-                  <Typography variant="caption" color="text.secondary">
-                    {msg.role}
-                  </Typography>
-                  <Typography variant="body2">{msg.message}</Typography>
-                </Stack>
-              </MenuItem>
-            ))}
           </Menu>
         )}
       </Stack>
@@ -764,11 +1290,7 @@ export default function VisualsTab({
                 >
                   <ImageHotspot
                     imageUrl={selectedImage?.url || ""}
-                    hotspots={
-                      selectedImage?.sequence
-                        .filter((item) => item.type === "hotspot")
-                        .map((item) => item.content as Hotspot) || []
-                    }
+                    hotspots={getHotspotsForImageHotspot()}
                     editingHotspot={editingHotspot}
                     onHotspotsChange={(newHs) => {
                       if (!selectedImageId) return;

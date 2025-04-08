@@ -1,10 +1,5 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  IconButton,
-  Stack,
-} from '@mui/material';
+import React, { useState } from "react";
+import { Box, Typography, IconButton, Stack } from "@mui/material";
 import {
   DragIndicator as DragIndicatorIcon,
   Edit as EditIcon,
@@ -15,7 +10,7 @@ import {
   Person as PersonIcon,
   SupportAgent as SupportAgentIcon,
   ChevronRight as ChevronRightIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 import {
   DndContext,
@@ -24,21 +19,21 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from "@dnd-kit/sortable";
 
-import { CSS } from '@dnd-kit/utilities';
+import { CSS } from "@dnd-kit/utilities";
 
 /** The shape of a single item in our combined sequence. */
 export interface SequenceItem {
   /** Unique ID, e.g. "hotspot-xxx" or "message-yyy". */
   id: string;
   /** "hotspot" or "message". */
-  type: 'hotspot' | 'message';
+  type: "hotspot" | "message";
   /** The actual content object. */
   content: Hotspot | ScriptMessage;
   /** Addition timestamp for natural ordering */
@@ -49,16 +44,34 @@ export interface SequenceItem {
 export interface Hotspot {
   id: string;
   name: string;
-  type: 'button' | 'coaching' | 'highlight' | string;
+  type: "hotspot";
+  hotspotType:
+    | "button"
+    | "coaching"
+    | "highlight"
+    | "dropdown"
+    | "checkbox"
+    | "textfield"
+    | string;
   text?: string;
   hotkey?: string;
+  coordinates?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  settings?: any;
+  options?: string[];
 }
 
 /** A script message definition. */
 export interface ScriptMessage {
   id: string;
   text: string;
-  role: 'Customer' | 'Trainee';
+  role: "Customer" | "Trainee";
+  visualId?: string;
+  order?: number;
 }
 
 /** Props to the overall HotspotSequence container. */
@@ -69,9 +82,9 @@ interface HotspotSequenceProps {
   onSequenceReorder: (newSequence: SequenceItem[]) => void;
 
   /** Called if user clicks delete on an item. */
-  onItemDelete: (id: string, type: 'hotspot' | 'message') => void;
+  onItemDelete: (id: string, type: "hotspot" | "message") => void;
   /** Called if user clicks edit on an item. */
-  onItemEdit: (id: string, type: 'hotspot' | 'message') => void;
+  onItemEdit: (id: string, type: "hotspot" | "message") => void;
 }
 
 /** Single row in the sequence (draggable). */
@@ -84,18 +97,70 @@ function SortableRow({
   onDelete: () => void;
   onEdit: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: item.id,
-  });
+  // Ensure item exists and has the required properties
+  if (!item || typeof item !== "object") {
+    console.error("Invalid item passed to SortableRow:", item);
+    return null;
+  }
+
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({
+      id: item.id,
+    });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
 
-  if (item.type === 'message') {
+  // Make sure item has a valid type
+  if (!item.type || !["message", "hotspot"].includes(item.type)) {
+    console.error("Item has invalid or missing type:", item);
+    return (
+      <Box
+        ref={setNodeRef}
+        style={style}
+        sx={{
+          p: 2,
+          bgcolor: "white",
+          borderRadius: 2,
+          border: "1px solid",
+          borderColor: "divider",
+          mb: 2,
+        }}
+      >
+        <Typography color="error">Invalid sequence item</Typography>
+      </Box>
+    );
+  }
+
+  if (item.type === "message") {
     // Render a script message row
+    // Check if content exists and has the required properties
+    if (!item.content) {
+      console.error("Message item missing content:", item);
+      return (
+        <Box
+          ref={setNodeRef}
+          style={style}
+          sx={{
+            p: 2,
+            bgcolor: "white",
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            mb: 2,
+          }}
+        >
+          <Typography color="error">Invalid message data</Typography>
+        </Box>
+      );
+    }
+
     const msg = item.content as ScriptMessage;
+
+    // Debug log removed to prevent console spam
+    // console.log("Message role in HotspotSequence:", msg.role);
 
     return (
       <Box
@@ -103,10 +168,10 @@ function SortableRow({
         style={style}
         sx={{
           p: 2,
-          bgcolor: 'white',
+          bgcolor: "white",
           borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
+          border: "1px solid",
+          borderColor: "divider",
           mb: 2,
         }}
       >
@@ -119,10 +184,11 @@ function SortableRow({
               </IconButton>
             </Box>
 
-            {msg.role === 'Customer' ? (
-              <SupportAgentIcon sx={{ color: '#444CE7', fontSize: 20 }} />
+            {/* Use explicit comparison to catch all variations of Customer/customer roles */}
+            {msg.role.toLowerCase() === "customer" ? (
+              <SupportAgentIcon sx={{ color: "#444CE7", fontSize: 20 }} />
             ) : (
-              <PersonIcon sx={{ color: '#444CE7', fontSize: 20 }} />
+              <PersonIcon sx={{ color: "#444CE7", fontSize: 20 }} />
             )}
             <Typography variant="subtitle2" sx={{ flex: 1 }}>
               {msg.role}
@@ -144,18 +210,39 @@ function SortableRow({
     );
   } else {
     // Render a hotspot row
+    // Check if content exists and has the required properties
+    if (!item.content) {
+      console.error("Hotspot item missing content:", item);
+      return (
+        <Box
+          ref={setNodeRef}
+          style={style}
+          sx={{
+            p: 2,
+            bgcolor: "white",
+            borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
+            mb: 2,
+          }}
+        >
+          <Typography color="error">Invalid hotspot data</Typography>
+        </Box>
+      );
+    }
+
     const ht = item.content as Hotspot;
 
     function getHotspotIcon(hType: string) {
       switch (hType) {
-        case 'button':
-          return <ChatBubbleIcon sx={{ fontSize: 20, color: '#444CE7' }} />;
-        case 'coaching':
-          return <LightbulbIcon sx={{ fontSize: 20, color: '#444CE7' }} />;
-        case 'highlight':
-          return <HighlightIcon sx={{ fontSize: 20, color: '#444CE7' }} />;
+        case "button":
+          return <ChatBubbleIcon sx={{ fontSize: 20, color: "#444CE7" }} />;
+        case "coaching":
+          return <LightbulbIcon sx={{ fontSize: 20, color: "#444CE7" }} />;
+        case "highlight":
+          return <HighlightIcon sx={{ fontSize: 20, color: "#444CE7" }} />;
         default:
-          return <ChatBubbleIcon sx={{ fontSize: 20, color: '#444CE7' }} />;
+          return <ChatBubbleIcon sx={{ fontSize: 20, color: "#444CE7" }} />;
       }
     }
 
@@ -165,10 +252,10 @@ function SortableRow({
         style={style}
         sx={{
           p: 2,
-          bgcolor: 'white',
+          bgcolor: "white",
           borderRadius: 2,
-          border: '1px solid',
-          borderColor: 'divider',
+          border: "1px solid",
+          borderColor: "divider",
           mb: 2,
         }}
       >
@@ -181,10 +268,10 @@ function SortableRow({
               </IconButton>
             </Box>
 
-            {getHotspotIcon(ht.type)}
+            {getHotspotIcon(ht.hotspotType || ht.type)}
 
             <Typography variant="subtitle2" sx={{ flex: 1 }}>
-              {ht.name}
+              {ht.name || "Untitled hotspot"}
             </Typography>
 
             <IconButton size="small" onClick={onEdit}>
@@ -201,7 +288,10 @@ function SortableRow({
             </Typography>
           )}
           {ht.hotkey && (
-            <Typography variant="caption" sx={{ pl: 5, color: 'text.secondary' }}>
+            <Typography
+              variant="caption"
+              sx={{ pl: 5, color: "text.secondary" }}
+            >
               Hotkey: {ht.hotkey}
             </Typography>
           )}
@@ -224,32 +314,31 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
     if (!over || active.id === over.id) return;
 
     // Reorder local array
-    const oldIndex = sequence.findIndex(x => x.id === active.id);
-    const newIndex = sequence.findIndex(x => x.id === over.id);
+    const oldIndex = sequence.findIndex((x) => x.id === active.id);
+    const newIndex = sequence.findIndex((x) => x.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const newArr = [...sequence];
     const [moved] = newArr.splice(oldIndex, 1);
-    newArr.splice(
-      newIndex > oldIndex ? newIndex - 1 : newIndex,
-      0,
-      moved
-    );
+    newArr.splice(newIndex > oldIndex ? newIndex - 1 : newIndex, 0, moved);
 
     // Fire parent callback with new order
     onSequenceReorder(newArr);
   };
 
+  // Make sure sequence is valid before trying to render it
+  const validSequence = Array.isArray(sequence) ? sequence : [];
+
   return (
     <Box
       sx={{
         width: 320,
-        height: '100%',
-        bgcolor: '#F9FAFB',
-        borderLeft: '1px solid',
-        borderColor: 'divider',
-        display: 'flex',
-        flexDirection: 'column',
+        height: "100%",
+        bgcolor: "#F9FAFB",
+        borderLeft: "1px solid",
+        borderColor: "divider",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* Header row */}
@@ -257,7 +346,7 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}
+        sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}
       >
         <Typography variant="subtitle1" fontWeight="600">
           Sequence
@@ -265,48 +354,59 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
       </Stack>
 
       {/* Draggable items - always shown */}
-
-        <Box
-          sx={{
-            flex: 1,
-            overflowY: 'auto',
-            p: 2,
-            '&::-webkit-scrollbar': {
-              width: '6px',
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          p: 2,
+          "&::-webkit-scrollbar": {
+            width: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "#F1F1F1",
+            borderRadius: "10px",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "#DEE2FC",
+            borderRadius: "10px",
+            "&:hover": {
+              background: "#444CE7",
             },
-            '&::-webkit-scrollbar-track': {
-              background: '#F1F1F1',
-              borderRadius: '10px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              background: '#DEE2FC',
-              borderRadius: '10px',
-              '&:hover': {
-                background: '#444CE7',
-              },
-            },
-          }}
+          },
+        }}
+      >
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
+          <SortableContext
+            items={validSequence.map((it) => it.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <SortableContext
-              items={sequence.map((it) => it.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {sequence.map((item) => (
-                <SortableRow
-                  key={item.id}
-                  item={item}
-                  onEdit={() => onItemEdit(item.content.id, item.type)}
-                  onDelete={() => onItemDelete(item.content.id, item.type)}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </Box>
+            {validSequence.map((item) => (
+              <SortableRow
+                key={item.id}
+                item={item}
+                onEdit={() => {
+                  if (item.content && item.content.id) {
+                    onItemEdit(item.content.id, item.type);
+                  } else {
+                    console.error("Missing content.id for item:", item);
+                  }
+                }}
+                onDelete={() => {
+                  if (item.content && item.content.id) {
+                    onItemDelete(item.content.id, item.type);
+                  } else {
+                    console.error("Missing content.id for item:", item);
+                  }
+                }}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      </Box>
     </Box>
   );
 };

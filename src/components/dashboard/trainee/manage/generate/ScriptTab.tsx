@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -11,8 +11,10 @@ import {
   Select,
   styled,
   MenuItem,
-  ListItemIcon
-} from '@mui/material';
+  ListItemIcon,
+  Alert,
+  CircularProgress,
+} from "@mui/material";
 import {
   SmartToy,
   Description,
@@ -21,18 +23,20 @@ import {
   Mic,
   PlayArrow,
   ChatBubble,
-  Lock as LockIcon
-} from '@mui/icons-material';
-import SupportAgentIcon from '@mui/icons-material/SupportAgent';
-import ManageHistoryIcon from '@mui/icons-material/ManageHistory';
-import { useSimulationWizard } from '../../../../../context/SimulationWizardContext';
-import AIScriptGenerator from './AIScriptGenerator';
-import ScriptEditor from './ScriptEditor';
-import axios from 'axios';
+  Edit as EditIcon,
+  Lock as LockIcon,
+} from "@mui/icons-material";
+import SupportAgentIcon from "@mui/icons-material/SupportAgent";
+import ManageHistoryIcon from "@mui/icons-material/ManageHistory";
+import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
+import AIScriptGenerator from "./AIScriptGenerator";
+import ScriptEditor from "./ScriptEditor";
+import axios from "axios";
+import { useParams } from "react-router-dom";
 
 interface Message {
   id: string;
-  role: 'Customer' | 'Trainee';
+  role: "Customer" | "Trainee";
   message: string;
   keywords: string[];
 }
@@ -45,24 +49,23 @@ interface ScriptTabProps {
 const OptionCard = styled(Box)(({ theme }) => ({
   flex: 1,
   padding: theme.spacing(4),
-  border: '2px dashed #DEE2FC',
+  border: "2px dashed #DEE2FC",
   borderRadius: theme.spacing(2),
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  textAlign: 'center',
-  minHeight: '320px',
-  backgroundColor: '#FCFCFE',
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  textAlign: "center",
+  minHeight: "320px",
+  backgroundColor: "#FCFCFE",
 }));
 
 const ActionButton = styled(Button)(({ theme }) => ({
-  marginTop: 'auto',
-  width: '100%',
+  marginTop: "auto",
+  width: "100%",
   padding: theme.spacing(1.5),
   borderRadius: theme.spacing(1),
-  textTransform: 'none',
-  backgroundColor: '#E8EAFD',
-
+  textTransform: "none",
+  backgroundColor: "#E8EAFD",
   fontWeight: 600,
 }));
 
@@ -70,148 +73,184 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
   simulationType,
   isLocked = false,
 }) => {
+  const { id } = useParams<{ id: string }>();
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [showSavedScript, setShowSavedScript] = useState(false);
-  const [currentRole, setCurrentRole] = useState<'Customer' | 'Trainee'>('Trainee');
+  const [currentRole, setCurrentRole] = useState<"Customer" | "Trainee">(
+    "Trainee",
+  );
   const [showBackButton, setShowBackButton] = useState(false);
-  const [inputMessage, setInputMessage] = useState('');
-  const { scriptData, setScriptData } = useSimulationWizard();
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { scriptData, setScriptData, setIsScriptLocked } =
+    useSimulationWizard();
 
-  const handleScriptUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // When loading from a saved state or creating new
+  useEffect(() => {
+    if (isLocked && scriptData.length > 0) {
+      setShowSavedScript(true);
+    }
+  }, [isLocked, scriptData]);
+
+  const handleScriptUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Show loading message
-    const loadingScript: Message[] = [{
-      id: String(Date.now()),
-      role: 'Trainee',
-      message: 'Processing file... Please wait.',
-      keywords: [],
-    }];
+    const loadingScript: Message[] = [
+      {
+        id: String(Date.now()),
+        role: "Trainee",
+        message: "Processing file... Please wait.",
+        keywords: [],
+      },
+    ];
     setScriptData(loadingScript);
+    setIsLoading(true);
+    setError(null);
 
     try {
       const content = await file.text();
 
       // Parse the dialogue content
       const dialogueLines = content
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 0 && line.includes(':'));
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0 && line.includes(":"));
 
       const messages: Message[] = dialogueLines.map((line, index) => {
-        const [role, message] = line.split(':').map(part => part.trim());
+        const [role, message] = line.split(":").map((part) => part.trim());
         return {
           id: String(Date.now() + index),
-          role: role === 'Customer' ? 'Customer' : 'Trainee',
+          role: role === "Customer" ? "Customer" : "Trainee",
           message: message,
           keywords: [],
         };
       });
 
       if (messages.length === 0) {
-        throw new Error('No valid dialogue content found in the file. Please check the format.');
+        throw new Error(
+          "No valid dialogue content found in the file. Please check the format.",
+        );
       }
 
       setScriptData(messages);
-
     } catch (error: any) {
-      console.error('Error processing file:', error);
-      const errorScript: Message[] = [{
-        id: String(Date.now()),
-        role: 'Trainee',
-        message: `Error: ${error.message || 'Failed to process file. Please check the format and try again.'}`,
-        keywords: [],
-      }];
+      console.error("Error processing file:", error);
+      const errorScript: Message[] = [
+        {
+          id: String(Date.now()),
+          role: "Trainee",
+          message: `Error: ${error.message || "Failed to process file. Please check the format and try again."}`,
+          keywords: [],
+        },
+      ];
       setScriptData(errorScript);
+      setError(error.message || "Failed to process file");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleAudioUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Check file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      const errorScript: Message[] = [{
-        id: String(Date.now()),
-        role: 'Trainee',
-        message: 'Error: File size exceeds 10MB limit. Please upload a smaller file.',
-        keywords: [],
-      }];
-      setScriptData(errorScript);
+      setError("File size exceeds 10MB limit. Please upload a smaller file.");
       return;
     }
 
+    setIsLoading(true);
+    setError(null);
+
     try {
       const formData = new FormData();
-      formData.append('user_id', 'user123');
-      formData.append('audio_file', file);
+      formData.append("user_id", "user123");
+      formData.append("audio_file", file);
 
       // Show loading message
-      const loadingScript: Message[] = [{
-        id: String(Date.now()),
-        role: 'Trainee',
-        message: 'Processing audio file... This may take a few minutes.',
-        keywords: [],
-      }];
+      const loadingScript: Message[] = [
+        {
+          id: String(Date.now()),
+          role: "Trainee",
+          message: "Processing audio file... This may take a few minutes.",
+          keywords: [],
+        },
+      ];
       setScriptData(loadingScript);
 
       // Make direct API call without /api prefix
       const response = await axios.post(
-        'api/convert/audio-to-script',
+        "/api/convert/audio-to-script",
         formData,
         {
           headers: {
-            'Content-Type': 'multipart/form-data',
+            "Content-Type": "multipart/form-data",
           },
           timeout: 300000,
           maxContentLength: Infinity,
           maxBodyLength: Infinity,
           onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total!);
-            console.log('Upload Progress:', percentCompleted + '%');
-          }
-        }
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total!,
+            );
+            console.log("Upload Progress:", percentCompleted + "%");
+          },
+        },
       );
 
-      console.log('API Response:', response.data);
+      console.log("API Response:", response.data);
 
       if (response.data && Array.isArray(response.data.script)) {
-        const transformedScript: Message[] = response.data.script.map((item: any, index: number) => ({
-          id: String(Date.now() + index),
-          role: item.role || 'Trainee',
-          message: item.message || '',
-          keywords: item.keywords || [],
-        }));
+        const transformedScript: Message[] = response.data.script.map(
+          (item: any, index: number) => ({
+            id: String(Date.now() + index),
+            role: item.role || "Trainee",
+            message: item.message || "",
+            keywords: item.keywords || [],
+          }),
+        );
 
-        console.log('Transformed Script:', transformedScript);
+        console.log("Transformed Script:", transformedScript);
         setScriptData(transformedScript);
       } else {
-        throw new Error('Invalid response format from server');
+        throw new Error("Invalid response format from server");
       }
     } catch (error: any) {
-      console.error('Error processing audio file:', error);
+      console.error("Error processing audio file:", error);
 
-      let errorMessage = 'An error occurred while processing the audio file.';
+      let errorMessage = "An error occurred while processing the audio file.";
 
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = 'The request took too long to complete. Please try again with a smaller file or check your internet connection.';
+      if (error.code === "ECONNABORTED") {
+        errorMessage =
+          "The request took too long to complete. Please try again with a smaller file or check your internet connection.";
       } else if (error.response) {
         errorMessage = `Server Error: ${error.response.data?.message || error.response.statusText}`;
       } else if (error.message) {
         errorMessage = error.message;
       }
 
-      const errorScript: Message[] = [{
-        id: String(Date.now()),
-        role: 'Trainee',
-        message: `Error: ${errorMessage}`,
-        keywords: [],
-      }];
+      setError(errorMessage);
+      const errorScript: Message[] = [
+        {
+          id: String(Date.now()),
+          role: "Trainee",
+          message: `Error: ${errorMessage}`,
+          keywords: [],
+        },
+      ];
 
       setScriptData(errorScript);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -225,12 +264,48 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
       };
 
       setScriptData((prev) => [...prev, newMessage]);
-      setInputMessage('');
+      setInputMessage("");
+    }
+  };
+
+  const handleUpdateScript = async () => {
+    if (!id || scriptData.length === 0) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Transform script data to API format
+      const formattedScript = scriptData.map((msg) => ({
+        script_sentence: msg.message,
+        role:
+          msg.role.toLowerCase() === "trainee"
+            ? "assistant"
+            : msg.role.toLowerCase(),
+        keywords: msg.keywords || [],
+      }));
+
+      // Update simulation with script data
+      const response = await axios.put(`/api/simulations/${id}/update`, {
+        script: formattedScript,
+      });
+
+      if (response.data.status === "success") {
+        // Set as locked after successful update
+        setIsScriptLocked(true);
+      } else {
+        throw new Error("Failed to update script");
+      }
+    } catch (error: any) {
+      console.error("Error updating script:", error);
+      setError(error.message || "Failed to update script. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleScriptGenerated = (script: Message[]) => {
-    console.log('Received script:', script);
+    console.log("Received script:", script);
     setShowAIGenerator(false);
     setScriptData(script);
   };
@@ -238,6 +313,12 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
   if (scriptData.length > 0 && !isLocked && !showSavedScript) {
     return (
       <Stack spacing={2}>
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        )}
+
         <Button
           variant="text"
           onClick={() => {
@@ -245,22 +326,84 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             setShowAIGenerator(false);
           }}
           sx={{
-            alignSelf: 'flex-start',
-            color: 'text.secondary',
-            '&:hover': {
-              bgcolor: 'action.hover',
+            alignSelf: "flex-start",
+            color: "text.secondary",
+            "&:hover": {
+              bgcolor: "action.hover",
             },
           }}
         >
           ← Back to script options
         </Button>
+
         <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
+
+        <Button
+          variant="contained"
+          onClick={handleUpdateScript}
+          disabled={isLoading}
+          sx={{
+            alignSelf: "center",
+            bgcolor: "#444CE7",
+            "&:hover": { bgcolor: "#3538CD" },
+            borderRadius: 2,
+            px: 4,
+            py: 1.5,
+          }}
+        >
+          {isLoading ? (
+            <CircularProgress size={24} sx={{ color: "white" }} />
+          ) : (
+            "Save and Continue"
+          )}
+        </Button>
       </Stack>
     );
   }
 
   if (showSavedScript) {
-    return <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />;
+    return (
+      <Stack spacing={2}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography variant="h6">Script Content</Typography>
+          <Button
+            variant="outlined"
+            onClick={() => setShowSavedScript(false)}
+            startIcon={<EditIcon />}
+          >
+            Edit Script Options
+          </Button>
+        </Box>
+        <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
+
+        <Button
+          variant="contained"
+          onClick={handleUpdateScript}
+          disabled={isLoading}
+          sx={{
+            alignSelf: "center",
+            bgcolor: "#444CE7",
+            "&:hover": { bgcolor: "#3538CD" },
+            borderRadius: 2,
+            px: 4,
+            py: 1.5,
+          }}
+        >
+          {isLoading ? (
+            <CircularProgress size={24} sx={{ color: "white" }} />
+          ) : (
+            "Save Script Changes"
+          )}
+        </Button>
+      </Stack>
+    );
   }
 
   if (showAIGenerator) {
@@ -270,10 +413,10 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
           variant="text"
           onClick={() => setShowAIGenerator(false)}
           sx={{
-            alignSelf: 'flex-start',
-            color: 'text.secondary',
-            '&:hover': {
-              bgcolor: 'action.hover',
+            alignSelf: "flex-start",
+            color: "text.secondary",
+            "&:hover": {
+              bgcolor: "action.hover",
             },
           }}
         >
@@ -286,28 +429,45 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
 
   return (
     <Stack spacing={4}>
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      {isLoading && (
+        <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
       {isLocked && (
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <Box sx={{ 
-            bgcolor: '#ECFDF3', 
-            p: 2, 
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            flex: 1
-          }}>
-            <LockIcon sx={{ color: 'success.main' }} />
-            <Typography color="success.main">
-              Script is in place.
-            </Typography>
+        <Stack
+          direction="row"
+          spacing={2}
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Box
+            sx={{
+              bgcolor: "#ECFDF3",
+              p: 2,
+              borderRadius: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              flex: 1,
+            }}
+          >
+            <LockIcon sx={{ color: "success.main" }} />
+            <Typography color="success.main">Script is in place.</Typography>
           </Box>
           <Button
             variant="contained"
             onClick={() => setShowSavedScript(true)}
             sx={{
-              bgcolor: '#444CE7',
-              '&:hover': { bgcolor: '#3538CD' },
+              bgcolor: "#444CE7",
+              "&:hover": { bgcolor: "#3538CD" },
               borderRadius: 2,
               px: 4,
             }}
@@ -319,14 +479,27 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
 
       <Box
         sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
           gap: 3,
         }}
       >
-        <OptionCard sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '200px' }}>
-          <SmartToy sx={{ fontSize: 80, color: '#DEE2FC', mb: 2 }} />  {/* Increased icon size */}
-          <Typography variant="h5" sx={{ color: "#0F174F", mb: 2 }} gutterBottom fontWeight="800">
+        <OptionCard
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "200px",
+          }}
+        >
+          <SmartToy sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
+          {/* Increased icon size */}
+          <Typography
+            variant="h5"
+            sx={{ color: "#0F174F", mb: 2 }}
+            gutterBottom
+            fontWeight="800"
+          >
             Generate Script with AI
             <Box
               component="span"
@@ -334,29 +507,34 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
                 ml: 1,
                 px: 1,
                 py: 0.5,
-                bgcolor: '#343F8A',
-                color: 'white',
+                bgcolor: "#343F8A",
+                color: "white",
                 borderRadius: 5,
-                fontSize: '0.75rem',
-                verticalAlign: 'middle',
+                fontSize: "0.75rem",
+                verticalAlign: "middle",
               }}
             >
               New
             </Box>
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "13px", mb: 2 }}>
-            Generate script for {simulationType || 'simulation'} scenarios using SymAI
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontSize: "13px", mb: 2 }}
+          >
+            Generate script for {simulationType || "simulation"} scenarios using
+            SymAI
           </Typography>
           <ActionButton
             variant="contained"
             startIcon={<SmartToy />}
             sx={{
-              bgcolor: '#001EEE',
+              bgcolor: "#001EEE",
               py: 2.7,
-              '&:hover': { bgcolor: '#3538CD' },
-              height: '40px',  // Consistent button height
-              width: '300px',  // Fixed button width
-              alignItems: 'center',
+              "&:hover": { bgcolor: "#3538CD" },
+              height: "40px", // Consistent button height
+              width: "300px", // Fixed button width
+              alignItems: "center",
             }}
             onClick={() => setShowAIGenerator(true)}
           >
@@ -364,21 +542,37 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
           </ActionButton>
         </OptionCard>
 
-        <OptionCard sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '200px' }}>
-          <Description sx={{ fontSize: 80, color: '#DEE2FC', mb: 2 }} />  {/* Increased icon size */}
-          <Typography variant="h4" sx={{ color: "#0F174F", mb: 2 }} gutterBottom fontWeight="800">
+        <OptionCard
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "200px",
+          }}
+        >
+          <Description sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
+          {/* Increased icon size */}
+          <Typography
+            variant="h4"
+            sx={{ color: "#0F174F", mb: 2 }}
+            gutterBottom
+            fontWeight="800"
+          >
             Upload Script
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: "13px" }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 2, fontSize: "13px" }}
+          >
             Simulation script as text in .doc, .docx
           </Typography>
           <Link
             href="#"
             color="text.secondary"
-
             sx={{
               mb: 0,
-              display: 'block',
+              display: "block",
             }}
           >
             Download template
@@ -386,7 +580,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
           <input
             type="file"
             accept=".txt"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             id="script-upload"
             onChange={handleScriptUpload}
           />
@@ -396,15 +590,16 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
               component="span"
               startIcon={<Upload sx={{ fontSize: 30 }} />}
               sx={{
-                color: '#001EEE', py: 2.7,
-                borderColor: '#E8EAFD',
-                '&:hover': {
-                  borderColor: '#3538CD',
-                  bgcolor: '#F5F6FF',
+                color: "#001EEE",
+                py: 2.7,
+                borderColor: "#E8EAFD",
+                "&:hover": {
+                  borderColor: "#3538CD",
+                  bgcolor: "#F5F6FF",
                 },
-                height: '40px',  // Consistent button height
-                width: '300px',  // Fixed button width
-                alignItems: 'center',
+                height: "40px", // Consistent button height
+                width: "300px", // Fixed button width
+                alignItems: "center",
               }}
             >
               Upload Script
@@ -414,24 +609,38 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
 
         <OptionCard
           sx={{
-            visibility: simulationType?.includes('audio') || simulationType?.includes('chat') ? 'visible' : 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            height: '200px',  // Consistent card height
+            visibility:
+              simulationType?.includes("audio") ||
+              simulationType?.includes("chat")
+                ? "visible"
+                : "hidden",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            height: "200px", // Consistent card height
           }}
         >
-          <AudioFile sx={{ fontSize: 80, color: '#DEE2FC', mb: 2 }} />  {/* Increased icon size */}
-          <Typography variant="h4" sx={{ color: "#0F174F", mb: 2 }} gutterBottom fontWeight="800">
+          <AudioFile sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
+          {/* Increased icon size */}
+          <Typography
+            variant="h4"
+            sx={{ color: "#0F174F", mb: 2 }}
+            gutterBottom
+            fontWeight="800"
+          >
             Upload Audio
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: "13px" }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 2, fontSize: "13px" }}
+          >
             Simulation script as audio in .mp3 format
           </Typography>
           <input
             type="file"
             accept=".mp3"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
             id="audio-upload"
             onChange={handleAudioUpload}
           />
@@ -441,26 +650,30 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
               component="span"
               startIcon={<Upload sx={{ fontSize: 30 }} />}
               sx={{
-                color: '#001EEE', py: 2.7,
-                borderColor: '#E8EAFD',
-                '&:hover': {
-                  borderColor: '#3538CD',
-                  bgcolor: '#F5F6FF',
+                color: "#001EEE",
+                py: 2.7,
+                borderColor: "#E8EAFD",
+                "&:hover": {
+                  borderColor: "#3538CD",
+                  bgcolor: "#F5F6FF",
                 },
-                height: '40px',  // Consistent button height
-                width: '300px',  // Fixed button width
-                alignItems: 'center',
+                height: "40px", // Consistent button height
+                width: "300px", // Fixed button width
+                alignItems: "center",
               }}
             >
               Upload Audio
             </ActionButton>
           </label>
         </OptionCard>
-
-
       </Box>
 
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ width: '100%' }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        spacing={2}
+        sx={{ width: "100%" }}
+      >
         <Divider sx={{ flex: 1 }} />
         <Typography variant="body2" color="text.secondary">
           OR
@@ -476,13 +689,13 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             py: 1,
             px: 3,
             borderRadius: 5,
-            borderColor: '#DEE2FD',
-            color: 'text.secondary',
-            textTransform: 'none',
-            alignSelf: 'center',
-            '&:hover': {
-              borderColor: '#DEE2FC',
-              bgcolor: '#F5F6FF',
+            borderColor: "#DEE2FD",
+            color: "text.secondary",
+            textTransform: "none",
+            alignSelf: "center",
+            "&:hover": {
+              borderColor: "#DEE2FC",
+              bgcolor: "#F5F6FF",
             },
           }}
         >
@@ -491,18 +704,20 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
 
         <Box
           sx={{
-            display: 'flex',
+            display: "flex",
             gap: 2,
-            alignItems: 'center',
+            alignItems: "center",
             p: 2,
-            bgcolor: '#FAFAFF',
+            bgcolor: "#FAFAFF",
             borderRadius: 5,
           }}
         >
           <Stack direction="row" spacing={1} alignItems="center">
             <Select
               value={currentRole}
-              onChange={(e) => setCurrentRole(e.target.value as "Customer" | "Trainee")}
+              onChange={(e) =>
+                setCurrentRole(e.target.value as "Customer" | "Trainee")
+              }
               size="small"
               sx={{
                 minWidth: 120,
@@ -550,13 +765,13 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 handleTextInput();
               }
             }}
             sx={{
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'white',
+              "& .MuiOutlinedInput-root": {
+                bgcolor: "white",
               },
             }}
           />

@@ -468,11 +468,15 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               rows={6}
               value={prompt || ""}
               label="Prompt"
+              placeholder="Enter a conversation prompt for the AI customer..."
               onChange={(e) => {
                 console.log("Prompt change:", e.target.value);
                 if (onPromptChange) {
                   onPromptChange(e.target.value);
                 }
+              }}
+              InputProps={{
+                style: { fontSize: "14px" },
               }}
               inputProps={{
                 style: { cursor: "text" },
@@ -491,15 +495,35 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 },
               }}
             />
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ mt: 1, display: "block" }}
-            >
-              The conversation prompt helps guide the AI in how it should
-              respond during the simulation. You can customize this to match
-              your training scenarios.
-            </Typography>
+            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ flex: 1, display: "block" }}
+              >
+                The conversation prompt helps guide the AI in how it should
+                respond during the simulation. You can customize this to match
+                your training scenarios.
+              </Typography>
+
+              {/* Debug button - only for development */}
+              <Button
+                size="small"
+                variant="outlined"
+                color="primary"
+                onClick={() => {
+                  console.log("Current prompt value:", prompt);
+                  alert(
+                    `Current prompt: ${prompt?.substring(0, 50)}${prompt?.length > 50 ? "..." : ""}`,
+                  );
+                }}
+                sx={{
+                  display: "none" /* Remove this to enable for debugging */,
+                }}
+              >
+                Debug Prompt
+              </Button>
+            </Stack>
           </Card>
         )}
 

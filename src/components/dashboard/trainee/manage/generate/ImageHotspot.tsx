@@ -18,6 +18,8 @@ import {
   InputAdornment,
   Popover,
   Slider,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -29,7 +31,7 @@ import {
 interface Hotspot {
   id: string;
   name: string;
-  type: "hotspot";
+  type: string;
   hotspotType:
     | "button"
     | "dropdown"
@@ -37,13 +39,13 @@ interface Hotspot {
     | "textfield"
     | "highlight"
     | "coaching";
-  coordinates: {
+  coordinates?: {
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  settings: {
+  settings?: {
     placeholder?: string;
     advanceOnSelect?: boolean;
     advanceOnCheck?: boolean;
@@ -70,6 +72,37 @@ interface ImageHotspotProps {
   containerWidth: number;
 }
 
+/**
+ * Detects image type from binary data
+ * @param data Binary string data
+ * @returns Mime type string
+ */
+const detectImageType = (data: string): string => {
+  // JPEG starts with FF D8 FF
+  if (
+    data.length >= 3 &&
+    data.charCodeAt(0) === 0xff &&
+    data.charCodeAt(1) === 0xd8 &&
+    data.charCodeAt(2) === 0xff
+  ) {
+    return "image/jpeg";
+  }
+
+  // PNG starts with 89 50 4E 47
+  if (
+    data.length >= 4 &&
+    data.charCodeAt(0) === 0x89 &&
+    data.charCodeAt(1) === 0x50 &&
+    data.charCodeAt(2) === 0x4e &&
+    data.charCodeAt(3) === 0x47
+  ) {
+    return "image/png";
+  }
+
+  // Default to JPEG if unknown (most likely JPEG)
+  return "image/jpeg";
+};
+
 const ImageHotspot: React.FC<ImageHotspotProps> = ({
   imageUrl,
   onHotspotsChange,
@@ -91,7 +124,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   }>({ top: 0, left: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [scale, setScale] = useState(1);
+  const [imageScale, setImageScale] = useState(1);
   const [editMode, setEditMode] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [originalImageSize, setOriginalImageSize] = useState({
@@ -100,6 +133,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   });
   const [newOption, setNewOption] = useState("");
   const [optionsList, setOptionsList] = useState<string[]>([]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(
+    null,
+  );
 
   // For RGBA color picker
   const [colorPickerAnchorEl, setColorPickerAnchorEl] =
@@ -146,6 +183,69 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     return `rgba(${rgba.r}, ${rgba.g}, ${rgba.b}, ${rgba.a})`;
   };
 
+  // Process image URL using the EXACT same method from VisualAudioPreview
+  const processImageData = useCallback(() => {
+    if (!imageUrl) {
+      console.error("No image URL provided");
+      setImageError("No image data available");
+      return;
+    }
+
+    try {
+      // Skip URL processing for standard URLs
+      if (
+        imageUrl.startsWith("http") ||
+        imageUrl.startsWith("blob:") ||
+        imageUrl.startsWith("/api/")
+      ) {
+        setProcessedImageUrl(imageUrl);
+        return;
+      }
+
+      // Skip processing for data URLs
+      if (imageUrl.startsWith("data:")) {
+        setProcessedImageUrl(imageUrl);
+        return;
+      }
+
+      // Process binary data similar to VisualAudioPreview
+      try {
+        // Attempt to decode as base64
+        try {
+          const decoded = atob(imageUrl);
+          // If successful and we get a URL, use it directly
+          if (decoded.startsWith("http") || decoded.startsWith("blob:")) {
+            setProcessedImageUrl(decoded);
+            return;
+          }
+        } catch (e) {
+          // Not base64, will process as binary
+        }
+
+        // Direct binary processing - EXACTLY as in VisualAudioPreview
+        const binaryString = imageUrl;
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create blob from Uint8Array
+        const mimeType = detectImageType(binaryString);
+        const blob = new Blob([bytes], { type: mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        setProcessedImageUrl(blobUrl);
+        console.log("Created blob URL from binary data:", blobUrl);
+      } catch (e) {
+        console.error("Failed to process image data:", e);
+        setImageError("Failed to process image data");
+      }
+    } catch (e) {
+      console.error("Error processing image:", e);
+      setImageError("Error processing image data");
+    }
+  }, [imageUrl]);
+
   // Handle opening the color picker
   const handleOpenColorPicker = (event: React.MouseEvent<HTMLElement>) => {
     setColorPickerAnchorEl(event.currentTarget);
@@ -187,17 +287,30 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }
   }, [currentHotspot]);
 
+  // Process image data when imageUrl changes
+  useEffect(() => {
+    setImageError(null);
+    processImageData();
+  }, [imageUrl, processImageData]);
+
   // Track original image size
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      setOriginalImageSize({
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-      });
-    };
-    img.src = imageUrl;
-  }, [imageUrl]);
+    if (processedImageUrl) {
+      const img = new Image();
+      img.onload = () => {
+        setOriginalImageSize({
+          width: img.naturalWidth,
+          height: img.naturalHeight,
+        });
+        setImageError(null);
+      };
+      img.onerror = (e) => {
+        console.error("Error loading image:", e);
+        setImageError("Failed to load image");
+      };
+      img.src = processedImageUrl;
+    }
+  }, [processedImageUrl]);
 
   // Track viewport size
   useEffect(() => {
@@ -222,7 +335,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         if (img) {
           const rect = img.getBoundingClientRect();
           setImageSize({ width: rect.width, height: rect.height });
-          setScale(rect.width / img.naturalWidth);
+          setImageScale(rect.width / img.naturalWidth);
         }
       }
     };
@@ -536,8 +649,31 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     onHotspotsChange?.(newHotspots);
   };
 
+  // Helper function to safely scale coordinates
+  const scaleCoordinates = (coords?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
+    if (!coords) return null;
+
+    return {
+      left: (coords.x || 0) * imageScale,
+      top: (coords.y || 0) * imageScale,
+      width: (coords.width || 0) * imageScale,
+      height: (coords.height || 0) * imageScale,
+    };
+  };
+
   return (
     <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
+      {imageError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {imageError}
+        </Alert>
+      )}
+
       <Box
         onClick={() => {
           if (editMode) {
@@ -560,40 +696,97 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        <Box
-          component="img"
-          src={imageUrl}
-          alt="Hotspot canvas"
-          sx={{
-            width: "100%",
-            height: "100%",
-            objectFit: "contain",
-          }}
-        />
-
-        {/* Existing hotspots */}
-        {hotspots.map((hotspot) => (
+        {processedImageUrl ? (
           <Box
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!editMode || editingId !== hotspot.id) {
-                onEditHotspot?.(hotspot);
-              }
+            component="img"
+            src={processedImageUrl}
+            alt="Hotspot canvas"
+            onError={(e) => {
+              console.error(
+                "Error loading processed image:",
+                processedImageUrl,
+              );
+              setImageError("Could not load image");
             }}
-            key={hotspot.id}
             sx={{
-              position: "absolute",
-              left: `${(hotspot.coordinates.x / originalImageSize.width) * 100}%`,
-              top: `${(hotspot.coordinates.y / originalImageSize.height) * 100}%`,
-              width: `${(hotspot.coordinates.width / originalImageSize.width) * 100}%`,
-              height: `${(hotspot.coordinates.height / originalImageSize.height) * 100}%`,
-              border: "2px solid #444CE7",
-              borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
-              backgroundColor: "rgba(68, 76, 231, 0.1)",
-              cursor: "pointer",
+              width: "100%",
+              height: "100%",
+              objectFit: "contain",
             }}
           />
-        ))}
+        ) : imageError ? (
+          <Box
+            sx={{
+              width: "100%",
+              height: "300px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f5f5f5",
+              color: "#666",
+            }}
+          >
+            <Typography>No valid image data available</Typography>
+          </Box>
+        ) : (
+          <Box
+            sx={{
+              width: "100%",
+              height: "300px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: "#f5f5f5",
+            }}
+          >
+            <CircularProgress size={40} />
+          </Box>
+        )}
+
+        {/* Existing hotspots */}
+        {Array.isArray(hotspots) &&
+          hotspots.map((hotspot) => {
+            // Skip rendering if coordinates are missing or invalid
+            if (!hotspot || !hotspot.coordinates) {
+              console.warn(
+                "Skipping hotspot with missing coordinates:",
+                hotspot?.id,
+              );
+              return null;
+            }
+
+            const scaledCoords = scaleCoordinates(hotspot.coordinates);
+            if (!scaledCoords) {
+              console.warn(
+                "Failed to scale coordinates for hotspot:",
+                hotspot.id,
+              );
+              return null;
+            }
+
+            return (
+              <Box
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!editMode || editingId !== hotspot.id) {
+                    onEditHotspot?.(hotspot);
+                  }
+                }}
+                key={hotspot.id}
+                sx={{
+                  position: "absolute",
+                  left: `${(hotspot.coordinates.x / originalImageSize.width) * 100}%`,
+                  top: `${(hotspot.coordinates.y / originalImageSize.height) * 100}%`,
+                  width: `${(hotspot.coordinates.width / originalImageSize.width) * 100}%`,
+                  height: `${(hotspot.coordinates.height / originalImageSize.height) * 100}%`,
+                  border: "2px solid #444CE7",
+                  borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
+                  backgroundColor: "rgba(68, 76, 231, 0.1)",
+                  cursor: "pointer",
+                }}
+              />
+            );
+          })}
 
         {/* Currently drawing hotspot */}
         {currentHotspot && currentHotspot.coordinates && (
@@ -930,28 +1123,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  {/* <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={
-                          currentHotspot?.settings?.advanceOnSelect || true
-                        }
-                        onChange={(e) =>
-                          setCurrentHotspot((prev) => ({
-                            ...prev,
-                            settings: {
-                              ...prev?.settings,
-                              advanceOnSelect: e.target.checked,
-                            },
-                          }))
-                        }
-                      />
-                    }
-                    label={
-                      <Typography variant="body2">Advance On Select</Typography>
-                    }
-                  /> */}
                   <Typography variant="body2" sx={{ mt: 1 }}>
                     Dropdown Options
                   </Typography>
@@ -996,30 +1167,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                 </Stack>
               )}
 
-              {/* Checkbox-specific settings */}
-              {/* {currentHotspot?.hotspotType === "checkbox" && (
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      size="small"
-                      checked={currentHotspot?.settings?.advanceOnCheck || true}
-                      onChange={(e) =>
-                        setCurrentHotspot((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev?.settings,
-                            advanceOnCheck: e.target.checked,
-                          },
-                        }))
-                      }
-                    />
-                  }
-                  label={
-                    <Typography variant="body2">Advance On Check</Typography>
-                  }
-                />
-              )} */}
-
               {/* TextField-specific settings */}
               {currentHotspot?.hotspotType === "textfield" && (
                 <Stack spacing={1.5}>
@@ -1039,64 +1186,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  {/* <TextField
-                    size="small"
-                    fullWidth
-                    label="Text Color"
-                    value={currentHotspot?.settings?.textColor || "#000000"}
-                    onChange={(e) =>
-                      setCurrentHotspot((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev?.settings,
-                          textColor: e.target.value,
-                        },
-                      }))
-                    }
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Box
-                            sx={{
-                              width: 16,
-                              height: 16,
-                              bgcolor:
-                                currentHotspot?.settings?.textColor ||
-                                "#000000",
-                              borderRadius: 0.5,
-                              border: "1px solid #E5E7EB",
-                            }}
-                          />
-                        </InputAdornment>
-                      ),
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <input
-                            type="color"
-                            value={
-                              currentHotspot?.settings?.textColor || "#000000"
-                            }
-                            onChange={(e) =>
-                              setCurrentHotspot((prev) => ({
-                                ...prev,
-                                settings: {
-                                  ...prev?.settings,
-                                  textColor: e.target.value,
-                                },
-                              }))
-                            }
-                            style={{
-                              width: 24,
-                              height: 24,
-                              border: "none",
-                              padding: 0,
-                              background: "none",
-                            }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
-                  /> */}
                 </Stack>
               )}
 
@@ -1321,87 +1410,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       }))
                     }
                   />
-                  {/* <FormControl fullWidth size="small">
-                    <InputLabel>Tip Position</InputLabel>
-                    <Select
-                      label="Tip Position"
-                      value={currentHotspot?.settings?.tipPosition || "top"}
-                      onChange={(e) =>
-                        setCurrentHotspot((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev?.settings,
-                            tipPosition: e.target.value as
-                              | "top"
-                              | "bottom"
-                              | "left"
-                              | "right",
-                          },
-                        }))
-                      }
-                    >
-                      <MenuItem value="top">Top</MenuItem>
-                      <MenuItem value="bottom">Bottom</MenuItem>
-                      <MenuItem value="left">Left</MenuItem>
-                      <MenuItem value="right">Right</MenuItem>
-                    </Select>
-                  </FormControl> */}
                 </Stack>
               )}
-
-              {/* Button-specific settings (shown for button type only) */}
-              {/* {(currentHotspot?.hotspotType === "button" ||
-                !currentHotspot?.hotspotType) && (
-                <Stack spacing={1.5}>
-                  <Stack direction="row" spacing={1}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={
-                            currentHotspot?.settings?.highlightField || false
-                          }
-                          onChange={(e) =>
-                            setCurrentHotspot((prev) => ({
-                              ...prev,
-                              settings: {
-                                ...prev?.settings,
-                                highlightField: e.target.checked,
-                              },
-                            }))
-                          }
-                        />
-                      }
-                      label={
-                        <Typography variant="body2">Highlight Field</Typography>
-                      }
-                    />
-
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={
-                            currentHotspot?.settings?.enableHotkey || false
-                          }
-                          onChange={(e) =>
-                            setCurrentHotspot((prev) => ({
-                              ...prev,
-                              settings: {
-                                ...prev?.settings,
-                                enableHotkey: e.target.checked,
-                              },
-                            }))
-                          }
-                        />
-                      }
-                      label={
-                        <Typography variant="body2">Enable Hotkey</Typography>
-                      }
-                    />
-                  </Stack>
-                </Stack>
-              )} */}
             </Stack>
 
             {/* Actions */}
@@ -1441,6 +1451,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           </Stack>
         </Paper>
       )}
+
+      {/* Optional: Add a style tag for the keyword highlighting */}
+      <style jsx>{`
+        .keyword-highlight {
+          color: green;
+          background-color: #ccffd1;
+          padding: 0 2px;
+          border-radius: 2px;
+        }
+      `}</style>
     </Box>
   );
 };

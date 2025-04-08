@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Stack,
   Typography,
@@ -10,11 +10,13 @@ import {
   styled,
   Button,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 import axios from "axios";
 import AdvancedSettings from "./AdvancedSetting";
 import VoiceAndScoreSettings from "./VoiceScoreSetting";
 import PreviewTab from "../PreviewTab";
+import { useParams } from "react-router-dom";
 
 const NavItem = styled(ListItem)(({ theme }) => ({
   cursor: "pointer",
@@ -25,7 +27,7 @@ const NavItem = styled(ListItem)(({ theme }) => ({
 
 const DEFAULT_VOICE_ID = "11labs-Adrian";
 
-interface SettingsTabProps {
+interface SettingTabProps {
   simulationId?: string;
   prompt?: string;
   simulationType?: string;
@@ -35,14 +37,116 @@ interface SettingsTabProps {
     department: string;
     tags: string[];
     simulationType: string;
+    levels?: {
+      lvl1?: {
+        isEnabled?: boolean;
+        enablePractice?: boolean;
+        hideAgentScript?: boolean;
+        hideCustomerScript?: boolean;
+        hideKeywordScores?: boolean;
+        hideSentimentScores?: boolean;
+        hideHighlights?: boolean;
+        hideCoachingTips?: boolean;
+        enablePostSimulationSurvey?: boolean;
+        aiPoweredPausesAndFeedback?: boolean;
+      };
+      lvl2?: {
+        isEnabled?: boolean;
+        enablePractice?: boolean;
+        hideAgentScript?: boolean;
+        hideCustomerScript?: boolean;
+        hideKeywordScores?: boolean;
+        hideSentimentScores?: boolean;
+        hideHighlights?: boolean;
+        hideCoachingTips?: boolean;
+        enablePostSimulationSurvey?: boolean;
+        aiPoweredPausesAndFeedback?: boolean;
+      };
+      lvl3?: {
+        isEnabled?: boolean;
+        enablePractice?: boolean;
+        hideAgentScript?: boolean;
+        hideCustomerScript?: boolean;
+        hideKeywordScores?: boolean;
+        hideSentimentScores?: boolean;
+        hideHighlights?: boolean;
+        hideCoachingTips?: boolean;
+        enablePostSimulationSurvey?: boolean;
+        aiPoweredPausesAndFeedback?: boolean;
+      };
+    };
+    est_time?: string;
+    estimated_time_to_attempt_in_mins?: number;
+    key_objectives?: string[];
+    quick_tips?: string[];
+    overviewVideo?: string;
+    overview_video?: string;
+    voice_id?: string;
+    language?: string;
+    voice_speed?: string;
+    mood?: string;
+    simulation_completion_repetition?: number;
+    simulation_max_repetition?: number;
+    final_simulation_score_criteria?: string;
+    simulation_scoring_metrics?: {
+      is_enabled?: boolean;
+      keyword_score?: number;
+      click_score?: number;
+    };
+    sim_practice?: {
+      is_unlimited?: boolean;
+      pre_requisite_limit?: number;
+    };
   };
   isLoading?: boolean; // Added isLoading prop
   onPublish?: () => void;
   script?: any[];
 }
 
-const SettingsTab: React.FC<SettingsTabProps> = ({
-  simulationId,
+interface SimulationSettings {
+  simulationType?: string;
+  voice?: {
+    language?: string;
+    accent?: string;
+    gender?: string;
+    ageGroup?: string;
+    voiceId?: string;
+  };
+  levels?: {
+    [key: string]: any;
+  };
+  scoring?: {
+    simulationScore?: "best" | "last" | "average";
+    keywordScore?: string;
+    clickScore?: string;
+    practiceMode?: "unlimited" | "limited";
+    repetitionsAllowed?: string;
+    repetitionsNeeded?: string;
+    scoringMetrics?: {
+      enabled?: boolean;
+      keywordScore?: string;
+      clickScore?: string;
+    };
+  };
+  estimatedTime?: {
+    enabled: boolean;
+    value: string;
+  };
+  objectives?: {
+    enabled: boolean;
+    text: string;
+  };
+  quickTips?: {
+    enabled: boolean;
+    text: string;
+  };
+  overviewVideo?: {
+    enabled: boolean;
+  };
+}
+
+const SettingTab: React.FC<SettingTabProps> = ({
+  simulationId: propSimulationId,
   prompt = "",
   simulationType = "audio",
   simulationData,
@@ -50,21 +154,33 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   onPublish,
   script,
 }) => {
+  // Use ID from URL params if available, fallback to prop
+  const { id: urlId } = useParams<{ id: string }>();
+  const simulationId = urlId || propSimulationId;
+
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [publishedSimId, setPublishedSimId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("Simulation Type");
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
-  // Only set initial prompt value on mount, don't reset on prop changes
+  // Log when simulation data changes
+  useEffect(() => {
+    console.log("SettingTab received simulationData:", simulationData);
+  }, [simulationData]);
+
+  // Update the edited prompt when prop changes, this is important
+  // to ensure the prompt from update API responses is displayed
   useEffect(() => {
     if (prompt) {
+      console.log("Prompt received from props:", prompt);
       setEditedPrompt(prompt);
     }
-  }, []); // Empty dependency array - only runs once on mount
+  }, [prompt]); // Dependency includes prompt, runs when prompt changes
 
   // Check simulation type categories
   const isVisualAudioOrChat =
@@ -79,8 +195,157 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   const showPromptSettings =
     simulationType === "audio" || simulationType === "chat";
 
-  // Load settings from localStorage if available
+  // Helper function to create settings object from simulationData
+  const createSettingsFromData = () => {
+    const levels = simulationData?.levels || {};
+    const lvl1 = levels.lvl1 || {};
+    const lvl2 = levels.lvl2 || {};
+    const lvl3 = levels.lvl3 || {};
+
+    // Convert API format to internal settings format
+    const convertedLevels = {
+      // This is the top-level setting that controls which levels are enabled
+      simulationLevels: {
+        lvl1: lvl1.isEnabled !== false, // Default to true if undefined
+        lvl2: lvl2.isEnabled === true, // Default to false if undefined
+        lvl3: lvl3.isEnabled === true, // Default to false if undefined
+      },
+      // Setting for enabling practice mode - separate from simulationLevels
+      enablePractice: {
+        lvl1: lvl1.enablePractice === true,
+        lvl2: lvl2.enablePractice === true,
+        lvl3: lvl3.enablePractice === true,
+      },
+      hideAgentScript: {
+        lvl1: lvl1.hideAgentScript === true,
+        lvl2: lvl2.hideAgentScript === true,
+        lvl3: lvl3.hideAgentScript === true,
+      },
+      hideCustomerScript: {
+        lvl1: lvl1.hideCustomerScript === true,
+        lvl2: lvl2.hideCustomerScript === true,
+        lvl3: lvl3.hideCustomerScript === true,
+      },
+      hideKeywordScores: {
+        lvl1: lvl1.hideKeywordScores === true,
+        lvl2: lvl2.hideKeywordScores === true,
+        lvl3: lvl3.hideKeywordScores === true,
+      },
+      hideSentimentScores: {
+        lvl1: lvl1.hideSentimentScores !== false, // Default to true
+        lvl2: lvl2.hideSentimentScores !== false, // Default to true
+        lvl3: lvl3.hideSentimentScores === true, // Default to false
+      },
+      hideHighlights: {
+        lvl1: lvl1.hideHighlights === true,
+        lvl2: lvl2.hideHighlights === true,
+        lvl3: lvl3.hideHighlights === true,
+      },
+      hideCoachingTips: {
+        lvl1: lvl1.hideCoachingTips !== false, // Default to true
+        lvl2: lvl2.hideCoachingTips !== false, // Default to true
+        lvl3: lvl3.hideCoachingTips === true, // Default to false
+      },
+      enablePostSurvey: {
+        lvl1: lvl1.enablePostSimulationSurvey === true,
+        lvl2: lvl2.enablePostSimulationSurvey === false,
+        lvl3: lvl3.enablePostSimulationSurvey === false,
+      },
+      aiPoweredPauses: {
+        lvl1: lvl1.aiPoweredPausesAndFeedback === true,
+        lvl2: lvl2.aiPoweredPausesAndFeedback === true,
+        lvl3: lvl3.aiPoweredPausesAndFeedback === false,
+      },
+    };
+
+    // Get estimated time (convert from minutes to "X mins" format)
+    const estimatedTime = {
+      enabled: true,
+      value: simulationData?.estimated_time_to_attempt_in_mins
+        ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
+        : simulationData?.est_time
+          ? `${simulationData.est_time} mins`
+          : "15 mins",
+    };
+
+    // Get objectives from key_objectives array
+    const objectives = {
+      enabled: true,
+      text:
+        simulationData?.key_objectives?.join("\n") ||
+        "Learn basic customer service\nUnderstand refund process",
+    };
+
+    // Get quick tips
+    const quickTips = {
+      enabled: true,
+      text:
+        simulationData?.quick_tips?.join("\n") ||
+        "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
+    };
+
+    // Get overview video setting
+    const overviewVideo = {
+      enabled:
+        !!simulationData?.overviewVideo || !!simulationData?.overview_video,
+    };
+
+    // Voice settings
+    const voiceSettings = {
+      voice: {
+        language: simulationData?.language || "English",
+        accent: "American", // Default value as it's not in the API
+        gender: "Male", // Default value as it's not in the API
+        ageGroup: "Middle Aged", // Default value as it's not in the API
+        voiceId: simulationData?.voice_id || DEFAULT_VOICE_ID,
+      },
+      scoring: {
+        simulationScore:
+          simulationData?.final_simulation_score_criteria === "Last attempt"
+            ? "last"
+            : simulationData?.final_simulation_score_criteria ===
+                "Average of all"
+              ? "average"
+              : "best",
+        keywordScore:
+          simulationData?.simulation_scoring_metrics?.keyword_score?.toString() ||
+          (hasScript ? "20" : "0"),
+        clickScore:
+          simulationData?.simulation_scoring_metrics?.click_score?.toString() ||
+          (hasScript ? "80" : "100"),
+        practiceMode: simulationData?.sim_practice?.is_unlimited
+          ? "unlimited"
+          : "limited",
+        repetitionsAllowed:
+          simulationData?.simulation_max_repetition?.toString() || "3",
+        repetitionsNeeded:
+          simulationData?.simulation_completion_repetition?.toString() || "2",
+        scoringMetrics: {
+          enabled:
+            simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
+          keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score || (hasScript ? 20 : 0)}%`,
+          clickScore: `${simulationData?.simulation_scoring_metrics?.click_score || (hasScript ? 80 : 100)}%`,
+        },
+      },
+    };
+
+    return {
+      advancedSettings: {
+        simulationType: simulationType || "audio",
+        levels: convertedLevels,
+        estimatedTime,
+        objectives,
+        quickTips,
+        overviewVideo,
+      },
+      voiceSettings,
+    };
+  };
+
+  // Load settings from localStorage if available, or create from simulationData
   const loadSettingsFromStorage = () => {
+    if (!simulationId) return null;
+
     const storedSettings = localStorage.getItem(
       `simulation_settings_${simulationId}`,
     );
@@ -95,61 +360,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   };
 
   // Add state to track all settings
-  const [settingsState, setSettingsState] = useState(() => {
+  const [settingsState, setSettingsState] = useState<SimulationSettings>(() => {
     const storedSettings = loadSettingsFromStorage();
     if (storedSettings) return storedSettings;
 
-    return {
-      advancedSettings: {
-        simulationType: simulationType || "audio",
-        levels: {
-          // This is the top-level setting that controls which levels are enabled
-          simulationLevels: { lvl1: true, lvl2: false, lvl3: false },
-          // Setting for enabling practice mode - separate from simulationLevels
-          enablePractice: { lvl1: true, lvl2: true, lvl3: true },
-          hideAgentScript: { lvl1: false, lvl2: false, lvl3: false },
-          hideCustomerScript: { lvl1: false, lvl2: false, lvl3: false },
-          hideKeywordScores: { lvl1: false, lvl2: false, lvl3: false },
-          hideSentimentScores: { lvl1: true, lvl2: true, lvl3: false },
-          hideHighlights: { lvl1: false, lvl2: false, lvl3: false },
-          hideCoachingTips: { lvl1: true, lvl2: true, lvl3: false },
-          enablePostSurvey: { lvl1: true, lvl2: false, lvl3: false },
-          aiPoweredPauses: { lvl1: true, lvl2: true, lvl3: false },
-        },
-        estimatedTime: { enabled: true, value: "15 mins" },
-        objectives: {
-          enabled: true,
-          text: "Learn basic customer service\nUnderstand refund process",
-        },
-        quickTips: {
-          enabled: true,
-          text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
-        },
-        overviewVideo: { enabled: false },
-      },
-      voiceSettings: {
-        voice: {
-          language: "English",
-          accent: "American",
-          gender: "Male",
-          ageGroup: "Middle Aged",
-          voiceId: DEFAULT_VOICE_ID,
-        },
-        scoring: {
-          simulationScore: "best",
-          keywordScore: hasScript ? "20" : "0",
-          clickScore: hasScript ? "80" : "100",
-          practiceMode: "limited",
-          repetitionsAllowed: "3",
-          repetitionsNeeded: "2",
-          scoringMetrics: {
-            enabled: true,
-            keywordScore: hasScript ? "20%" : "0%",
-            clickScore: hasScript ? "80%" : "100%",
-          },
-        },
-      },
-    };
+    // If no stored settings, create from simulationData
+    return createSettingsFromData();
   });
 
   // Save settings to localStorage when they change
@@ -162,13 +378,27 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     }
   }, [settingsState, simulationId]);
 
+  // When simulationData changes, update settings
+  useEffect(() => {
+    if (simulationData) {
+      console.log("Received new simulationData:", simulationData);
+
+      // Create settings from new data
+      const newSettings = createSettingsFromData();
+      console.log("Created new settings from simulationData:", newSettings);
+
+      // Update the settings state
+      setSettingsState(newSettings);
+    }
+  }, [simulationData]);
+
   // Log current settings for debugging
   useEffect(() => {
     console.log("Current settings state:", settingsState);
   }, [settingsState]);
 
   // Add handler functions to update settings
-  const handleAdvancedSettingsChange = (newSettings) => {
+  const handleAdvancedSettingsChange = (newSettings: any) => {
     console.log("Advanced settings updated:", newSettings);
     setSettingsState((prev) => ({
       ...prev,
@@ -176,7 +406,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
     }));
   };
 
-  const handleVoiceSettingsChange = (newSettings) => {
+  const handleVoiceSettingsChange = (newSettings: any) => {
     console.log("Voice settings updated:", newSettings);
     setSettingsState((prev) => ({
       ...prev,
@@ -218,7 +448,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   }, [activeSection]);
 
   // Function to process text into an array, removing numbering
-  const processTextToArray = (text) => {
+  const processTextToArray = (text: string) => {
     if (!text) return [];
     return (
       text
@@ -231,9 +461,14 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   };
 
   const handlePublish = async () => {
-    if (!simulationId || !simulationData) return;
+    if (!simulationId || !simulationData) {
+      setError("Missing simulation ID or data");
+      return;
+    }
 
     setIsPublishing(true);
+    setError(null);
+
     try {
       // Transform script to required format by removing 'id' field - but only if there's a script
       const transformedScript =
@@ -252,21 +487,21 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       const { advancedSettings, voiceSettings } = settingsState;
 
       // Extract specific settings - ensure we're accessing the actual properties
-      const levelSettings = advancedSettings.levels || {};
-      const timeSettings = advancedSettings.estimatedTime || {
+      const levelSettings = advancedSettings?.levels || {};
+      const timeSettings = advancedSettings?.estimatedTime || {
         enabled: true,
         value: "15 mins",
       };
-      const objectivesSettings = advancedSettings.objectives || {
+      const objectivesSettings = advancedSettings?.objectives || {
         enabled: true,
         text: "",
       };
-      const tipsSettings = advancedSettings.quickTips || {
+      const tipsSettings = advancedSettings?.quickTips || {
         enabled: true,
         text: "",
       };
-      const voiceConfig = voiceSettings.voice || {};
-      const scoringConfig = voiceSettings.scoring || {};
+      const voiceConfig = voiceSettings?.voice || {};
+      const scoringConfig = voiceSettings?.scoring || {};
 
       // Parse time value to extract just the number
       const timeValue =
@@ -294,10 +529,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       // Use settings in the payload with proper access to nested properties
       const payload = {
         user_id: "userId1",
-        name: simulationData.name,
+        sim_name: simulationData.name, // Changed from 'name' to 'sim_name'
         division_id: simulationData.division,
         department_id: simulationData.department,
-        type: simulationData.simulationType.toLowerCase(),
+        sim_type: simulationData.simulationType.toLowerCase(), // Changed from 'type' to 'sim_type'
         tags: simulationData.tags,
         status: "published",
         lvl1: {
@@ -375,6 +610,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         voice_speed: "Normal",
         // Use the edited prompt instead of the original one
         prompt: showPromptSettings ? editedPrompt : "",
+        // Log the prompt being sent for debugging
+        __debug_prompt: showPromptSettings
+          ? `Sending prompt: ${editedPrompt}`
+          : "No prompt needed for this simulation type",
         simulation_completion_repetition: parseInt(
           scoringConfig.repetitionsNeeded || "3",
         ),
@@ -412,17 +651,32 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         payload,
       );
 
-      console.log(response.data);
+      console.log("Publish response:", response.data);
 
-      if (response.data.status === "success") {
-        setPublishedSimId(simulationId);
-        setShowPreview(true);
-        if (onPublish) {
-          onPublish();
+      // Updated handling to properly extract data from potential nested structures
+      if (response.data) {
+        const responseData = response.data.document || response.data;
+        // Get simulation object if exists
+        const simObj = responseData.simulation || responseData;
+
+        if (
+          simObj &&
+          (simObj.status === "success" || simObj.status === "published")
+        ) {
+          setPublishedSimId(simulationId);
+          setShowPreview(true);
+          if (onPublish) {
+            onPublish();
+          }
+        } else {
+          setError("Failed to publish simulation. Please try again.");
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error publishing simulation:", error);
+      setError(
+        `Error publishing simulation: ${error.message || "Unknown error"}`,
+      );
     } finally {
       setIsPublishing(false);
     }
@@ -541,6 +795,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         height: "100vh",
       }}
     >
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       <Stack spacing={1}>
         {/* Header Section */}
         <Card
@@ -573,7 +833,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               px: 4,
             }}
           >
-            {isPublishing ? "Publishing..." : "Publish"}
+            {isPublishing ? (
+              <CircularProgress size={24} sx={{ color: "white" }} />
+            ) : (
+              "Publish"
+            )}
           </Button>
         </Card>
 
@@ -808,4 +1072,4 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   );
 };
 
-export default SettingsTab;
+export default SettingTab;

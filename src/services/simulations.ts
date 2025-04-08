@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './api/interceptors';
 
 export interface Simulation {
   id: string;
@@ -17,7 +17,7 @@ export interface Simulation {
 
 export const fetchSimulations = async (userId: string): Promise<Simulation[]> => {
   try {
-    const response = await axios.post('/api/simulations/fetch', {
+    const response = await apiClient.post('/api/simulations/fetch', {
       user_id: userId
     });
     return response.data.simulations;
@@ -29,7 +29,7 @@ export const fetchSimulations = async (userId: string): Promise<Simulation[]> =>
 
 export const fetchSimulationById = async (simulationId: string): Promise<Simulation> => {
   try {
-    const response = await axios.get(`/api/simulations/fetch/${simulationId}`);
+    const response = await apiClient.get(`/api/simulations/fetch/${simulationId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching simulation:', error);

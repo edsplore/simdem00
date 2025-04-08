@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { User, DecodedToken } from '../types/auth';
+import apiClient from './api/interceptors';
 
 // Staging
 const REFRESH_TOKEN_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
@@ -268,36 +269,3 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-
-// Set up axios interceptor to handle token refresh
-axios.interceptors.request.use(
-  async (config) => {
-    const token = authService.getToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const token = await authService.refreshToken();
-        originalRequest.headers.Authorization = `Bearer ${token}`;
-        return axios(originalRequest);
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
-      }
-    }
-
-    return Promise.reject(error);
-  }
-);

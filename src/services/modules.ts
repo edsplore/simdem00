@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './api/interceptors';
 
 export interface Module {
   id: string;
@@ -26,7 +26,7 @@ export interface CreateModulePayload {
 
 export const createModule = async (payload: CreateModulePayload): Promise<CreateModuleResponse> => {
   try {
-    const response = await axios.post('/api/modules/create', payload);
+    const response = await apiClient.post('/api/modules/create', payload);
     return response.data;
   } catch (error) {
     console.error('Error creating module:', error);
@@ -36,7 +36,7 @@ export const createModule = async (payload: CreateModulePayload): Promise<Create
 
 export const fetchModules = async (userId: string): Promise<Module[]> => {
   try {
-    const response = await axios.post('/api/modules/fetch', {
+    const response = await apiClient.post('/api/modules/fetch', {
       user_id: userId
     });
     return response.data.modules;
@@ -48,7 +48,7 @@ export const fetchModules = async (userId: string): Promise<Module[]> => {
 
 export const fetchModuleDetails = async (moduleId: string): Promise<Module> => {
   try {
-    const response = await axios.get(`/api/modules/fetch/${moduleId}`);
+    const response = await apiClient.get(`/api/modules/fetch/${moduleId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching module details:', error);

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './api/interceptors';
 
 export type SimulationResponse = {
   id: string;
@@ -67,7 +67,7 @@ export const publishSimulation = async (
   payload: SimulationPayload
 ): Promise<SimulationResponse> => {
   try {
-    const response = await axios.put(
+    const response = await apiClient.put(
       `/api/simulations/${simulationId}/update`,
       payload
     );

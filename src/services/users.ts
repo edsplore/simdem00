@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './api/interceptors';
 
 export interface User {
   user_id: string;
@@ -17,7 +17,7 @@ const LIST_USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api
 
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    const response = await axios.get(LIST_USERS_URL, {
+    const response = await apiClient.get(LIST_USERS_URL, {
       params: {
         status: 'ACTIVE'
       }

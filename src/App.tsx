@@ -50,121 +50,131 @@ const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* Default redirect */}
-              <Route path="/" element={<Navigate to="/dashboard" />} />
-
-              {/* Protected routes */}
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute path="/dashboard">
-                    <Layout>
-                      <TraineeDashboard />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/training"
-                element={
-                  <ProtectedRoute path="/training">
-                    <Layout>
-                      <TrainingPlanPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/training/:id"
-                element={
-                  <ProtectedRoute path="/training">
-                    <Layout>
-                      <TrainingPlanDetailsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/playback"
-                element={
-                  <ProtectedRoute path="/playback">
-                    <Layout>
-                      <PlaybackPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/playback/:id"
-                element={
-                  <ProtectedRoute path="/playback">
-                    <Layout>
-                      <PlaybackDetailPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/manage-simulations"
-                element={
-                  <ProtectedRoute path="/manage-simulations">
-                    <Layout>
-                      <ManageSimulationsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/generate-scripts"
-                element={
-                  <ProtectedRoute path="/manage-simulations">
-                    <Layout>
+          <Layout>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+  
+                {/* Default redirect */}
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+  
+                {/* Protected routes */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute path="/dashboard">
+                      
+                        <TraineeDashboard />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training"
+                  element={
+                    <ProtectedRoute path="/training">
+                      
+                        <TrainingPlanPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/training/:id"
+                  element={
+                    <ProtectedRoute path="/training">
+                      
+                        <TrainingPlanDetailsPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/playback"
+                  element={
+                    <ProtectedRoute path="/playback">
+                      
+                        <PlaybackPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/playback/:id"
+                  element={
+                    <ProtectedRoute path="/playback">
+                      
+                        <PlaybackDetailPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/manage-simulations"
+                  element={
+                    <ProtectedRoute path="/manage-simulations">
+                      
+                        <ManageSimulationsPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/generate-scripts"
+                  element={
+                    <ProtectedRoute path="/manage-simulations">
+                      
+                        <GenerateScript />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/generate-scripts/:id"
+                  element={
+                    <ProtectedRoute path="/manage-simulations">
                       <GenerateScript />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route 
-                path="/simulation/:id/attempt" 
-                element={
-                  <ProtectedRoute path="/training">
-                    <Layout>
-                      <SimulationAttemptPage />
-                    </Layout>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/manage-training-plan" 
-                element={
-                  <ProtectedRoute path="/manage-training-plan">
-                    <Layout>
-                      <ManageTrainingPlanPage />
-                    </Layout>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route
-                path="/assign-simulations"
-                element={
-                  <ProtectedRoute path="/assign-simulations">
-                    <Layout>
-                      <AssignSimulationsPage />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Catch all - redirect to dashboard */}
-              <Route path="*" element={<Navigate to="/dashboard" />} />
-            </Routes>
-          </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route 
+                  path="/simulation/:id/attempt" 
+                  element={
+                    <ProtectedRoute path="/training">
+                      
+                        <SimulationAttemptPage />
+                      
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/manage-training-plan" 
+                  element={
+                    <ProtectedRoute path="/manage-training-plan">
+                      
+                        <ManageTrainingPlanPage />
+                      
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route
+                  path="/assign-simulations"
+                  element={
+                    <ProtectedRoute path="/assign-simulations">
+                      
+                        <AssignSimulationsPage />
+                      
+                    </ProtectedRoute>
+                  }
+                />
+  
+                {/* Catch all - redirect to dashboard */}
+                <Route path="*" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </Suspense>
+          </Layout>
         </Router>        
       </AuthProvider>
     </ThemeProvider>

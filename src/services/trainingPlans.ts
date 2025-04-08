@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './api/interceptors';
 
 export interface TrainingPlan {
   id: string;
@@ -32,7 +32,7 @@ export interface CreateTrainingPlanPayload {
 
 export const fetchTrainingPlans = async (userId: string): Promise<TrainingPlan[]> => {
   try {
-    const response = await axios.post('/api/training-plans/fetch', {
+    const response = await apiClient.post('/api/training-plans/fetch', {
       user_id: userId
     });
     return response.data.training_plans;
@@ -44,7 +44,7 @@ export const fetchTrainingPlans = async (userId: string): Promise<TrainingPlan[]
 
 export const createTrainingPlan = async (payload: CreateTrainingPlanPayload): Promise<CreateTrainingPlanResponse> => {
   try {
-    const response = await axios.post('/api/training-plans/create', {
+    const response = await apiClient.post('/api/training-plans/create', {
       user_id: payload.user_id,
       training_plan_name: payload.training_plan_name,
       tags: payload.tags,

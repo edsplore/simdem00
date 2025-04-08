@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -10,24 +10,10 @@ import ThemeProvider from './theme/ThemeProvider';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Layout from './components/layout/Layout';
+import Login from './components/Login';
+import Register from './components/Register';
 
-const UnauthorizedPage = () => {
-  const { user } = useAuth();
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Unauthorized Access</h1>
-        <p className="text-gray-600">You don't have permission to access this page.</p>
-        {user && (
-          <p className="text-gray-500 mt-2">
-            Current role: {user.role}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-};
-
+// Lazy load components
 const TraineeDashboard = React.lazy(() =>
   import('./components/dashboard/trainee/TraineeDashboard')
 );
@@ -64,97 +50,121 @@ const App: React.FC = () => {
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <Layout>
-            <Suspense fallback={<LoadingSpinner />}>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" />} />
-                <Route
-                  path="/unauthorized"
-                  element={<UnauthorizedPage />}
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/dashboard">
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+
+              {/* Default redirect */}
+              <Route path="/" element={<Navigate to="/dashboard" />} />
+
+              {/* Protected routes */}
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute path="/dashboard">
+                    <Layout>
                       <TraineeDashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/training"
-                  element={
-                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/training"
+                element={
+                  <ProtectedRoute path="/training">
+                    <Layout>
                       <TrainingPlanPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/training/:id"
-                  element={
-                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/training/:id"
+                element={
+                  <ProtectedRoute path="/training">
+                    <Layout>
                       <TrainingPlanDetailsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/playback"
-                  element={
-                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin']} path="/playback">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/playback"
+                element={
+                  <ProtectedRoute path="/playback">
+                    <Layout>
                       <PlaybackPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/playback/:id"
-                  element={
-                    <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/playback">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/playback/:id"
+                element={
+                  <ProtectedRoute path="/playback">
+                    <Layout>
                       <PlaybackDetailPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/manage-simulations"
-                  element={
-                    <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-simulations">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/manage-simulations"
+                element={
+                  <ProtectedRoute path="/manage-simulations">
+                    <Layout>
                       <ManageSimulationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/generate-scripts"
-                  element={
-                    <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-simulations">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/generate-scripts"
+                element={
+                  <ProtectedRoute path="/manage-simulations">
+                    <Layout>
                       <GenerateScript />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route 
-                  path="/simulation/:id/attempt" 
-                  element={
-                     <ProtectedRoute allowedRoles={['trainee', 'manager', 'creator', 'org_admin', 'workspace_admin']} path="/training">
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route 
+                path="/simulation/:id/attempt" 
+                element={
+                  <ProtectedRoute path="/training">
+                    <Layout>
                       <SimulationAttemptPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/manage-training-plan" 
-                  element={
-                     <ProtectedRoute allowedRoles={['creator', 'workspace_admin']} path="/manage-training-plan">
+                    </Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/manage-training-plan" 
+                element={
+                  <ProtectedRoute path="/manage-training-plan">
+                    <Layout>
                       <ManageTrainingPlanPage />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route
-                  path="/assign-simulations"
-                  element={
-                    <ProtectedRoute allowedRoles={['manager', 'creator', 'workspace_admin']} path="/assign-simulations">
+                    </Layout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route
+                path="/assign-simulations"
+                element={
+                  <ProtectedRoute path="/assign-simulations">
+                    <Layout>
                       <AssignSimulationsPage />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
-            </Suspense>
-          </Layout>
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Catch all - redirect to dashboard */}
+              <Route path="*" element={<Navigate to="/dashboard" />} />
+            </Routes>
+          </Suspense>
         </Router>        
       </AuthProvider>
     </ThemeProvider>

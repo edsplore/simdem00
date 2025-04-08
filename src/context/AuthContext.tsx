@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { User, UserRole } from '../types/auth';
+import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
@@ -17,53 +17,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const updateUserFromToken = useCallback(() => {
-    const decodedToken = authService.getUserFromToken();
-    if (decodedToken) {
-      // Get workspace data - handle both formats
-      const workspaceData = decodedToken['Product Development-2025-1001'] || decodedToken['WS-1'];
-
-      // Default to trainee
-      let role: UserRole = 'trainee';
-
-      // Check for admin roles first
-      if (workspaceData?.roles?.uam?.includes('WORKSPACE_ADMIN') || 
-          workspaceData?.roles?.simulator?.includes('WORKSPACE_ADMIN')) {
-        role = 'workspace_admin';
-      } 
-      // Then check for org admin
-      else if (workspaceData?.roles?.simulator?.includes('Manager')) {
-        role = 'manager';
-      }
-      // Then trainer
-      else if (workspaceData?.roles?.simulator?.some(role => role.toLowerCase().includes('admin'))) {
-        role = 'org_admin';
-      }
-      // Then creator
-      else if (workspaceData?.roles?.simulator?.includes('Sim Creator')) {
-        role = 'creator';
-      }
-      // Default remains trainee if no other role matches
-
-      // Log the role determination
-      console.log('Role determination:', {
-        workspaceData: workspaceData?.roles,
-        assignedRole: role
-      });
-
-      const user = {
-        id: decodedToken.user_id,
-        email: decodedToken.sub,
-        name: `${decodedToken.first_name} ${decodedToken.last_name}`,
-        role: role,
-      }
-
-      console.log('Setting user:', user);
-
-      setUser(user);
+  const updateUserState = useCallback(() => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
       setIsAuthenticated(true);
     } else {
-      console.log('No valid token found, clearing user state');
       setUser(null);
       setIsAuthenticated(false);
     }
@@ -74,16 +33,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Initial token refresh when component mounts
     authService.refreshToken()
       .then(() => {
-        updateUserFromToken();
+        updateUserState();
       })
       .catch(() => {
         setIsInitialized(true);
       });
-  }, [updateUserFromToken]);
+  }, [updateUserState]);
 
   const login = (token: string) => {
     authService.setToken(token);
-    updateUserFromToken();
+    updateUserState();
   };
 
   const logout = () => {
@@ -95,6 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   if (!isInitialized) {
     return <LoadingSpinner />;
   }
+
   return (
     <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
       {children}

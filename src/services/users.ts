@@ -10,10 +10,10 @@ export interface User {
 }
 
 // Staging
-// const LIST_USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
+const LIST_USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
 
 //Dev
-const LIST_USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
+// const LIST_USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
 
 export const fetchUsers = async (): Promise<User[]> => {
   try {

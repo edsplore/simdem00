@@ -19,6 +19,7 @@ import {
   Book as BookIcon,
 } from '@mui/icons-material';
 import { hasPermission } from '../../utils/permissions';
+import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -43,23 +44,33 @@ const NavLink = styled(Link)(({ theme }) => ({
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const location = useLocation();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
-  const navItems = [
-    { path: '/dashboard', icon: BarChartIcon, label: 'Dashboard' },
-    { path: '/training', icon: MenuBookIcon, label: 'Training plan' },
-    { path: '/playback', icon: PlayCircleIcon, label: 'Playback' },
-    { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations' },
-    { path: '/manage-simulations', icon: SmartToyIcon, label: 'Manage Simulations' },
-    { path: '/manage-training-plan', icon: BookIcon, label: 'Manage Training Plan', divider: true },
-    { path: '/settings', icon: SettingsIcon, label: 'Settings' },
-    { path: '/support', icon: HelpIcon, label: 'Help & Support' },
-    { path: '/feedback', icon: FeedbackIcon, label: 'Feedback' }
-  ]
-    // .filter(item => hasPermission(item.path));
+  // Define all possible nav items
+  const allNavItems = [
+    { path: '/dashboard', icon: BarChartIcon, label: 'Dashboard', permission: 'dashboard-trainee' },
+    { path: '/training', icon: MenuBookIcon, label: 'Training plan', permission: 'training-plan' },
+    { path: '/playback', icon: PlayCircleIcon, label: 'Playback', permission: 'playback' },
+    { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations', permission: 'assign-simulations' },
+    { path: '/manage-simulations', icon: SmartToyIcon, label: 'Manage Simulations', permission: 'manage-simulations' },
+    { path: '/manage-training-plan', icon: BookIcon, label: 'Manage Training Plan', permission: 'manage-training-plan', divider: true },
+    { path: '/settings', icon: SettingsIcon, label: 'Settings', permission: null },
+    { path: '/support', icon: HelpIcon, label: 'Help & Support', permission: null },
+    { path: '/feedback', icon: FeedbackIcon, label: 'Feedback', permission: null }
+  ];
+
+  // Filter nav items based on user permissions
+  const navItems = allNavItems.filter(item => {
+    // If no permission is required, show the item
+    if (!item.permission) return true;
+
+    // Check if user has the required permission
+    return user?.permissions?.[item.permission];
+  });
 
   return (
     <Stack

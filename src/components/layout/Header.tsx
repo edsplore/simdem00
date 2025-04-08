@@ -121,7 +121,7 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
               }}
             />
           </Stack>
-          
+
           <Stack direction="row" spacing={2} alignItems="center">
             <Stack 
               alignItems="flex-end" 
@@ -150,7 +150,7 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
                   fontFamily: 'Inter'
                 }}
               >
-                {user?.role.replace('_', ' ')}
+                {user?.role}
               </Typography>
             </Stack>
             <IconButton
@@ -208,19 +208,19 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
                     color="text.secondary"
                     sx={{ textTransform: 'capitalize' }}
                   >
-                    {user?.role.replace('_', ' ')}
+                    {user?.role}
                   </Typography>
                 </Stack>
               </Stack>
             </UserInfo>
-            
+
             <Divider />
-            
+
             <MenuItem2 onClick={handleOpenProfile}>
               <AccountCircleOutlinedIcon />
               <Typography>My Profile</Typography>
             </MenuItem2>
-            
+
             <MenuItem2 onClick={handleLogout}>
               <LogoutOutlinedIcon />
               <Typography>Log Out</Typography>

@@ -1,6 +1,3 @@
-import { jwtDecode } from 'jwt-decode';
-import { authService } from '../services/authService';
-
 // JSON Web Token
 // {
 //   "sub": "user123@weareverise.com",
@@ -56,82 +53,77 @@ import { authService } from '../services/authService';
 // }
 
 
-interface Permission {
-  read?: boolean;
-  write?: boolean;
-}
-
-interface ModulePermissions {
-  [key: string]: string[];
-}
-
-interface WorkspacePermissions {
-  simulator?: {
-    [key: string]: string[];
-  };
-}
-
-interface TokenData {
-  'WS-1': {
-    permissions: {
-      simulator?: {
-        [key: string]: string[];
-      };
-    };
-  };
-}
+import { authService } from '../services/authService';
 
 // Map dashboard routes to their corresponding permission keys
-export const MODULE_PERMISSION_MAP = {
-  '/dashboard': 'dashboard_trainee',
-  '/dashboard-admin': 'dashboard_admin',
-  '/dashboard-manager': 'dashboard_admin',
-  '/training': 'training',
+export const PERMISSION_MAP: { [key: string]: string } = {
+  '/dashboard': 'dashboard-trainee',
+  '/dashboard-admin': 'dashboard-admin',
+  '/dashboard-manager': 'dashboard-manager',
+  '/training': 'training-plan',
   '/playback': 'playback',
-  '/manage-simulations': 'simulations',
-  '/manage-training-plan': 'training_plan',
-  '/assign-simulations': 'trainee',
-  '/settings': 'trainee',
+  '/manage-simulations': 'manage-simulations',
+  '/manage-training-plan': 'manage-training-plan',
+  '/assign-simulations': 'assign-simulations',
+  '/settings': 'settings', // Assuming everyone has access to settings
+  '/support': 'support', // Assuming everyone has access to support
+  '/feedback': 'feedback', // Assuming everyone has access to feedback
 };
 
+/**
+ * Check if the user has permission to access a specific path
+ * @param path The route path to check
+ * @returns boolean indicating if the user has permission
+ */
 export const hasPermission = (path: string): boolean => {
   try {
-    // const token = localStorage.getItem('token');
-    // if (!token) return false;
-    const decoded = authService.getUserFromToken();
-    if (!decoded) return false;
+    const user = authService.getCurrentUser();
 
-    // const decoded: TokenData = jwtDecode(token);
-    const workspacePermissions = decoded['WS-1']?.permissions?.simulator;
+    // Log for debugging
+    console.log(`Checking permission for path: ${path}`);
+    console.log('Current user:', user);
 
-    if (!workspacePermissions) return false;
+    if (!user) {
+      console.log('No user found, denying access');
+      return false;
+    }
 
-    const requiredPermission = MODULE_PERMISSION_MAP[path];
-    if (!requiredPermission) return false; // If no permission mapping exists, don't allow access
+    // For paths that don't require specific permissions
+    if (!PERMISSION_MAP[path]) {
+      console.log(`No permission mapping for path ${path}, allowing access`);
+      return true;
+    }
 
-    const permissions = workspacePermissions[requiredPermission];
-    return permissions?.includes('read') || permissions?.includes('write') || false;
+    // Check if the user has the required permission
+    const permissionKey = PERMISSION_MAP[path];
+    const hasAccess = user.permissions[permissionKey] || false;
+
+    console.log(`Permission key: ${permissionKey}, Has access: ${hasAccess}`);
+    console.log('User permissions:', user.permissions);
+
+    return hasAccess;
   } catch (error) {
     console.error('Error checking permissions:', error);
     return false;
   }
 }
 
+/**
+ * Check if the user has write permission for a specific path
+ * @param path The route path to check
+ * @returns boolean indicating if the user has write permission
+ */
 export const canWrite = (path: string): boolean => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) return false;
+    const user = authService.getCurrentUser();
+    if (!user) return false;
 
-    const decoded: TokenData = jwtDecode(token);
-    const workspacePermissions = decoded['WS-1']?.permissions?.simulator;
+    // For paths that don't require specific permissions
+    if (!PERMISSION_MAP[path]) return false;
 
-    if (!workspacePermissions) return false;
-
-    const requiredPermission = MODULE_PERMISSION_MAP[path];
-    if (!requiredPermission) return false;
-
-    const permissions = workspacePermissions[requiredPermission];
-    return permissions?.includes('write') || false;
+    // Check if the user has the required permission with write access
+    const permissionKey = `${PERMISSION_MAP[path]}_write`;
+    return user.permissions[permissionKey] || false;
   } catch (error) {
     console.error('Error checking write permissions:', error);
     return false;

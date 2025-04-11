@@ -228,7 +228,10 @@ class AuthService {
         email: decodedToken.sub,
         name: `${decodedToken.first_name} ${decodedToken.last_name}`,
         role: selectedRole,
-        permissions: permissions
+        permissions: permissions,
+        division: decodedToken.division || '',
+        department: decodedToken.department || '',
+        reportingTo: decodedToken.reporting_to || ''
       };
 
       console.log('Created user object:', user);

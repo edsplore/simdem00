@@ -14,7 +14,6 @@ import {
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../context/AuthContext';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import ProfileDetailsDialog from '../profile/ProfileDetailsDialog';
 
@@ -25,17 +24,6 @@ const StyledMenu = styled(Menu)(({ theme }) => ({
     minWidth: 280,
     boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)',
   }
-}));
-
-const OnlineIndicator = styled('div')(({ theme }) => ({
-  width: 8,
-  height: 8,
-  backgroundColor: '#12B76A',
-  borderRadius: '50%',
-  border: `2px solid ${theme.palette.background.paper}`,
-  position: 'absolute',
-  bottom: 2,
-  right: 2,
 }));
 
 const UserInfo = styled(Stack)(({ theme }) => ({
@@ -164,7 +152,6 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
                 <Avatar sx={{ width: 32, height: 32, bgcolor: '#F2F4F7', color: '#475467' }}>
                   {user?.name?.charAt(0).toUpperCase()}
                 </Avatar>
-                <OnlineIndicator />
               </Box>
             </IconButton>
           </Stack>
@@ -183,7 +170,6 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
                   <Avatar sx={{ width: 40, height: 40, bgcolor: '#F2F4F7', color: '#475467' }}>
                     {user?.name?.charAt(0).toUpperCase()}
                   </Avatar>
-                  <OnlineIndicator />
                 </Box>
                 <Stack spacing={0}>
                   <Typography variant="subtitle1" fontWeight={600}>
@@ -221,15 +207,12 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
               <Typography>My Profile</Typography>
             </MenuItem2>
 
-            <MenuItem2 onClick={handleLogout}>
-              <LogoutOutlinedIcon />
-              <Typography>Log Out</Typography>
-            </MenuItem2>
           </StyledMenu>
 
           <ProfileDetailsDialog 
             open={isProfileOpen} 
             onClose={() => setIsProfileOpen(false)} 
+            user={user}
           />
         </Stack>
       </Container>

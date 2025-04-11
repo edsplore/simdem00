@@ -6,6 +6,10 @@ export interface User {
   permissions: {
     [key: string]: boolean;
   };
+  division?: string;
+  department?: string;
+  reportingTo?: string;
+  externalId?: string;
 }
 
 export type UserRole = 'workspace_admin' | 'manager' | 'org_admin' | 'trainee' | 'creator';
@@ -35,6 +39,9 @@ export interface DecodedToken {
   user_id: string;
   first_name: string;
   last_name: string;
+  division: string;
+  department: string;
+  reporting_to?: string;
   division: string;
   department: string;
   reporting_to: string;

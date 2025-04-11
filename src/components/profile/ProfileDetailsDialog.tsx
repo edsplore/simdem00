@@ -21,7 +21,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import KeyIcon from '@mui/icons-material/Key';
-import ChangePasswordDialog from './ChangePasswordDialog';
+import { User } from '../../types/auth';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
@@ -62,6 +62,7 @@ const countryCodes = [
 interface ProfileDetailsDialogProps {
   open: boolean;
   onClose: () => void;
+  user: User | null;
 }
 
 const roles = [
@@ -74,19 +75,21 @@ const roles = [
 const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   open,
   onClose,
+  user,
 }) => {
   const [hasChanges, setHasChanges] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState([
     'Simulator | Trainee',
     'Recruiter | Trainee',
   ]);
-  const [timeZone, setTimeZone] = useState('UTC+5:30');
-  const [phoneNumber, setPhoneNumber] = useState('9876543210');
+  const [timeZone, setTimeZone] = useState('UTC+0:00');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('IND');
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  const handleCopyAdminEmail = () => {
-    navigator.clipboard.writeText('abhinav@everailabs.com');
+  const handleCopyEmail = () => {
+    if (user?.email) {
+      navigator.clipboard.writeText(user.email);
+    }
   };
 
   const handleCountryCodeChange = (event: any) => {
@@ -106,8 +109,8 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   const handleCancel = () => {
     setHasChanges(false);
     // Reset values
-    setTimeZone('UTC+5:30');
-    setPhoneNumber('9876543210');
+    setTimeZone('UTC+0:00');
+    setPhoneNumber('');
   };
 
   const handleSave = () => {
@@ -161,10 +164,10 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               color="text.secondary"
               sx={{ fontFamily: 'Inter' }}
             >
-              Email:
+              Email: 
             </Typography>
             <Typography variant="body2" sx={{ fontFamily: 'Inter' }}>
-              oliviawilliams@everailabs.com
+              {user?.email || ''}
             </Typography>
             <Box
               sx={{
@@ -176,7 +179,7 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                 fontFamily: 'Inter',
               }}
             >
-              Trainee
+              {user?.role || ''}
             </Box>
           </Stack>
 
@@ -198,13 +201,13 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                 color="text.secondary"
                 sx={{ fontFamily: 'Inter' }}
               >
-                Admin Email:
+                User ID:
               </Typography>
               <Typography variant="body2" sx={{ fontFamily: 'Inter' }}>
-                abhinav@everailabs.com
+                {user?.id || ''}
               </Typography>
             </Stack>
-            <IconButton onClick={handleCopyAdminEmail} size="small">
+            <IconButton onClick={handleCopyEmail} size="small">
               <ContentCopyIcon />
             </IconButton>
           </Stack>
@@ -215,14 +218,14 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               <ReadOnlyField
                 fullWidth
                 label="First Name"
-                defaultValue="John"
+                defaultValue={user?.name?.split(' ')[0] || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
               <ReadOnlyField
                 fullWidth
                 label="Last Name"
-                defaultValue="Doe"
+                defaultValue={user?.name?.split(' ').slice(1).join(' ') || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
@@ -245,7 +248,7 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               {/* Email Address Field */}
               <ReadOnlyField
                 label="Email Address"
-                defaultValue="johndoe@everise.com"
+                defaultValue={user?.email || ''}
                 disabled
                 InputLabelProps={{
                   shrink: true,
@@ -313,14 +316,14 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               <ReadOnlyField
                 fullWidth
                 label="Division"
-                defaultValue="EverAI Labs"
+                defaultValue={user?.division || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
               <ReadOnlyField
                 fullWidth
                 label="Department"
-                defaultValue="Engineering"
+                defaultValue={user?.department || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
@@ -330,14 +333,14 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               <ReadOnlyField
                 fullWidth
                 label="Internal User ID"
-                defaultValue="john_doe"
+                defaultValue={user?.id || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
               <ReadOnlyField
                 fullWidth
                 label="External User ID"
-                defaultValue="john_doe"
+                defaultValue={user?.externalId || ''}
                 disabled
                 InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
@@ -346,7 +349,7 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
             <ReadOnlyField
               fullWidth
               label="Reporting To"
-              defaultValue="Abhinav Pandey (abhinav@everise.com)"
+              defaultValue={user?.reportingTo || ''}
               disabled
               InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
             />
@@ -354,7 +357,7 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
             <ReadOnlyField
               fullWidth
               label="Assign Roles"
-              value={selectedRoles.join(', ')}
+              value={user?.role || ''}
               disabled
               InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               InputProps={{
@@ -365,21 +368,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                 },
               }}
             />
-            <Button
-              sx={{
-                color: '#444CE7',
-                bgcolor: '#F5F6FF',
-                width: 'fit-content',
-                textTransform: 'none',
-                fontFamily: 'Inter',
-                '&:hover': {
-                  bgcolor: '#EEF0FF',
-                },
-              }}
-              onClick={() => setIsChangePasswordOpen(true)}
-            >
-              Change Password
-            </Button>
           </Stack>
         </Stack>
       </DialogContent>
@@ -416,11 +404,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
           </Button>
         </DialogActions>
       )}
-      <ChangePasswordDialog
-        open={isChangePasswordOpen}
-        onClose={() => setIsChangePasswordOpen(false)}
-        email="oliviawilliams@everailabs.com"
-      />
     </StyledDialog>
   );
 };

@@ -84,7 +84,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
 
-  const { control, handleSubmit, watch } = useForm<FormData>({
+  const { control, handleSubmit, watch, setValue } = useForm<FormData>({
     mode: "onChange",
     defaultValues: {
       language: settings.voice.language,
@@ -110,11 +110,67 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const ageGroup = watch("ageGroup");
   const scoringMetricsEnabled = watch("scoringMetrics.enabled");
 
+  // Watch all simulation score settings
+  const simulationScore = watch("simulationScore");
+  const repetitionsAllowed = watch("repetitionsAllowed");
+  const repetitionsNeeded = watch("repetitionsNeeded");
+  const practiceMode = watch("practiceMode");
+
   // Log when component mounts and when settings change
   useEffect(() => {
     console.log("VoiceScore component mounted with settings:", settings);
     console.log("Initial voice ID:", settings.voice.voiceId);
   }, []);
+
+  // Add an effect to update parent component when form values change
+  useEffect(() => {
+    const updateParentSettings = () => {
+      // Update settings only if we have values to update
+      if (simulationScore && repetitionsAllowed && repetitionsNeeded) {
+        console.log("Updating parent with new scoring settings:", {
+          simulationScore,
+          repetitionsAllowed,
+          repetitionsNeeded,
+          practiceMode,
+        });
+
+        onSettingsChange({
+          ...settings,
+          voice: {
+            ...settings.voice,
+            language: watch("language"),
+            accent: watch("accent"),
+            gender: watch("gender"),
+            ageGroup: watch("ageGroup"),
+            voiceId: selectedVoice || settings.voice.voiceId,
+          },
+          scoring: {
+            simulationScore,
+            keywordScore: watch("keywordScore"),
+            clickScore: watch("clickScore"),
+            practiceMode,
+            repetitionsAllowed,
+            repetitionsNeeded,
+            scoringMetrics: {
+              enabled: watch("scoringMetrics.enabled"),
+              keywordScore: watch("scoringMetrics.keywordScore"),
+              clickScore: watch("scoringMetrics.clickScore"),
+            },
+          },
+        });
+      }
+    };
+
+    // Call immediately to update on mount
+    updateParentSettings();
+  }, [
+    simulationScore,
+    repetitionsAllowed,
+    repetitionsNeeded,
+    practiceMode,
+    selectedVoice,
+    onSettingsChange,
+  ]);
 
   const fetchVoices = async () => {
     try {
@@ -237,6 +293,15 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const onSubmit = (data: FormData) => {
     // Ensure we capture the current selectedVoice state
     console.log("Form submitted with voice ID:", selectedVoice);
+    console.log("Form submitted with simulation score:", data.simulationScore);
+    console.log(
+      "Form submitted with repetitions allowed:",
+      data.repetitionsAllowed,
+    );
+    console.log(
+      "Form submitted with repetitions needed:",
+      data.repetitionsNeeded,
+    );
 
     onSettingsChange({
       ...settings,
@@ -544,8 +609,22 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               control={control}
               render={({ field }) => (
                 <FormControl sx={{ width: 100 }}>
-                  <Select {...field} size="small">
+                  <Select
+                    {...field}
+                    size="small"
+                    value={field.value}
+                    onChange={(e) => {
+                      console.log(
+                        "Repetitions needed changed to:",
+                        e.target.value,
+                      );
+                      field.onChange(e.target.value);
+                    }}
+                  >
                     <MenuItem value="2">2x</MenuItem>
+                    <MenuItem value="3">3x</MenuItem>
+                    <MenuItem value="4">4x</MenuItem>
+                    <MenuItem value="5">5x</MenuItem>
                   </Select>
                 </FormControl>
               )}
@@ -572,8 +651,22 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               control={control}
               render={({ field }) => (
                 <FormControl sx={{ width: 100 }}>
-                  <Select {...field} size="small">
+                  <Select
+                    {...field}
+                    size="small"
+                    value={field.value}
+                    onChange={(e) => {
+                      console.log(
+                        "Repetitions allowed changed to:",
+                        e.target.value,
+                      );
+                      field.onChange(e.target.value);
+                    }}
+                  >
                     <MenuItem value="3">3x</MenuItem>
+                    <MenuItem value="4">4x</MenuItem>
+                    <MenuItem value="5">5x</MenuItem>
+                    <MenuItem value="6">6x</MenuItem>
                   </Select>
                 </FormControl>
               )}
@@ -595,7 +688,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               render={({ field }) => (
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
-                    onClick={() => field.onChange("best")}
+                    onClick={() => {
+                      console.log("Setting simulation score to: best");
+                      field.onChange("best");
+                    }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
@@ -612,7 +708,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     Best of 3 attempts
                   </Button>
                   <Button
-                    onClick={() => field.onChange("last")}
+                    onClick={() => {
+                      console.log("Setting simulation score to: last");
+                      field.onChange("last");
+                    }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
@@ -629,7 +728,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     Last attempt
                   </Button>
                   <Button
-                    onClick={() => field.onChange("average")}
+                    onClick={() => {
+                      console.log("Setting simulation score to: average");
+                      field.onChange("average");
+                    }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
@@ -691,6 +793,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       disabled={!scoringMetricsEnabled}
                     >
                       <MenuItem value="20%">20%</MenuItem>
+                      <MenuItem value="30%">30%</MenuItem>
+                      <MenuItem value="40%">40%</MenuItem>
                     </Select>
                   </FormControl>
                 )}
@@ -706,6 +810,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       label="Click Score"
                       disabled={!scoringMetricsEnabled}
                     >
+                      <MenuItem value="60%">60%</MenuItem>
+                      <MenuItem value="70%">70%</MenuItem>
                       <MenuItem value="80%">80%</MenuItem>
                     </Select>
                   </FormControl>
@@ -730,7 +836,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               render={({ field }) => (
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
-                    onClick={() => field.onChange("unlimited")}
+                    onClick={() => {
+                      console.log("Setting practice mode to: unlimited");
+                      field.onChange("unlimited");
+                    }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",
@@ -748,7 +857,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     Unlimited
                   </Button>
                   <Button
-                    onClick={() => field.onChange("limited")}
+                    onClick={() => {
+                      console.log("Setting practice mode to: limited");
+                      field.onChange("limited");
+                    }}
                     sx={{
                       borderRadius: "20px",
                       border: "1px solid",

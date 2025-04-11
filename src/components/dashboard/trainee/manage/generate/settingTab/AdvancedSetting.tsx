@@ -307,88 +307,99 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
             ADVANCE SETTINGS
           </Typography>
 
-          {/* Simulation Type Card */}
-          <Card sx={{ px: 3, py: 2, borderRadius: 5, boxShadow: 2 }}>
-            <Stack spacing={1}>
-              <Typography
-                variant="h6"
-                sx={{ color: "black" }}
-                data-section="Simulation Type"
-              >
-                Simulation Type
-              </Typography>
-              <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
-                Configure simulation type for this simulation
-              </Typography>
+          {/* Simulation Type Card - Hidden */}
+          {false && (
+            <Card sx={{ px: 3, py: 2, borderRadius: 5, boxShadow: 2 }}>
+              <Stack spacing={1}>
+                <Typography
+                  variant="h6"
+                  sx={{ color: "black" }}
+                  data-section="Simulation Type"
+                >
+                  Simulation Type
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9C9C9D" }}>
+                  Configure simulation type for this simulation
+                </Typography>
 
-              <Controller
-                name="simulationType"
-                control={control}
-                render={({ field }) => (
-                  <Box
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(2, 1fr)",
-                      gap: 2,
-                    }}
-                  >
-                    {simulationTypes.map((type) => (
-                      <Box
-                        key={type.id}
-                        onClick={() => field.onChange(type.id)}
-                        sx={{
-                          p: 2,
-                          border: "2px solid",
-                          borderColor:
-                            field.value === type.id ? "#444CE7" : "#E9E9EA",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          bgcolor:
-                            field.value === type.id ? "#FFFFFF" : "transparent",
-                          "&:hover": {
-                            bgcolor: "#F5F6FF",
-                          },
-                        }}
-                      >
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Box
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: "50%",
+                <Controller
+                  name="simulationType"
+                  control={control}
+                  render={({ field }) => (
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, 1fr)",
+                        gap: 2,
+                      }}
+                    >
+                      {simulationTypes.map((type) => (
+                        <Box
+                          key={type.id}
+                          onClick={() => field.onChange(type.id)}
+                          sx={{
+                            p: 2,
+                            border: "2px solid",
+                            borderColor:
+                              field.value === type.id ? "#444CE7" : "#E9E9EA",
+                            borderRadius: 4,
+                            cursor: "pointer",
+                            bgcolor:
+                              field.value === type.id
+                                ? "#FFFFFF"
+                                : "transparent",
+                            "&:hover": {
                               bgcolor: "#F5F6FF",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                            }}
+                            },
+                          }}
+                        >
+                          <Stack
+                            direction="row"
+                            spacing={2}
+                            alignItems="center"
                           >
-                            {type.icon}
-                          </Box>
-                          <Stack spacing={0.5}>
-                            <Typography
-                              variant="subtitle1"
+                            <Box
                               sx={{
-                                color:
-                                  field.value === type.id
-                                    ? "#444CE7"
-                                    : "inherit",
-                                fontWeight: 600,
+                                width: 40,
+                                height: 40,
+                                borderRadius: "50%",
+                                bgcolor: "#F5F6FF",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
                               }}
                             >
-                              {type.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {type.description}
-                            </Typography>
+                              {type.icon}
+                            </Box>
+                            <Stack spacing={0.5}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  color:
+                                    field.value === type.id
+                                      ? "#444CE7"
+                                      : "inherit",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {type.title}
+                              </Typography>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {type.description}
+                              </Typography>
+                            </Stack>
                           </Stack>
-                        </Stack>
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              />
-            </Stack>
-          </Card>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                />
+              </Stack>
+            </Card>
+          )}
 
           {/* Settings Table */}
           <TableContainer

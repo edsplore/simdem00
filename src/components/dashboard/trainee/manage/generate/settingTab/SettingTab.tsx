@@ -523,8 +523,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
         lvl2: lvl2PracticeEnabled,
         lvl3: lvl3PracticeEnabled,
       });
-      console.log("Selected voice ID:", voiceConfig.voiceId);
-      console.log("Edited prompt:", editedPrompt);
+
+      // Log score settings for debugging
+      console.log("Score settings being sent:", {
+        finalSimulationScoreCriteria: scoringConfig.simulationScore,
+        simulationCompletionRepetition: scoringConfig.repetitionsNeeded,
+        simulationMaxRepetition: scoringConfig.repetitionsAllowed,
+        practiceMode: scoringConfig.practiceMode,
+      });
 
       // Use settings in the payload with proper access to nested properties
       const payload = {
@@ -610,16 +616,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
         voice_speed: "Normal",
         // Use the edited prompt instead of the original one
         prompt: showPromptSettings ? editedPrompt : "",
-        // Log the prompt being sent for debugging
-        __debug_prompt: showPromptSettings
-          ? `Sending prompt: ${editedPrompt}`
-          : "No prompt needed for this simulation type",
+        // IMPORTANT: Explicitly convert simulation settings to correct format
         simulation_completion_repetition: parseInt(
           scoringConfig.repetitionsNeeded || "3",
         ),
         simulation_max_repetition: parseInt(
           scoringConfig.repetitionsAllowed || "5",
         ),
+        // Map simulation score setting to expected string values
         final_simulation_score_criteria:
           scoringConfig.simulationScore === "best"
             ? "Best of three"
@@ -629,10 +633,16 @@ const SettingTab: React.FC<SettingTabProps> = ({
         simulation_scoring_metrics: {
           is_enabled: scoringConfig.scoringMetrics?.enabled === true,
           keyword_score: parseInt(
-            scoringConfig.keywordScore || (hasScript ? "20" : "0"),
+            (scoringConfig.keywordScore || (hasScript ? "20" : "0")).replace(
+              "%",
+              "",
+            ),
           ),
           click_score: parseInt(
-            scoringConfig.clickScore || (hasScript ? "80" : "100"),
+            (scoringConfig.clickScore || (hasScript ? "80" : "100")).replace(
+              "%",
+              "",
+            ),
           ),
         },
         sim_practice: {
@@ -746,7 +756,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const getNavigationItems = () => {
     // Core items for all simulation types
     const coreItems = [
-      "Simulation Type",
+      "Enable Practice",
       "Enable Post Simulations Survey",
       "AI Powered Pauses and Feedback",
       "Estimated Time to Attempt",

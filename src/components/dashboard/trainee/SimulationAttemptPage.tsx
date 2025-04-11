@@ -18,9 +18,10 @@ import DashboardContent from '../DashboardContent';
 import ChatSimulationPage from './simulation/ChatSimulationPage';
 import AudioSimulationPage from './simulation/AudioSimulationPage';
 import VisualAudioSimulationPage from './simulation/VisualAudioSimulationPage';
+import VisualChatSimulationPage from './simulation/VisualChatSimulationPage';
+import VisualSimulationPage from './simulation/VisualSimulationPage';
 import { fetchSimulationById } from '../../../services/simulations';
 import type { Simulation } from '../../../types/training';
-import SimulationStartPage from './simulation/SimulationStartPage';
 
 const SimulationAttemptPage = () => {
   const { id: simulationId } = useParams<{ id: string }>();
@@ -83,13 +84,14 @@ const SimulationAttemptPage = () => {
   if (showStartPage) {
     let SimulationComponent;
 
-    console.log('Simulation Type:', simulation.simulation.sim_type)
-    console.log('Simulation Data:', simulation)
-
     // Determine which simulation component to use based on sim_type
-    if (simulation.simulation.sim_type === 'chat') {
+    if (simulation.sim_type === 'chat') {
       SimulationComponent = ChatSimulationPage;
-    } else if (simulation.simulation.sim_type === 'visual-audio') {
+    } else if (simulation.sim_type === 'visual-chat') {
+      SimulationComponent = VisualChatSimulationPage;
+    } else if (simulation.sim_type === 'visual') {
+      SimulationComponent = VisualSimulationPage;
+    } else if (simulation.sim_type === 'visual-audio') {
       SimulationComponent = VisualAudioSimulationPage;
     } else {
       SimulationComponent = AudioSimulationPage;
@@ -97,10 +99,10 @@ const SimulationAttemptPage = () => {
 
     return (
       <SimulationComponent
-        simulationId={simulation.simulation.id}
-        simulationName={simulation.simulation.sim_name}
+        simulationId={simulation.id}
+        simulationName={simulation.sim_name}
         level={selectedLevel}
-        simType={simulation.simulation.sim_type}
+        simType={simulation.sim_type}
         attemptType={selectedAttempt}
         onBackToList={() => setShowStartPage(false)}
       />

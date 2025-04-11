@@ -805,11 +805,11 @@ export default function VisualsTab({
 
       // Add file objects to FormData when available
       let fileCount = 0;
-      visualImages.forEach((image, index) => {
+      visualImages.forEach((image) => {
         if (image.file) {
           fileCount++;
-          // Use a consistent naming convention for files
-          formData.append(`slides[${index}]`, image.file, image.name);
+          // Use image ID in the key name to maintain correct mapping
+          formData.append(`slide_${image.id}`, image.file, image.name);
         }
       });
       console.log(`Added ${fileCount} files to form data`);

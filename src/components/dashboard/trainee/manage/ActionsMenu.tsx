@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, MenuItem, Divider } from '@mui/material';
 import {
   EditOutlined as EditIcon,
@@ -22,6 +23,15 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   selectedRow,
   onClose,
 }) => {
+  const navigate = useNavigate();
+
+  const handleEditClick = () => {
+    if (selectedRow) {
+      navigate(`/generate-scripts/${selectedRow.id}`);
+    }
+    onClose();
+  };
+
   return (
     <Menu
       anchorEl={anchorEl}
@@ -45,7 +55,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       }}
     >
       <MenuItem
-        onClick={onClose}
+        onClick={handleEditClick}
         sx={{
           color: '#666666', // Text color
           '& svg': {

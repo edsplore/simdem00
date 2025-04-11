@@ -921,11 +921,19 @@ const GenerateScriptContent = () => {
       });
 
       // Use update API with the simulation ID
-      const response = await updateSimulationWithFormData(id, formData);
+      const response = await axios.put(
+        `/api/simulations/${id}/update`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
 
       // Handle response with or without document wrapper
       if (response) {
-        const responseData = response.document || response;
+        const responseData = response.data.document || response.data;
 
         // Check if we have a simulation object in the response
         const simulationObj = responseData.simulation || responseData;
@@ -1107,6 +1115,7 @@ const GenerateScriptContent = () => {
           <ScriptTab
             simulationType={loadedSimulation?.simulationType}
             isLocked={isScriptLocked}
+            onContinue={handleContinue} //
           />
         );
       } else if (tabValue === 1) {

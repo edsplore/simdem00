@@ -32,7 +32,7 @@ import { useSimulationWizard } from "../../../../../context/SimulationWizardCont
 import AIScriptGenerator from "./AIScriptGenerator";
 import ScriptEditor from "./ScriptEditor";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -44,6 +44,7 @@ interface Message {
 interface ScriptTabProps {
   simulationType?: string;
   isLocked?: boolean;
+  onContinue?: () => void;
 }
 
 const OptionCard = styled(Box)(({ theme }) => ({
@@ -72,8 +73,10 @@ const ActionButton = styled(Button)(({ theme }) => ({
 const ScriptTab: React.FC<ScriptTabProps> = ({
   simulationType,
   isLocked = false,
+  onContinue,
 }) => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [showSavedScript, setShowSavedScript] = useState(false);
   const [currentRole, setCurrentRole] = useState<"Customer" | "Trainee">(
@@ -85,6 +88,9 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const { scriptData, setScriptData, setIsScriptLocked } =
     useSimulationWizard();
+
+  // Check if simulation is a visual type
+  const isVisualType = simulationType?.includes("visual");
 
   // When loading from a saved state or creating new
   useEffect(() => {
@@ -254,6 +260,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
     }
   };
 
+  // Fixed handleTextInput to properly add messages to the script
   const handleTextInput = () => {
     if (inputMessage.trim()) {
       const newMessage: Message = {
@@ -263,44 +270,17 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         keywords: [],
       };
 
-      setScriptData((prev) => [...prev, newMessage]);
+      // Log before updating
+      console.log("Current script data before adding:", scriptData);
+
+      // Create a completely new array with the existing messages plus the new one
+      const updatedScript = [...scriptData, newMessage];
+
+      console.log("Updated script data after adding:", updatedScript);
+
+      // Use the updated array to set the state
+      setScriptData(updatedScript);
       setInputMessage("");
-    }
-  };
-
-  const handleUpdateScript = async () => {
-    if (!id || scriptData.length === 0) return;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Transform script data to API format
-      const formattedScript = scriptData.map((msg) => ({
-        script_sentence: msg.message,
-        role:
-          msg.role.toLowerCase() === "trainee"
-            ? "assistant"
-            : msg.role.toLowerCase(),
-        keywords: msg.keywords || [],
-      }));
-
-      // Update simulation with script data
-      const response = await axios.put(`/api/simulations/${id}/update`, {
-        script: formattedScript,
-      });
-
-      if (response.data.status === "success") {
-        // Set as locked after successful update
-        setIsScriptLocked(true);
-      } else {
-        throw new Error("Failed to update script");
-      }
-    } catch (error: any) {
-      console.error("Error updating script:", error);
-      setError(error.message || "Failed to update script. Please try again.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -338,25 +318,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
 
         <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
 
-        <Button
-          variant="contained"
-          onClick={handleUpdateScript}
-          disabled={isLoading}
-          sx={{
-            alignSelf: "center",
-            bgcolor: "#444CE7",
-            "&:hover": { bgcolor: "#3538CD" },
-            borderRadius: 2,
-            px: 4,
-            py: 1.5,
-          }}
-        >
-          {isLoading ? (
-            <CircularProgress size={24} sx={{ color: "white" }} />
-          ) : (
-            "Save and Continue"
-          )}
-        </Button>
+        {/* No bottom "Save and Continue" button - removed as requested */}
       </Stack>
     );
   }
@@ -383,25 +345,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         </Box>
         <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
 
-        <Button
-          variant="contained"
-          onClick={handleUpdateScript}
-          disabled={isLoading}
-          sx={{
-            alignSelf: "center",
-            bgcolor: "#444CE7",
-            "&:hover": { bgcolor: "#3538CD" },
-            borderRadius: 2,
-            px: 4,
-            py: 1.5,
-          }}
-        >
-          {isLoading ? (
-            <CircularProgress size={24} sx={{ color: "white" }} />
-          ) : (
-            "Save Script Changes"
-          )}
-        </Button>
+        {/* No bottom "Save Script Changes" button - removed as requested */}
       </Stack>
     );
   }
@@ -492,8 +436,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             height: "200px",
           }}
         >
-          <SmartToy sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
-          {/* Increased icon size */}
+          <SmartToy sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
           <Typography
             variant="h5"
             sx={{ color: "#0F174F", mb: 2 }}
@@ -532,8 +475,8 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
               bgcolor: "#001EEE",
               py: 2.7,
               "&:hover": { bgcolor: "#3538CD" },
-              height: "40px", // Consistent button height
-              width: "300px", // Fixed button width
+              height: "40px",
+              width: "300px",
               alignItems: "center",
             }}
             onClick={() => setShowAIGenerator(true)}
@@ -550,8 +493,7 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             height: "200px",
           }}
         >
-          <Description sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
-          {/* Increased icon size */}
+          <Description sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
           <Typography
             variant="h4"
             sx={{ color: "#0F174F", mb: 2 }}
@@ -597,8 +539,8 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
                   borderColor: "#3538CD",
                   bgcolor: "#F5F6FF",
                 },
-                height: "40px", // Consistent button height
-                width: "300px", // Fixed button width
+                height: "40px",
+                width: "300px",
                 alignItems: "center",
               }}
             >
@@ -617,11 +559,10 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            height: "200px", // Consistent card height
+            height: "200px",
           }}
         >
-          <AudioFile sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />{" "}
-          {/* Increased icon size */}
+          <AudioFile sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
           <Typography
             variant="h4"
             sx={{ color: "#0F174F", mb: 2 }}
@@ -657,8 +598,8 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
                   borderColor: "#3538CD",
                   bgcolor: "#F5F6FF",
                 },
-                height: "40px", // Consistent button height
-                width: "300px", // Fixed button width
+                height: "40px",
+                width: "300px",
                 alignItems: "center",
               }}
             >
@@ -728,14 +669,13 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
                   display: "flex",
                   alignItems: "center",
                   gap: 1,
-                  pr: "32px !important", // Override default padding
+                  pr: "32px !important",
                 },
-                // Remove default arrow icon
                 "& .MuiSelect-icon": {
                   display: "none",
                 },
               }}
-              IconComponent={() => null} // This removes the default arrow icon
+              IconComponent={() => null}
             >
               <MenuItem value="Customer">
                 <ListItemIcon sx={{ minWidth: "auto", mr: 1 }}>

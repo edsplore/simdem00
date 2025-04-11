@@ -192,7 +192,16 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       message: inputText,
       keywords: [],
     };
-    setMessages((prev) => [...prev, newMessage]);
+
+    // Create a new array with all existing messages plus the new one
+    const updatedMessages = [...messages, newMessage];
+    setMessages(updatedMessages);
+
+    // Use the callback to update parent component
+    if (onScriptUpdate) {
+      onScriptUpdate(updatedMessages);
+    }
+
     setInputText("");
   };
 
@@ -210,7 +219,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const deleteMessage = (id: string) => {
     const updatedMessages = messages.filter((m) => m.id !== id);
     setMessages(updatedMessages);
-    onScriptUpdate?.(updatedMessages);
+    if (onScriptUpdate) {
+      onScriptUpdate(updatedMessages);
+    }
   };
 
   // ----------------------------
@@ -243,7 +254,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     const updatedMessages = [...messages];
     updatedMessages.splice(addMessageIndex, 0, newMessage);
     setMessages(updatedMessages);
-    onScriptUpdate?.(updatedMessages);
+
+    // Update parent component
+    if (onScriptUpdate) {
+      onScriptUpdate(updatedMessages);
+    }
 
     handleCloseAddDialog();
   };
@@ -323,7 +338,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     );
 
     setMessages(newArr);
-    onScriptUpdate?.(newArr);
+    // Update parent component after reordering
+    if (onScriptUpdate) {
+      onScriptUpdate(newArr);
+    }
+
     setDraggedMessage(null);
     setDragOverIndex(null);
     setIsDragging(false);
@@ -361,7 +380,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       m.id === id ? { ...m, message: draftText, keywords: editingKeywords } : m,
     );
     setMessages(updatedMessages);
-    onScriptUpdate?.(updatedMessages);
+
+    // Update parent component
+    if (onScriptUpdate) {
+      onScriptUpdate(updatedMessages);
+    }
+
     setEditingId(null);
     setShowKeywordPopper(false);
   };
@@ -483,6 +507,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     }
   }, [selectionAnchor, showKeywordPopper, selectionIndex, selectionLength]);
 
+  // Update local messages state when script prop changes
   useEffect(() => {
     console.log("Script updated:", script); // Debug log
     setMessages(script);

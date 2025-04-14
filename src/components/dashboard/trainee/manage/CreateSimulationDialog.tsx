@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -26,6 +26,8 @@ import {
 } from "@mui/icons-material";
 
 import { useForm, Controller } from "react-hook-form";
+import { useAuth } from "../../../../context/AuthContext";
+import { fetchDivisions, fetchDepartments } from "../../../../services/suggestions";
 import axios from "axios";
 
 type CreateSimulationFormData = {
@@ -81,8 +83,13 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+  const { user, currentWorkspaceId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [divisions, setDivisions] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
 
   const {
     control,
@@ -100,6 +107,42 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     },
   });
 
+  // Fetch divisions and departments when dialog opens
+  useEffect(() => {
+    if (open && currentWorkspaceId) {
+      // Fetch divisions
+      const loadDivisions = async () => {
+        setIsLoadingDivisions(true);
+        try {
+          const divisionsData = await fetchDivisions(currentWorkspaceId);
+          console.log('Loaded divisions:', divisionsData);
+          setDivisions(divisionsData);
+        } catch (error) {
+          console.error('Failed to load divisions:', error);
+        } finally {
+          setIsLoadingDivisions(false);
+        }
+      };
+
+      // Fetch departments
+      const loadDepartments = async () => {
+        setIsLoadingDepartments(true);
+        try {
+          const departmentsData = await fetchDepartments(currentWorkspaceId);
+          console.log('Loaded departments:', departmentsData);
+          setDepartments(departmentsData);
+        } catch (error) {
+          console.error('Failed to load departments:', error);
+        } finally {
+          setIsLoadingDepartments(false);
+        }
+      };
+
+      loadDivisions();
+      loadDepartments();
+    }
+  }, [open, currentWorkspaceId]);
+
   const onSubmit = async (data: CreateSimulationFormData) => {
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -107,7 +150,7 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     try {
       // Call the API to create a simulation
       const response = await axios.post("/api/simulations/create", {
-        user_id: "user123", // This should come from your auth context
+        user_id: user?.id || "user123", // Use authenticated user ID
         name: data.name,
         division_id: data.division || "",
         department_id: data.department || "",
@@ -281,9 +324,26 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                         }
                         return selected;
                       }}
+                     MenuProps={{
+                       PaperProps: {
+                         style: {
+                           maxHeight: 300,
+                           overflow: 'auto'
+                         }
+                       }
+                     }}
                     >
-                      <MenuItem value="division1">Division 1</MenuItem>
-                      <MenuItem value="division2">Division 2</MenuItem>
+                      {isLoadingDivisions ? (
+                        <MenuItem disabled>Loading divisions...</MenuItem>
+                      ) : divisions.length === 0 ? (
+                        <MenuItem disabled>No divisions available</MenuItem>
+                      ) : (
+                        divisions.map((division) => (
+                          <MenuItem key={division} value={division}>
+                            {division}
+                          </MenuItem>
+                        ))
+                      )}
                     </Select>
                   )}
                 />
@@ -308,9 +368,26 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                         }
                         return selected;
                       }}
+                     MenuProps={{
+                       PaperProps: {
+                         style: {
+                           maxHeight: 300,
+                           overflow: 'auto'
+                         }
+                       }
+                     }}
                     >
-                      <MenuItem value="department1">Department 1</MenuItem>
-                      <MenuItem value="department2">Department 2</MenuItem>
+                      {isLoadingDepartments ? (
+                        <MenuItem disabled>Loading departments...</MenuItem>
+                      ) : departments.length === 0 ? (
+                        <MenuItem disabled>No departments available</MenuItem>
+                      ) : (
+                        departments.map((department) => (
+                          <MenuItem key={department} value={department}>
+                            {department}
+                          </MenuItem>
+                        ))
+                      )}
                     </Select>
                   )}
                 />
@@ -356,6 +433,14 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                           ))}
                         </Box>
                       )}
+                     MenuProps={{
+                       PaperProps: {
+                         style: {
+                           maxHeight: 300,
+                           overflow: 'auto'
+                         }
+                       }
+                     }}
                     >
                       {availableTags.map((tag) => (
                         <MenuItem key={tag} value={tag}>

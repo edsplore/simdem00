@@ -71,6 +71,92 @@ export const PERMISSION_MAP: { [key: string]: string } = {
 };
 
 /**
+ * Check if the user has both ACCESS and READ permissions for a specific feature
+ * @param permissionKey The permission key to check
+ * @returns boolean indicating if the user has both ACCESS and READ permissions
+ */
+export const hasAccessAndReadPermission = (permissionKey: string): boolean => {
+  try {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+
+    return user.permissions[permissionKey] || false;
+  } catch (error) {
+    console.error(`Error checking permission for ${permissionKey}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Check if the user has CREATE permission for a specific feature
+ * @param permissionKey The permission key to check
+ * @returns boolean indicating if the user has CREATE permission
+ */
+export const hasCreatePermission = (permissionKey: string): boolean => {
+  try {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+
+    // First check for specific create permission
+    const createPermissionKey = `${permissionKey}_create`;
+    if (user.permissions[createPermissionKey]) {
+      return true;
+    }
+
+    // Fall back to write permission if specific create permission doesn't exist
+    const writePermissionKey = `${permissionKey}_write`;
+    return user.permissions[writePermissionKey] || false;
+  } catch (error) {
+    console.error(`Error checking create permission for ${permissionKey}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Check if the user has UPDATE permission for a specific feature
+ * @param permissionKey The permission key to check
+ * @returns boolean indicating if the user has UPDATE permission
+ */
+export const hasUpdatePermission = (permissionKey: string): boolean => {
+  try {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+
+    // First check for specific update permission
+    const updatePermissionKey = `${permissionKey}_update`;
+    if (user.permissions[updatePermissionKey]) {
+      return true;
+    }
+
+    // Fall back to write permission if specific update permission doesn't exist
+    const writePermissionKey = `${permissionKey}_write`;
+    return user.permissions[writePermissionKey] || false;
+  } catch (error) {
+    console.error(`Error checking update permission for ${permissionKey}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Check if the user has DELETE permission for a specific feature
+ * @param permissionKey The permission key to check
+ * @returns boolean indicating if the user has DELETE permission
+ */
+export const hasDeletePermission = (permissionKey: string): boolean => {
+  try {
+    const user = authService.getCurrentUser();
+    if (!user) return false;
+
+    // Check for specific delete permission
+    const deletePermissionKey = `${permissionKey}_delete`;
+    return user.permissions[deletePermissionKey] || false;
+  } catch (error) {
+    console.error(`Error checking create permission for ${permissionKey}:`, error);
+    return false;
+  }
+}
+
+/**
  * Check if the user has permission to access a specific path
  * @param path The route path to check
  * @returns boolean indicating if the user has permission

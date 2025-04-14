@@ -11,6 +11,7 @@ import {
   LockOpenOutlined as UnlockIcon,
 } from '@mui/icons-material';
 import { SimulationData } from './types';
+import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
 
 interface ActionsMenuProps {
   anchorEl: HTMLElement | null;
@@ -24,6 +25,11 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
+
+  // Check permissions for different actions
+  const canUpdate = hasUpdatePermission('manage-simulations');
+  const canCreate = hasCreatePermission('manage-simulations');
+  const canDelete = hasDeletePermission('manage-simulations');
 
   const handleEditClick = () => {
     if (selectedRow) {
@@ -54,33 +60,40 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         },
       }}
     >
-      <MenuItem
-        onClick={handleEditClick}
-        sx={{
-          color: '#666666', // Text color
-          '& svg': {
-            color: '#EBEBEB', // Icon color updated to #EBEBEB
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        <EditIcon sx={{ mr: 1 }} /> Edit
-      </MenuItem>
-      <Divider sx={{ borderColor: '#EBEBEB' }} />{' '}
-      {/* Divider color updated to #EBEBEB */}
-      <MenuItem
-        onClick={onClose}
-        sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        <DuplicateIcon sx={{ mr: 1 }} /> Duplicate
-      </MenuItem>
-      <Divider sx={{ borderColor: '#EBEBEB' }} />
+      {canUpdate && (
+        <MenuItem
+          onClick={handleEditClick}
+          sx={{
+            color: '#666666', // Text color
+            '& svg': {
+              color: '#EBEBEB', // Icon color updated to #EBEBEB
+            },
+            padding: '1px 8px', // Reduced padding for smaller spacing
+          }}
+        >
+          <EditIcon sx={{ mr: 1 }} /> Edit
+        </MenuItem>
+      )}
+
+      {canUpdate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+
+      {canCreate && (
+        <MenuItem
+          onClick={onClose}
+          sx={{
+            color: '#666666',
+            '& svg': {
+              color: '#EBEBEB',
+            },
+            padding: '1px 8px', // Reduced padding for smaller spacing
+          }}
+        >
+          <DuplicateIcon sx={{ mr: 1 }} /> Duplicate
+        </MenuItem>
+      )}
+
+      {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+
       <MenuItem
         onClick={onClose}
         sx={{
@@ -93,53 +106,65 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       >
         <DownloadIcon sx={{ mr: 1 }} /> Download Script
       </MenuItem>
+
       <Divider sx={{ borderColor: '#EBEBEB' }} />
-      <MenuItem
-        onClick={onClose}
-        sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        {selectedRow?.isLocked ? (
-          <>
-            <UnlockIcon sx={{ mr: 1 }} /> Unlock
-          </>
-        ) : (
-          <>
-            <LockIcon sx={{ mr: 1 }} /> Lock
-          </>
-        )}
-      </MenuItem>
-      <Divider sx={{ borderColor: '#EBEBEB' }} />
-      <MenuItem
-        onClick={onClose}
-        sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        <ArchiveIcon sx={{ mr: 1 }} /> Archive
-      </MenuItem>
-      <Divider sx={{ borderColor: '#EBEBEB' }} />
-      <MenuItem
-        onClick={onClose}
-        sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        <DeleteIcon sx={{ mr: 1 }} /> Delete
-      </MenuItem>
+
+      {canUpdate && (
+        <MenuItem
+          onClick={onClose}
+          sx={{
+            color: '#666666',
+            '& svg': {
+              color: '#EBEBEB',
+            },
+            padding: '1px 8px', // Reduced padding for smaller spacing
+          }}
+        >
+          {selectedRow?.isLocked ? (
+            <>
+              <UnlockIcon sx={{ mr: 1 }} /> Unlock
+            </>
+          ) : (
+            <>
+              <LockIcon sx={{ mr: 1 }} /> Lock
+            </>
+          )}
+        </MenuItem>
+      )}
+
+      {canUpdate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+
+      {canUpdate && (
+        <MenuItem
+          onClick={onClose}
+          sx={{
+            color: '#666666',
+            '& svg': {
+              color: '#EBEBEB',
+            },
+            padding: '1px 8px', // Reduced padding for smaller spacing
+          }}
+        >
+          <ArchiveIcon sx={{ mr: 1 }} /> Archive
+        </MenuItem>
+      )}
+
+      {canUpdate && canDelete && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+
+      {canDelete && (
+        <MenuItem
+          onClick={onClose}
+          sx={{
+            color: '#666666',
+            '& svg': {
+              color: '#EBEBEB',
+            },
+            padding: '1px 8px', // Reduced padding for smaller spacing
+          }}
+        >
+          <DeleteIcon sx={{ mr: 1 }} /> Delete
+        </MenuItem>
+      )}
     </Menu>
   );
 };

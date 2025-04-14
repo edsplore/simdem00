@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Stack, 
@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useAuth } from '../../context/AuthContext';
+import { fetchUserDetails } from '../../services/users';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import ProfileDetailsDialog from '../profile/ProfileDetailsDialog';
@@ -46,11 +47,31 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, currentWorkspaceId } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const open = Boolean(anchorEl);
+
+  useEffect(() => {
+    const loadUserDetails = async () => {
+      if (user?.id && currentWorkspaceId) {
+        try {
+          console.log(`Fetching user details for user ${user.id} in workspace ${currentWorkspaceId}`);
+          const userDetails = await fetchUserDetails(user.id, currentWorkspaceId);
+
+          if (userDetails.user.profile_img_url) {
+            setProfileImageUrl(userDetails.user.profile_img_url);
+          }
+        } catch (error) {
+          console.error('Error loading user details:', error);
+        }
+      }
+    };
+
+    loadUserDetails();
+  }, [user?.id, currentWorkspaceId]);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -149,9 +170,17 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
               aria-expanded={open ? 'true' : undefined}
             >
               <Box sx={{ position: 'relative' }}>
-                <Avatar sx={{ width: 32, height: 32, bgcolor: '#F2F4F7', color: '#475467' }}>
-                  {user?.name?.charAt(0).toUpperCase()}
-                </Avatar>
+                {profileImageUrl ? (
+                  <Avatar 
+                    src={profileImageUrl} 
+                    sx={{ width: 32, height: 32 }}
+                    alt={user?.name || 'User'}
+                  />
+                ) : (
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: '#F2F4F7', color: '#475467' }}>
+                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                  </Avatar>
+                )}
               </Box>
             </IconButton>
           </Stack>
@@ -167,9 +196,17 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
             <UserInfo spacing={0.5}>
               <Stack direction="row" spacing={2} alignItems="center">
                 <Box sx={{ position: 'relative' }}>
-                  <Avatar sx={{ width: 40, height: 40, bgcolor: '#F2F4F7', color: '#475467' }}>
-                    {user?.name?.charAt(0).toUpperCase()}
-                  </Avatar>
+                  {profileImageUrl ? (
+                    <Avatar 
+                      src={profileImageUrl} 
+                      sx={{ width: 40, height: 40 }}
+                      alt={user?.name || 'User'}
+                    />
+                  ) : (
+                    <Avatar sx={{ width: 40, height: 40, bgcolor: '#F2F4F7', color: '#475467' }}>
+                      {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                    </Avatar>
+                  )}
                 </Box>
                 <Stack spacing={0}>
                   <Typography variant="subtitle1" fontWeight={600}>
@@ -211,7 +248,8 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
 
           <ProfileDetailsDialog 
             open={isProfileOpen} 
-            onClose={() => setIsProfileOpen(false)} 
+            onClose={() => setIsProfileOpen(false)}
+            profileImageUrl={profileImageUrl}
             user={user}
           />
         </Stack>

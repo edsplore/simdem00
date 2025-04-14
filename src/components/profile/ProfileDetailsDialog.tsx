@@ -62,6 +62,7 @@ const countryCodes = [
 interface ProfileDetailsDialogProps {
   open: boolean;
   onClose: () => void;
+  profileImageUrl: string | null;
   user: User | null;
 }
 
@@ -75,6 +76,7 @@ const roles = [
 const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   open,
   onClose,
+  profileImageUrl,
   user,
 }) => {
   const [hasChanges, setHasChanges] = useState(false);
@@ -82,7 +84,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
     'Simulator | Trainee',
     'Recruiter | Trainee',
   ]);
-  const [timeZone, setTimeZone] = useState('UTC+0:00');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('IND');
 
@@ -109,7 +110,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   const handleCancel = () => {
     setHasChanges(false);
     // Reset values
-    setTimeZone('UTC+0:00');
     setPhoneNumber('');
   };
 
@@ -123,7 +123,15 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
       <DialogTitle sx={{ p: 3, pb: 2 }}>
         <Stack direction="row" alignItems="center" spacing={2}>
           <Avatar sx={{ bgcolor: '#F5F6FF', width: 48, height: 48 }}>
-            <PersonIcon sx={{ color: '#444CE7' }} />
+            {profileImageUrl ? (
+              <img src={profileImageUrl} alt={user?.name || 'User'} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              user?.name ? (
+                user.name.split(' ').map(n => n[0]).join('').toUpperCase()
+              ) : (
+                <PersonIcon sx={{ color: '#444CE7' }} />
+              )
+            )}
           </Avatar>
           <Stack spacing={0.5} flex={1}>
             <Typography
@@ -131,13 +139,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               sx={{ fontFamily: 'Inter', fontWeight: 500 }}
             >
               My Profile
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ fontFamily: 'Inter' }}
-            >
-              Edit your profile details
             </Typography>
           </Stack>
           <IconButton onClick={onClose} size="small">
@@ -231,28 +232,16 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
               />
             </Stack>
 
-            <Select
-              value={timeZone}
-              onChange={(e) => {
-                setTimeZone(e.target.value);
-                handleChange();
-              }}
-              fullWidth
-              sx={{ fontFamily: 'Inter' }}
-            >
-              <MenuItem value="UTC+5:30">UTC+5:30</MenuItem>
-              <MenuItem value="UTC+0:00">UTC+0:00</MenuItem>
-            </Select>
-
             <Stack direction="row" spacing={2}>
               {/* Email Address Field */}
               <ReadOnlyField
+                fullWidth
                 label="Email Address"
                 defaultValue={user?.email || ''}
                 disabled
                 InputLabelProps={{
                   shrink: true,
-                  sx: { fontFamily: 'Inter', width: 250 },
+                  sx: { fontFamily: 'Inter' },
                 }}
                 InputProps={{
                   sx: {
@@ -262,54 +251,13 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                 }}
               />
 
-              {/* Phone Number Section */}
-              <Stack direction="row" spacing={1} sx={{ flex: 1 }}>
-                <Select
-                  value={countryCode}
-                  onChange={handleCountryCodeChange}
-                  sx={{
-                    width: 100,
-                    fontFamily: 'Inter',
-                    '& .MuiSelect-select': {
-                      padding: '8.5px 14px',
-                    },
-                  }}
-                >
-                  {countryCodes.map((country) => (
-                    <MenuItem
-                      key={country.code}
-                      value={country.code}
-                      sx={{ fontFamily: 'Inter' }}
-                    >
-                      {country.code}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <EditableField
-                  fullWidth
-                  label="Phone Number"
-                  value={phoneNumber}
-                  onChange={(e) => {
-                    setPhoneNumber(e.target.value);
-                    handleChange();
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <Typography
-                        component="span"
-                        sx={{
-                          mr: 1,
-                          fontFamily: 'Inter',
-                          color: 'text.secondary',
-                        }}
-                      >
-                        {getCurrentDialCode()}
-                      </Typography>
-                    ),
-                  }}
-                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-                />
-              </Stack>
+              <ReadOnlyField
+                fullWidth
+                label="Phone Number"
+                defaultValue={user?.phoneNumber || ''}
+                disabled
+                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+              />
             </Stack>
 
             <Stack direction="row" spacing={2}>
@@ -371,39 +319,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
           </Stack>
         </Stack>
       </DialogContent>
-
-      {hasChanges && (
-        <DialogActions sx={{ p: 3, gap: 2 }}>
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={handleCancel}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontFamily: 'Inter',
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleSave}
-            sx={{
-              borderRadius: 2,
-              textTransform: 'none',
-              fontFamily: 'Inter',
-              bgcolor: '#444CE7',
-              '&:hover': {
-                bgcolor: '#3538CD',
-              },
-            }}
-          >
-            Save Changes
-          </Button>
-        </DialogActions>
-      )}
     </StyledDialog>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { TextField, Button, Paper, Typography, Container, Link } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -10,7 +10,8 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, currentWorkspaceId } = useAuth();
+  const location = useLocation();
 
   // Redirect if already authenticated
   useRedirectIfAuthenticated();
@@ -18,10 +19,15 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     try {
       const response = await api.login({ email, password });
-      login(response.token, response.user);
+
+      // Get workspace ID from URL or use the one from context
+      const params = new URLSearchParams(location.search);
+      const workspaceId = params.get('workspace_id') || currentWorkspaceId;
+
+      login(response.token, workspaceId || undefined);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || 'An error occurred during login');

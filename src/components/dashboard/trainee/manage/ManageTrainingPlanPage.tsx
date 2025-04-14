@@ -31,9 +31,11 @@ import SearchIcon from '@mui/icons-material/Search';
 import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
+import TrainingPlanDetailsDialog from './TrainingPlanDetailsDialog';
 import { useAuth } from '../../../../context/AuthContext';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
 import { fetchModules, type Module } from '../../../../services/modules';
+import { hasCreatePermission } from '../../../../utils/permissions';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
@@ -63,6 +65,11 @@ const ManageTrainingPlanPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderBy>('name');
+  const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+
+  // Check if user has create permission for manage-training-plan
+  const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
 
   useEffect(() => {
     const loadData = async () => {
@@ -108,6 +115,14 @@ const ManageTrainingPlanPage = () => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
+  };
+
+  const handleRowClick = (item: TrainingPlan | Module) => {
+    // Only show details dialog for training plans
+    if (currentTab === 'Training Plans') {
+      setSelectedTrainingPlan(item as TrainingPlan);
+      setIsDetailsDialogOpen(true);
+    }
   };
 
   const filteredData = currentTab === 'Training Plans'
@@ -206,11 +221,16 @@ const ManageTrainingPlanPage = () => {
             <Button
               variant="contained"
               onClick={() => setIsCreateDialogOpen(true)}
+              disabled={!canCreateTrainingPlan}
               sx={{
                 bgcolor: 'primary.main',
                 color: 'white',
                 textTransform: 'none',
                 borderRadius: 2,
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(68, 76, 231, 0.3)',
+                  color: 'white',
+                },
               }}
             >
               {currentTab === 'Training Plans'
@@ -403,7 +423,16 @@ const ManageTrainingPlanPage = () => {
                 </TableHead>
                 <TableBody>
                   {sortedData.slice(page * parseInt(rowsPerPage), page * parseInt(rowsPerPage) + parseInt(rowsPerPage)).map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow 
+                      key={item.id} 
+                      onClick={() => handleRowClick(item)}
+                      sx={{
+                        cursor: currentTab === 'Training Plans' ? 'pointer' : 'default',
+                        '&:hover': {
+                          bgcolor: currentTab === 'Training Plans' ? 'action.hover' : 'inherit',
+                        },
+                      }}
+                    >
                       <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
                       <TableCell sx={{ width: 200 }}>
                         <Stack direction="row" spacing={1}>
@@ -479,6 +508,12 @@ const ManageTrainingPlanPage = () => {
           </TableContainer>
           )}
         </Stack>
+
+        <TrainingPlanDetailsDialog
+          open={isDetailsDialogOpen}
+          onClose={() => setIsDetailsDialogOpen(false)}
+          trainingPlan={selectedTrainingPlan}
+        />
       </Container>
 
       {currentTab === 'Training Plans' ? (

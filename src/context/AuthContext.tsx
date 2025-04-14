@@ -1,21 +1,36 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { useLocation } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
-  login: (token: string) => void;
+  login: (token: string, workspaceId?: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  currentWorkspaceId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const location = useLocation();
+
+  // Extract workspace ID from query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const workspaceId = params.get('workspace_id');
+
+    if (workspaceId) {
+      console.log('Workspace ID from URL:', workspaceId);
+      setCurrentWorkspaceId(workspaceId);
+    }
+  }, [location.search]);
 
   const updateUserState = useCallback(() => {
     const currentUser = authService.getCurrentUser();
@@ -29,19 +44,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsInitialized(true);
   }, []);
 
+  // Initialize auth state and refresh token if needed
   useEffect(() => {
-    // Initial token refresh when component mounts
-    authService.refreshToken()
+    // Initial token refresh when component mounts or workspace changes
+    authService.refreshToken(currentWorkspaceId)
       .then(() => {
         updateUserState();
       })
       .catch(() => {
         setIsInitialized(true);
       });
-  }, [updateUserState]);
+  }, [updateUserState, currentWorkspaceId]);
 
-  const login = (token: string) => {
-    authService.setToken(token);
+  const login = (token: string, workspaceId?: string) => {
+    authService.setToken(token, workspaceId || currentWorkspaceId);
     updateUserState();
   };
 
@@ -56,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, login, logout, isAuthenticated, currentWorkspaceId }}>
       {children}
     </AuthContext.Provider>
   );

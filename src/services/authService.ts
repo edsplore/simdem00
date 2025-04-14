@@ -3,26 +3,38 @@ import { jwtDecode } from 'jwt-decode';
 import { User, DecodedToken } from '../types/auth';
 import apiClient from './api/interceptors';
 
-// Staging
-const REFRESH_TOKEN_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
-
-//Dev
-// const REFRESH_TOKEN_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh';
-
-const TOKEN_KEY = 'access_token';
-const USER_KEY = 'current_user';
+// Environment-specific URLs
+const URLS = {
+  dev: {
+    refreshToken: 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh'
+  },
+  staging: {
+    refreshToken: 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh'
+  }
+};
 
 class AuthService {
   private refreshTokenTimeout?: NodeJS.Timeout;
+  private currentUser: User | null = null;
+  private token: string | null = null;
+  private currentWorkspaceId: string | null = null;
 
-  async refreshToken(): Promise<string> {
+  async refreshToken(workspaceId?: string | null): Promise<string> {
     try {
       console.log('Attempting to refresh token...');
 
-      const response = await axios.post(REFRESH_TOKEN_URL, '', {
+      // Use the provided workspace ID or the stored one
+      const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
+      console.log('Using workspace ID for refresh:', effectiveWorkspaceId);
+
+      // Use dev URL for now, could be made configurable based on environment
+      const refreshTokenUrl = URLS.dev.refreshToken;
+
+      const response = await axios.post(refreshTokenUrl, '', {
         withCredentials: true, // This ensures cookies are sent with the request
         headers: {
-          'Access-Control-Allow-Origin': '*'
+          'Access-Control-Allow-Origin': '*',
+          ...(effectiveWorkspaceId ? { 'X-WORKSPACE-ID': effectiveWorkspaceId } : {})
         }
       });
 
@@ -34,10 +46,10 @@ class AuthService {
       });
 
       const newToken = response.data;
-      localStorage.setItem(TOKEN_KEY, newToken);
+      this.token = newToken;
 
       // Update the user data based on the new token
-      this.updateUserFromToken(newToken);
+      this.updateUserFromToken(newToken, effectiveWorkspaceId);
 
       // Start the refresh timer
       this.startRefreshTimer(newToken);
@@ -59,7 +71,7 @@ class AuthService {
         } : undefined
       });
 
-      this.logout();
+      this.clearAuthData();
       throw error;
     }
   }
@@ -95,29 +107,42 @@ class AuthService {
     }
   }
 
-  getToken(): string | null {
-    return localStorage.getItem(TOKEN_KEY);
+  getToken(): string | null {    
+    return this.token;
   }
 
-  setToken(token: string) {
-    localStorage.setItem(TOKEN_KEY, token);
-    this.updateUserFromToken(token);
+  setToken(token: string, workspaceId?: string | null) {
+    this.token = token;
+    if (workspaceId) {
+      this.currentWorkspaceId = workspaceId;
+    }
+    this.updateUserFromToken(token, workspaceId);
     this.startRefreshTimer(token);
   }
 
-  logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  clearAuthData() {
+    this.token = null;
+    this.currentUser = null;
+    this.currentWorkspaceId = null;
     if (this.refreshTokenTimeout) {
       clearTimeout(this.refreshTokenTimeout);
     }
   }
 
-  updateUserFromToken(token: string) {
+  logout() {
+    this.clearAuthData();
+  }
+
+  updateUserFromToken(token: string, workspaceId?: string | null) {
     try {
       // Decode the token and log the full structure for debugging
       const decodedToken = jwtDecode<DecodedToken>(token);
       console.log('FULL DECODED TOKEN:', decodedToken);
+
+      // Store the workspace ID if provided
+      if (workspaceId) {
+        this.currentWorkspaceId = workspaceId;
+      }
 
       // Find all workspace keys by looking for keys that contain roles and permissions
       const workspaceKeys = Object.keys(decodedToken).filter(key => 
@@ -129,46 +154,60 @@ class AuthService {
       console.log('Found workspace keys:', workspaceKeys);
 
       if (workspaceKeys.length === 0) {
-        console.error('No workspace found in token');
+        console.error('No workspaces found in token');
         return null;
       }
 
-      // Initialize variables to store the workspace with simulator permissions
+      // Determine which workspace to use
       let selectedWorkspace = null;
       let selectedWorkspaceKey = '';
       let selectedRole = 'Unknown';
 
-      // Check each workspace for simulator permissions
-      for (const key of workspaceKeys) {
-        const workspace = decodedToken[key];
-        console.log(`Checking workspace: ${key}`, workspace);
+      // If we have a specific workspace ID to use
+      if (this.currentWorkspaceId) {
+        console.log(`Looking for specific workspace: ${this.currentWorkspaceId}`);
 
-        // Check if this workspace has simulator roles
-        if (workspace.roles?.simulator) {
-          console.log(`Found simulator roles in workspace ${key}:`, workspace.roles.simulator);
+        // Try to find the specified workspace
+        if (workspaceKeys.includes(this.currentWorkspaceId)) {
+          selectedWorkspaceKey = this.currentWorkspaceId;
+          selectedWorkspace = decodedToken[this.currentWorkspaceId];
 
-          // Check if this workspace has simulator permissions
-          if (workspace.permissions?.simulator) {
-            console.log(`Found simulator permissions in workspace ${key}`);
-            selectedWorkspace = workspace;
-            selectedWorkspaceKey = key;
-            selectedRole = workspace.roles.simulator[0] || 'Unknown';
-            break; // Found a workspace with simulator permissions, stop searching
+          // Find the first simulator role if available
+          if (selectedWorkspace.roles?.simulator && selectedWorkspace.roles.simulator.length > 0) {
+            selectedRole = selectedWorkspace.roles.simulator[0];
+          } else {
+            // Otherwise use any available role
+            const allRoles = Object.values(selectedWorkspace.roles || {}).flat();
+            selectedRole = allRoles.length > 0 ? allRoles[0] : 'Unknown';
           }
+
+          console.log(`Using specified workspace: ${selectedWorkspaceKey} with role: ${selectedRole}`);
+        } else {
+          console.warn(`Specified workspace ${this.currentWorkspaceId} not found in token`);
         }
       }
 
-      // If no workspace with simulator permissions was found, try to use any workspace
-      if (!selectedWorkspace && workspaceKeys.length > 0) {
-        const fallbackKey = workspaceKeys[0];
-        selectedWorkspace = decodedToken[fallbackKey];
-        selectedWorkspaceKey = fallbackKey;
+      // If we still don't have a workspace (either no specific one was requested or it wasn't found)
+      if (!selectedWorkspace) {
+        // Check each workspace for simulator permissions
+        for (const key of workspaceKeys) {
+          const workspace = decodedToken[key];
+          console.log(`Checking workspace: ${key}`, workspace);
 
-        // Try to find any role
-        const allRoles = Object.values(selectedWorkspace.roles || {}).flat();
-        selectedRole = allRoles.length > 0 ? allRoles[0] : 'Unknown';
+          // Check if this workspace has simulator roles
+          if (workspace.roles?.simulator) {
+            console.log(`Found simulator roles in workspace ${key}:`, workspace.roles.simulator);
 
-        console.log('No workspace with simulator permissions found, using fallback:', selectedWorkspaceKey);
+            // Check if this workspace has simulator permissions
+            if (workspace.permissions?.simulator) {
+              console.log(`Found simulator permissions in workspace ${key}`);
+              selectedWorkspace = workspace;
+              selectedWorkspaceKey = key;
+              selectedRole = workspace.roles.simulator[0] || 'Unknown';
+              break; // Found a workspace with simulator permissions, stop searching
+            }
+          }
+        }
       }
 
       if (!selectedWorkspace) {
@@ -190,21 +229,29 @@ class AuthService {
           console.log(`Processing permission: ${permKey}`, permValues);
 
           // Check if the permission has ACCESS and READ
-          const hasAccess = permValues.some(perm => 
+          const hasAccess = Array.isArray(permValues) && permValues.some(perm => 
             Array.isArray(perm) && perm.includes('ACCESS')
-          );
+          ) || false;
 
-          const hasRead = permValues.some(perm => 
+          const hasRead = Array.isArray(permValues) && permValues.some(perm => 
             Array.isArray(perm) && perm.includes('READ')
-          );
+          ) || false;
 
-          const hasWrite = permValues.some(perm => 
-            Array.isArray(perm) && perm.includes('CREATE') || 
-            Array.isArray(perm) && perm.includes('UPDATE') || 
+          const hasCreate = Array.isArray(permValues) && permValues.some(perm => 
+            Array.isArray(perm) && perm.includes('CREATE')
+          ) || false;
+
+          const hasUpdate = Array.isArray(permValues) && permValues.some(perm => 
+            Array.isArray(perm) && perm.includes('UPDATE')
+          ) || false;
+
+          const hasDelete = Array.isArray(permValues) && permValues.some(perm => 
             Array.isArray(perm) && perm.includes('DELETE')
-          );
+          ) || false;
 
-          console.log(`Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Write=${hasWrite}`);
+          const hasWrite = hasCreate || hasUpdate || hasDelete;
+
+          console.log(`Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Create=${hasCreate}, Update=${hasUpdate}, Delete=${hasDelete}, Write=${hasWrite}`);
 
           // Only add permission if it has both ACCESS and READ
           if (hasAccess && hasRead) {
@@ -214,6 +261,21 @@ class AuthService {
           // Add write permission if applicable
           if (hasWrite) {
             permissions[`${permKey}_write`] = true;
+          }
+
+          // Add specific create permission if applicable
+          if (hasCreate) {
+            permissions[`${permKey}_create`] = true;
+          }
+
+          // Add specific update permission if applicable
+          if (hasUpdate) {
+            permissions[`${permKey}_update`] = true;
+          }
+
+          // Add specific delete permission if applicable
+          if (hasDelete) {
+            permissions[`${permKey}_delete`] = true;
           }
         });
       } else {
@@ -231,13 +293,15 @@ class AuthService {
         permissions: permissions,
         division: decodedToken.division || '',
         department: decodedToken.department || '',
-        reportingTo: decodedToken.reporting_to || ''
+        profileImageUrl: decodedToken.profile_img_url || '',
+        workspaceId: selectedWorkspaceKey
       };
 
       console.log('Created user object:', user);
 
-      // Store user in localStorage
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      // Store user in memory
+      this.currentUser = user;
+      this.currentWorkspaceId = selectedWorkspaceKey;
 
       return user;
     } catch (error) {
@@ -247,27 +311,22 @@ class AuthService {
   }
 
   getCurrentUser(): User | null {
-    const userJson = localStorage.getItem(USER_KEY);
-    if (!userJson) return null;
-
-    try {
-      return JSON.parse(userJson) as User;
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      return null;
-    }
+    return this.currentUser;
   }
 
   isAuthenticated(): boolean {
-    const token = this.getToken();
-    if (!token) return false;
+    if (!this.token) return false;
 
     try {
-      const decoded = jwtDecode<DecodedToken>(token);
+      const decoded = jwtDecode<DecodedToken>(this.token);
       return decoded.exp * 1000 > Date.now();
     } catch {
       return false;
     }
+  }
+
+  getCurrentWorkspaceId(): string | null {
+    return this.currentWorkspaceId;
   }
 }
 

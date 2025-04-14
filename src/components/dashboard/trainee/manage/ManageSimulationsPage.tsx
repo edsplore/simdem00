@@ -34,6 +34,7 @@ import ActionsMenu from './ActionsMenu';
 import CreateSimulationDialog from './CreateSimulationDialog';
 import { fetchSimulations, Simulation } from '../../../../services/simulations';
 import { useAuth } from '../../../../context/AuthContext';
+import { hasCreatePermission } from '../../../../utils/permissions';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'sim_name' | 'version' | 'sim_type' | 'status' | 'tags' | 'estTime' | 'last_modified' | 'modified_by' | 'created_on' | 'created_by';
@@ -65,6 +66,9 @@ const ManageSimulationsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderBy>('sim_name');
+
+  // Check if user has create permission for manage-simulations
+  const canCreateSimulation = hasCreatePermission('manage-simulations');
 
   useEffect(() => {
     const loadSimulations = async () => {
@@ -245,11 +249,16 @@ const ManageSimulationsPage = () => {
             <Button
               variant="contained"
               onClick={() => setIsCreateDialogOpen(true)}
+              disabled={!canCreateSimulation}
               sx={{
                 bgcolor: 'primary.main',
                 color: 'white',
                 textTransform: 'none',
                 borderRadius: 2,
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(68, 76, 231, 0.3)',
+                  color: 'white',
+                },
               }}
             >
               Create Simulation

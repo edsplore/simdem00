@@ -35,6 +35,7 @@ import AssignModuleDialog from './AssignModuleDialog';
 import AssignSimulationsDialog from './AssignSimulationsDialog';
 import { fetchAssignments, type Assignment } from '../../../services/assignments';
 import { useAuth } from '../../../context/AuthContext';
+import { hasCreatePermission } from '../../../utils/permissions';
 
 const formatDate = (dateString: string) => {
   if (!dateString) return 'Not set';
@@ -65,6 +66,9 @@ const AssignSimulationsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderBy>('name');
+
+  // Check if user has create permission for assign-simulations
+  const canAssignSimulations = hasCreatePermission('assign-simulations');
 
   // Filter data based on current tab and search query
   const filteredData = assignments.filter((item) => {
@@ -286,11 +290,16 @@ const AssignSimulationsPage = () => {
             <Button
               variant="contained"
               onClick={handleOpenAssignDialog}
+              disabled={!canAssignSimulations}
               sx={{
                 bgcolor: '#444CE7',
                 color: 'white',
                 textTransform: 'none',
                 borderRadius: 2,
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(68, 76, 231, 0.3)',
+                  color: 'white',
+                },
               }}
             >
               {getButtonText()}

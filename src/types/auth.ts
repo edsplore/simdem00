@@ -10,8 +10,10 @@ export interface User {
   department?: string;
   reportingTo?: string;
   externalId?: string;
+  internalId?: string;
   profileImageUrl?: string;
   workspaceId?: string;
+  phoneNumber?: string;
 }
 
 export type UserRole = 'workspace_admin' | 'manager' | 'org_admin' | 'trainee' | 'creator';
@@ -44,9 +46,6 @@ export interface DecodedToken {
   division: string;
   department: string;
   reporting_to?: string;
-  division: string;
-  department: string;
-  reporting_to: string;
   profile_img_url?: string;
   workspace_id?: string;
   [key: string]: any; // For workspace keys like "Product Development-2025-1001"

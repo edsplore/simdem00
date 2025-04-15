@@ -11,8 +11,7 @@ import ThemeProvider from './theme/ThemeProvider';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Layout from './components/layout/Layout';
-import Login from './components/Login';
-import Register from './components/Register';
+import Unauthorized from './components/Unauthorized';
 
 // Lazy load components
 const TraineeDashboard = React.lazy(() =>
@@ -72,8 +71,7 @@ const App: React.FC = () => {
               <Suspense fallback={<LoadingSpinner />}>
                 <Routes>
                   {/* Public routes */}
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+                  <Route path="/unauthorized" element={<Unauthorized />} />
 
                   {/* Default redirect */}
                   <Route path="/" element={<Navigate to="/dashboard" />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -16,12 +16,12 @@ import {
   Button,
   Chip,
   Autocomplete,
+  CircularProgress,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import KeyIcon from '@mui/icons-material/Key';
 import { User } from '../../types/auth';
+import { fetchUserDetails, UserDetails } from '../../services/users';
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
@@ -51,14 +51,6 @@ const EditableField = styled(TextField)({
   },
 });
 
-const countryCodes = [
-  { code: 'IND', dialCode: '+91', name: 'India' },
-  { code: 'USA', dialCode: '+1', name: 'United States' },
-  { code: 'UK', dialCode: '+44', name: 'United Kingdom' },
-  { code: 'AUS', dialCode: '+61', name: 'Australia' },
-  { code: 'CAN', dialCode: '+1', name: 'Canada' },
-];
-
 interface ProfileDetailsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -66,57 +58,36 @@ interface ProfileDetailsDialogProps {
   user: User | null;
 }
 
-const roles = [
-  'Simulator | Trainee',
-  'Simulator | Admin',
-  'Recruiter | Trainee',
-  'Recruiter | Admin',
-];
-
 const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   open,
   onClose,
   profileImageUrl,
   user,
 }) => {
-  const [hasChanges, setHasChanges] = useState(false);
-  const [selectedRoles, setSelectedRoles] = useState([
-    'Simulator | Trainee',
-    'Recruiter | Trainee',
-  ]);
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [countryCode, setCountryCode] = useState('IND');
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCopyEmail = () => {
-    if (user?.email) {
-      navigator.clipboard.writeText(user.email);
-    }
-  };
+  // Fetch user details when dialog opens
+  useEffect(() => {
+    const loadUserDetails = async () => {
+      if (!open || !user?.id || !user?.workspaceId) return;
 
-  const handleCountryCodeChange = (event: any) => {
-    setCountryCode(event.target.value);
-    handleChange();
-  };
+      try {
+        setIsLoading(true);
+        setError(null);
+        const details = await fetchUserDetails(user.id, user.workspaceId);
+        setUserDetails(details);
+      } catch (err) {
+        console.error('Error loading user details:', err);
+        setError('Failed to load user details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const getCurrentDialCode = () => {
-    const country = countryCodes.find((c) => c.code === countryCode);
-    return country?.dialCode || '+91';
-  };
-
-  const handleChange = () => {
-    setHasChanges(true);
-  };
-
-  const handleCancel = () => {
-    setHasChanges(false);
-    // Reset values
-    setPhoneNumber('');
-  };
-
-  const handleSave = () => {
-    setHasChanges(false);
-    // Save logic here
-  };
+    loadUserDetails();
+  }, [open, user?.id, user?.workspaceId]);
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth="md">
@@ -148,176 +119,159 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        <Stack spacing={3}>
-          {/* Email Info */}
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              bgcolor: '#F9FAFB',
-              p: 2,
-              borderRadius: 1,
-            }}
-          >
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ fontFamily: 'Inter' }}
-            >
-              Email: 
-            </Typography>
-            <Typography variant="body2" sx={{ fontFamily: 'Inter' }}>
-              {user?.email || ''}
-            </Typography>
-            <Box
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : error ? (
+          <Typography color="error" sx={{ p: 2 }}>
+            {error}
+          </Typography>
+        ) : (
+          <Stack spacing={3}>
+            {/* Email Info */}
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
               sx={{
-                bgcolor: '#fff',
-                px: 1.5,
-                py: 0.5,
+                bgcolor: '#F9FAFB',
+                p: 2,
                 borderRadius: 1,
-                fontSize: '0.75rem',
-                fontFamily: 'Inter',
               }}
             >
-              {user?.role || ''}
-            </Box>
-          </Stack>
-
-          {/* Admin Email */}
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              bgcolor: '#F9FAFB',
-              p: 2,
-              borderRadius: 1,
-            }}
-          >
-            <KeyIcon sx={{ color: 'text.secondary' }} />
-            <Stack flex={1}>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontFamily: 'Inter' }}
-              >
-                User ID:
-              </Typography>
-              <Typography variant="body2" sx={{ fontFamily: 'Inter' }}>
-                {user?.id || ''}
-              </Typography>
-            </Stack>
-            <IconButton onClick={handleCopyEmail} size="small">
-              <ContentCopyIcon />
-            </IconButton>
-          </Stack>
-
-          {/* Form Fields */}
-          <Stack spacing={2.5}>
-            <Stack direction="row" spacing={2}>
-              <ReadOnlyField
-                fullWidth
-                label="First Name"
-                defaultValue={user?.name?.split(' ')[0] || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-              <ReadOnlyField
-                fullWidth
-                label="Last Name"
-                defaultValue={user?.name?.split(' ').slice(1).join(' ') || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-            </Stack>
-
-            <Stack direction="row" spacing={2}>
-              {/* Email Address Field */}
-              <ReadOnlyField
-                fullWidth
-                label="Email Address"
-                defaultValue={user?.email || ''}
-                disabled
-                InputLabelProps={{
-                  shrink: true,
-                  sx: { fontFamily: 'Inter' },
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ fontFamily: 'Inter' }}
+                >
+                  Email: 
+                </Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'Inter' }}>
+                  {userDetails?.user?.email || user?.email || ''}
+                </Typography>
+              </Stack>
+              <Box
+                sx={{
+                  bgcolor: '#fff',
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: 1,
+                  fontSize: '0.75rem',
+                  fontFamily: 'Inter',
                 }}
+              >
+                {user?.role || ''}
+              </Box>
+            </Stack>
+
+            {/* Form Fields */}
+            <Stack spacing={2.5}>
+              <Stack direction="row" spacing={2}>
+                <ReadOnlyField
+                  fullWidth
+                  label="First Name"
+                  defaultValue={userDetails?.user?.first_name || user?.name?.split(' ')[0] || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+                <ReadOnlyField
+                  fullWidth
+                  label="Last Name"
+                  defaultValue={userDetails?.user?.last_name || user?.name?.split(' ').slice(1).join(' ') || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+              </Stack>
+
+              <Stack direction="row" spacing={2}>
+                {/* Email Address Field */}
+                <ReadOnlyField
+                  fullWidth
+                  label="Email Address"
+                  defaultValue={userDetails?.user?.email || user?.email || ''}
+                  disabled
+                  InputLabelProps={{
+                    shrink: true,
+                    sx: { fontFamily: 'Inter' },
+                  }}
+                  InputProps={{
+                    sx: {
+                      fontFamily: 'Inter',
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+
+                <ReadOnlyField
+                  fullWidth
+                  label="Phone Number"
+                  defaultValue={userDetails?.user?.phone_no || user?.phoneNumber || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+              </Stack>
+
+              <Stack direction="row" spacing={2}>
+                <ReadOnlyField
+                  fullWidth
+                  label="Division"
+                  defaultValue={userDetails?.user?.division || user?.division || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+                <ReadOnlyField
+                  fullWidth
+                  label="Department"
+                  defaultValue={userDetails?.user?.department || user?.department || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+              </Stack>
+
+              <Stack direction="row" spacing={2}>
+                <ReadOnlyField
+                  fullWidth
+                  label="Internal User ID"
+                  defaultValue={userDetails?.user?.internal_user_id || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+                <ReadOnlyField
+                  fullWidth
+                  label="External User ID"
+                  defaultValue={userDetails?.user?.external_user_id || ''}
+                  disabled
+                  InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                />
+              </Stack>
+
+              <ReadOnlyField
+                fullWidth
+                label="Reporting To"
+                defaultValue={userDetails?.user?.reporting_to?.name || user?.reportingTo || ''}
+                disabled
+                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+              />
+
+              <ReadOnlyField
+                fullWidth
+                label="Assign Roles"
+                value={user?.role || ''}
+                disabled
+                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
                 InputProps={{
                   sx: {
-                    fontFamily: 'Inter',
-                    borderRadius: 2,
+                    '& .MuiInputBase-input': {
+                      color: '#475467',
+                    },
                   },
                 }}
               />
-
-              <ReadOnlyField
-                fullWidth
-                label="Phone Number"
-                defaultValue={user?.phoneNumber || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
             </Stack>
-
-            <Stack direction="row" spacing={2}>
-              <ReadOnlyField
-                fullWidth
-                label="Division"
-                defaultValue={user?.division || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-              <ReadOnlyField
-                fullWidth
-                label="Department"
-                defaultValue={user?.department || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-            </Stack>
-
-            <Stack direction="row" spacing={2}>
-              <ReadOnlyField
-                fullWidth
-                label="Internal User ID"
-                defaultValue={user?.id || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-              <ReadOnlyField
-                fullWidth
-                label="External User ID"
-                defaultValue={user?.externalId || ''}
-                disabled
-                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              />
-            </Stack>
-
-            <ReadOnlyField
-              fullWidth
-              label="Reporting To"
-              defaultValue={user?.reportingTo || ''}
-              disabled
-              InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-            />
-
-            <ReadOnlyField
-              fullWidth
-              label="Assign Roles"
-              value={user?.role || ''}
-              disabled
-              InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-              InputProps={{
-                sx: {
-                  '& .MuiInputBase-input': {
-                    color: '#475467',
-                  },
-                },
-              }}
-            />
           </Stack>
-        </Stack>
+        )}
       </DialogContent>
     </StyledDialog>
   );

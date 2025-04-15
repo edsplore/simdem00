@@ -1,31 +1,29 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, MenuItem, Divider, CircularProgress } from '@mui/material';
 import {
   EditOutlined as EditIcon,
   ContentCopyOutlined as DuplicateIcon,
-  DownloadOutlined as DownloadIcon,
-  LockOutlined as LockIcon,
   ArchiveOutlined as ArchiveIcon,
   DeleteOutlined as DeleteIcon,
-  LockOpenOutlined as UnlockIcon,
 } from '@mui/icons-material';
-import { SimulationData } from './types';
 import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
 import axios from 'axios';
 import { useAuth } from '../../../../context/AuthContext';
 
-interface ActionsMenuProps {
+interface TrainingPlanActionsMenuProps {
   anchorEl: HTMLElement | null;
-  selectedRow: SimulationData | null;
+  selectedItem: {
+    id: string;
+    type: 'module' | 'training-plan';
+  } | null;
   onClose: () => void;
   onCloneSuccess?: () => void;
 }
 
-const ActionsMenu: React.FC<ActionsMenuProps> = ({
+const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
   anchorEl,
-  selectedRow,
+  selectedItem,
   onClose,
   onCloneSuccess,
 }) => {
@@ -34,19 +32,21 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   const [isCloning, setIsCloning] = useState(false);
 
   // Check permissions for different actions
-  const canUpdate = hasUpdatePermission('manage-simulations');
-  const canCreate = hasCreatePermission('manage-simulations');
-  const canDelete = hasDeletePermission('manage-simulations');
+  const canUpdate = hasUpdatePermission('manage-training-plan');
+  const canCreate = hasCreatePermission('manage-training-plan');
+  const canDelete = hasDeletePermission('manage-training-plan');
 
   const handleEditClick = () => {
-    if (selectedRow) {
-      navigate(`/generate-scripts/${selectedRow.id}`);
+    if (selectedItem) {
+      // Navigate to edit page (implementation would depend on your routing structure)
+      // For now, just close the menu
+      console.log(`Edit ${selectedItem.type} with ID: ${selectedItem.id}`);
     }
     onClose();
   };
 
   const handleDuplicateClick = async () => {
-    if (!selectedRow || !user?.id) {
+    if (!selectedItem || !user?.id) {
       onClose();
       return;
     }
@@ -54,27 +54,57 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
     setIsCloning(true);
 
     try {
-      const response = await axios.post('/api/simulations/clone', {
-        user_id: user.id,
-        simulation_id: selectedRow.id
-      });
+      let endpoint = '';
+      let payload = {};
+
+      // Different endpoints for modules and training plans
+      if (selectedItem.type === 'module') {
+        endpoint = '/api/modules/clone';
+        payload = {
+          user_id: user.id,
+          module_id: selectedItem.id
+        };
+      } else {
+        endpoint = '/api/training-plans/clone';
+        payload = {
+          user_id: user.id,
+          training_plan_id: selectedItem.id
+        };
+      }
+
+      const response = await axios.post(endpoint, payload);
 
       if (response.data && response.data.status === 'success') {
-        console.log('Simulation cloned successfully:', response.data);
-        // Call the success callback to refresh the simulations list
+        console.log(`${selectedItem.type} cloned successfully:`, response.data);
+        // Call the success callback to refresh the list
         if (onCloneSuccess) {
           onCloneSuccess();
         }
       } else {
-        console.error('Failed to clone simulation:', response.data);
+        console.error(`Failed to clone ${selectedItem.type}:`, response.data);
       }
     } catch (error) {
-      console.error('Error cloning simulation:', error);
+      console.error(`Error cloning ${selectedItem.type}:`, error);
     } finally {
       setIsCloning(false);
       onClose();
     }
   };
+
+  const handleArchiveClick = () => {
+    if (selectedItem) {
+      console.log(`Archive ${selectedItem.type} with ID: ${selectedItem.id}`);
+    }
+    onClose();
+  };
+
+  const handleDeleteClick = () => {
+    if (selectedItem) {
+      console.log(`Delete ${selectedItem.type} with ID: ${selectedItem.id}`);
+    }
+    onClose();
+  };
+
   return (
     <Menu
       anchorEl={anchorEl}
@@ -90,10 +120,10 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       }}
       sx={{
         '& .MuiPaper-root': {
-          backgroundColor: '#FFFFFF', // Background color
-          borderRadius: '8px', // Border radius for curved edges
-          border: '1px solid #E0E0E0', // Light border around menu
-          minWidth: '100px', // Small box size for menu
+          backgroundColor: '#FFFFFF',
+          borderRadius: '8px',
+          border: '1px solid #E0E0E0',
+          minWidth: '100px',
         },
       }}
     >
@@ -101,11 +131,11 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         <MenuItem
           onClick={handleEditClick}
           sx={{
-            color: '#666666', // Text color
+            color: '#666666',
             '& svg': {
-              color: '#EBEBEB', // Icon color updated to #EBEBEB
+              color: '#EBEBEB',
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: '1px 8px',
           }}
         >
           <EditIcon sx={{ mr: 1 }} /> Edit
@@ -123,7 +153,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
             '& svg': {
               color: '#EBEBEB',
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: '1px 8px',
           }}
         >
           {isCloning ? (
@@ -137,55 +167,15 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
 
       {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
 
-      <MenuItem
-        onClick={onClose}
-        sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
-          },
-          padding: '1px 8px', // Reduced padding for smaller spacing
-        }}
-      >
-        <DownloadIcon sx={{ mr: 1 }} /> Download Script
-      </MenuItem>
-
-      <Divider sx={{ borderColor: '#EBEBEB' }} />
-
       {canUpdate && (
         <MenuItem
-          onClick={onClose}
+          onClick={handleArchiveClick}
           sx={{
             color: '#666666',
             '& svg': {
               color: '#EBEBEB',
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
-          }}
-        >
-          {selectedRow?.isLocked ? (
-            <>
-              <UnlockIcon sx={{ mr: 1 }} /> Unlock
-            </>
-          ) : (
-            <>
-              <LockIcon sx={{ mr: 1 }} /> Lock
-            </>
-          )}
-        </MenuItem>
-      )}
-
-      {canUpdate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
-
-      {canUpdate && (
-        <MenuItem
-          onClick={onClose}
-          sx={{
-            color: '#666666',
-            '& svg': {
-              color: '#EBEBEB',
-            },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: '1px 8px',
           }}
         >
           <ArchiveIcon sx={{ mr: 1 }} /> Archive
@@ -196,13 +186,13 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
 
       {canDelete && (
         <MenuItem
-          onClick={onClose}
+          onClick={handleDeleteClick}
           sx={{
             color: '#666666',
             '& svg': {
               color: '#EBEBEB',
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: '1px 8px',
           }}
         >
           <DeleteIcon sx={{ mr: 1 }} /> Delete
@@ -212,4 +202,4 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   );
 };
 
-export default ActionsMenu;
+export default TrainingPlanActionsMenu;

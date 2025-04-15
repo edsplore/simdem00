@@ -102,10 +102,8 @@ export const hasCreatePermission = (permissionKey: string): boolean => {
     if (user.permissions[createPermissionKey]) {
       return true;
     }
-
-    // Fall back to write permission if specific create permission doesn't exist
-    const writePermissionKey = `${permissionKey}_write`;
-    return user.permissions[writePermissionKey] || false;
+    
+    return false;
   } catch (error) {
     console.error(`Error checking create permission for ${permissionKey}:`, error);
     return false;

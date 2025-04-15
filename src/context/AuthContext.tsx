@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Extract workspace ID from query parameters
   useEffect(() => {
@@ -53,8 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .catch(() => {
         setIsInitialized(true);
+        // Redirect to unauthorized page instead of login
+        const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+        navigate(`/unauthorized${workspaceParam}`);
       });
-  }, [updateUserState, currentWorkspaceId]);
+  }, [updateUserState, currentWorkspaceId, navigate]);
 
   const login = (token: string, workspaceId?: string) => {
     authService.setToken(token, workspaceId || currentWorkspaceId);
@@ -65,6 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    // Redirect to unauthorized page instead of login
+    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+    navigate(`/unauthorized${workspaceParam}`);
   };
 
   if (!isInitialized) {

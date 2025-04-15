@@ -795,21 +795,23 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
           sx={{ width: "100%" }}
           alignItems="center"
         >
-          <Button
-            variant="outlined"
-            onClick={toggleRole}
-            endIcon={<RefreshIcon />}
-            sx={{
-              borderRadius: 2,
-              px: 2,
-              py: 1,
-              minWidth: 120,
-              textTransform: "none",
-              bgcolor: "background.paper",
-            }}
-          >
-            {currentRole}
-          </Button>
+          <Tooltip title="Change Role" arrow>
+            <Button
+              variant="outlined"
+              onClick={toggleRole}
+              endIcon={<RefreshIcon />}
+              sx={{
+                borderRadius: 2,
+                px: 2,
+                py: 1,
+                minWidth: 120,
+                textTransform: "none",
+                bgcolor: "background.paper",
+              }}
+            >
+              {currentRole}
+            </Button>
+          </Tooltip>
           <TextField
             fullWidth
             size="small"

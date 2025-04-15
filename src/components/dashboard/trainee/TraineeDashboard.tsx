@@ -40,9 +40,11 @@ const TraineeDashboard = () => {
         <Stack spacing={4} sx={{ py: 4 }}>
           <WelcomeBanner userName={user?.name || ''} />
           {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
-          {trainingData?.training_plans && (
+          {trainingData && (
             <TrainingPlanTable 
-              trainingPlans={trainingData.training_plans}
+              trainingPlans={trainingData.training_plans || []}
+              modules={trainingData.modules || []}
+              simulations={trainingData.simulations || []}
               isLoading={isLoading}
               error={error}
             />

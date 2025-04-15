@@ -14,12 +14,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isAuthenticated, user, currentWorkspaceId } = useAuth();
   const location = useLocation();
 
-  // If not authenticated, redirect to login
+  // If not authenticated, redirect to unauthorized page
   if (!isAuthenticated) {
-    // Preserve the workspace_id when redirecting to login
+    // Preserve the workspace_id when redirecting
     const params = new URLSearchParams(location.search);
     const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-    return <Navigate to={`/login${workspaceParam}`} />;
+    return <Navigate to={`/unauthorized${workspaceParam}`} />;
   }
 
   // If no user object, wait for it
@@ -31,9 +31,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (!hasPermission(path)) {
     console.log('Permission denied for path:', path);
 
-    // Preserve the workspace_id when redirecting to dashboard
+    // Redirect to unauthorized page instead of dashboard
     const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-    return <Navigate to={`/dashboard${workspaceParam}`} />;
+    return <Navigate to={`/unauthorized${workspaceParam}`} />;
   }
 
   return <>{children}</>;

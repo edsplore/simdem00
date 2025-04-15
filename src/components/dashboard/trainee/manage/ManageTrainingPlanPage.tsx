@@ -32,6 +32,7 @@ import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
 import TrainingPlanDetailsDialog from './TrainingPlanDetailsDialog';
+import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
 import { useAuth } from '../../../../context/AuthContext';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
 import { fetchModules, type Module } from '../../../../services/modules';
@@ -65,39 +66,57 @@ const ManageTrainingPlanPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderBy>('name');
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan' } | null>(null);
   const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-        if (currentTab === 'Training Plans') {
-          const plans = await fetchTrainingPlans(user?.id || 'user123');
-          setTrainingPlans(plans);
-        } else {
-          const moduleData = await fetchModules(user?.id || 'user123');
-          setModules(moduleData);
-        }
-      } catch (err) {
-        setError(`Failed to load ${currentTab.toLowerCase()}`);
-        console.error(`Error loading ${currentTab.toLowerCase()}:`, err);
-      } finally {
-        setIsLoading(false);
+      if (currentTab === 'Training Plans') {
+        const plans = await fetchTrainingPlans(user?.id || 'user123');
+        setTrainingPlans(plans);
+      } else {
+        const moduleData = await fetchModules(user?.id || 'user123');
+        setModules(moduleData);
       }
-    };
+    } catch (err) {
+      setError(`Failed to load ${currentTab.toLowerCase()}`);
+      console.error(`Error loading ${currentTab.toLowerCase()}:`, err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadData();
   }, [currentTab, user?.id]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
     setPage(0);
+  };
+
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    id: string,
+    type: 'module' | 'training-plan'
+  ) => {
+    // Stop event propagation to prevent row click
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedItem({ id, type });
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
   };
 
   const handleChangePage = (_: unknown, newPage: number) => {
@@ -485,7 +504,14 @@ const ManageTrainingPlanPage = () => {
                         </Stack>
                       </TableCell>
                       <TableCell align="right" sx={{ width: 100 }}>
-                        <IconButton size="small">
+                        <IconButton 
+                          size="small" 
+                          onClick={(event) => handleMenuOpen(
+                            event, 
+                            item.id, 
+                            currentTab === 'Training Plans' ? 'training-plan' : 'module'
+                          )}
+                        >
                           <MoreVertIcon />
                         </IconButton>
                       </TableCell>
@@ -513,6 +539,13 @@ const ManageTrainingPlanPage = () => {
           open={isDetailsDialogOpen}
           onClose={() => setIsDetailsDialogOpen(false)}
           trainingPlan={selectedTrainingPlan}
+        />
+
+        <TrainingPlanActionsMenu
+          anchorEl={anchorEl}
+          selectedItem={selectedItem}
+          onClose={handleMenuClose}
+          onCloneSuccess={loadData}
         />
       </Container>
 

@@ -1,10 +1,10 @@
 import apiClient from './api/interceptors';
 
 // Staging
-// const SUGGESTIONS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/suggestions';
+const SUGGESTIONS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/suggestions';
 
 // Dev
-const SUGGESTIONS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/suggestions';
+// const SUGGESTIONS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/suggestions';
 
 /**
  * Fetches divisions for a specific workspace

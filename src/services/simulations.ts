@@ -30,7 +30,7 @@ export const fetchSimulations = async (userId: string): Promise<Simulation[]> =>
 export const fetchSimulationById = async (simulationId: string): Promise<Simulation> => {
   try {
     const response = await apiClient.get(`/api/simulations/fetch/${simulationId}`);
-    return response.data;
+    return response.data.simulation;
   } catch (error) {
     console.error('Error fetching simulation:', error);
     throw error;

@@ -4,9 +4,11 @@ interface Simulation {
   type: string;
   level: string;
   est_time: number;
-  due_date: string | null;
+  dueDate?: string;
+  due_date?: string | null;
   status: 'not_started' | 'ongoing' | 'finished';
   highest_attempt_score: number | null;
+  assignment_id?: string;
 }
 
 interface Module {
@@ -17,6 +19,7 @@ interface Module {
   due_date: string | null;
   status: 'not_started' | 'ongoing' | 'finished';
   simulations: Simulation[];
+  estimated_time?: number;
 }
 
 interface TrainingPlan {
@@ -49,6 +52,8 @@ interface TrainingStats {
 
 interface TrainingData {
   training_plans: TrainingPlan[];
+  modules: Module[];
+  simulations: Simulation[];
   stats: TrainingStats;
 }
 

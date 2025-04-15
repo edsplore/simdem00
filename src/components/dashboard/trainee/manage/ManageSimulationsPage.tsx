@@ -70,21 +70,21 @@ const ManageSimulationsPage = () => {
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission('manage-simulations');
 
-  useEffect(() => {
-    const loadSimulations = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchSimulations(user?.id || 'user123');
-        setSimulations(data);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load simulations');
-        console.error('Error loading simulations:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadSimulations = async () => {
+    try {
+      setIsLoading(true);
+      const data = await fetchSimulations(user?.id || 'user123');
+      setSimulations(data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load simulations');
+      console.error('Error loading simulations:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadSimulations();
   }, [user?.id]);
 
@@ -613,6 +613,7 @@ const ManageSimulationsPage = () => {
         anchorEl={anchorEl}
         selectedRow={selectedRow}
         onClose={handleMenuClose}
+        onCloneSuccess={loadSimulations}
       />
 
       <CreateSimulationDialog

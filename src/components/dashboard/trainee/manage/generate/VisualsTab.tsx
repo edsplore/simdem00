@@ -1033,7 +1033,6 @@ export default function VisualsTab({
         </Alert>
       )}
 
-      {/* Top row: "Add Script Message" + "Save and Continue" */}
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         {isPureVisual ? (
           // For pure visual type, show information instead of Add Script Message button
@@ -1078,7 +1077,6 @@ export default function VisualsTab({
               {isEditing ? "Cancel Editing" : "Edit Visuals"}
             </Button>
 
-            {/* Always show Save and Continue */}
             <Button
               variant="contained"
               onClick={handleSaveAndContinue}
@@ -1093,7 +1091,7 @@ export default function VisualsTab({
               {isSubmitting ? (
                 <CircularProgress size={24} sx={{ color: "white" }} />
               ) : (
-                "Save and Continue"
+                "Save Simulation"
               )}
             </Button>
           </Stack>

@@ -1278,7 +1278,7 @@ const GenerateScriptContent = () => {
               px: 4,
             }}
           >
-            {isLoading ? "Processing..." : "Save and Continue"}
+            {isLoading ? "Processing..." : "Save Simulation"}
           </Button>
         )}
       </Stack>

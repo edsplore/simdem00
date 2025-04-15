@@ -32,7 +32,7 @@ const TrainingPlanPage = () => {
 
     loadTrainingData();
   }, [user?.id]);
-  
+
   return (
       <DashboardContent>
         <Container>
@@ -46,9 +46,11 @@ const TrainingPlanPage = () => {
               </Typography>
             </Stack>
             {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
-            {trainingData?.training_plans && (
+            {trainingData && (
               <TrainingPlanTable 
-                trainingPlans={trainingData.training_plans}
+                trainingPlans={trainingData.training_plans || []}
+                modules={trainingData.modules || []}
+                simulations={trainingData.simulations || []}
                 isLoading={isLoading}
                 error={error}
               />

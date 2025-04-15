@@ -81,12 +81,6 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-    handleClose();
-  };
-
   const handleOpenProfile = () => {
     handleClose();
     setIsProfileOpen(true);

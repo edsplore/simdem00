@@ -89,6 +89,43 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
   const { scriptData, setScriptData, setIsScriptLocked } =
     useSimulationWizard();
 
+  // Function to handle template download
+  const handleDownloadTemplate = () => {
+    // Template content as specified
+    const templateContent = `Trainee: Thank you for calling. How can i help you today?
+Customer: Hi, I'm trying to find out if my Medicare Advantage plan covers routine dental care.
+Trainee: I'd be happy to help! Many Medicare Advantage plans do include dental benefits, but coverage can vary. Could you provide your plan name or member ID so I can check the specifics?
+Customer: Sure! My plan is HealthFirst Advantage Plus.
+Trainee: Thanks! Let me check… Okay, I see that your plan does cover routine dental services, including two cleanings, one set of X-rays, and two exams per year at no cost if you visit an in-network provider.
+Customer: That's good to know. What about more complex procedures, like crowns or root canals?
+Trainee: Great question! For major dental work like crowns, root canals, or dentures, there is partial coverage, meaning you may have a copay or coinsurance. For example, a crown might require a 50% coinsurance, so your plan would pay half, and you'd cover the rest.
+Customer: Oh, I see. How do I find out which dentists are in-network?
+Trainee: I can help with that! Would you like me to search for in-network dentists near your ZIP code?
+Customer: Yes, my ZIP code is 75001.
+Trainee: Got it! I see three in-network providers within five miles of you. I can send you their contact details if you'd like.
+Customer: That would be great. Thanks!
+Trainee: You're welcome! I'll send that information now. Let me know if you need anything else!`;
+
+    // Create a Blob object with the text content
+    const blob = new Blob([templateContent], { type: "text/plain" });
+
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
+
+    // Create a temporary anchor element
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "script_template.txt";
+
+    // Trigger the download
+    document.body.appendChild(a);
+    a.click();
+
+    // Clean up
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   // Check if simulation is a visual type
   const isVisualType = simulationType?.includes("visual");
 
@@ -317,8 +354,6 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
         </Button>
 
         <ScriptEditor script={scriptData} onScriptUpdate={setScriptData} />
-
-        {/* No bottom "Save and Continue" button - removed as requested */}
       </Stack>
     );
   }
@@ -510,11 +545,17 @@ const ScriptTab: React.FC<ScriptTabProps> = ({
             Simulation script as text in .doc, .docx
           </Typography>
           <Link
-            href="#"
+            component="button"
+            onClick={handleDownloadTemplate}
             color="text.secondary"
             sx={{
               mb: 0,
               display: "block",
+              textAlign: "left",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 0,
             }}
           >
             Download template

@@ -28,7 +28,7 @@ class AuthService {
       console.log('Using workspace ID for refresh:', effectiveWorkspaceId);
 
       // Use dev URL for now, could be made configurable based on environment
-      const refreshTokenUrl = URLS.dev.refreshToken;
+      const refreshTokenUrl = URLS.staging.refreshToken;
 
       const response = await axios.post(refreshTokenUrl, '', {
         withCredentials: true, // This ensures cookies are sent with the request
@@ -249,7 +249,7 @@ class AuthService {
             Array.isArray(perm) && perm.includes('DELETE')
           ) || false;
 
-          const hasWrite = hasCreate || hasUpdate || hasDelete;
+          const hasWrite = hasCreate || hasUpdate ;
 
           console.log(`Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Create=${hasCreate}, Update=${hasUpdate}, Delete=${hasDelete}, Write=${hasWrite}`);
 
@@ -294,7 +294,11 @@ class AuthService {
         division: decodedToken.division || '',
         department: decodedToken.department || '',
         profileImageUrl: decodedToken.profile_img_url || '',
-        workspaceId: selectedWorkspaceKey
+        workspaceId: selectedWorkspaceKey,
+        internalId: decodedToken.internal_user_id || '',
+        externalId: decodedToken.external_user_id || '',
+        phoneNumber: decodedToken.phone_no || '',
+        reportingTo: decodedToken.reporting_to?.name || ''
       };
 
       console.log('Created user object:', user);

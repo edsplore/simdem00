@@ -56,9 +56,13 @@ apiClient.interceptors.response.use(
         // Retry the original request with the new token
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // If token refresh fails, redirect to login
+        // If token refresh fails, redirect to unauthorized page
         authService.logout();
-        window.location.href = '/login';
+
+        // We can't directly navigate here since we're outside of React Router
+        // The auth state change will trigger a redirect in the components
+        console.error('Token refresh failed, user will be redirected to unauthorized page');
+
         return Promise.reject(refreshError);
       }
     }

@@ -50,29 +50,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state and refresh token if needed
   useEffect(() => {
-    let isMounted = true;
-
-    const initializeAuth = async () => {
-      try {
-        await authService.refreshToken(currentWorkspaceId);
-        if (isMounted) {
-          updateUserState();
-        }
-      } catch (error) {
+    // Initial token refresh when component mounts or workspace changes
+    authService.refreshToken(currentWorkspaceId)
+      .then(() => {
+        updateUserState();
+      })
+      .catch((error) => {
         console.error('Token refresh failed:', error);
-        if (isMounted) {
-          setIsInitialized(true);
-          const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
-          navigate(`/unauthorized${workspaceParam}`);
-        }
-      }
-    };
-
-    initializeAuth();
-
-    return () => {
-      isMounted = false;
-    };
+        setIsInitialized(true);
+        // Redirect to unauthorized page instead of login
+        const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
+        navigate(`/unauthorized${workspaceParam}`);
+      });
   }, [updateUserState, currentWorkspaceId, navigate]);
 
   const login = (token: string, workspaceId?: string) => {

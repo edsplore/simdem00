@@ -15,35 +15,23 @@ const TraineeDashboard = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let isMounted = true;
-    
     const loadTrainingData = async () => {
-      if (!user?.id) return;
-      
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await fetchTrainingData(user.id);
-        if (isMounted) {
+      if (user?.id) {
+        try {
+          setIsLoading(true);
+          setError(null);
+          const data = await fetchTrainingData(user.id);
           setTrainingData(data);
-        }
-      } catch (error) {
-        console.error('Error loading training data:', error);
-        if (isMounted) {
+        } catch (error) {
+          console.error('Error loading training data:', error);
           setError('Failed to load training data');
-        }
-      } finally {
-        if (isMounted) {
+        } finally {
           setIsLoading(false);
         }
       }
     };
 
     loadTrainingData();
-    
-    return () => {
-      isMounted = false;
-    };
   }, [user?.id]);
 
   return (

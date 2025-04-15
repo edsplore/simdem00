@@ -22,13 +22,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Extract workspace ID from query parameters
+  // Extract workspace ID from query parameters - now safe because we're inside Router context
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const workspaceId = params.get('workspace_id');
 
     if (workspaceId) {
-      console.log('Workspace ID from URL:', workspaceId);
+      // Ensure we're using the complete workspace ID without truncation
+      console.log('Workspace ID from URL (raw):', workspaceId);
+
+      // Store the workspace ID exactly as received, without any manipulation
       setCurrentWorkspaceId(workspaceId);
     }
   }, [location.search]);
@@ -52,10 +55,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(() => {
         updateUserState();
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Token refresh failed:', error);
         setIsInitialized(true);
         // Redirect to unauthorized page instead of login
-        const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+        const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
         navigate(`/unauthorized${workspaceParam}`);
       });
   }, [updateUserState, currentWorkspaceId, navigate]);
@@ -70,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setIsAuthenticated(false);
     // Redirect to unauthorized page instead of login
-    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+    const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
     navigate(`/unauthorized${workspaceParam}`);
   };
 

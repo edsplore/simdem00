@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../services/trainingPlans';
-import { fetchUsers, type User } from '../../../services/users';
+import { fetchUsersSummary, type User } from '../../../services/users';
 import { createAssignment } from '../../../services/assignments';
 import {
   Dialog,
@@ -59,7 +59,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   onAssignmentCreated,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [trainingPlans, setTrainingPlans] = useState<TrainingPlan[]>([]);
@@ -113,7 +113,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const users = await fetchUsers();
+        const users = await fetchUsersSummary(currentWorkspaceId);
         const userAssignees: Assignee[] = users.map(user => ({
           id: user.user_id,
           name: user.fullName,

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { fetchSimulations, type Simulation } from '../../../services/simulations';
-import { fetchUsers, type User } from '../../../services/users';
+import { fetchUsersSummary, type User } from '../../../services/users';
 import { createAssignment } from '../../../services/assignments';
 import {
   Dialog,
@@ -64,7 +64,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
   onAssignmentCreated,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -118,7 +118,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
   useEffect(() => {
     const loadUsers = async () => {
       try {
-        const users = await fetchUsers();
+        const users = await fetchUsersSummary(currentWorkspaceId);
         const userAssignees: Assignee[] = users.map(user => ({
           id: user.user_id,
           name: user.fullName,

@@ -409,7 +409,19 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           </Typography>
         </Box>
 
-        <Box sx={{ position: "relative", height: "calc(100vh - 200px)" }}>
+        <Box
+          sx={{
+            position: "relative",
+            height: "calc(100vh - 200px)",
+            // Ensure the container has a minimum height for smaller viewports
+            minHeight: "500px",
+            // For chat type, ensure container has proper display to contain the message area and input box
+            display:
+              simulationType === "chat" && isCallActive ? "flex" : "block",
+            flexDirection:
+              simulationType === "chat" && isCallActive ? "column" : "initial",
+          }}
+        >
           {!isCallActive ? (
             <Box
               sx={{
@@ -474,10 +486,16 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
             </Box>
           ) : (
             <>
+              {/* Modified chat container for chat type */}
               <Box
                 ref={chatContainerRef}
                 sx={{
-                  height: "calc(100% - 80px)",
+                  // For chat type, adjust the height to leave space for the input area
+                  height:
+                    simulationType === "chat"
+                      ? "calc(100% - 70px)"
+                      : "calc(100% - 80px)",
+                  flex: simulationType === "chat" ? 1 : "initial",
                   overflowY: "auto",
                   px: 3,
                   py: 2,
@@ -530,7 +548,8 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
               {simulationType === "chat" ? (
                 <Box
                   sx={{
-                    position: "absolute",
+                    // Changed from absolute positioning to flex item for chat type
+                    position: "relative",
                     bottom: 0,
                     left: 0,
                     right: 0,
@@ -540,6 +559,10 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                     bgcolor: "white",
                     display: "flex",
                     gap: 2,
+                    // Ensure the input area has a specific height so it doesn't collapse
+                    minHeight: "64px",
+                    // Add shadow to make the input area more visible
+                    boxShadow: "0px -2px 4px rgba(0,0,0,0.03)",
                   }}
                 >
                   <TextField

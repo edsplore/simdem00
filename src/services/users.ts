@@ -56,9 +56,26 @@ const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/user
 //Dev
 // const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
 
-export const fetchUsers = async (): Promise<User[]> => {
+export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {
-    const response = await apiClient.get(USERS_URL, {
+    const response = await apiClient.post(USERS_URL, {
+      params: {
+        status: 'ACTIVE'
+      },
+      headers: {
+        'X-WORKSPACE-ID': workspaceId
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
+};
+
+export const fetchUsersSummary = async (workspaceId: string): Promise<User[]> => {
+  try {
+    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${workspaceId}`, {
       params: {
         status: 'ACTIVE'
       }

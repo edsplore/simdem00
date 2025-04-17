@@ -75,8 +75,10 @@ export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
 
 export const fetchUsersSummary = async (workspaceId: string): Promise<User[]> => {
   try {
-    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${workspaceId}`, {
-      params: {
+    // Encode the workspaceId to ensure proper handling of special characters
+    const encodedWorkspaceId = encodeURIComponent(workspaceId);
+    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${encodedWorkspaceId}`, {
+      data: {
         status: 'ACTIVE'
       }
     });

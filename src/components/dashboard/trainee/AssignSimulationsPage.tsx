@@ -24,16 +24,30 @@ import {
   CircularProgress,
   Alert,
   TableSortLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
+  Avatar,
+  Divider,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   LockOutlined as LockIcon,
+  Person as PersonIcon,
+  Group as GroupIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
 import AssignModuleDialog from './AssignModuleDialog';
 import AssignSimulationsDialog from './AssignSimulationsDialog';
 import { fetchAssignments, type Assignment } from '../../../services/assignments';
+import { fetchUsersByIds, type User } from '../../../services/users';
+import { fetchTeams, type Team } from '../../../services/teams';
 import { useAuth } from '../../../context/AuthContext';
 import { hasCreatePermission } from '../../../utils/permissions';
 
@@ -48,6 +62,213 @@ const formatDate = (dateString: string) => {
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'type' | 'teams' | 'trainees' | 'start_date' | 'end_date' | 'status' | 'last_modified_at' | 'last_modified_by' | 'created_at' | 'created_by';
+
+interface AssignmentDetailsDialogProps {
+  open: boolean;
+  onClose: () => void;
+  assignment: Assignment | null;
+}
+
+const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({ open, onClose, assignment }) => {
+  const { currentWorkspaceId } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadAssignmentDetails = async () => {
+      if (!open || !assignment || !currentWorkspaceId) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Load users and teams in parallel
+        const [usersData, teamsData] = await Promise.all([
+          // Only fetch users if there are trainee IDs
+          assignment.trainee_id && assignment.trainee_id.length > 0 
+            ? fetchUsersByIds(currentWorkspaceId, assignment.trainee_id)
+            : Promise.resolve([]),
+          // Only fetch teams if there are team IDs
+          assignment.team_id && assignment.team_id.length > 0
+            ? fetchTeams(currentWorkspaceId)
+            : Promise.resolve({ teams: [] })
+        ]);
+
+        setUsers(usersData);
+
+        // Filter teams to only include those in the assignment
+        const filteredTeams = teamsData.teams.filter(team => 
+          assignment.team_id && assignment.team_id.includes(team.team_id)
+        );
+        setTeams(filteredTeams);
+      } catch (error) {
+        console.error('Error loading assignment details:', error);
+        setError('Failed to load assignment details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAssignmentDetails();
+  }, [open, assignment, currentWorkspaceId]);
+
+  if (!assignment) return null;
+
+  return (
+    <Dialog 
+      open={open} 
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+          maxWidth: 600,
+        },
+      }}
+    >
+      <DialogTitle sx={{ p: 3, pb: 2 }}>
+        <Stack direction="row" alignItems="center" spacing={2} justifyContent="space-between">
+          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            Assignment Details
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ p: 3 }}>
+        <Stack spacing={3}>
+          {/* Assignment Info */}
+          <Box sx={{ bgcolor: '#F9FAFB', p: 2, borderRadius: 2 }}>
+            <Stack spacing={1}>
+              <Typography variant="subtitle2" color="text.secondary">
+                Assignment Information
+              </Typography>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Name:</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {assignment.name || 'Untitled Assignment'}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Type:</Typography>
+                <Chip
+                  label={assignment.type}
+                  size="small"
+                  sx={{
+                    bgcolor: '#F5F6FF',
+                    color: '#444CE7',
+                  }}
+                />
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Start Date:</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {formatDate(assignment.start_date)}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Due Date:</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {formatDate(assignment.end_date)}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Created By:</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {assignment.created_by}
+                </Typography>
+              </Stack>
+              <Stack direction="row" justifyContent="space-between">
+                <Typography variant="body2">Created On:</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {formatDate(assignment.created_at)}
+                </Typography>
+              </Stack>
+            </Stack>
+          </Box>
+
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress size={40} />
+            </Box>
+          ) : error ? (
+            <Alert severity="error">{error}</Alert>
+          ) : (
+            <>
+              {/* Teams Section */}
+              {teams.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                    Teams ({teams.length})
+                  </Typography>
+                  <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                    {teams.map((team, index) => (
+                      <React.Fragment key={team.team_id}>
+                        <ListItem alignItems="flex-start">
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: '#F5F6FF' }}>
+                              <GroupIcon sx={{ color: '#444CE7' }} />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={team.team_name}
+                            secondary={
+                              <Typography variant="body2" color="text.secondary">
+                                {team.member_user_ids?.length || 0} members
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                        {index < teams.length - 1 && <Divider component="li" />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                </Box>
+              )}
+
+              {/* Users Section */}
+              {users.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                    Trainees ({users.length})
+                  </Typography>
+                  <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                    {users.map((user, index) => (
+                      <React.Fragment key={user.user_id}>
+                        <ListItem alignItems="flex-start">
+                          <ListItemAvatar>
+                            <Avatar sx={{ bgcolor: '#F5F6FF' }}>
+                              <PersonIcon sx={{ color: '#444CE7' }} />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={user.fullName || `${user.first_name} ${user.last_name}`}
+                            secondary={user.email}
+                          />
+                        </ListItem>
+                        {index < users.length - 1 && <Divider component="li" />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                </Box>
+              )}
+
+              {teams.length === 0 && users.length === 0 && (
+                <Alert severity="info">
+                  No teams or trainees assigned to this assignment.
+                </Alert>
+              )}
+            </>
+          )}
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const AssignSimulationsPage = () => {
   const { user } = useAuth();
@@ -66,6 +287,8 @@ const AssignSimulationsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order>('asc');
   const [orderBy, setOrderBy] = useState<OrderBy>('name');
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
 
   // Check if user has create permission for assign-simulations
   const canAssignSimulations = hasCreatePermission('assign-simulations');
@@ -179,6 +402,11 @@ const AssignSimulationsPage = () => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
+  };
+
+  const handleRowClick = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setIsDetailsDialogOpen(true);
   };
 
   const sortedData = React.useMemo(() => {
@@ -525,7 +753,14 @@ const AssignSimulationsPage = () => {
                   {sortedData
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((row, index) => (
-                      <TableRow key={index}>
+                      <TableRow 
+                        key={index}
+                        onClick={() => handleRowClick(row)}
+                        sx={{ 
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'action.hover' }
+                        }}
+                      >
                         <TableCell sx={{ minWidth: 250 }}>
                           {row.name || 'Untitled Assignment'}
                         </TableCell>
@@ -621,6 +856,11 @@ const AssignSimulationsPage = () => {
         open={isSimulationDialogOpen}
         onClose={handleCloseSimulationDialog}
         onAssignmentCreated={handleAssignmentCreated}
+      />
+      <AssignmentDetailsDialog
+        open={isDetailsDialogOpen}
+        onClose={() => setIsDetailsDialogOpen(false)}
+        assignment={selectedAssignment}
       />
     </DashboardContent>
   );

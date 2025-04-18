@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .catch((error) => {
         console.error('Token refresh failed:', error);
         setIsInitialized(true);
-        // Redirect to unauthorized page instead of login
+        // Redirect to unauthorized page
         const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
         navigate(`/unauthorized${workspaceParam}`);
       });

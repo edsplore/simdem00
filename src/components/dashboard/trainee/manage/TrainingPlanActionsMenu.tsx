@@ -10,6 +10,7 @@ import {
 import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
 import axios from 'axios';
 import { useAuth } from '../../../../context/AuthContext';
+import { TrainingPlan } from '../../../../services/trainingPlans';
 
 interface TrainingPlanActionsMenuProps {
   anchorEl: HTMLElement | null;
@@ -19,6 +20,7 @@ interface TrainingPlanActionsMenuProps {
   } | null;
   onClose: () => void;
   onCloneSuccess?: () => void;
+  onEditClick?: (id: string, type: 'module' | 'training-plan') => void;
 }
 
 const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
@@ -26,6 +28,7 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
   selectedItem,
   onClose,
   onCloneSuccess,
+  onEditClick,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -37,10 +40,8 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
   const canDelete = hasDeletePermission('manage-training-plan');
 
   const handleEditClick = () => {
-    if (selectedItem) {
-      // Navigate to edit page (implementation would depend on your routing structure)
-      // For now, just close the menu
-      console.log(`Edit ${selectedItem.type} with ID: ${selectedItem.id}`);
+    if (selectedItem && onEditClick) {
+      onEditClick(selectedItem.id, selectedItem.type);
     }
     onClose();
   };

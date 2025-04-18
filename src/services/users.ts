@@ -29,6 +29,7 @@ export interface UserDetails {
     internal_user_id: string;
     external_user_id: string;
     status: string;
+    timezone?: string;
     created: {
       user: {
         id: string;
@@ -51,10 +52,10 @@ export interface UserDetails {
 }
 
 // Staging
-const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
+// const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
 
 //Dev
-// const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
+const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
 
 export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {
@@ -86,6 +87,27 @@ export const fetchUsersSummary = async (workspaceId: string): Promise<User[]> =>
   } catch (error) {
     console.error('Error fetching users:', error);
     throw error;
+  }
+};
+
+/**
+ * Fetch user details by user IDs
+ * @param workspaceId The workspace ID
+ * @param userIds Array of user IDs to fetch details for
+ * @returns Promise with array of user details
+ */
+export const fetchUsersByIds = async (workspaceId: string, userIds: string[]): Promise<User[]> => {
+  try {
+    // Encode the workspaceId to ensure proper handling of special characters
+    const encodedWorkspaceId = encodeURIComponent(workspaceId);
+    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${encodedWorkspaceId}`, {
+      userIds: userIds,
+      status: 'ACTIVE'
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching users by IDs:', error);
+    return []; // Return empty array instead of throwing to prevent UI crashes
   }
 };
 

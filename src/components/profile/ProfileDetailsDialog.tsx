@@ -17,11 +17,54 @@ import {
   Chip,
   Autocomplete,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
 import { User } from '../../types/auth';
 import { fetchUserDetails, UserDetails } from '../../services/users';
+
+// List of all standard time zones
+const TIMEZONES = [
+  { value: 'UTC-12:00', label: '(UTC-12:00) International Date Line West' },
+  { value: 'UTC-11:00', label: '(UTC-11:00) Coordinated Universal Time-11' },
+  { value: 'UTC-10:00', label: '(UTC-10:00) Hawaii' },
+  { value: 'UTC-09:30', label: '(UTC-09:30) Marquesas Islands' },
+  { value: 'UTC-09:00', label: '(UTC-09:00) Alaska' },
+  { value: 'UTC-08:00', label: '(UTC-08:00) Pacific Time (US & Canada)' },
+  { value: 'UTC-07:00', label: '(UTC-07:00) Mountain Time (US & Canada)' },
+  { value: 'UTC-06:00', label: '(UTC-06:00) Central Time (US & Canada)' },
+  { value: 'UTC-05:00', label: '(UTC-05:00) Eastern Time (US & Canada)' },
+  { value: 'UTC-04:00', label: '(UTC-04:00) Atlantic Time (Canada)' },
+  { value: 'UTC-03:30', label: '(UTC-03:30) Newfoundland' },
+  { value: 'UTC-03:00', label: '(UTC-03:00) Brasilia' },
+  { value: 'UTC-02:00', label: '(UTC-02:00) Mid-Atlantic' },
+  { value: 'UTC-01:00', label: '(UTC-01:00) Azores' },
+  { value: 'UTC+00:00', label: '(UTC+00:00) London, Dublin, Edinburgh' },
+  { value: 'UTC+01:00', label: '(UTC+01:00) Berlin, Vienna, Rome, Paris' },
+  { value: 'UTC+02:00', label: '(UTC+02:00) Athens, Istanbul, Helsinki' },
+  { value: 'UTC+03:00', label: '(UTC+03:00) Moscow, Baghdad, Kuwait' },
+  { value: 'UTC+03:30', label: '(UTC+03:30) Tehran' },
+  { value: 'UTC+04:00', label: '(UTC+04:00) Dubai, Baku, Tbilisi' },
+  { value: 'UTC+04:30', label: '(UTC+04:30) Kabul' },
+  { value: 'UTC+05:00', label: '(UTC+05:00) Karachi, Tashkent' },
+  { value: 'UTC+05:30', label: '(UTC+05:30) Chennai, Kolkata, Mumbai, New Delhi' },
+  { value: 'UTC+05:45', label: '(UTC+05:45) Kathmandu' },
+  { value: 'UTC+06:00', label: '(UTC+06:00) Dhaka, Almaty, Novosibirsk' },
+  { value: 'UTC+06:30', label: '(UTC+06:30) Yangon (Rangoon)' },
+  { value: 'UTC+07:00', label: '(UTC+07:00) Bangkok, Hanoi, Jakarta' },
+  { value: 'UTC+08:00', label: '(UTC+08:00) Beijing, Hong Kong, Singapore' },
+  { value: 'UTC+08:45', label: '(UTC+08:45) Eucla' },
+  { value: 'UTC+09:00', label: '(UTC+09:00) Tokyo, Seoul, Osaka' },
+  { value: 'UTC+09:30', label: '(UTC+09:30) Adelaide, Darwin' },
+  { value: 'UTC+10:00', label: '(UTC+10:00) Sydney, Melbourne, Brisbane' },
+  { value: 'UTC+10:30', label: '(UTC+10:30) Lord Howe Island' },
+  { value: 'UTC+11:00', label: '(UTC+11:00) Solomon Islands, New Caledonia' },
+  { value: 'UTC+12:00', label: '(UTC+12:00) Auckland, Wellington, Fiji' },
+  { value: 'UTC+12:45', label: '(UTC+12:45) Chatham Islands' },
+  { value: 'UTC+13:00', label: '(UTC+13:00) Samoa, Tonga, Phoenix Islands' },
+  { value: 'UTC+14:00', label: '(UTC+14:00) Line Islands' },
+];
 
 const StyledDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialog-paper': {
@@ -67,6 +110,9 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [timezone, setTimezone] = useState<string | null>(null);
+  const [isUpdatingTimezone, setIsUpdatingTimezone] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
 
   // Fetch user details when dialog opens
   useEffect(() => {
@@ -78,6 +124,11 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
         setError(null);
         const details = await fetchUserDetails(user.id, user.workspaceId);
         setUserDetails(details);
+
+        // Set initial timezone from user details if available
+        if (details.user?.timezone) {
+          setTimezone(details.user.timezone);
+        }
       } catch (err) {
         console.error('Error loading user details:', err);
         setError('Failed to load user details');
@@ -88,6 +139,37 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
 
     loadUserDetails();
   }, [open, user?.id, user?.workspaceId]);
+
+  const handleTimezoneChange = (newTimezone: string | null) => {
+    setTimezone(newTimezone);
+
+    // For UI demonstration purposes only
+    if (newTimezone) {
+      setIsUpdatingTimezone(true);
+
+      // Simulate API call with timeout
+      setTimeout(() => {
+        setIsUpdatingTimezone(false);
+        setUpdateSuccess(true);
+
+        // Update local user details for UI
+        if (userDetails) {
+          setUserDetails({
+            ...userDetails,
+            user: {
+              ...userDetails.user,
+              timezone: newTimezone
+            }
+          });
+        }
+
+        // Hide success message after 3 seconds
+        setTimeout(() => {
+          setUpdateSuccess(false);
+        }, 3000);
+      }, 1000);
+    }
+  };
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth="md">
@@ -184,6 +266,49 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                   InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
                 />
               </Stack>
+
+              {/* Timezone Selector - Editable Field */}
+              <Autocomplete
+                value={timezone}
+                onChange={(event, newValue) => handleTimezoneChange(newValue)}
+                options={TIMEZONES.map(tz => tz.value)}
+                getOptionLabel={(option) => {
+                  const timezone = TIMEZONES.find(tz => tz.value === option);
+                  return timezone ? timezone.label : option;
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Select Time Zone"
+                    variant="outlined"
+                    fullWidth
+                    InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isUpdatingTimezone ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                freeSolo
+                autoHighlight
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: '#FFFFFF',
+                    fontFamily: 'Inter',
+                  }
+                }}
+              />
+
+              {updateSuccess && (
+                <Alert severity="success" sx={{ mt: 1 }}>
+                  Time zone updated successfully
+                </Alert>
+              )}
 
               <Stack direction="row" spacing={2}>
                 {/* Email Address Field */}

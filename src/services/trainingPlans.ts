@@ -30,6 +30,31 @@ export interface CreateTrainingPlanPayload {
   }>;
 }
 
+export interface UpdateTrainingPlanPayload {
+  user_id: string;
+  training_plan_name: string;
+  tags: string[];
+  added_object: Array<{
+    type: 'module' | 'simulation';
+    id: string;
+  }>;
+}
+
+export interface UpdateTrainingPlanResponse {
+  id: string;
+  name: string;
+  tags: string[];
+  added_object: Array<{
+    type: 'module' | 'simulation';
+    id: string;
+  }>;
+  created_by: string;
+  created_at: string;
+  last_modified_by: string;
+  last_modified_at: string;
+  estimated_time: number;
+}
+
 export const fetchTrainingPlans = async (userId: string): Promise<TrainingPlan[]> => {
   try {
     const response = await apiClient.post('/api/training-plans/fetch', {
@@ -53,6 +78,34 @@ export const createTrainingPlan = async (payload: CreateTrainingPlanPayload): Pr
     return response.data;
   } catch (error) {
     console.error('Error creating training plan:', error);
+    throw error;
+  }
+};
+
+/**
+ * Updates an existing training plan
+ * @param trainingPlanId The ID of the training plan to update
+ * @param payload The update payload
+ * @returns Promise with update response
+ */
+export const updateTrainingPlan = async (
+  trainingPlanId: string,
+  payload: UpdateTrainingPlanPayload
+): Promise<UpdateTrainingPlanResponse> => {
+  try {
+    console.log(`Updating training plan ${trainingPlanId} with payload:`, payload);
+
+    const response = await apiClient.put(`/api/training-plans/${trainingPlanId}/update`, {
+      user_id: payload.user_id,
+      training_plan_name: payload.training_plan_name,
+      tags: payload.tags,
+      added_object: payload.added_object
+    });
+
+    console.log('Update training plan response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating training plan ${trainingPlanId}:`, error);
     throw error;
   }
 };

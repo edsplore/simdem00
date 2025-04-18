@@ -193,8 +193,9 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({
           >
             <MenuItem value="all">All Status</MenuItem>
             <MenuItem value="not_started">Not Started</MenuItem>
-            <MenuItem value="ongoing">Ongoing</MenuItem>
-            <MenuItem value="finished">Finished</MenuItem>
+            <MenuItem value="finished">Completed</MenuItem>
+            <MenuItem value="ongoing">In Progress</MenuItem>            
+            <MenuItem value="overdue">Overdue</MenuItem>
           </Select>
         </Stack>
       </Paper>

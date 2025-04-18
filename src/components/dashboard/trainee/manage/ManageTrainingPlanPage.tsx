@@ -32,6 +32,8 @@ import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
 import TrainingPlanDetailsDialog from './TrainingPlanDetailsDialog';
+import EditTrainingPlanDialog from './EditTrainingPlanDialog';
+import EditModuleDialog from './EditModuleDialog';
 import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
 import { useAuth } from '../../../../context/AuthContext';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
@@ -70,6 +72,10 @@ const ManageTrainingPlanPage = () => {
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan' } | null>(null);
   const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTrainingPlan, setEditingTrainingPlan] = useState<TrainingPlan | null>(null);
+  const [isEditModuleDialogOpen, setIsEditModuleDialogOpen] = useState(false);
+  const [editingModule, setEditingModule] = useState<Module | null>(null);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
@@ -142,6 +148,29 @@ const ManageTrainingPlanPage = () => {
       setSelectedTrainingPlan(item as TrainingPlan);
       setIsDetailsDialogOpen(true);
     }
+  };
+
+  const handleEditClick = (id: string, type: 'module' | 'training-plan') => {
+    if (type === 'training-plan') {
+      // Find the training plan to edit
+      const planToEdit = trainingPlans.find(plan => plan.id === id);
+      if (planToEdit) {
+        setEditingTrainingPlan(planToEdit);
+        setIsEditDialogOpen(true);
+      }
+    } else {
+      // Find the module to edit
+      const moduleToEdit = modules.find(module => module.id === id);
+      if (moduleToEdit) {
+        setEditingModule(moduleToEdit);
+        setIsEditModuleDialogOpen(true);
+      }
+    }
+  };
+
+  const handleUpdateSuccess = () => {
+    // Reload data after successful update
+    loadData();
   };
 
   const filteredData = currentTab === 'Training Plans'
@@ -546,6 +575,21 @@ const ManageTrainingPlanPage = () => {
           selectedItem={selectedItem}
           onClose={handleMenuClose}
           onCloneSuccess={loadData}
+          onEditClick={handleEditClick}
+        />
+
+        <EditTrainingPlanDialog
+          open={isEditDialogOpen}
+          onClose={() => setIsEditDialogOpen(false)}
+          trainingPlan={editingTrainingPlan}
+          onUpdateSuccess={handleUpdateSuccess}
+        />
+
+        <EditModuleDialog
+          open={isEditModuleDialogOpen}
+          onClose={() => setIsEditModuleDialogOpen(false)}
+          module={editingModule}
+          onUpdateSuccess={handleUpdateSuccess}
         />
       </Container>
 

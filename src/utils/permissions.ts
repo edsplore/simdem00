@@ -126,9 +126,7 @@ export const hasUpdatePermission = (permissionKey: string): boolean => {
       return true;
     }
 
-    // Fall back to write permission if specific update permission doesn't exist
-    const writePermissionKey = `${permissionKey}_write`;
-    return user.permissions[writePermissionKey] || false;
+    return false;
   } catch (error) {
     console.error(`Error checking update permission for ${permissionKey}:`, error);
     return false;
@@ -188,28 +186,6 @@ export const hasPermission = (path: string): boolean => {
     return hasAccess;
   } catch (error) {
     console.error('Error checking permissions:', error);
-    return false;
-  }
-}
-
-/**
- * Check if the user has write permission for a specific path
- * @param path The route path to check
- * @returns boolean indicating if the user has write permission
- */
-export const canWrite = (path: string): boolean => {
-  try {
-    const user = authService.getCurrentUser();
-    if (!user) return false;
-
-    // For paths that don't require specific permissions
-    if (!PERMISSION_MAP[path]) return false;
-
-    // Check if the user has the required permission with write access
-    const permissionKey = `${PERMISSION_MAP[path]}_write`;
-    return user.permissions[permissionKey] || false;
-  } catch (error) {
-    console.error('Error checking write permissions:', error);
     return false;
   }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { fetchModules, type Module } from '../../../services/modules';
 import { fetchUsersSummary, type User } from '../../../services/users';
+import { fetchTeams, type Team } from '../../../services/teams';
 import { createAssignment } from '../../../services/assignments';
 import {
   Dialog,
@@ -53,11 +54,6 @@ interface AssignModuleDialogProps {
   onAssignmentCreated?: () => void;
 }
 
-const teamAssignees: Assignee[] = [
-  { id: 'team1', name: 'Team 01', type: 'team' },
-  { id: 'team2', name: 'Team 02', type: 'team' },
-];
-
 const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   open,
   onClose,
@@ -74,9 +70,10 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   const [showModulesList, setShowModulesList] = useState(false);
   const searchFieldRef = useRef<HTMLDivElement>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [assignees, setAssignees] = useState<Assignee[]>(teamAssignees);
+  const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
   const [showAssigneesList, setShowAssigneesList] = useState(false);
+  const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
 
   const {
     control,
@@ -116,25 +113,54 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   }, [open, user?.id]);
 
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadAssignees = async () => {
+      if (!currentWorkspaceId) {
+        console.error('No workspace ID available');
+        return;
+      }
+
+      setIsLoadingAssignees(true);
       try {
-        const users = await fetchUsersSummary(currentWorkspaceId);
-        const userAssignees: Assignee[] = users.map(user => ({
+        // Fetch both users and teams in parallel
+        const [usersResponse, teamsResponse] = await Promise.all([
+          fetchUsersSummary(currentWorkspaceId),
+          fetchTeams(currentWorkspaceId)
+        ]);
+
+        // Process users
+        const userAssignees: Assignee[] = usersResponse.map(user => ({
           id: user.user_id,
           name: user.fullName,
           email: user.email,
           type: 'trainee'
         }));
+
+        // Process teams
+        const teamAssignees: Assignee[] = teamsResponse.teams.map(team => ({
+          id: team.team_id,
+          name: team.team_name,
+          type: 'team'
+        }));
+
+        // Combine users and teams
         setAssignees([...teamAssignees, ...userAssignees]);
-      } catch (err) {
-        console.error('Error loading users:', err);
+
+        console.log('Loaded assignees:', {
+          teams: teamAssignees.length,
+          users: userAssignees.length,
+          total: teamAssignees.length + userAssignees.length
+        });
+      } catch (error) {
+        console.error('Error loading assignees:', error);
+      } finally {
+        setIsLoadingAssignees(false);
       }
     };
 
-    if (open) {
-      loadUsers();
+    if (open && currentWorkspaceId) {
+      loadAssignees();
     }
-  }, [open]);
+  }, [open, currentWorkspaceId]);
 
   const selectedAssignees = watch('assignTo');
   const filteredModules = modules.filter(module => 
@@ -514,7 +540,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                       <TextField
                         fullWidth
                         size="small"
-                        placeholder="Search users..."
+                        placeholder="Search users or teams..."
                         value={assigneeSearchQuery}
                         onChange={(e) => setAssigneeSearchQuery(e.target.value)}
                         InputProps={{
@@ -522,61 +548,70 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                         }}
                       />
                     </Box>
-                    {assignees.map((assignee) => (
-                      <MenuItem
-                        key={assignee.id}
-                        value={assignee.id}
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          '&:hover': {
-                            bgcolor: '#F5F6FF',
-                          },
-                        }}
-                      >
-                        <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>
-                          <Checkbox
-                            checked={selectedAssignees.includes(assignee.id)}
-                            sx={{
-                              color: '#D0D5DD',
-                              '&.Mui-checked': {
-                                color: '#444CE7',
-                              },
-                            }}
-                          />
-                          <Avatar sx={{ width: 24, height: 24, bgcolor: '#F5F6FF' }}>
-                            {assignee.type === 'team' ? (
-                              <GroupIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
-                            ) : (
-                              <PersonIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
-                            )}
-                          </Avatar>
-                          <Stack spacing={0.5} flex={1}>
-                            <Typography variant="body2">
-                              {assignee.name}
-                            </Typography>
-                            {assignee.email && (
-                              <Typography variant="caption" color="text.secondary">
-                                {assignee.email}
-                              </Typography>
-                            )}
-                          </Stack>
-                          <Chip
-                            label={assignee.type === 'team' ? 'Team' : 'Trainee'}
-                            size="small"
-                            sx={{
+
+                    {isLoadingAssignees ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                        <CircularProgress size={24} />
+                      </Box>
+                    ) : assignees.length === 0 ? (
+                      <MenuItem disabled>No users or teams available</MenuItem>
+                    ) : (
+                      filteredAssignees.map((assignee) => (
+                        <MenuItem
+                          key={assignee.id}
+                          value={assignee.id}
+                          sx={{
+                            py: 1,
+                            px: 2,
+                            '&:hover': {
                               bgcolor: '#F5F6FF',
-                              color: '#444CE7',
-                              height: 24,
-                              '& .MuiChip-label': {
-                                px: 1,
-                                fontSize: '12px',
-                              },
-                            }}
-                          />
-                        </Stack>
-                      </MenuItem>
-                    ))}
+                            },
+                          }}
+                        >
+                          <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>
+                            <Checkbox
+                              checked={selectedAssignees.includes(assignee.id)}
+                              sx={{
+                                color: '#D0D5DD',
+                                '&.Mui-checked': {
+                                  color: '#444CE7',
+                                },
+                              }}
+                            />
+                            <Avatar sx={{ width: 24, height: 24, bgcolor: '#F5F6FF' }}>
+                              {assignee.type === 'team' ? (
+                                <GroupIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                              ) : (
+                                <PersonIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                              )}
+                            </Avatar>
+                            <Stack spacing={0.5} flex={1}>
+                              <Typography variant="body2">
+                                {assignee.name}
+                              </Typography>
+                              {assignee.email && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {assignee.email}
+                                </Typography>
+                              )}
+                            </Stack>
+                            <Chip
+                              label={assignee.type === 'team' ? 'Team' : 'Trainee'}
+                              size="small"
+                              sx={{
+                                bgcolor: '#F5F6FF',
+                                color: '#444CE7',
+                                height: 24,
+                                '& .MuiChip-label': {
+                                  px: 1,
+                                  fontSize: '12px',
+                                },
+                              }}
+                            />
+                          </Stack>
+                        </MenuItem>
+                      ))
+                    )}
                   </Select>
                 )}
               />

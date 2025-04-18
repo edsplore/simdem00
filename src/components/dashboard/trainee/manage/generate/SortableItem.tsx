@@ -1,17 +1,11 @@
-import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import {
-  Box,
-  Typography,
-  IconButton,
-  styled,
-  Card,
-} from '@mui/material';
+import React from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Box, Typography, IconButton, styled, Card } from "@mui/material";
 import {
   Delete as DeleteIcon,
   DragIndicator as DragIndicatorIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 interface SortableItemProps {
   id: string;
@@ -27,28 +21,28 @@ interface SortableItemProps {
 }
 
 const ImagePreview = styled(Card)(({ theme }) => ({
-  width: '100%',
+  width: "100%",
   borderRadius: theme.spacing(1),
-  position: 'relative',
+  position: "relative",
   marginBottom: theme.spacing(2),
-  '&:hover .image-actions': {
+  "&:hover .image-actions": {
     opacity: 1,
   },
 }));
 
 const ThumbnailContainer = styled(Box)(({ theme }) => ({
-  width: '280px',
-  height: '200px',
-  overflow: 'hidden',
+  width: "280px",
+  height: "200px",
+  overflow: "hidden",
   borderRadius: theme.spacing(1),
-  position: 'relative',
-  '&:hover .image-actions': {
+  position: "relative",
+  "&:hover .image-actions": {
     opacity: 1,
   },
-  '& img': {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
+  "& img": {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
   },
 }));
 
@@ -82,32 +76,31 @@ export default function SortableItem({
       style={style}
       onClick={() => onImageClick(image.id)}
       sx={{
-        border: selectedImageId === image.id ? '2px solid #444CE7' : '1px solid #E5E7EB',
-        cursor: 'pointer',
+        border:
+          selectedImageId === image.id
+            ? "2px solid #444CE7"
+            : "1px solid #E5E7EB",
+        cursor: "pointer",
       }}
     >
       <ThumbnailContainer>
-        <Box
-          component="img"
-          src={image.url}
-          alt={image.name}
-        />
+        <Box component="img" src={image.url} alt={image.name} />
         <Box
           className="image-actions"
           sx={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             right: 0,
             p: 1,
             opacity: 0,
-            transition: 'opacity 0.2s',
-            display: 'flex',
+            transition: "opacity 0.2s",
+            display: "flex",
             gap: 1,
           }}
         >
           <IconButton
             size="small"
-            sx={{ bgcolor: 'white' }}
+            sx={{ bgcolor: "white" }}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(image.id);
@@ -116,10 +109,7 @@ export default function SortableItem({
             <DeleteIcon fontSize="small" />
           </IconButton>
           <Box {...attributes} {...listeners}>
-            <IconButton
-              size="small"
-              sx={{ bgcolor: 'white', cursor: 'grab' }}
-            >
+            <IconButton size="small" sx={{ bgcolor: "white", cursor: "grab" }}>
               <DragIndicatorIcon fontSize="small" />
             </IconButton>
           </Box>
@@ -127,12 +117,12 @@ export default function SortableItem({
         <Typography
           variant="caption"
           sx={{
-            position: 'absolute',
+            position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
-            bgcolor: 'rgba(0, 0, 0, 0.6)',
-            color: 'white',
+            bgcolor: "rgba(0, 0, 0, 0.6)",
+            color: "white",
             p: 1,
           }}
         >

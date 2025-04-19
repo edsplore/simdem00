@@ -308,9 +308,14 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
                           <Chip
                             key={tag}
                             label={tag}
-                            onDelete={() => {
+                            onDelete={(event) => {
+                              event.stopPropagation();
                               const newTags = field.value.filter(t => t !== tag);
                               field.onChange(newTags);
+                            }}
+                            onMouseDown={(event) => {
+                              // Also prevent the mousedown event from propagating
+                              event.stopPropagation();
                             }}
                             sx={{
                               borderRadius: 20,

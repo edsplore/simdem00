@@ -76,7 +76,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const [modulesData, simulationsData] = await Promise.all([
           fetchModules(user?.id || 'user123'),
           fetchSimulations(user?.id || 'user123')
@@ -131,7 +131,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      
+
       const response = await createTrainingPlan({
         user_id: user?.id || 'user123',
         training_plan_name: data.name,
@@ -280,9 +280,15 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                           <Chip
                             key={tag}
                             label={tag}
-                            onDelete={() => {
+                            onDelete={(event) => {
+                              // Prevent the select from opening when clicking the delete icon
+                              event.stopPropagation();
                               const newTags = field.value.filter(t => t !== tag);
                               field.onChange(newTags);
+                            }}
+                            onMouseDown={(event) => {
+                              // Also prevent the mousedown event from propagating
+                              event.stopPropagation();
                             }}
                             sx={{
                               borderRadius: 20,

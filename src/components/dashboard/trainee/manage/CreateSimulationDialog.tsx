@@ -96,6 +96,8 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     handleSubmit,
     formState: { isValid },
     reset,
+    setValue,
+    watch,
   } = useForm<CreateSimulationFormData>({
     mode: "onChange",
     defaultValues: {
@@ -186,15 +188,7 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     setErrorMessage(null);
   };
 
-  const { setValue, watch } = useForm<CreateSimulationFormData>({
-    defaultValues: { tags: [] },
-  });
-
   const tags = watch("tags");
-
-  const handleTagChange = (event: React.ChangeEvent<{ value: unknown }>) => {
-    setValue("tags", event.target.value as string[]);
-  };
 
   const removeTag = (tag: string) => {
     const newTags = tags.filter((item) => item !== tag);
@@ -414,7 +408,15 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                             <Chip
                               key={tag}
                               label={tag}
-                              onDelete={() => removeTag(tag)}
+                              onDelete={(event) => {
+                                // Prevent the select from opening when clicking the delete icon
+                                event.stopPropagation();
+                                removeTag(tag);
+                              }}
+                              onMouseDown={(event) => {
+                                // Also prevent the mousedown event from propagating
+                                event.stopPropagation();
+                              }}
                               deleteIcon={
                                 <CloseIcon sx={{ color: "#B0B0B0" }} />
                               }

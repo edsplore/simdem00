@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ThemeProvider from './theme/ThemeProvider';
@@ -61,6 +62,26 @@ const WorkspaceHandler: React.FC<{ children: React.ReactNode }> = ({ children })
   return <>{children}</>;
 };
 
+// Component to handle the root redirect with workspace ID preservation
+const RootRedirect = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const workspaceId = params.get('workspace_id');
+
+    // Redirect to dashboard with workspace ID if present
+    const target = workspaceId 
+      ? `/dashboard?workspace_id=${encodeURIComponent(workspaceId)}`
+      : '/dashboard';
+
+    navigate(target, { replace: true });
+  }, [location, navigate]);
+
+  return <LoadingSpinner />;
+};
+
 const App: React.FC = () => {
   return (
     <ThemeProvider>
@@ -73,17 +94,15 @@ const App: React.FC = () => {
                   {/* Public routes */}
                   <Route path="/unauthorized" element={<Unauthorized />} />
 
-                  {/* Default redirect */}
-                  <Route path="/" element={<Navigate to="/dashboard" />} />
+                  {/* Default redirect - now preserves workspace ID */}
+                  <Route path="/" element={<RootRedirect />} />
 
                   {/* Protected routes */}
                   <Route
                     path="/dashboard"
                     element={
                       <ProtectedRoute path="/dashboard">
-
                           <TraineeDashboard />
-
                       </ProtectedRoute>
                     }
                   />
@@ -91,9 +110,7 @@ const App: React.FC = () => {
                     path="/training"
                     element={
                       <ProtectedRoute path="/training">
-
                           <TrainingPlanPage />
-
                       </ProtectedRoute>
                     }
                   />
@@ -101,9 +118,7 @@ const App: React.FC = () => {
                     path="/training/:id"
                     element={
                       <ProtectedRoute path="/training">
-
                           <TrainingPlanDetailsPage />
-
                       </ProtectedRoute>
                     }
                   />
@@ -111,9 +126,7 @@ const App: React.FC = () => {
                     path="/playback"
                     element={
                       <ProtectedRoute path="/playback">
-
                           <PlaybackPage />
-
                       </ProtectedRoute>
                     }
                   />
@@ -121,9 +134,7 @@ const App: React.FC = () => {
                     path="/playback/:id"
                     element={
                       <ProtectedRoute path="/playback">
-
                           <PlaybackDetailPage />
-
                       </ProtectedRoute>
                     }
                   />
@@ -131,9 +142,7 @@ const App: React.FC = () => {
                     path="/manage-simulations"
                     element={
                       <ProtectedRoute path="/manage-simulations">
-
                           <ManageSimulationsPage />
-
                       </ProtectedRoute>
                     }
                   />
@@ -141,9 +150,7 @@ const App: React.FC = () => {
                     path="/generate-scripts"
                     element={
                       <ProtectedRoute path="/manage-simulations">
-
                           <GenerateScript />
-
                       </ProtectedRoute>
                     }
                   />
@@ -159,9 +166,7 @@ const App: React.FC = () => {
                     path="/simulation/:id/attempt" 
                     element={
                       <ProtectedRoute path="/training">
-
                           <SimulationAttemptPage />
-
                       </ProtectedRoute>
                     } 
                   />
@@ -169,9 +174,7 @@ const App: React.FC = () => {
                     path="/manage-training-plan" 
                     element={
                       <ProtectedRoute path="/manage-training-plan">
-
                           <ManageTrainingPlanPage />
-
                       </ProtectedRoute>
                     } 
                   />
@@ -179,15 +182,13 @@ const App: React.FC = () => {
                     path="/assign-simulations"
                     element={
                       <ProtectedRoute path="/assign-simulations">
-
                           <AssignSimulationsPage />
-
                       </ProtectedRoute>
                     }
                   />
 
-                  {/* Catch all - redirect to dashboard */}
-                  <Route path="*" element={<Navigate to="/dashboard" />} />
+                  {/* Catch all - redirect to dashboard with workspace ID preservation */}
+                  <Route path="*" element={<RootRedirect />} />
                 </Routes>
               </Suspense>
             </Layout>

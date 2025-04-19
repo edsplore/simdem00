@@ -19,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,8 +34,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Store the workspace ID exactly as received, without any manipulation
       setCurrentWorkspaceId(workspaceId);
+
+      // If the current route doesn't have workspace_id and we just got one, add it to the URL
+      if (!location.search.includes('workspace_id')) {
+        const newSearch = location.search ? 
+          `${location.search}&workspace_id=${encodeURIComponent(workspaceId)}` : 
+          `?workspace_id=${encodeURIComponent(workspaceId)}`;
+
+        navigate({
+          pathname: location.pathname,
+          search: newSearch
+        }, { replace: true });
+      }
     }
-  }, [location.search]);
+  }, [location.search, navigate, location.pathname]);
 
   const updateUserState = useCallback(() => {
     const currentUser = authService.getCurrentUser();
@@ -50,19 +63,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize auth state and refresh token if needed
   useEffect(() => {
+    // Skip if already refreshing or if we're on the unauthorized page
+    if (isRefreshing || location.pathname === '/unauthorized') {
+      return;
+    }
+
+    console.log('Starting token refresh process');
+    setIsRefreshing(true);
+
     // Initial token refresh when component mounts or workspace changes
     authService.refreshToken(currentWorkspaceId)
       .then(() => {
+        console.log('Token refresh successful');
         updateUserState();
+        setIsRefreshing(false);
+        setIsInitialized(true);
       })
       .catch((error) => {
-        console.error('Token refresh failed:', error);
+        console.error('All token refresh attempts failed:', error);
         setIsInitialized(true);
-        // Redirect to unauthorized page
-        const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
-        navigate(`/unauthorized${workspaceParam}`);
+        setIsRefreshing(false);
+
+        // Only redirect to unauthorized page if we're not already there
+        if (location.pathname !== '/unauthorized') {
+          console.log('Redirecting to unauthorized page');
+          const workspaceParam = currentWorkspaceId ? `?workspace_id=${encodeURIComponent(currentWorkspaceId)}` : '';
+          navigate(`/unauthorized${workspaceParam}`);
+        }
       });
-  }, [updateUserState, currentWorkspaceId, navigate]);
+  }, [updateUserState, currentWorkspaceId, navigate, location.pathname]);
 
   const login = (token: string, workspaceId?: string) => {
     authService.setToken(token, workspaceId || currentWorkspaceId);

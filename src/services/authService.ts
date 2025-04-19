@@ -20,17 +20,40 @@ class AuthService {
   private currentUser: User | null = null;
   private token: string | null = null;
   private currentWorkspaceId: string | null = null;
+  private refreshAttempts: number = 0;
+  private maxRefreshAttempts: number = 3;
+  private refreshRetryDelay: number = 5000; // 5 seconds
+  private refreshPromise: Promise<string> | null = null;
+  private isRefreshingToken: boolean = false;
 
   async refreshToken(workspaceId?: string | null): Promise<string> {
+    // If there's already a refresh in progress, return that promise instead of starting a new one
+    if (this.refreshPromise) {
+      console.log("Refresh already in progress, returning existing promise");
+      return this.refreshPromise;
+    }
+
+    // Create a new refresh promise
+    this.refreshPromise = this.doRefreshToken(workspaceId);
+
+    // When the promise resolves or rejects, clear the stored promise
+    this.refreshPromise.finally(() => {
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
+  private async doRefreshToken(workspaceId?: string | null): Promise<string> {
     try {
-      console.log("Attempting to refresh token...");
+      console.log(`Refresh token attempt ${this.refreshAttempts + 1}/${this.maxRefreshAttempts}`);
 
       // Use the provided workspace ID or the stored one
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
       console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
-      // Use dev URL for now, could be made configurable based on environment
-      const refreshTokenUrl = URLS.dev.refreshToken;
+      // Use staging URL for now, could be made configurable based on environment
+      const refreshTokenUrl = URLS.staging.refreshToken;
 
       const response = await axios.post(refreshTokenUrl, "", {
         withCredentials: true, // This ensures cookies are sent with the request
@@ -51,6 +74,9 @@ class AuthService {
 
       const newToken = response.data;
       this.token = newToken;
+
+      // Reset refresh attempts on success
+      this.refreshAttempts = 0;
 
       // Update the user data based on the new token
       this.updateUserFromToken(newToken, effectiveWorkspaceId);
@@ -79,6 +105,27 @@ class AuthService {
           : undefined,
       });
 
+      // Increment attempt counter
+      this.refreshAttempts++;
+
+      // If we haven't reached max attempts, try again after delay
+      if (this.refreshAttempts < this.maxRefreshAttempts) {
+        console.log(`Will retry in ${this.refreshRetryDelay/1000} seconds...`);
+        return new Promise((resolve, reject) => {
+          setTimeout(() => {
+            // Clear the current promise before making a new attempt
+            this.refreshPromise = null;
+            this.refreshToken(workspaceId)
+              .then(resolve)
+              .catch(reject);
+          }, this.refreshRetryDelay);
+        });
+      }
+
+      // Reset attempts counter for next time
+      this.refreshAttempts = 0;
+
+      // If all attempts failed, clear auth data and throw error
       this.clearAuthData();
       throw error;
     }

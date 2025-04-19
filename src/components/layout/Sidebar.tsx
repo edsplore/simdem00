@@ -44,10 +44,18 @@ const NavLink = styled(Link)(({ theme }) => ({
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+
+  // Append workspace_id to links if available
+  const getNavLinkUrl = (path: string) => {
+    if (currentWorkspaceId) {
+      return `${path}?workspace_id=${encodeURIComponent(currentWorkspaceId)}`;
+    }
+    return path;
   };
 
   // Define all possible nav items
@@ -92,7 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
                 placement="right"
               >
                 <NavLink
-                  to={item.path}
+                  to={getNavLinkUrl(item.path)}
                   className={isActive(item.path) ? 'active' : ''}
                   sx={{
                     justifyContent: isCollapsed ? 'center' : 'flex-start',

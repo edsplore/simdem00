@@ -16,6 +16,11 @@ import {
   CircularProgress,
   Snackbar,
   Alert,
+  FormControl,
+  InputLabel,
+  Autocomplete,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -23,11 +28,16 @@ import {
   Headphones as AudioIcon,
   Chat as ChatIcon,
   Visibility as VisualIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 
 import { useForm, Controller } from "react-hook-form";
 import { useAuth } from "../../../../context/AuthContext";
-import { fetchDivisions, fetchDepartments } from "../../../../services/suggestions";
+import {
+  fetchDivisions,
+  fetchDepartments,
+} from "../../../../services/suggestions";
+import { fetchTags, createTag, Tag } from "../../../../services/tags";
 import axios from "axios";
 
 type CreateSimulationFormData = {
@@ -76,8 +86,6 @@ const simulationTypes = [
   },
 ];
 
-const availableTags = ["Tag 1", "Tag 2", "Tag 3", "Tag 4", "Tag 5", "Tag 6"];
-
 const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
   open,
   onClose,
@@ -90,6 +98,10 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [inputValue, setInputValue] = useState('');
 
   const {
     control,
@@ -109,6 +121,8 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     },
   });
 
+  const selectedTags = watch("tags");
+
   // Fetch divisions and departments when dialog opens
   useEffect(() => {
     if (open && currentWorkspaceId) {
@@ -117,10 +131,10 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         setIsLoadingDivisions(true);
         try {
           const divisionsData = await fetchDivisions(currentWorkspaceId);
-          console.log('Loaded divisions:', divisionsData);
+          console.log("Loaded divisions:", divisionsData);
           setDivisions(divisionsData);
         } catch (error) {
-          console.error('Failed to load divisions:', error);
+          console.error("Failed to load divisions:", error);
         } finally {
           setIsLoadingDivisions(false);
         }
@@ -131,19 +145,33 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         setIsLoadingDepartments(true);
         try {
           const departmentsData = await fetchDepartments(currentWorkspaceId);
-          console.log('Loaded departments:', departmentsData);
+          console.log("Loaded departments:", departmentsData);
           setDepartments(departmentsData);
         } catch (error) {
-          console.error('Failed to load departments:', error);
+          console.error("Failed to load departments:", error);
         } finally {
           setIsLoadingDepartments(false);
         }
       };
 
+      // Fetch tags
+      const loadTags = async () => {
+        setIsLoadingTags(true);
+        try {
+          const tagsData = await fetchTags(user?.id || 'user123');
+          setAvailableTags(tagsData);
+        } catch (error) {
+          console.error('Failed to load tags:', error);
+        } finally {
+          setIsLoadingTags(false);
+        }
+      };
+
       loadDivisions();
       loadDepartments();
+      loadTags();
     }
-  }, [open, currentWorkspaceId]);
+  }, [open, currentWorkspaceId, user?.id]);
 
   const onSubmit = async (data: CreateSimulationFormData) => {
     setIsSubmitting(true);
@@ -188,11 +216,37 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     setErrorMessage(null);
   };
 
-  const tags = watch("tags");
+  const handleCreateTag = async (tagName: string) => {
+    if (!tagName.trim() || !user?.id) return;
 
-  const removeTag = (tag: string) => {
-    const newTags = tags.filter((item) => item !== tag);
-    setValue("tags", newTags);
+    setIsCreatingTag(true);
+    try {
+      const response = await createTag(user.id, tagName.trim());
+
+      if (response && response.id) {
+        // Add the new tag to the available tags list
+        const newTag: Tag = {
+          id: response.id,
+          name: tagName.trim(),
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          last_modified_by: user.id,
+          last_modified_at: new Date().toISOString()
+        };
+
+        setAvailableTags(prev => [...prev, newTag]);
+
+        // Add the new tag to the selected tags
+        setValue('tags', [...selectedTags, tagName.trim()]);
+
+        // Clear the input
+        setInputValue('');
+      }
+    } catch (error) {
+      console.error('Error creating tag:', error);
+    } finally {
+      setIsCreatingTag(false);
+    }
   };
 
   return (
@@ -303,42 +357,34 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                   control={control}
                   rules={{ required: true }}
                   render={({ field }) => (
-                    <Select
-                      {...field}
-                      fullWidth
-                      displayEmpty
-                      required
-                      renderValue={(selected) => {
-                        if (!selected) {
-                          return (
-                            <Typography color="text.secondary">
-                              Division
-                            </Typography>
-                          );
-                        }
-                        return selected;
-                      }}
-                     MenuProps={{
-                       PaperProps: {
-                         style: {
-                           maxHeight: 300,
-                           overflow: 'auto'
-                         }
-                       }
-                     }}
-                    >
-                      {isLoadingDivisions ? (
-                        <MenuItem disabled>Loading divisions...</MenuItem>
-                      ) : divisions.length === 0 ? (
-                        <MenuItem disabled>No divisions available</MenuItem>
-                      ) : (
-                        divisions.map((division) => (
-                          <MenuItem key={division} value={division}>
-                            {division}
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
+                    <FormControl fullWidth required>
+                      <InputLabel id="division-label">Division</InputLabel>
+                      <Select
+                        {...field}
+                        labelId="division-label"
+                        label="Division"
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                              overflow: "auto",
+                            },
+                          },
+                        }}
+                      >
+                        {isLoadingDivisions ? (
+                          <MenuItem disabled>Loading divisions...</MenuItem>
+                        ) : divisions.length === 0 ? (
+                          <MenuItem disabled>No divisions available</MenuItem>
+                        ) : (
+                          divisions.map((division) => (
+                            <MenuItem key={division} value={division}>
+                              {division}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
                   )}
                 />
 
@@ -347,42 +393,34 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                   control={control}
                   rules={{ required: true }}
                   render={({ field }) => (
-                    <Select
-                      {...field}
-                      fullWidth
-                      displayEmpty
-                      required
-                      renderValue={(selected) => {
-                        if (!selected) {
-                          return (
-                            <Typography color="text.secondary">
-                              Department
-                            </Typography>
-                          );
-                        }
-                        return selected;
-                      }}
-                     MenuProps={{
-                       PaperProps: {
-                         style: {
-                           maxHeight: 300,
-                           overflow: 'auto'
-                         }
-                       }
-                     }}
-                    >
-                      {isLoadingDepartments ? (
-                        <MenuItem disabled>Loading departments...</MenuItem>
-                      ) : departments.length === 0 ? (
-                        <MenuItem disabled>No departments available</MenuItem>
-                      ) : (
-                        departments.map((department) => (
-                          <MenuItem key={department} value={department}>
-                            {department}
-                          </MenuItem>
-                        ))
-                      )}
-                    </Select>
+                    <FormControl fullWidth required>
+                      <InputLabel id="department-label">Department</InputLabel>
+                      <Select
+                        {...field}
+                        labelId="department-label"
+                        label="Department"
+                        MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 300,
+                              overflow: "auto",
+                            },
+                          },
+                        }}
+                      >
+                        {isLoadingDepartments ? (
+                          <MenuItem disabled>Loading departments...</MenuItem>
+                        ) : departments.length === 0 ? (
+                          <MenuItem disabled>No departments available</MenuItem>
+                        ) : (
+                          departments.map((department) => (
+                            <MenuItem key={department} value={department}>
+                              {department}
+                            </MenuItem>
+                          ))
+                        )}
+                      </Select>
+                    </FormControl>
                   )}
                 />
               </Stack>
@@ -391,66 +429,106 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                 name="tags"
                 control={control}
                 render={({ field }) => (
-                  <>
-                    <Select
-                      {...field}
-                      fullWidth
-                      multiple
-                      displayEmpty
-                      renderValue={(selected) => (
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                          {selected?.length === 0 && (
-                            <Typography color="text.secondary">
-                              Add Tags
-                            </Typography>
-                          )}
-                          {selected.map((tag) => (
-                            <Chip
-                              key={tag}
-                              label={tag}
-                              onDelete={(event) => {
-                                // Prevent the select from opening when clicking the delete icon
-                                event.stopPropagation();
-                                removeTag(tag);
-                              }}
-                              onMouseDown={(event) => {
-                                // Also prevent the mousedown event from propagating
-                                event.stopPropagation();
-                              }}
-                              deleteIcon={
-                                <CloseIcon sx={{ color: "#B0B0B0" }} />
-                              }
-                              sx={{
-                                borderRadius: 20,
-                                backgroundColor: "transparent",
-                                border: " 1px solid #B0B0B0",
-                                color: "#333333",
-                                fontSize: "1rem",
-                                fontWeight: "medium",
-                                "& .MuiChip-deleteIcon": {
-                                  color: "#B0B0B0",
-                                },
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-                     MenuProps={{
-                       PaperProps: {
-                         style: {
-                           maxHeight: 300,
-                           overflow: 'auto'
-                         }
-                       }
-                     }}
-                    >
-                      {availableTags.map((tag) => (
-                        <MenuItem key={tag} value={tag}>
-                          {tag}
+                  <Autocomplete
+                    {...field}
+                    multiple
+                    id="tags-autocomplete"
+                    options={availableTags.map(tag => tag.name)}
+                    value={field.value}
+                    onChange={(_, newValue) => {
+                      field.onChange(newValue);
+                    }}
+                    inputValue={inputValue}
+                    onInputChange={(_, newInputValue) => {
+                      setInputValue(newInputValue);
+                    }}
+                    filterOptions={(options, params) => {
+                      const filtered = options.filter(option => 
+                        option.toLowerCase().includes(params.inputValue.toLowerCase())
+                      );
+
+                      // Add "Create" option if input is not empty and doesn't exist in options
+                      const inputValue = params.inputValue.trim();
+                      if (inputValue !== '' && 
+                          !options.includes(inputValue) && 
+                          !selectedTags.includes(inputValue)) {
+                        filtered.unshift(inputValue);
+                      }
+
+                      return filtered;
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => (
+                        <Chip
+                          {...getTagProps({ index })}
+                          key={option}
+                          label={option}
+                          sx={{
+                            borderRadius: 20,
+                            backgroundColor: "transparent",
+                            border: "1px solid #B0B0B0",
+                            color: "#333333",
+                            fontSize: "0.875rem",
+                            fontWeight: "medium",
+                          }}
+                        />
+                      ))
+                    }
+                    renderOption={(props, option) => {
+                      const isNewOption = !availableTags.some(tag => tag.name === option);
+
+                      if (isNewOption) {
+                        return (
+                          <ListItem {...props} key={`create-${option}`}>
+                            <ListItemText primary={
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography>Create "{option}"</Typography>
+                                <Button
+                                  size="small"
+                                  startIcon={<AddIcon />}
+                                  variant="contained"
+                                  color="primary"
+                                  sx={{ ml: 2 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCreateTag(option);
+                                  }}
+                                  disabled={isCreatingTag}
+                                >
+                                  {isCreatingTag ? 'Creating...' : 'Create'}
+                                </Button>
+                              </Box>
+                            } />
+                          </ListItem>
+                        );
+                      }
+
+                      return (
+                        <MenuItem {...props} key={option}>
+                          {option}
                         </MenuItem>
-                      ))}
-                    </Select>
-                  </>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tags"
+                        placeholder="Add or create tags"
+                        InputProps={{
+                          ...params.InputProps,
+                          endAdornment: (
+                            <>
+                              {isLoadingTags && <CircularProgress size={20} />}
+                              {params.InputProps.endAdornment}
+                            </>
+                          ),
+                        }}
+                      />
+                    )}
+                    loading={isLoadingTags}
+                    loadingText="Loading tags..."
+                    noOptionsText="No matching tags"
+                  />
                 )}
               />
 

@@ -77,7 +77,6 @@ interface SimulationData {
       role?: string;
       text?: string;
       options?: string[];
-      tipText?: string;
     }>;
   }>;
 }
@@ -85,11 +84,13 @@ interface SimulationData {
 interface VisualAudioPreviewProps {
   simulationData: SimulationData;
   slides: Map<string, string>;
+  onEndSimulation: () => void; // New prop for handling simulation end
 }
 
 const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   simulationData,
   slides,
+  onEndSimulation,
 }) => {
   // Component state for navigation and progress
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -100,7 +101,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
   // State for image handling
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
+  // Update to track both width and height scales
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
 
   // State for speech synthesis
@@ -122,6 +124,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   const speechSynthRef = useRef(window.speechSynthesis);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -147,6 +150,12 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
   // Reset states when moving to a new item
   useEffect(() => {
+    // Clear any existing timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     // Clean up any previous state
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
@@ -228,25 +237,25 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
-        // Auto-advance if timeout is set - BUT NEVER FOR BUTTONS OR DROPDOWNS
+        // Setup timeout based on hotspot settings - applicable to all hotspot types now
         const timeout = currentItem.settings?.timeoutDuration;
-        const hotspotType = currentItem.hotspotType || "button";
 
-        if (
-          timeout &&
-          timeout > 0 &&
-          hotspotType !== "button" &&
-          hotspotType !== "dropdown" &&
-          hotspotType !== "checkbox"
-        ) {
-          setTimeout(() => {
+        if (timeout && timeout > 0) {
+          // Clear any existing timeout
+          if (hotspotTimeoutRef.current) {
+            clearTimeout(hotspotTimeoutRef.current);
+          }
+
+          // Set a new timeout that will advance if no interaction occurs
+          hotspotTimeoutRef.current = setTimeout(() => {
+            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
             setIsProcessing(false);
           }, timeout * 1000);
-        } else {
-          setIsProcessing(false);
         }
+
+        setIsProcessing(false);
       } else {
         setIsProcessing(false);
       }
@@ -300,21 +309,42 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Calculate image scale when loaded
+  // Updated to calculate both width and height scales
   const handleImageLoad = () => {
     if (imageRef.current && imageContainerRef.current) {
-      const containerWidth = imageContainerRef.current.clientWidth;
       const imageNaturalWidth = imageRef.current.naturalWidth;
-      setImageScale(containerWidth / imageNaturalWidth);
+      const imageNaturalHeight = imageRef.current.naturalHeight;
+
+      // Get the actual rendered dimensions of the image
+      const rect = imageRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      // Calculate the scale based on the actual rendered dimensions
+      const widthScale = renderedWidth / imageNaturalWidth;
+      const heightScale = renderedHeight / imageNaturalHeight;
+
+      // Store both scales for proper coordinate transformation
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
       setImageLoaded(true);
       console.log(
-        `Image loaded and scaled to: ${containerWidth / imageNaturalWidth}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
 
   // Move to next item in sequence
   const moveToNextItem = () => {
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
@@ -326,6 +356,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     } else {
       // End of slideshow
       console.log("Simulation complete");
+      // Call the end simulation function
+      onEndSimulation();
     }
   };
 
@@ -338,6 +370,12 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       isPaused
     )
       return;
+
+    // Clear the timeout when user interacts with a hotspot
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
 
     const hotspotType = currentItem.hotspotType || "button";
 
@@ -376,17 +414,17 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     }
   };
 
-  // Function to scale coordinates based on image size
+  // Updated to use both width and height scales
   const scaleCoordinates = (
     coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
     return {
-      left: coords.x * imageScale,
-      top: coords.y * imageScale,
-      width: coords.width * imageScale,
-      height: coords.height * imageScale,
+      left: coords.x * imageScale.width,
+      top: coords.y * imageScale.height,
+      width: coords.width * imageScale.width,
+      height: coords.height * imageScale.height,
     };
   };
 
@@ -412,6 +450,12 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   const togglePause = () => {
     setIsPaused(!isPaused);
 
+    // When pausing, clear any active timeout
+    if (!isPaused && hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     if (speaking && !isPaused) {
       speechSynthRef.current.pause();
     } else if (speaking && isPaused) {
@@ -431,8 +475,14 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     }
   };
 
-  // End call
+  // End call - updated to use the onEndSimulation prop
   const endCall = () => {
+    // Clear any active timeout when ending the call
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     speechSynthRef.current.cancel();
 
     if (isRecording && recordingTimerRef.current) {
@@ -442,7 +492,9 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     }
 
     setCallStatus("Call Ended");
-    setIsPaused(true);
+
+    // Call the parent's end simulation handler
+    onEndSimulation();
   };
 
   // Show loading state if no data
@@ -567,6 +619,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                   style={{
                     width: "100%",
                     height: "auto",
+                    objectFit: "contain",
                     display: "block",
                   }}
                   onLoad={handleImageLoad}
@@ -606,7 +659,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                             },
                             boxShadow: highlightHotspot ? 4 : 0,
                             border: highlightHotspot
-                              ? "2px solid white"
+                              ? `2px solid ${currentItem.settings?.highlightColor || "white"}`
                               : "none",
                           }}
                         >
@@ -637,7 +690,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                               height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                               bgcolor: "white",
                               border: highlightHotspot
-                                ? "2px solid #444CE7"
+                                ? `2px solid ${currentItem.settings?.highlightColor || "#444CE7"}`
                                 : "1px solid #ddd",
                               boxShadow: highlightHotspot ? 2 : 0,
                             }}
@@ -690,7 +743,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                               }px`,
                             },
                             color: highlightHotspot
-                              ? "#444CE7"
+                              ? currentItem.settings?.highlightColor ||
+                                "#444CE7"
                               : "action.active",
                             "&.Mui-checked": {
                               color: "#444CE7",
@@ -737,7 +791,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                               bgcolor: "white",
                               "& fieldset": {
                                 borderColor: highlightHotspot
-                                  ? "#444CE7"
+                                  ? currentItem.settings?.highlightColor ||
+                                    "#444CE7"
                                   : "rgba(0, 0, 0, 0.23)",
                                 borderWidth: highlightHotspot ? 2 : 1,
                               },
@@ -798,6 +853,11 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                     width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                     height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                     zIndex: 50,
+                    border: highlightHotspot
+                      ? `2px solid ${currentItem.settings?.highlightColor || "#1e293b"}`
+                      : "none",
+                    boxShadow: highlightHotspot ? 3 : 0,
+                    transition: "all 0.3s ease",
                   }}
                 >
                   <Button
@@ -811,7 +871,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         backgroundColor: "#0f172a",
                       },
                       boxShadow: highlightHotspot ? 4 : 0,
-                      border: highlightHotspot ? "2px solid white" : "none",
                     }}
                   >
                     {currentItem.settings?.tipText ||

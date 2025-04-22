@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Stack,
   Container,
@@ -19,104 +19,47 @@ import {
 import FilterListIcon from '@mui/icons-material/FilterList';
 import SortIcon from '@mui/icons-material/Sort';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DashboardContent from '../DashboardContent';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchTrainingPlanDetails } from '../../../services/training';
-import { fetchModuleDetails } from '../../../services/modules';
 import type { Module, TrainingPlan, Simulation } from '../../../types/training';
 
 const TrainingPlanDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
+  const { user, currentWorkspaceId } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [rowsPerPage, setRowsPerPage] = useState('50');
   const [trainingPlan, setTrainingPlan] = useState<TrainingPlan | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
-  const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [expandedModules, setExpandedModules] = useState<{ [key: string]: boolean }>({});
-  const [moduleSimulations, setModuleSimulations] = useState<{ [key: string]: Simulation[] }>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get training plan data from location state
   useEffect(() => {
-    const loadTrainingPlanDetails = async () => {
-      if (!id || !user?.id) return;
+    if (location.state?.trainingPlan) {
+      setTrainingPlan(location.state.trainingPlan);
+      setIsLoading(false);
+    } else if (id) {
+      // Fallback to fetch from API if not available in state
+      setError("Training plan details not found. Please go back to the dashboard.");
+      setIsLoading(false);
+    }
+  }, [id, location.state]);
 
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await fetchTrainingPlanDetails(user.id, id);
-
-        // Separate modules and simulations
-        const newModules: Module[] = [];
-        const newSimulations: Simulation[] = [];
-
-        data.added_object.forEach(obj => {
-          if (obj.type === 'module') {
-            newModules.push({
-              id: obj.id,
-              name: `Module ${obj.id.slice(-4)}`,
-              total_simulations: 0,
-              average_score: 0,
-              status: 'not_started',
-              simulations: []
-            });
-          } else {
-            newSimulations.push({
-              simulation_id: obj.id,
-              name: `Simulation ${obj.id.slice(-4)}`,
-              type: 'audio',
-              level: 'Level 1',
-              est_time: 15,
-              status: 'not_started',
-              highest_attempt_score: null
-            });
-          }
-        });
-
-        setTrainingPlan(data);
-        setModules(newModules);
-        setSimulations(newSimulations);
-      } catch (err) {
-        console.error('Error loading training plan details:', err);
-        setError('Failed to load training plan details');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadTrainingPlanDetails();
-  }, [id, user?.id]);
-
-  const handleModuleExpand = async (moduleId: string) => {
+  const handleModuleExpand = (moduleId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
     setExpandedModules(prev => ({
       ...prev,
       [moduleId]: !prev[moduleId]
     }));
+  };
 
-    // If already expanded, don't fetch again
-    if (expandedModules[moduleId] && moduleSimulations[moduleId]) return;
-
-    try {
-      const moduleData = await fetchModuleDetails(moduleId);
-      const simulations = moduleData.simulations_id.map(simId => ({
-        simulation_id: simId,
-        name: `Simulation ${simId.slice(-4)}`,
-        type: 'audio',
-        level: 'Level 1',
-        est_time: 15,
-        status: 'not_started' as const,
-        highest_attempt_score: null
-      }));
-
-      setModuleSimulations(prev => ({
-        ...prev,
-        [moduleId]: simulations
-      }));
-    } catch (err) {
-      console.error(`Error loading module ${moduleId} details:`, err);
-    }
+  const handleSimulationClick = (simulationId: string) => {
+    // Include workspace ID in the URL if available
+    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+    navigate(`/simulation/${simulationId}/attempt${workspaceParam}`);
   };
 
   const getStatusColor = (status: string) => {
@@ -128,10 +71,6 @@ const TrainingPlanDetailsPage = () => {
       default:
         return { bg: '#FFFAEB', color: '#B54708' };
     }
-  };
-
-  const handleSimulationClick = (simulationId: string) => {
-    navigate(`/simulation/${simulationId}/attempt`);
   };
 
   if (isLoading) {
@@ -166,13 +105,18 @@ const TrainingPlanDetailsPage = () => {
     );
   }
 
+  // Filter modules based on search query
+  const filteredModules = trainingPlan.modules.filter(module => 
+    searchQuery ? module.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
+  );
+
   return (
     <DashboardContent>
       <Container>
         <Stack spacing={4} sx={{ py: 4 }}>
           <Stack direction="row" spacing={1} alignItems="center">
             <Link 
-              to="/training" 
+              to={`/training${currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : ''}`}
               style={{ textDecoration: 'none' }}
             >
               <Typography variant="h4" color="text.secondary">
@@ -225,7 +169,7 @@ const TrainingPlanDetailsPage = () => {
               </Grid>
 
               {/* Render Modules */}
-              {modules.map((module) => (
+              {filteredModules.map((module) => (
                 <React.Fragment key={module.id}>
                   <Grid
                     container
@@ -238,17 +182,12 @@ const TrainingPlanDetailsPage = () => {
                       },
                       cursor: 'pointer',
                     }}
-                    onClick={() => handleModuleExpand(module.id)}
+                    onClick={(e) => handleModuleExpand(module.id, e)}
                   >
                     <Grid item xs={4}>
                       <Stack direction="row" spacing={1} alignItems="center">
                         <IconButton size="small">
-                          <ExpandMoreIcon 
-                            sx={{ 
-                              transform: expandedModules[module.id] ? 'rotate(180deg)' : 'none',
-                              transition: 'transform 0.2s'
-                            }} 
-                          />
+                          {expandedModules[module.id] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
                         <Typography>{module.name}</Typography>
                       </Stack>
@@ -277,11 +216,11 @@ const TrainingPlanDetailsPage = () => {
                       </Typography>
                     </Grid>
                     <Grid item xs={2}>
-                      <Typography>No due date</Typography>
+                      <Typography>{module.due_date || 'No due date'}</Typography>
                     </Grid>
                     <Grid item xs={1}>
                       <Chip
-                        label={module.status}
+                        label={module.status.replace('_', ' ')}
                         size="small"
                         sx={{
                           bgcolor: getStatusColor(module.status).bg,
@@ -292,7 +231,7 @@ const TrainingPlanDetailsPage = () => {
                   </Grid>
 
                   {/* Module's Simulations */}
-                  {expandedModules[module.id] && moduleSimulations[module.id]?.map((sim) => (
+                  {expandedModules[module.id] && module.simulations.map((sim) => (
                     <Grid
                       container
                       key={sim.simulation_id}
@@ -314,7 +253,7 @@ const TrainingPlanDetailsPage = () => {
                       </Grid>
                       <Grid item xs={2}>
                         <Chip
-                          label="simulation"
+                          label={sim.type}
                           size="small"
                           sx={{
                             bgcolor: '#F5F6FF',
@@ -336,11 +275,11 @@ const TrainingPlanDetailsPage = () => {
                         </Typography>
                       </Grid>
                       <Grid item xs={2}>
-                        <Typography>No due date</Typography>
+                        <Typography>{sim.dueDate || sim.due_date || 'No due date'}</Typography>
                       </Grid>
                       <Grid item xs={1}>
                         <Chip
-                          label={sim.status}
+                          label={sim.status.replace('_', ' ')}
                           size="small"
                           sx={{
                             bgcolor: getStatusColor(sim.status).bg,
@@ -353,63 +292,11 @@ const TrainingPlanDetailsPage = () => {
                 </React.Fragment>
               ))}
 
-              {/* Render Standalone Simulations */}
-              {simulations.map((sim) => (
-                <Grid
-                  container
-                  key={sim.simulation_id}
-                  sx={{
-                    p: 2,
-                    borderBottom: 1,
-                    borderColor: 'divider',
-                    '&:hover': {
-                      bgcolor: 'action.hover',
-                      cursor: 'pointer',
-                    },
-                  }}
-                  onClick={() => handleSimulationClick(sim.simulation_id)}
-                >
-                  <Grid item xs={4}>
-                    <Typography>{sim.name}</Typography>
-                  </Grid>
-                  <Grid item xs={2}>
-                    <Chip
-                      label="simulation"
-                      size="small"
-                      sx={{
-                        bgcolor: '#F5F6FF',
-                        color: '#444CE7',
-                      }}
-                    />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <Typography>Simulation Task</Typography>
-                  </Grid>
-                  <Grid item xs={1}>
-                    <Typography
-                      sx={{
-                        color: sim.highest_attempt_score && sim.highest_attempt_score >= 80 ? 'success.main' :
-                          sim.highest_attempt_score && sim.highest_attempt_score >= 60 ? 'warning.main' : 'error.main'
-                      }}
-                    >
-                      {sim.highest_attempt_score ? `${sim.highest_attempt_score}%` : 'NA'}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={2}>
-                    <Typography>No due date</Typography>
-                  </Grid>
-                  <Grid item xs={1}>
-                    <Chip
-                      label={sim.status}
-                      size="small"
-                      sx={{
-                        bgcolor: getStatusColor(sim.status).bg,
-                        color: getStatusColor(sim.status).color,
-                      }}
-                    />
-                  </Grid>
-                </Grid>
-              ))}
+              {filteredModules.length === 0 && (
+                <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Typography color="text.secondary">No modules match your search criteria.</Typography>
+                </Box>
+              )}
             </Paper>
 
             <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -430,7 +317,7 @@ const TrainingPlanDetailsPage = () => {
                 </Select>
               </Stack>
               <Pagination
-                count={Math.ceil((modules.length + simulations.length) / parseInt(rowsPerPage))}
+                count={Math.ceil(filteredModules.length / parseInt(rowsPerPage))}
                 shape="rounded"
                 size="small"
               />

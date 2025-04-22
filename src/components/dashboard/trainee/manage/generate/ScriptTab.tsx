@@ -33,6 +33,8 @@ import AIScriptGenerator from "./AIScriptGenerator";
 import ScriptEditor from "./ScriptEditor";
 import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
+// Import the AudioRecorder component
+import AudioRecorder from "./AudioRecorder";
 
 interface Message {
   id: string;
@@ -49,14 +51,14 @@ interface ScriptTabProps {
 
 const OptionCard = styled(Box)(({ theme }) => ({
   flex: 1,
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
   border: "2px dashed #DEE2FC",
   borderRadius: theme.spacing(2),
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   textAlign: "center",
-  minHeight: "320px",
+  minHeight: "290px",
   backgroundColor: "#FCFCFE",
 }));
 
@@ -319,6 +321,11 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       setScriptData(updatedScript);
       setInputMessage("");
     }
+  };
+
+  // Handler for speech-to-text transcription
+  const handleTranscription = (text: string) => {
+    setInputMessage(text);
   };
 
   const handleScriptGenerated = (script: Message[]) => {
@@ -756,9 +763,8 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
               },
             }}
           />
-          <IconButton onClick={handleTextInput}>
-            <Mic />
-          </IconButton>
+          {/* Replace Mic button with AudioRecorder component */}
+          <AudioRecorder onTranscriptionReceived={handleTranscription} />
           <IconButton onClick={handleTextInput}>
             <PlayArrow />
           </IconButton>

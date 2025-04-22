@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -16,30 +16,22 @@ import {
   MenuItem,
   Select,
   CircularProgress,
-  InputAdornment,
-} from '@mui/material';
+} from "@mui/material";
 import {
   PlayArrow,
   Pause,
-  Phone,
   CallEnd,
   ArrowForward,
-  Send as SendIcon,
-  VolumeUp,
-  CheckCircle,
-  Person as PersonIcon,
-  SupportAgent as SupportAgentIcon,
   Visibility as VisibilityIcon,
-  Chat as ChatIcon,
-} from '@mui/icons-material';
-import { useAuth } from '../../../../context/AuthContext';
-
-interface Message {
-  id: string;
-  role: 'customer' | 'trainee';
-  text: string;
-  timestamp: string;
-}
+  Timer as TimerIcon,
+  AccessTime as AccessTimeIcon,
+  SignalCellularAlt as SignalIcon,
+  SentimentSatisfiedAlt as SatisfiedIcon,
+  Psychology as PsychologyIcon,
+  BatteryChargingFull as EnergyIcon,
+  SmartToy as SmartToyIcon,
+} from "@mui/icons-material";
+import { useAuth } from "../../../../context/AuthContext";
 
 interface ImageData {
   image_id: string;
@@ -101,7 +93,7 @@ interface SimulationData {
   }>;
 }
 
-interface VisualChatSimulationPageProps {
+interface VisualSimulationPageProps {
   simulationId: string;
   simulationName: string;
   level: string;
@@ -110,23 +102,23 @@ interface VisualChatSimulationPageProps {
   onBackToList: () => void;
 }
 
-interface VisualChatResponse {
+interface VisualSimulationResponse {
   id: string;
   status: string;
   simulation: SimulationData;
   images: ImageData[];
 }
 
-interface EndChatResponse {
+interface EndSimulationResponse {
   id: string;
   status: string;
   scores: {
-    'Sim Accuracy': number;
-    'Keyword Score': number;
-    'Click Score': number;
-    'Confidence': number;
-    'Energy': number;
-    'Concentration': number;
+    "Sim Accuracy": number;
+    "Keyword Score": number;
+    "Click Score": number;
+    Confidence: number;
+    Energy: number;
+    Concentration: number;
   };
   duration: number;
   transcript: string;
@@ -136,7 +128,7 @@ interface EndChatResponse {
 // Minimum passing score threshold
 const MIN_PASSING_SCORE = 85;
 
-const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
+const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   simulationId,
   simulationName,
   level,
@@ -146,27 +138,35 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 }) => {
   // Get authenticated user
   const { user } = useAuth();
-  const userId = user?.id || '';
-  const userName = user?.name || 'User';
+  const userId = user?.id || "";
+  const userName = user?.name || "User";
 
   // Basic simulation state
   const [isStarted, setIsStarted] = useState(false);
-  const [isEndingChat, setIsEndingChat] = useState(false);
-  const [simulationProgressId, setSimulationProgressId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isEndingSimulation, setIsEndingSimulation] = useState(false);
+  const [simulationProgressId, setSimulationProgressId] = useState<
+    string | null
+  >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndChatResponse['scores'] | null>(null);
+  const [scores, setScores] = useState<EndSimulationResponse["scores"] | null>(
+    null,
+  );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [callStatus, setCallStatus] = useState("Online");
+  const [simulationStatus, setSimulationStatus] = useState("Active");
 
-  // Visual-chat specific state
-  const [simulationData, setSimulationData] = useState<SimulationData | null>(null);
+  // Visual-specific state
+  const [simulationData, setSimulationData] = useState<SimulationData | null>(
+    null,
+  );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
+  // Update to track both width and height scales
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingVisuals, setIsLoadingVisuals] = useState(false);
 
@@ -177,21 +177,16 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const [checkboxChecked, setCheckboxChecked] = useState(false);
   const [textInputValue, setTextInputValue] = useState("");
   const [showCoachingTip, setShowCoachingTip] = useState(false);
-
-  // Chat specific state
-  const [userInput, setUserInput] = useState("");
-  const [waitingForUserInput, setWaitingForUserInput] = useState(false);
-  const [expectedTraineeResponse, setExpectedTraineeResponse] = useState("");
-  const [currentMessage, setCurrentMessage] = useState<Message | null>(null);
+  const [timeoutActive, setTimeoutActive] = useState(false);
 
   // Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const chatInputRef = useRef<HTMLInputElement>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores['Sim Accuracy'] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -202,16 +197,23 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
-      console.log('Current simulation data:', {
+      console.log("Current simulation data:", {
         slidesCount: simulationData.slidesData?.length || 0,
         currentSlideIndex,
         currentSequenceIndex,
-        currentSlide: currentSlide?.imageId || 'none',
+        currentSlide: currentSlide?.imageId || "none",
         currentSequenceLength: currentSequence?.length || 0,
-        slidesMapSize: slides.size
+        slidesMapSize: slides.size,
       });
     }
-  }, [simulationData, currentSlideIndex, currentSequenceIndex, currentSlide, currentSequence, slides.size]);
+  }, [
+    simulationData,
+    currentSlideIndex,
+    currentSequenceIndex,
+    currentSlide,
+    currentSequence,
+    slides.size,
+  ]);
 
   // Initialize timer for simulation
   useEffect(() => {
@@ -230,14 +232,19 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Reset states when moving to a new item
   useEffect(() => {
+    // Clear any existing timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     setDropdownOpen(false);
     setDropdownValue("");
     setCheckboxChecked(false);
     setTextInputValue("");
     setShowCoachingTip(false);
     setHighlightHotspot(false);
-    setWaitingForUserInput(false);
-    setExpectedTraineeResponse("");
 
     // Show coaching tip immediately if it's that type
     if (
@@ -251,77 +258,43 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Process current sequence item
   useEffect(() => {
-    if (!currentItem || isProcessing || !imageLoaded || isPaused || !isStarted) return;
+    if (!currentItem || isProcessing || !imageLoaded || isPaused || !isStarted)
+      return;
 
-    console.log('Processing current item:', {
+    console.log("Processing current item:", {
       type: currentItem.type,
-      role: currentItem.role,
       hotspotType: currentItem.hotspotType,
-      text: currentItem.text?.substring(0, 30) + '...'
     });
 
     const processItem = async () => {
       setIsProcessing(true);
 
-      if (currentItem.type === "message") {
-        // For customer messages, automatically display
-        if (
-          currentItem.role === "Customer" ||
-          currentItem.role === "customer"
-        ) {
-          // Create a message object
-          const newMessage: Message = {
-            id: Date.now().toString(),
-            role: "customer",
-            text: currentItem.text || "",
-            timestamp: new Date().toISOString(),
-          };
-
-          setCurrentMessage(newMessage);
-
-          // Auto-advance after a short delay
-          setTimeout(() => {
-            moveToNextItem();
-            setIsProcessing(false);
-          }, 800);
-        }
-        // For trainee messages, wait for user input
-        else {
-          setWaitingForUserInput(true);
-          // Store the expected trainee response for the hint
-          setExpectedTraineeResponse(currentItem.text || "");
-          setIsProcessing(false);
-
-          // Focus the input field
-          setTimeout(() => {
-            if (chatInputRef.current) {
-              chatInputRef.current.focus();
-            }
-          }, 100);
-        }
-      } else if (currentItem.type === "hotspot") {
+      if (currentItem.type === "hotspot") {
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
-        // Auto-advance if timeout is set - BUT NEVER FOR BUTTONS OR DROPDOWNS
+        // Setup timeout based on hotspot settings
         const timeout = currentItem.settings?.timeoutDuration;
-        const hotspotType = currentItem.hotspotType || "button";
 
-        if (
-          timeout &&
-          timeout > 0 &&
-          hotspotType !== "button" &&
-          hotspotType !== "dropdown" &&
-          hotspotType !== "checkbox"
-        ) {
-          setTimeout(() => {
+        if (timeout && timeout > 0) {
+          // Clear any existing timeout
+          if (hotspotTimeoutRef.current) {
+            clearTimeout(hotspotTimeoutRef.current);
+          }
+
+          setTimeoutActive(true);
+
+          // Set a new timeout that will advance if no interaction occurs
+          hotspotTimeoutRef.current = setTimeout(() => {
+            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
+            setTimeoutActive(false);
             setIsProcessing(false);
           }, timeout * 1000);
-        } else {
-          setIsProcessing(false);
         }
+
+        setIsProcessing(false);
       } else {
         setIsProcessing(false);
       }
@@ -335,7 +308,42 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     imageLoaded,
     isPaused,
     isProcessing,
-    isStarted
+    isStarted,
+  ]);
+
+  // Clean up timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (hotspotTimeoutRef.current) {
+        clearTimeout(hotspotTimeoutRef.current);
+        hotspotTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Check for end of simulation
+  useEffect(() => {
+    if (
+      isStarted &&
+      currentSlideIndex >= slidesData.length - 1 &&
+      currentSequenceIndex >= currentSequence.length - 1 &&
+      currentSequence.length > 0 &&
+      !isEndingSimulation
+    ) {
+      // We've reached the end of the last slide's sequence
+      console.log("Reached end of simulation content");
+      // Wait a moment for any final animations/transitions
+      setTimeout(() => {
+        handleEndSimulation();
+      }, 1000);
+    }
+  }, [
+    currentSlideIndex,
+    currentSequenceIndex,
+    slidesData.length,
+    currentSequence.length,
+    isStarted,
+    isEndingSimulation,
   ]);
 
   // Format time as MM:SS
@@ -354,27 +362,60 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     return `${mins}m ${secs}s`;
   };
 
-  // Format time for messages
-  const formatMessageTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
-  // Calculate image scale when loaded
+  // Updated to calculate both width and height scales
   const handleImageLoad = () => {
     if (imageRef.current && imageContainerRef.current) {
-      const containerWidth = imageContainerRef.current.clientWidth;
       const imageNaturalWidth = imageRef.current.naturalWidth;
-      console.log(`Image natural dimensions: ${imageRef.current.naturalWidth}x${imageRef.current.naturalHeight}`);
-      setImageScale(containerWidth / imageNaturalWidth);
+      const imageNaturalHeight = imageRef.current.naturalHeight;
+
+      // Get the actual rendered dimensions of the image
+      const rect = imageRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      // Calculate the scale based on the actual rendered dimensions
+      const widthScale = renderedWidth / imageNaturalWidth;
+      const heightScale = renderedHeight / imageNaturalHeight;
+
+      // Store both scales for proper coordinate transformation
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
       setImageLoaded(true);
-      console.log(`Image loaded and scaled to: ${containerWidth / imageNaturalWidth}`);
+      console.log(
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+      );
     }
+  };
+
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    if (
+      currentItem?.type === "hotspot" &&
+      currentItem.settings?.highlightColor
+    ) {
+      return currentItem.settings.highlightColor;
+    }
+    return "rgba(68, 76, 231, 0.7)"; // Default color
   };
 
   // Move to next item in sequence
   const moveToNextItem = () => {
-    console.log('Moving to next item from', currentSequenceIndex, 'in slide', currentSlideIndex);
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
+    console.log(
+      "Moving to next item from",
+      currentSequenceIndex,
+      "in slide",
+      currentSlideIndex,
+    );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
@@ -382,12 +423,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // First item in next slide
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
-      console.log('Moving to next slide:', currentSlideIndex + 1);
+      console.log("Moving to next slide:", currentSlideIndex + 1);
       setImageLoaded(false);
     } else {
       // End of slideshow
       setHighlightHotspot(false);
       console.log("Simulation complete");
+      handleEndSimulation();
     }
   };
 
@@ -402,8 +444,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     )
       return;
 
+    // Clear the timeout when user interacts with a hotspot
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     const hotspotType = currentItem.hotspotType || "button";
-    console.log('Hotspot clicked:', hotspotType);
+    console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
       case "button":
@@ -440,18 +489,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
   };
 
-  // Function to scale coordinates based on image size
+  // Updated to use both width and height scales
   const scaleCoordinates = (
     coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
-    // Scale coordinates based on image scale
     return {
-      left: coords.x * imageScale,
-      top: coords.y * imageScale,
-      width: coords.width * imageScale,
-      height: coords.height * imageScale,
+      left: coords.x * imageScale.width,
+      top: coords.y * imageScale.height,
+      width: coords.width * imageScale.width,
+      height: coords.height * imageScale.height,
     };
   };
 
@@ -473,50 +521,32 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
   };
 
-  // Handle user input submission
-  const handleSubmitMessage = (e?: React.FormEvent) => {
-    e?.preventDefault();
-
-    if (!userInput.trim() || !waitingForUserInput) return;
-
-    // Create a trainee message
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: "trainee",
-      text: userInput,
-      timestamp: new Date().toISOString(),
-    };
-
-    // Set as current message
-    setCurrentMessage(newMessage);
-
-    // Clear input and waiting state
-    setUserInput("");
-    setWaitingForUserInput(false);
-    setExpectedTraineeResponse("");
-
-    // Move to next sequence item
-    setTimeout(() => {
-      moveToNextItem();
-    }, 500);
-  };
-
-  // Handle key press in chat input
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitMessage();
-    }
-  };
-
   // Toggle pause/play
   const togglePause = () => {
     setIsPaused(!isPaused);
+
+    // When pausing, clear any active timeout
+    if (!isPaused && hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    // When resuming, restart timeout if needed
+    if (isPaused && currentItem?.type === "hotspot" && timeoutActive) {
+      const timeout = currentItem.settings?.timeoutDuration;
+      if (timeout && timeout > 0) {
+        hotspotTimeoutRef.current = setTimeout(() => {
+          moveToNextItem();
+          setHighlightHotspot(false);
+          setTimeoutActive(false);
+        }, timeout * 1000);
+      }
+    }
   };
 
   const handleStart = async () => {
     if (!userId) {
-      console.error('Error: User ID is required to start simulation');
+      console.error("Error: User ID is required to start simulation");
       return;
     }
 
@@ -524,22 +554,25 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     setIsLoadingVisuals(true);
     try {
       setIsStarted(true);
-      setCallStatus("Loading visual-chat simulation...");
+      setSimulationStatus("Loading visual simulation...");
 
-      // Make API call to start visual-chat simulation
-      const response = await axios.post<VisualChatResponse>('/api/simulations/start-visual-chat-preview', {
-        user_id: userId,
-        sim_id: simulationId,
-        assignment_id: '679fc6ffcbee8fef61c99eb1'
-      });
+      // Make API call to start visual simulation
+      const response = await axios.post<VisualSimulationResponse>(
+        "/api/simulations/start-visual-preview",
+        {
+          user_id: userId,
+          sim_id: simulationId,
+          assignment_id: "679fc6ffcbee8fef61c99eb1",
+        },
+      );
 
-      console.log('Start visual-chat response:', response.data);
+      console.log("Start visual simulation response:", response.data);
 
       if (response.data.simulation) {
-        console.log('Setting simulation data');
+        console.log("Setting simulation data");
         setSimulationData(response.data.simulation);
         setSimulationProgressId(response.data.id);
-        setCallStatus("Online");
+        setSimulationStatus("Active");
       }
 
       // Process image data
@@ -565,76 +598,86 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log(`Set ${newSlides.size} slides`);
       }
     } catch (error) {
-      console.error('Error starting visual-chat simulation:', error);
+      console.error("Error starting visual simulation:", error);
       setIsStarted(false);
-      setCallStatus('Error loading simulation. Please try again.');
+      setSimulationStatus("Error loading simulation. Please try again.");
     } finally {
       setIsStarting(false);
       setIsLoadingVisuals(false);
     }
   };
 
-  // Handle end chat implementation
-  const handleEndChat = async () => {
-    console.log('🔴 END CHAT BUTTON PRESSED');
+  // Handle end simulation implementation
+  const handleEndSimulation = async () => {
+    console.log("🔴 END SIMULATION BUTTON PRESSED");
 
-    // Prevent multiple simultaneous end call attempts
-    if (isEndingChat) {
-      console.log('Already ending chat, ignoring duplicate request');
+    // Prevent multiple simultaneous end simulation attempts
+    if (isEndingSimulation) {
+      console.log("Already ending simulation, ignoring duplicate request");
       return;
     }
 
     // Verify user ID exists
     if (!userId) {
-      console.error('Error: User ID is required to end simulation');
+      console.error("Error: User ID is required to end simulation");
       return;
     }
 
-    setIsEndingChat(true);
+    setIsEndingSimulation(true);
 
     // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log('Timer stopped');
+      console.log("Timer stopped");
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
     }
 
     // Update UI state
     setIsStarted(false);
+    setSimulationStatus("Ended");
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
-      console.error('⚠️ Missing simulationProgressId for end chat API');
-      setIsEndingChat(false);
+      console.error("⚠️ Missing simulationProgressId for end simulation API");
+      setIsEndingSimulation(false);
       return;
     }
 
     const apiParams = {
       user_id: userId,
       simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId
+      usersimulationprogress_id: simulationProgressId,
     };
 
-    console.log('API Parameters prepared:', apiParams);
+    console.log("API Parameters prepared:", apiParams);
 
     try {
-      console.log('Executing end-visual-chat API call');
-      const response = await axios.post<EndChatResponse>('/api/simulations/end-visual-chat', apiParams);
+      console.log("Executing end-visual API call");
+      const response = await axios.post<EndSimulationResponse>(
+        "/api/simulations/end-visual",
+        apiParams,
+      );
 
       if (response.data && response.data.scores) {
-        console.log('Setting scores and showing completion screen');
+        console.log("Setting scores and showing completion screen");
         setScores(response.data.scores);
         setDuration(response.data.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
-        console.warn('No scores received in response');
+        console.warn("No scores received in response");
       }
     } catch (error) {
-      console.error('Failed to end visual-chat simulation:', error);
+      console.error("Failed to end visual simulation:", error);
       // Show an error message to the user if needed
     } finally {
-      console.log('End chat flow completed');
-      setIsEndingChat(false);
+      console.log("End simulation flow completed");
+      setIsEndingSimulation(false);
     }
   };
 
@@ -646,12 +689,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     setCurrentSlideIndex(0);
     setCurrentSequenceIndex(0);
     setImageLoaded(false);
-    setCurrentMessage(null);
   };
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log('View playback clicked');
+    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
@@ -668,50 +710,50 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   // Render the completion screen based on the image provided
   if (showCompletionScreen) {
     return (
-      <Box 
-        sx={{ 
-          height: '100vh', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          bgcolor: '#f5f7fa'
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "#f5f7fa",
         }}
       >
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            width: '650px', 
-            borderRadius: '16px',
-            overflow: 'hidden'
+        <Paper
+          elevation={3}
+          sx={{
+            width: "650px",
+            borderRadius: "16px",
+            overflow: "hidden",
           }}
         >
           {/* Header */}
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               p: 3,
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderBottom: '1px solid #eaedf0'
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              borderBottom: "1px solid #eaedf0",
             }}
           >
-            <Box 
-              sx={{ 
-                width: 60, 
-                height: 60, 
-                bgcolor: '#F0F3F5', 
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                mb: 1
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                bgcolor: "#F0F3F5",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 1,
               }}
             >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: 'transparent' }}>
-                <SmartToyIcon sx={{ color: '#A3AED0' }} />
+              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
+                <SmartToyIcon sx={{ color: "#A3AED0" }} />
               </Avatar>
             </Box>
-            <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
               Great work,
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -720,151 +762,154 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           </Box>
 
           {/* Simulation details */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: 2, 
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 2,
               p: 2,
-              borderBottom: '1px solid #eaedf0'
+              borderBottom: "1px solid #eaedf0",
             }}
           >
-            <Chip 
-              label={simulationName} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={simulationName}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={level} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={level}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={`Sim Type: ${simType}`} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={`Sim Type: ${simType}`}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={`${attemptType} Attempt`} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={`${attemptType} Attempt`}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
           </Box>
 
           {/* Score details */}
           <Box sx={{ px: 4, py: 3 }}>
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                mb: 3
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
               }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 Score Details
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" sx={{ color: '#718096' }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ color: "#718096" }}>
                   Min passing score:
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#6366F1', fontWeight: 600 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#6366F1", fontWeight: 600 }}
+                >
                   {MIN_PASSING_SCORE}%
                 </Typography>
-                <Chip 
-                  label={isPassed ? "Passed" : "Failed"} 
+                <Chip
+                  label={isPassed ? "Passed" : "Failed"}
                   size="small"
-                  sx={{ 
-                    bgcolor: isPassed ? '#E6FFFA' : '#FFF5F5',
-                    color: isPassed ? '#319795' : '#E53E3E',
-                    fontSize: '12px',
-                    height: '22px'
-                  }} 
+                  sx={{
+                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
+                    color: isPassed ? "#319795" : "#E53E3E",
+                    fontSize: "12px",
+                    height: "22px",
+                  }}
                 />
               </Box>
             </Box>
 
             {/* Metrics */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {/* Sim Score */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <SignalIcon sx={{ color: '#3182CE' }} />
+                  <SignalIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores['Sim Accuracy'])}%` : '86%'}
+                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
                 </Typography>
               </Box>
 
               {/* Completion Time */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <AccessTimeIcon sx={{ color: '#3182CE' }} />
+                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Completion Time
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -873,117 +918,126 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               </Box>
 
               {/* Confidence */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <SatisfiedIcon sx={{ color: '#3182CE' }} />
+                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Confidence'] >= 80 ? 'High' : 
-                   scores && scores['Confidence'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Confidence"] >= 80
+                    ? "High"
+                    : scores && scores["Confidence"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
               {/* Concentration */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <PsychologyIcon sx={{ color: '#3182CE' }} />
+                  <PsychologyIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Concentration'] >= 80 ? 'High' : 
-                   scores && scores['Concentration'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Concentration"] >= 80
+                    ? "High"
+                    : scores && scores["Concentration"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
               {/* Energy */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <EnergyIcon sx={{ color: '#3182CE' }} />
+                  <EnergyIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Energy'] >= 80 ? 'High' : 
-                   scores && scores['Energy'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Energy"] >= 80
+                    ? "High"
+                    : scores && scores["Energy"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
 
             {/* Buttons */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
               <Button
                 fullWidth
                 variant="outlined"
                 onClick={handleRestartSim}
                 sx={{
-                  borderColor: '#E2E8F0',
-                  color: '#4A5568',
-                  '&:hover': {
-                    borderColor: '#CBD5E0',
-                    bgcolor: '#F7FAFC'
+                  borderColor: "#E2E8F0",
+                  color: "#4A5568",
+                  "&:hover": {
+                    borderColor: "#CBD5E0",
+                    bgcolor: "#F7FAFC",
                   },
                   py: 1.5,
-                  borderRadius: '8px'
+                  borderRadius: "8px",
                 }}
               >
                 Restart Sim
@@ -993,12 +1047,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 variant="contained"
                 onClick={handleViewPlayback}
                 sx={{
-                  bgcolor: '#4299E1',
-                  '&:hover': {
-                    bgcolor: '#3182CE'
+                  bgcolor: "#4299E1",
+                  "&:hover": {
+                    bgcolor: "#3182CE",
                   },
                   py: 1.5,
-                  borderRadius: '8px'
+                  borderRadius: "8px",
                 }}
               >
                 View Playback
@@ -1011,7 +1065,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: '100vh', bgcolor: 'white', py: 0, px: 0 }}>
+    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isStarted}
@@ -1060,107 +1114,176 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       </Modal>
 
       {/* Header */}
-      <Box sx={{ maxWidth: '900px', mx: 'auto', borderRadius: '16px' }}>
+      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
         <Stack
           direction="row"
           sx={{
             p: 2,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: '#F9FAFB',
-            borderRadius: '16px',
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "#F9FAFB",
+            borderRadius: "16px",
             gap: "20px",
-            justifyContent: 'space-between'
+            justifyContent: "space-between",
           }}
         >
-          <Typography variant="body2" color="text.main" sx={{ borderRadius: '8px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{ borderRadius: "8px", padding: "4px 8px" }}
+          >
             {simulationName}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {level}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             Sim Type: {simType}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {attemptType} Attempt
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px', ml: 'auto', color: "#0037ff" }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+              ml: "auto",
+              color: "#0037ff",
+            }}
+          >
             {formatTime(elapsedTime)}
           </Typography>
         </Stack>
       </Box>
 
       {!isStarted ? (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '400px',
-          width: "50%",
-          mx: 'auto',
-          my: 10,
-          border: "1px solid #DEE2FD",
-          borderRadius: 4
-        }}>
-          <Box sx={{
-            bgcolor: '#f5f7ff',
-            borderRadius: '50%',
-            p: 2,
-            mb: 2,
-          }}>
-            <ChatIcon sx={{ fontSize: 48, color: '#DEE2FD' }} />
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "400px",
+            width: "50%",
+            mx: "auto",
+            my: 10,
+            border: "1px solid #DEE2FD",
+            borderRadius: 4,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "#f5f7ff",
+              borderRadius: "50%",
+              p: 2,
+              mb: 2,
+            }}
+          >
+            <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
           </Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: '#1a1a1a', mb: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+          >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: '#666', mb: 4 }}>
-            Press start to attempt the Visual-Chat Simulation
+          <Typography sx={{ color: "#666", mb: 4 }}>
+            Press start to attempt the Visual Simulation
           </Typography>
           <Button
             variant="contained"
-            startIcon={<PlayArrowIcon />}
+            startIcon={<PlayArrow />}
             onClick={handleStart}
             disabled={isStarting || !userId}
             sx={{
-              bgcolor: '#0037ff',
-              color: 'white',
+              bgcolor: "#0037ff",
+              color: "white",
               px: 6,
               py: 1.5,
               borderRadius: 2,
-              textTransform: 'none',
-              fontSize: '16px',
-              '&:hover': {
-                bgcolor: '#002ed4',
-              }
+              textTransform: "none",
+              fontSize: "16px",
+              "&:hover": {
+                bgcolor: "#002ed4",
+              },
             }}
           >
-            {isStarting ? 'Starting...' : 'Start Simulation'}
+            {isStarting ? "Starting..." : "Start Simulation"}
           </Button>
           <Button
             variant="text"
             onClick={onBackToList}
             sx={{
               mt: 2,
-              color: '#666',
-              textTransform: 'none',
+              color: "#666",
+              textTransform: "none",
               border: "1px solid #DEE2FD",
               px: 8,
               py: 1.5,
               borderRadius: 2,
-              fontSize: '16px',
+              fontSize: "16px",
             }}
           >
             Back to Sim List
           </Button>
         </Box>
       ) : (
-        <Box sx={{ height: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
-          {/* Main content */}
-          <Box sx={{ flex: 1, display: "flex", maxWidth: '1200px', mx: 'auto', mt: 2 }}>
-            {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 2 }} ref={imageContainerRef}>
+        <Box
+          sx={{
+            height: "100vh",
+            bgcolor: "background.default",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Main content - Only the visual interface */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              overflow: "hidden",
+              maxWidth: "1200px",
+              mx: "auto",
+              mt: 2,
+            }}
+          >
+            <Box
+              sx={{
+                flex: 1,
+                p: 2,
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+              }}
+              ref={imageContainerRef}
+            >
               <Box
                 sx={{
                   width: "100%",
@@ -1169,22 +1292,33 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   bgcolor: "background.paper",
                   borderRadius: 1,
                   overflow: "hidden",
+                  flex: 1,
                   display: "flex",
-                  alignItems: "center",
+                  flexDirection: "column",
                   justifyContent: "center",
                 }}
               >
                 {isLoadingVisuals ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                  <Box sx={{ textAlign: "center", p: 4 }}>
                     <CircularProgress size={40} sx={{ mb: 2 }} />
                     <Typography>Loading simulation visuals...</Typography>
                   </Box>
                 ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
-                    <Typography color="text.secondary">No visual content available</Typography>
+                  <Box sx={{ textAlign: "center", p: 4 }}>
+                    <Typography color="text.secondary">
+                      No visual content available
+                    </Typography>
                   </Box>
                 ) : (
-                  <Box sx={{ position: "relative", maxWidth: "100%", maxHeight: "100%" }}>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     <img
                       ref={imageRef}
                       src={slides.get(currentSlide.imageId)}
@@ -1197,6 +1331,28 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       }}
                       onLoad={handleImageLoad}
                     />
+
+                    {/* Timeout indicator - show timer when timeout is active */}
+                    {timeoutActive &&
+                      currentItem?.type === "hotspot" &&
+                      currentItem.settings?.timeoutDuration &&
+                      !isPaused && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 10,
+                            right: 10,
+                            bgcolor: "rgba(0, 0, 0, 0.6)",
+                            color: "white",
+                            p: 1,
+                            borderRadius: 2,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            zIndex: 100,
+                          }}
+                        ></Box>
+                      )}
 
                     {/* Render hotspots directly on the image */}
                     {imageLoaded &&
@@ -1224,15 +1380,19 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                 sx={{
                                   height: "100%",
                                   backgroundColor:
-                                    currentItem.settings?.buttonColor || "#444CE7",
-                                  color: currentItem.settings?.textColor || "#FFFFFF",
+                                    currentItem.settings?.buttonColor ||
+                                    "#444CE7",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
                                     backgroundColor:
-                                      currentItem.settings?.buttonColor || "#444CE7",
+                                      currentItem.settings?.buttonColor ||
+                                      "#444CE7",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
-                                    ? "2px solid white"
+                                    ? `2px solid ${getHighlightColor()}`
                                     : "none",
                                 }}
                               >
@@ -1263,7 +1423,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
-                                      ? "2px solid #444CE7"
+                                      ? `2px solid ${getHighlightColor()}`
                                       : "1px solid #ddd",
                                     boxShadow: highlightHotspot ? 2 : 0,
                                   }}
@@ -1282,7 +1442,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     <MenuItem
                                       key={idx}
                                       value={option}
-                                      onClick={() => handleDropdownSelect(option)}
+                                      onClick={() =>
+                                        handleDropdownSelect(option)
+                                      }
                                     >
                                       {option}
                                     </MenuItem>
@@ -1317,7 +1479,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     }px`,
                                   },
                                   color: highlightHotspot
-                                    ? "#444CE7"
+                                    ? getHighlightColor()
                                     : "action.active",
                                   "&.Mui-checked": {
                                     color: "#444CE7",
@@ -1349,7 +1511,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               <TextField
                                 fullWidth
                                 value={textInputValue}
-                                onChange={(e) => setTextInputValue(e.target.value)}
+                                onChange={(e) =>
+                                  setTextInputValue(e.target.value)
+                                }
                                 onKeyDown={handleTextInputSubmit}
                                 placeholder={
                                   currentItem.settings?.placeholder ||
@@ -1365,15 +1529,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     bgcolor: "white",
                                     "& fieldset": {
                                       borderColor: highlightHotspot
-                                        ? "#444CE7"
+                                        ? getHighlightColor()
                                         : "rgba(0, 0, 0, 0.23)",
                                       borderWidth: highlightHotspot ? 2 : 1,
                                     },
                                     "&:hover fieldset": {
-                                      borderColor: "#444CE7",
+                                      borderColor: getHighlightColor(),
                                     },
                                     "&.Mui-focused fieldset": {
-                                      borderColor: "#444CE7",
+                                      borderColor: getHighlightColor(),
                                     },
                                   },
                                 }}
@@ -1386,7 +1550,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                           {currentItem.hotspotType === "highlight" && (
                             <Box
                               onClick={() => {
-                                console.log('Highlight hotspot clicked');
+                                console.log("Highlight hotspot clicked");
                                 handleHotspotClick();
                               }}
                               sx={{
@@ -1397,11 +1561,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                 width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                                 height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                                 border: "4px solid",
-                                borderColor:
-                                  currentItem.settings?.highlightColor ||
-                                  "rgba(68, 76, 231, 0.7)",
+                                borderColor: getHighlightColor(),
                                 boxShadow: highlightHotspot
-                                  ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                  ? `0 0 12px 3px ${getHighlightColor()}`
                                   : "none",
                                 borderRadius: "4px",
                                 backgroundColor: "transparent",
@@ -1437,7 +1599,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     backgroundColor: "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
-                                  border: highlightHotspot ? "2px solid white" : "none",
+                                  border: highlightHotspot
+                                    ? `2px solid ${getHighlightColor()}`
+                                    : "none",
                                 }}
                               >
                                 {currentItem.settings?.tipText ||
@@ -1451,320 +1615,68 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   </Box>
                 )}
               </Box>
-            </Box>
 
-            {/* Right side - Chat panel */}
-            <Box
-              sx={{
-                width: 320,
-                borderLeft: 1,
-                borderColor: 'divider',
-                display: 'flex',
-                flexDirection: 'column',
-                bgcolor: 'background.paper',
-              }}
-            >
-              {/* Status + top controls */}
-              <Box
-                sx={{
-                  p: 2,
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  height: '60px',
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary">
-                  {callStatus}
-                </Typography>
-                <Box>
-                  <IconButton
-                    onClick={togglePause}
-                    sx={{ bgcolor: "grey.100", mr: 1 }}
+              {/* Navigation Controls - Centered at the bottom */}
+              {currentItem && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    mt: 2,
+                    mb: 1,
+                  }}
+                >
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    endIcon={<ArrowForward />}
+                    onClick={moveToNextItem}
+                    sx={{ minWidth: 120 }}
                   >
-                    {isPaused ? <PlayArrow /> : <Pause />}
-                  </IconButton>
+                    Next
+                  </Button>
                 </Box>
-              </Box>
-
-              {/* Current message display area */}
-              <Box
-                sx={{
-                  flex: 1,
-                  p: 2,
-                  display: "flex",
-                  flexDirection: "column",
-                  bgcolor: "#F5F7FF",
-                }}
-              >
-                {currentMessage ? (
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="flex-start"
-                    justifyContent={currentMessage.role === 'customer' ? 'flex-start' : 'flex-end'}
-                  >
-                    {currentMessage.role === 'customer' && (
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.light' }}>
-                        <SupportAgentIcon fontSize="small" />
-                      </Avatar>
-                    )}
-
-                    <Paper
-                      sx={{
-                        p: 2,
-                        maxWidth: '75%',
-                        borderRadius: 2,
-                        position: 'relative',
-                        bgcolor: currentMessage.role === 'customer' ? '#FFFFFF' : '#DCF8C6',
-                        borderColor: currentMessage.role === 'customer' ? 'primary.light' : 'success.light',
-                      }}
-                    >
-                      <Typography variant="body2">{currentMessage.text}</Typography>
-                      <Typography
-                        className="timestamp"
-                        variant="caption"
-                        sx={{
-                          display: 'block',
-                          textAlign: 'right',
-                          color: 'text.secondary',
-                          mt: 0.5,
-                        }}
-                      >
-                        {formatMessageTime(currentMessage.timestamp)}
-                      </Typography>
-                    </Paper>
-
-                    {currentMessage.role === 'trainee' && (
-                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'success.light' }}>
-                        <PersonIcon fontSize="small" />
-                      </Avatar>
-                    )}
-                  </Stack>
-                ) : (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      textAlign: "center",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <ChatIcon sx={{ fontSize: 40, mb: 2, opacity: 0.5 }} />
-                    <Typography variant="body2">
-                      {isLoadingVisuals ? "Loading simulation..." : "Beginning of conversation"}
-                    </Typography>
-                  </Box>
-                )}
-
-                {/* "Your turn to respond" indicator */}
-                {waitingForUserInput && (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "center",
-                      my: 1,
-                    }}
-                  >
-                    <Paper
-                      sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        px: 2,
-                        py: 1,
-                        bgcolor: "warning.light",
-                        color: "warning.dark",
-                        borderRadius: "20px",
-                        border: 1,
-                        borderColor: "warning.main",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          bgcolor: "warning.main",
-                          mr: 1,
-                          animation: "pulse 1.5s infinite",
-                          "@keyframes pulse": {
-                            "0%": { opacity: 0.6 },
-                            "50%": { opacity: 1 },
-                            "100%": { opacity: 0.6 },
-                          },
-                        }}
-                      />
-                      <Typography variant="caption" fontWeight="medium">
-                        Your turn to respond
-                      </Typography>
-                    </Paper>
-                  </Box>
-                )}
-              </Box>
-
-              {/* Message input area */}
-              <Box
-                component="form"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSubmitMessage();
-                }}
-                sx={{
-                  p: 2,
-                  borderTop: 1,
-                  borderColor: 'divider',
-                  bgcolor: 'white',
-                  maxHeight: '30%',
-                  height: 'auto',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  '&::-webkit-scrollbar': {
-                    width: '8px',
-                  },
-                  '&::-webkit-scrollbar-track': {
-                    background: '#f1f1f1',
-                    borderRadius: '4px',
-                  },
-                  '&::-webkit-scrollbar-thumb': {
-                    background: '#c1c1c1',
-                    borderRadius: '4px',
-                  },
-                  '&::-webkit-scrollbar-thumb:hover': {
-                    background: '#a8a8a8',
-                  },
-                }}
-              >
-                <Stack spacing={2}>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                      inputRef={chatInputRef}
-                      fullWidth
-                      multiline
-                      maxRows={3}
-                      placeholder={
-                        waitingForUserInput
-                          ? "Type your response..."
-                          : "Waiting for customer..."
-                      }
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      disabled={!waitingForUserInput || isEndingChat}
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: 2,
-                          bgcolor: waitingForUserInput ? "white" : "grey.100",
-                          borderColor: waitingForUserInput
-                            ? "primary.main"
-                            : "grey.300",
-                        },
-                      }}
-                    />
-                    <IconButton
-                      type="submit"
-                      disabled={!waitingForUserInput || !userInput.trim() || isEndingChat}
-                      sx={{
-                        alignSelf: "flex-end",
-                        bgcolor: waitingForUserInput ? "primary.main" : "grey.300",
-                        color: waitingForUserInput ? "white" : "grey.500",
-                        "&:hover": {
-                          bgcolor: waitingForUserInput
-                            ? "primary.dark"
-                            : "grey.300",
-                        },
-                        "&.Mui-disabled": {
-                          bgcolor: "grey.200",
-                          color: "grey.400",
-                        },
-                      }}
-                    >
-                      <SendIcon />
-                    </IconButton>
-                  </Box>
-
-                  {/* Expected response hint */}
-                  {waitingForUserInput && expectedTraineeResponse && (
-                    <Paper
-                      sx={{
-                        p: 2,
-                        bgcolor: "warning.50",
-                        border: 1,
-                        borderColor: "warning.100",
-                        borderRadius: 2,
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ color: "warning.dark", mb: 0.5 }}
-                      >
-                        Expected Response:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontStyle: "italic", color: "text.secondary", mb: 1 }}
-                      >
-                        {expectedTraineeResponse}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Type this response (or your own variation) to proceed
-                      </Typography>
-                    </Paper>
-                  )}
-
-                  {/* Next button - alternative to typing exact response */}
-                  {waitingForUserInput && (
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      endIcon={<ArrowForward />}
-                      onClick={() => {
-                        // Use the expected response as the user's message
-                        setUserInput(expectedTraineeResponse);
-                        // Submit after a slight delay to show what was "typed"
-                        setTimeout(() => {
-                          handleSubmitMessage();
-                        }, 100);
-                      }}
-                    >
-                      Use Suggested Response
-                    </Button>
-                  )}
-                </Stack>
-              </Box>
+              )}
             </Box>
           </Box>
 
-          {/* Call controls */}
+          {/* Simulation controls */}
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: '10px auto',
+              margin: "10px auto",
               p: 2,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "black", flexGrow: 1 }}>
-              <span style={{ fontWeight: "normal" }}>Visual-Chat Simulation - </span>
-              <span style={{ fontWeight: "bold" }}>{formatTime(elapsedTime)}</span>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: "black", flexGrow: 1 }}
+            >
+              <span style={{ fontWeight: "normal" }}>Visual Simulation - </span>
+              <span style={{ fontWeight: "bold" }}>
+                {formatTime(elapsedTime)}
+              </span>
             </Typography>
+
+            <IconButton
+              onClick={togglePause}
+              sx={{ bgcolor: "grey.100", mr: 1 }}
+            >
+              {isPaused ? <PlayArrow /> : <Pause />}
+            </IconButton>
 
             <Button
               variant="contained"
               color="error"
               startIcon={<CallEnd />}
-              onClick={handleEndChat}
-              disabled={isEndingChat}
+              onClick={handleEndSimulation}
+              disabled={isEndingSimulation}
             >
               End Simulation
             </Button>
@@ -1775,4 +1687,4 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   );
 };
 
-export default VisualChatSimulationPage;
+export default VisualSimulationPage;

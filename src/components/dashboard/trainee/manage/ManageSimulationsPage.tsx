@@ -23,11 +23,13 @@ import {
   TablePagination,
   CircularProgress,
   TableSortLabel,
+  InputAdornment,
 } from "@mui/material";
 import {
   Search as SearchIcon,
   MoreVert as MoreVertIcon,
   Lock as LockIcon,
+  Clear as ClearIcon,
 } from "@mui/icons-material";
 import DashboardContent from "../../DashboardContent";
 import ActionsMenu from "./ActionsMenu";
@@ -37,6 +39,7 @@ import {
   fetchDivisions,
   fetchDepartments,
 } from "../../../../services/suggestions";
+import { fetchTags, Tag } from "../../../../services/tags";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 
@@ -75,7 +78,7 @@ const ManageSimulationsPage = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<Simulation | null>(null);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +91,10 @@ const ManageSimulationsPage = () => {
   const [departments, setDepartments] = useState<string[]>([]);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+
+  // New state for tags
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
 
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
@@ -147,6 +154,25 @@ const ManageSimulationsPage = () => {
     }
   }, [currentWorkspaceId]);
 
+  // Load tags
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!user?.id) return;
+
+      try {
+        setIsLoadingTags(true);
+        const tagsData = await fetchTags(user.id);
+        setTags(tagsData);
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, [user?.id]);
+
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
   };
@@ -194,7 +220,7 @@ const ManageSimulationsPage = () => {
 
       // Then apply search filter
       if (searchQuery) {
-        const searchLower = searchQuery.toLowerCase();
+        const searchLower = searchQuery.trim().toLowerCase();
         const nameMatch = row.sim_name.toLowerCase().includes(searchLower);
         const idMatch = row.id && row.id.toLowerCase().includes(searchLower);
         if (!nameMatch && !idMatch) {
@@ -400,7 +426,21 @@ const ManageSimulationsPage = () => {
               }}
               InputProps={{
                 startAdornment: (
-                  <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: "text.secondary" }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => setSearchQuery('')}
+                      edge="end"
+                      aria-label="clear search"
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
                 ),
               }}
             />
@@ -417,16 +457,27 @@ const ManageSimulationsPage = () => {
                   bgcolor: "#FFFFFF",
                   borderRadius: 2,
                 }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 300,
+                      overflow: 'auto'
+                    }
+                  }
+                }}
               >
                 <MenuItem value="All Tags">All Tags</MenuItem>
-                {/* Add more tags based on unique tags in simulations */}
-                {Array.from(
-                  new Set(simulations.flatMap((sim) => sim.tags || [])),
-                ).map((tag) => (
-                  <MenuItem key={tag} value={tag}>
-                    {tag}
-                  </MenuItem>
-                ))}
+                {isLoadingTags ? (
+                  <MenuItem disabled>Loading tags...</MenuItem>
+                ) : tags.length === 0 ? (
+                  <MenuItem disabled>No tags available</MenuItem>
+                ) : (
+                  tags.map((tag) => (
+                    <MenuItem key={tag.id} value={tag.name}>
+                      {tag.name}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
 
               {/* Division Filter - Updated */}
@@ -850,7 +901,7 @@ const ManageSimulationsPage = () => {
                             </Stack>
                           </TableCell>
                           <TableCell sx={{ width: 100 }}>
-                            {row.estTime}
+                            {row.est_time}
                           </TableCell>
                           <TableCell sx={{ minWidth: 180 }}>
                             <Stack>
@@ -920,7 +971,7 @@ const ManageSimulationsPage = () => {
                   onPageChange={handleChangePage}
                   rowsPerPage={rowsPerPage}
                   onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[10, 20, 50, 100]}
+                  rowsPerPageOptions={[5, 10, 25, 50]}
                 />
               </Box>
             </TableContainer>

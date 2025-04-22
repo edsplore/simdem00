@@ -38,6 +38,9 @@ import {
   Refresh as RefreshIcon,
 } from "@mui/icons-material";
 
+// Import the AudioRecorder component
+import AudioRecorder from "./AudioRecorder";
+
 //
 // 1. Define a custom Quill format for "keyword"
 //    This style uses green text + lightgreen background.
@@ -143,6 +146,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   // Editing
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState(""); // we store the Quill HTML here
+  const [draftRole, setDraftRole] = useState<"Customer" | "Trainee">(
+    "Customer",
+  ); // NEW: track edited role
   const [editingMinWidth, setEditingMinWidth] = useState<number>(0);
 
   // Add Message Dialog
@@ -357,6 +363,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setEditingId(msg.id);
     // In a real app, 'msg.message' might be plain text or already HTML. We'll assume HTML
     setDraftText(msg.message);
+    setDraftRole(msg.role); // NEW: initialize draft role
     setEditingKeywords(msg.keywords || []);
 
     // measure bubble width
@@ -375,9 +382,16 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   };
 
   const handleSaveEdit = (id: string) => {
-    // Save the updated HTML + updated keywords
+    // Save the updated HTML + updated keywords + updated role
     const updatedMessages = messages.map((m) =>
-      m.id === id ? { ...m, message: draftText, keywords: editingKeywords } : m,
+      m.id === id
+        ? {
+            ...m,
+            message: draftText,
+            keywords: editingKeywords,
+            role: draftRole,
+          }
+        : m,
     );
     setMessages(updatedMessages);
 
@@ -399,8 +413,10 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // Compare keywords array
     if (JSON.stringify(msg.keywords) !== JSON.stringify(editingKeywords))
       return true;
+    // NEW: Compare role
+    if (msg.role !== draftRole) return true;
     return false;
-  }, [editingId, draftText, editingKeywords, messages]);
+  }, [editingId, draftText, editingKeywords, draftRole, messages]);
 
   //
   // onSelectionChange in Quill
@@ -512,6 +528,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     console.log("Script updated:", script); // Debug log
     setMessages(script);
   }, [script]);
+
+  // Handle audio transcription
+  const handleTranscription = (text: string) => {
+    setInputText(text);
+  };
 
   // ----------------------------
   //  Render
@@ -724,6 +745,22 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                           boxShadow: theme.shadows[1],
                         }}
                       >
+                        {/* ROLE SELECTOR - NEW */}
+                        <FormControl fullWidth sx={{ mb: 2 }}>
+                          <Select
+                            value={draftRole}
+                            onChange={(e) =>
+                              setDraftRole(
+                                e.target.value as "Customer" | "Trainee",
+                              )
+                            }
+                            size="small"
+                          >
+                            <MenuItem value="Customer">Customer</MenuItem>
+                            <MenuItem value="Trainee">Trainee</MenuItem>
+                          </Select>
+                        </FormControl>
+
                         {/* QUILL Editor */}
                         <ReactQuill
                           ref={quillRef}
@@ -826,11 +863,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
               },
             }}
           />
-          <Tooltip title="Record Audio" arrow>
-            <IconButton sx={{ bgcolor: "background.paper" }}>
-              <MicIcon />
-            </IconButton>
-          </Tooltip>
+          {/* Replace the Mic icon with our AudioRecorder component */}
+          <AudioRecorder onTranscriptionReceived={handleTranscription} />
           <Tooltip title="Send Message" arrow>
             <IconButton
               onClick={handleSendMessage}

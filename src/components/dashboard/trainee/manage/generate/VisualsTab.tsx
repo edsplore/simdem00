@@ -1025,10 +1025,10 @@ export default function VisualsTab({
   };
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={2}>
       {/* Error alert */}
       {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 1 }}>
           {error}
         </Alert>
       )}
@@ -1198,10 +1198,10 @@ export default function VisualsTab({
           </Button>
         </DropZone>
       ) : (
-        <Stack spacing={3} sx={{ height: "calc(100vh - 250px)" }}>
-          <Box sx={{ display: "flex", gap: 4, flex: 1 }}>
+        <Stack spacing={2} sx={{ height: "calc(100vh - 180px)" }}>
+          <Box sx={{ display: "flex", gap: 2, flex: 1 }}>
             {/* Left sidebar: thumbnails */}
-            <Box sx={{ width: 280 }}>
+            <Box sx={{ width: 240 }}>
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -1213,7 +1213,7 @@ export default function VisualsTab({
                 >
                   <Box
                     sx={{
-                      maxHeight: "calc(100vh - 400px)",
+                      maxHeight: "calc(100vh - 280px)",
                       overflowY: "auto",
                       "&::-webkit-scrollbar": { width: "4px" },
                       "&::-webkit-scrollbar-track": {
@@ -1227,7 +1227,7 @@ export default function VisualsTab({
                       },
                     }}
                   >
-                    <Stack spacing={2} sx={{ p: 2 }}>
+                    <Stack spacing={1} sx={{ p: 1 }}>
                       {visualImages.map((img, index) => (
                         <SortableItem
                           key={img.id}
@@ -1365,7 +1365,7 @@ export default function VisualsTab({
                       right: 0,
                       top: 0,
                       height: "100%",
-                      width: 320,
+                      width: 340,
                       borderLeft: "1px solid",
                       borderColor: "divider",
                       bgcolor: "#F9FAFB",

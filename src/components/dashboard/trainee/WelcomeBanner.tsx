@@ -1,15 +1,74 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Stack, Button, Typography, Box } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useTheme } from '@mui/material/styles';
-
+import { useAuth } from '../../../context/AuthContext';
+import type { TrainingData, Simulation } from '../../../types/training';
 
 interface WelcomeBannerProps {
   userName: string;
+  trainingData?: TrainingData | null;
 }
 
-const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName }) => {
+const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData }) => {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const { currentWorkspaceId } = useAuth();
+
+  // Find the first simulation with "not_started" status
+  const findNextSimulation = (): string | null => {
+    if (!trainingData) return null;
+
+    // Check simulations within training plans
+    for (const plan of trainingData.training_plans) {
+      for (const module of plan.modules) {
+        const nextPlanSimulation = module.simulations.find(
+          sim => sim.status === 'not_started'
+        );
+        if (nextPlanSimulation) {
+          return nextPlanSimulation.simulation_id;
+        }
+      }
+    }
+
+    // Check simulations within modules
+    for (const module of trainingData.modules) {
+      const nextModuleSimulation = module.simulations.find(
+        sim => sim.status === 'not_started'
+      );
+      if (nextModuleSimulation) {
+        return nextModuleSimulation.simulation_id;
+      }
+    }
+    
+    // Check standalone simulations first
+    const nextStandaloneSimulation = trainingData.simulations.find(
+      sim => sim.status === 'not_started'
+    );
+    if (nextStandaloneSimulation) {
+      return nextStandaloneSimulation.simulation_id;
+    }
+
+    return null;
+  };
+
+  const handleGoToNextSimulation = () => {
+    const nextSimulationId = findNextSimulation();
+    if (nextSimulationId) {
+      const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+      navigate(`/simulation/${nextSimulationId}/attempt${workspaceParam}`);
+    } else {
+      // If no simulation is found, we could show a message or navigate to a default page
+      console.log('No pending simulations found');
+    }
+  };
+
+  const handleGoToPlayback = () => {
+    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+    navigate(`/playback${workspaceParam}`);
+  };
+
   return (
     <Stack
       sx={{
@@ -36,6 +95,7 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName }) => {
             <Button
               variant="contained"
               endIcon={<ArrowForwardIcon />}
+              onClick={handleGoToNextSimulation}
               sx={{
                 bgcolor: 'white',
                 color: 'black',
@@ -56,6 +116,7 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName }) => {
                   bgcolor: 'rgba(255, 255, 255, 0.3)',
                 },
               }}
+              onClick={handleGoToPlayback}
             >
               My Playbacks
             </Button>

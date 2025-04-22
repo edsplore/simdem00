@@ -14,6 +14,7 @@ import {
   Paper,
   InputLabel,
   FormControl,
+  FormHelperText,
   Chip,
   InputAdornment,
   Popover,
@@ -26,6 +27,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   ColorLens as ColorLensIcon,
+  Timer as TimerIcon,
 } from "@mui/icons-material";
 
 interface Hotspot {
@@ -137,6 +139,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(
     null,
   );
+  const [timeoutError, setTimeoutError] = useState<string | null>(null);
 
   // For RGBA color picker
   const [colorPickerAnchorEl, setColorPickerAnchorEl] =
@@ -280,13 +283,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }));
   };
 
-  // Log coordinates for debugging
-  useEffect(() => {
-    if (currentHotspot && currentHotspot.coordinates) {
-      console.log("Current hotspot coordinates:", currentHotspot.coordinates);
-    }
-  }, [currentHotspot]);
-
   // Process image data when imageUrl changes
   useEffect(() => {
     setImageError(null);
@@ -369,10 +365,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       setCurrentHotspot(editingHotspot);
       setShowSettings(true);
       calculateDialogPosition(editingHotspot);
-      console.log(
-        "Editing hotspot with coordinates:",
-        editingHotspot.coordinates,
-      );
     }
   }, [editingHotspot]);
 
@@ -421,10 +413,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         timeoutDuration: 2,
         highlightField: false,
         enableHotkey: false,
+        highlightColor: "rgba(255, 193, 7, 0.8)", // Default highlight color for all hotspot types
       },
     });
-
-    console.log("Drawing hotspot with coordinates:", coordinates);
   };
 
   const handleMouseUp = () => {
@@ -439,10 +430,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     ) {
       calculateDialogPosition(currentHotspot);
       setShowSettings(true);
-      console.log(
-        "Completed drawing with coordinates:",
-        currentHotspot.coordinates,
-      );
     }
   };
 
@@ -455,7 +442,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
     const imgRect = img.getBoundingClientRect();
     const scale = imgRect.width / originalImageSize.width;
-    const dialogHeight = 520; // Fixed dialog height
+    const dialogHeight = 480; // Reduced fixed dialog height
     const dialogWidth = 320; // Fixed dialog width
     const padding = 16; // Padding from edges
 
@@ -536,6 +523,19 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }));
   };
 
+  // Validate timeout value
+  const validateTimeout = (value: number | undefined): boolean => {
+    if (
+      currentHotspot?.hotspotType === "highlight" ||
+      currentHotspot?.hotspotType === "coaching"
+    ) {
+      // For highlight and coaching, timeout is required
+      return value !== undefined && value > 0;
+    }
+    // For other types, any timeout is valid (even undefined)
+    return true;
+  };
+
   const handleSettingsSave = (settings: Partial<Hotspot>) => {
     // Ensure currentHotspot and coordinates exist
     if (!currentHotspot || !currentHotspot.coordinates) {
@@ -546,15 +546,38 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       return;
     }
 
+    // Validate timeout for highlight and coaching hotspots
+    const hotspotType = settings.hotspotType || "button";
+    const timeoutDuration = settings.settings?.timeoutDuration;
+
+    if (
+      (hotspotType === "highlight" || hotspotType === "coaching") &&
+      (timeoutDuration === undefined || timeoutDuration <= 0)
+    ) {
+      setTimeoutError(
+        "Timeout duration is required for highlight and coaching hotspots",
+      );
+      return;
+    } else {
+      setTimeoutError(null);
+    }
+
     const id = editMode ? editingId : Date.now().toString();
 
+    // Common settings for all hotspot types
+    const commonSettings = {
+      timeoutDuration: settings.settings?.timeoutDuration || 2, // Default 2 seconds
+      highlightColor:
+        settings.settings?.highlightColor || "rgba(255, 193, 7, 0.8)", // Default highlight color
+    };
+
     // Initialize type-specific settings based on hotspotType
-    let hotspotSettings: any = {};
-    const hotspotType = settings.hotspotType || "button";
+    let hotspotSettings: any = { ...commonSettings };
 
     switch (hotspotType) {
       case "dropdown":
         hotspotSettings = {
+          ...commonSettings,
           placeholder: settings.settings?.placeholder || "Select an option",
           advanceOnSelect:
             settings.settings?.advanceOnSelect !== undefined
@@ -564,6 +587,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         break;
       case "checkbox":
         hotspotSettings = {
+          ...commonSettings,
           advanceOnCheck:
             settings.settings?.advanceOnCheck !== undefined
               ? settings.settings.advanceOnCheck
@@ -572,6 +596,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         break;
       case "textfield":
         hotspotSettings = {
+          ...commonSettings,
           placeholder: settings.settings?.placeholder || "Enter text...",
           textColor: settings.settings?.textColor || "#000000",
           fontSize: settings.settings?.fontSize || 14,
@@ -579,23 +604,29 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         break;
       case "highlight":
         hotspotSettings = {
+          ...commonSettings,
+          // For highlight type, timeoutDuration is required
+          timeoutDuration: settings.settings?.timeoutDuration || 3,
           highlightColor:
             settings.settings?.highlightColor || "rgba(255, 193, 7, 0.8)",
         };
         break;
       case "coaching":
         hotspotSettings = {
+          ...commonSettings,
+          // For coaching type, timeoutDuration is required
+          timeoutDuration: settings.settings?.timeoutDuration || 3,
           tipText: settings.settings?.tipText || "Coaching tip",
           tipPosition: settings.settings?.tipPosition || "top",
         };
         break;
       case "button":
         hotspotSettings = {
+          ...commonSettings,
           font: settings.settings?.font || "Inter",
           fontSize: settings.settings?.fontSize || 16,
           buttonColor: settings.settings?.buttonColor || "#00AB55",
           textColor: settings.settings?.textColor || "#FFFFFF",
-          timeoutDuration: settings.settings?.timeoutDuration || 2,
           highlightField:
             settings.settings?.highlightField !== undefined
               ? settings.settings.highlightField
@@ -629,8 +660,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       hotspot.options = optionsList;
     }
 
-    console.log("Saving hotspot with coordinates:", hotspot.coordinates);
-
     // Update existing hotspot or add new one
     const newHotspots = editMode
       ? [...hotspots].map((h) => (h.id === hotspot.id ? hotspot : h))
@@ -640,12 +669,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setShowSettings(false);
     setEditMode(false);
     setEditingId(null);
-    onHotspotsChange?.(newHotspots);
-  };
-
-  // Function to remove a hotspot
-  const removeHotspot = (id: string) => {
-    const newHotspots = hotspots.filter((h) => h.id !== id);
     onHotspotsChange?.(newHotspots);
   };
 
@@ -748,19 +771,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           hotspots.map((hotspot) => {
             // Skip rendering if coordinates are missing or invalid
             if (!hotspot || !hotspot.coordinates) {
-              console.warn(
-                "Skipping hotspot with missing coordinates:",
-                hotspot?.id,
-              );
               return null;
             }
 
             const scaledCoords = scaleCoordinates(hotspot.coordinates);
             if (!scaledCoords) {
-              console.warn(
-                "Failed to scale coordinates for hotspot:",
-                hotspot.id,
-              );
               return null;
             }
 
@@ -813,13 +828,13 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             position: "fixed",
             top: Math.max(
               16,
-              Math.min(dialogPosition.top, viewportSize.height - 520 - 16),
+              Math.min(dialogPosition.top, viewportSize.height - 480 - 16),
             ),
             left: Math.max(
               16,
-              Math.min(dialogPosition.left, viewportSize.width - 320 - 16),
+              Math.min(dialogPosition.left, viewportSize.width - 550 - 16),
             ),
-            maxWidth: 320,
+            maxWidth: 550,
             width: "100%",
             borderRadius: 2,
             zIndex: 1300,
@@ -835,11 +850,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               alignItems="center"
               justifyContent="space-between"
             >
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box
                   sx={{
-                    width: 24,
-                    height: 24,
+                    width: 32,
+                    height: 32,
                     borderRadius: "50%",
                     bgcolor: "#F5F6FF",
                     display: "flex",
@@ -848,12 +863,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   }}
                 >
                   {editMode ? (
-                    <EditIcon sx={{ fontSize: 16, color: "#444CE7" }} />
+                    <EditIcon sx={{ fontSize: 18, color: "#444CE7" }} />
                   ) : (
-                    <AddIcon sx={{ fontSize: 16, color: "#444CE7" }} />
+                    <AddIcon sx={{ fontSize: 18, color: "#444CE7" }} />
                   )}
                 </Box>
-                <Typography variant="subtitle1" fontWeight="600">
+                <Typography
+                  variant="subtitle1"
+                  fontWeight="600"
+                  fontSize="18px"
+                >
                   {editMode ? "Edit Hotspot" : "Add Hotspot"}
                 </Typography>
               </Stack>
@@ -872,9 +891,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             </Stack>
 
             {/* Form Fields */}
-            <Stack spacing={1.5}>
+            <Stack spacing={2}>
               <TextField
-                size="small"
+                size="medium"
                 label="Name *"
                 defaultValue={currentHotspot?.name || "Untitled button"}
                 onChange={(e) =>
@@ -883,9 +902,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     name: e.target.value,
                   }))
                 }
+                InputProps={{
+                  style: { height: "48px" },
+                }}
               />
 
-              <FormControl fullWidth size="small">
+              <FormControl fullWidth size="medium">
                 <InputLabel id="hotspot-type-label">Type</InputLabel>
                 <Select
                   labelId="hotspot-type-label"
@@ -897,6 +919,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       hotspotType: e.target.value as Hotspot["hotspotType"],
                     }))
                   }
+                  sx={{ height: "48px" }}
                 >
                   <MenuItem value="button">Button</MenuItem>
                   <MenuItem value="dropdown">Dropdown</MenuItem>
@@ -907,12 +930,90 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                 </Select>
               </FormControl>
 
-              {/* Only show font/size/color options for button type */}
-              {(currentHotspot?.hotspotType === "button" ||
-                !currentHotspot?.hotspotType) && (
+              {/* Common settings for all hotspot types */}
+              <FormControl fullWidth size="medium" error={!!timeoutError}>
+                <InputLabel>Timeout Duration</InputLabel>
+                <Select
+                  label="Timeout Duration"
+                  value={currentHotspot?.settings?.timeoutDuration || 2}
+                  onChange={(e) =>
+                    setCurrentHotspot((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...prev?.settings,
+                        timeoutDuration: e.target.value as number,
+                      },
+                    }))
+                  }
+                  sx={{ height: "48px" }}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <TimerIcon fontSize="small" />
+                    </InputAdornment>
+                  }
+                >
+                  {[1, 2, 3, 4, 5, 7, 10, 15, 20, 30].map((duration) => (
+                    <MenuItem key={duration} value={duration}>
+                      {duration} sec
+                    </MenuItem>
+                  ))}
+                </Select>
+                {timeoutError && (
+                  <FormHelperText>{timeoutError}</FormHelperText>
+                )}
+                {(currentHotspot?.hotspotType === "highlight" ||
+                  currentHotspot?.hotspotType === "coaching") && (
+                  <FormHelperText>
+                    *Required for highlight and coaching hotspots
+                  </FormHelperText>
+                )}
+              </FormControl>
+
+              {/* Highlight color setting for all hotspot types */}
+              <TextField
+                size="medium"
+                fullWidth
+                label="Highlight Color"
+                value={
+                  currentHotspot?.settings?.highlightColor ||
+                  "rgba(255, 193, 7, 0.8)"
+                }
+                InputProps={{
+                  style: { height: "48px" },
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Box
+                        sx={{
+                          width: 24,
+                          height: 24,
+                          bgcolor:
+                            currentHotspot?.settings?.highlightColor ||
+                            "rgba(255, 193, 7, 0.8)",
+                          borderRadius: 0.5,
+                        }}
+                      />
+                    </InputAdornment>
+                  ),
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={handleOpenColorPicker}
+                        sx={{ color: "primary.main" }}
+                      >
+                        <ColorLensIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                  readOnly: true,
+                }}
+              />
+
+              {/* Type-specific settings */}
+              {currentHotspot?.hotspotType === "button" && (
                 <>
-                  <Stack direction="row" spacing={1}>
-                    <FormControl fullWidth size="small">
+                  <Stack direction="row" spacing={2}>
+                    <FormControl fullWidth size="medium">
                       <InputLabel>Font</InputLabel>
                       <Select
                         label="Font"
@@ -926,6 +1027,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                             },
                           }))
                         }
+                        sx={{ height: "48px" }}
                       >
                         <MenuItem value="Inter">Inter</MenuItem>
                         <MenuItem value="Arial">Arial</MenuItem>
@@ -933,7 +1035,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       </Select>
                     </FormControl>
 
-                    <FormControl fullWidth size="small">
+                    <FormControl fullWidth size="medium">
                       <InputLabel>Size</InputLabel>
                       <Select
                         label="Size"
@@ -947,6 +1049,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                             },
                           }))
                         }
+                        sx={{ height: "48px" }}
                       >
                         {[12, 14, 16, 18, 20].map((size) => (
                           <MenuItem key={size} value={size}>
@@ -957,32 +1060,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     </FormControl>
                   </Stack>
 
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Timeout Duration</InputLabel>
-                    <Select
-                      label="Timeout Duration"
-                      value={currentHotspot?.settings?.timeoutDuration || 2}
-                      onChange={(e) =>
-                        setCurrentHotspot((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev?.settings,
-                            timeoutDuration: e.target.value as number,
-                          },
-                        }))
-                      }
-                    >
-                      {[1, 2, 3, 4, 5].map((duration) => (
-                        <MenuItem key={duration} value={duration}>
-                          {duration} sec
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <Stack direction="row" spacing={1}>
+                  <Stack direction="row" spacing={2}>
                     <TextField
-                      size="small"
+                      size="medium"
                       fullWidth
                       label="Button Color"
                       value={currentHotspot?.settings?.buttonColor || "#00AB55"}
@@ -996,12 +1076,13 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                         }))
                       }
                       InputProps={{
+                        style: { height: "48px" },
                         startAdornment: (
                           <InputAdornment position="start">
                             <Box
                               sx={{
-                                width: 16,
-                                height: 16,
+                                width: 24,
+                                height: 24,
                                 bgcolor:
                                   currentHotspot?.settings?.buttonColor ||
                                   "#00AB55",
@@ -1042,7 +1123,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                     />
 
                     <TextField
-                      size="small"
+                      size="medium"
                       fullWidth
                       label="Text Color"
                       value={currentHotspot?.settings?.textColor || "#FFFFFF"}
@@ -1056,12 +1137,13 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                         }))
                       }
                       InputProps={{
+                        style: { height: "48px" },
                         startAdornment: (
                           <InputAdornment position="start">
                             <Box
                               sx={{
-                                width: 16,
-                                height: 16,
+                                width: 24,
+                                height: 24,
                                 bgcolor:
                                   currentHotspot?.settings?.textColor ||
                                   "#FFFFFF",
@@ -1105,9 +1187,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
               {/* Dropdown-specific settings */}
               {currentHotspot?.hotspotType === "dropdown" && (
-                <Stack spacing={1.5}>
+                <Stack spacing={2}>
                   <TextField
-                    size="small"
+                    size="medium"
                     label="Placeholder"
                     value={
                       currentHotspot?.settings?.placeholder ||
@@ -1122,20 +1204,23 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                         },
                       }))
                     }
+                    InputProps={{
+                      style: { height: "48px" },
+                    }}
                   />
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Dropdown Options
-                  </Typography>
+                  <Typography variant="body1">Dropdown Options</Typography>
 
                   {/* Options chip display */}
-                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  <Box
+                    sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 0 }}
+                  >
                     {optionsList.map((option, index) => (
                       <Chip
                         key={index}
                         label={option}
                         onDelete={() => handleDeleteOption(option)}
-                        size="small"
-                        sx={{ margin: "2px" }}
+                        size="medium"
+                        sx={{ margin: "2px", py: 1.5, px: 1, height: "32px" }}
                       />
                     ))}
                   </Box>
@@ -1154,12 +1239,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                           handleAddOption();
                         }
                       }}
+                      InputProps={{
+                        style: { height: "40px" },
+                      }}
                     />
                     <Button
                       variant="outlined"
                       size="small"
                       onClick={handleAddOption}
                       disabled={!newOption.trim()}
+                      sx={{ height: "40px", minWidth: "60px" }}
                     >
                       Add
                     </Button>
@@ -1169,257 +1258,54 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
               {/* TextField-specific settings */}
               {currentHotspot?.hotspotType === "textfield" && (
-                <Stack spacing={1.5}>
-                  <TextField
-                    size="small"
-                    label="Placeholder"
-                    value={
-                      currentHotspot?.settings?.placeholder || "Enter text..."
-                    }
-                    onChange={(e) =>
-                      setCurrentHotspot((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev?.settings,
-                          placeholder: e.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </Stack>
-              )}
-
-              {/* Highlight-specific settings */}
-              {currentHotspot?.hotspotType === "highlight" && (
                 <TextField
-                  size="small"
-                  fullWidth
-                  label="Highlight Color"
+                  size="medium"
+                  label="Placeholder"
                   value={
-                    currentHotspot?.settings?.highlightColor ||
-                    "rgba(255, 193, 7, 0.8)"
+                    currentHotspot?.settings?.placeholder || "Enter text..."
                   }
                   onChange={(e) =>
                     setCurrentHotspot((prev) => ({
                       ...prev,
                       settings: {
                         ...prev?.settings,
-                        highlightColor: e.target.value,
+                        placeholder: e.target.value,
                       },
                     }))
                   }
                   InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Box
-                          sx={{
-                            width: 16,
-                            height: 16,
-                            bgcolor:
-                              currentHotspot?.settings?.highlightColor ||
-                              "rgba(255, 193, 7, 0.8)",
-                            borderRadius: 0.5,
-                          }}
-                        />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          size="small"
-                          onClick={handleOpenColorPicker}
-                          sx={{ color: "primary.main" }}
-                        >
-                          <ColorLensIcon fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                    readOnly: true, // Make the text field read-only since we're using a custom color picker
+                    style: { height: "48px" },
                   }}
                 />
               )}
 
-              {/* RGBA Color Picker Popover */}
-              <Popover
-                open={Boolean(colorPickerAnchorEl)}
-                anchorEl={colorPickerAnchorEl}
-                onClose={handleCloseColorPicker}
-                anchorOrigin={{
-                  vertical: "bottom",
-                  horizontal: "center",
-                }}
-                transformOrigin={{
-                  vertical: "top",
-                  horizontal: "center",
-                }}
-              >
-                <Paper sx={{ p: 2, width: 300 }}>
-                  <Typography variant="subtitle2" gutterBottom>
-                    RGBA Color Picker
-                  </Typography>
-
-                  <Stack spacing={2} sx={{ mt: 2 }}>
-                    <Box>
-                      <Typography variant="caption" gutterBottom>
-                        Red: {rgbaColor.r}
-                      </Typography>
-                      <Slider
-                        value={rgbaColor.r}
-                        min={0}
-                        max={255}
-                        onChange={(_, value) =>
-                          handleColorChange({
-                            ...rgbaColor,
-                            r: value as number,
-                          })
-                        }
-                        sx={{
-                          color: "red",
-                          "& .MuiSlider-thumb": {
-                            bgcolor: "white",
-                            border: "2px solid currentColor",
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    <Box>
-                      <Typography variant="caption" gutterBottom>
-                        Green: {rgbaColor.g}
-                      </Typography>
-                      <Slider
-                        value={rgbaColor.g}
-                        min={0}
-                        max={255}
-                        onChange={(_, value) =>
-                          handleColorChange({
-                            ...rgbaColor,
-                            g: value as number,
-                          })
-                        }
-                        sx={{
-                          color: "green",
-                          "& .MuiSlider-thumb": {
-                            bgcolor: "white",
-                            border: "2px solid currentColor",
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    <Box>
-                      <Typography variant="caption" gutterBottom>
-                        Blue: {rgbaColor.b}
-                      </Typography>
-                      <Slider
-                        value={rgbaColor.b}
-                        min={0}
-                        max={255}
-                        onChange={(_, value) =>
-                          handleColorChange({
-                            ...rgbaColor,
-                            b: value as number,
-                          })
-                        }
-                        sx={{
-                          color: "blue",
-                          "& .MuiSlider-thumb": {
-                            bgcolor: "white",
-                            border: "2px solid currentColor",
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    <Box>
-                      <Typography variant="caption" gutterBottom>
-                        Alpha: {rgbaColor.a.toFixed(2)}
-                      </Typography>
-                      <Slider
-                        value={rgbaColor.a}
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        onChange={(_, value) =>
-                          handleColorChange({
-                            ...rgbaColor,
-                            a: value as number,
-                          })
-                        }
-                        sx={{
-                          color: "grey",
-                          "& .MuiSlider-thumb": {
-                            bgcolor: "white",
-                            border: "2px solid currentColor",
-                          },
-                        }}
-                      />
-                    </Box>
-
-                    <Box
-                      sx={{
-                        height: 48,
-                        bgcolor: rgbaToString(rgbaColor),
-                        borderRadius: 1,
-                        boxShadow: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          bgcolor: "rgba(255,255,255,0.8)",
-                          px: 1,
-                          py: 0.5,
-                          borderRadius: 1,
-                        }}
-                      >
-                        {rgbaToString(rgbaColor)}
-                      </Typography>
-                    </Box>
-
-                    <Button
-                      variant="contained"
-                      onClick={handleCloseColorPicker}
-                      sx={{ mt: 2 }}
-                    >
-                      Apply Color
-                    </Button>
-                  </Stack>
-                </Paper>
-              </Popover>
-
               {/* Coaching-specific settings */}
               {currentHotspot?.hotspotType === "coaching" && (
-                <Stack spacing={1.5}>
-                  <TextField
-                    size="small"
-                    label="Tip Text"
-                    multiline
-                    rows={2}
-                    value={currentHotspot?.settings?.tipText || "Coaching tip"}
-                    onChange={(e) =>
-                      setCurrentHotspot((prev) => ({
-                        ...prev,
-                        settings: {
-                          ...prev?.settings,
-                          tipText: e.target.value,
-                        },
-                      }))
-                    }
-                  />
-                </Stack>
+                <TextField
+                  size="medium"
+                  label="Tip Text"
+                  multiline
+                  rows={2}
+                  value={currentHotspot?.settings?.tipText || "Coaching tip"}
+                  onChange={(e) =>
+                    setCurrentHotspot((prev) => ({
+                      ...prev,
+                      settings: {
+                        ...prev?.settings,
+                        tipText: e.target.value,
+                      },
+                    }))
+                  }
+                />
               )}
             </Stack>
 
             {/* Actions */}
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                size="small"
+                size="large"
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowSettings(false);
@@ -1427,14 +1313,14 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   setEditMode(false);
                   setEditingId(null);
                 }}
-                sx={{ textTransform: "none" }}
+                sx={{ textTransform: "none", py: 1 }}
               >
                 Cancel
               </Button>
               <Button
                 fullWidth
                 variant="contained"
-                size="small"
+                size="large"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleSettingsSave(currentHotspot || {});
@@ -1443,6 +1329,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   bgcolor: "#444CE7",
                   "&:hover": { bgcolor: "#3538CD" },
                   textTransform: "none",
+                  py: 1,
                 }}
               >
                 {editMode ? "Update" : "Save"}
@@ -1452,15 +1339,157 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         </Paper>
       )}
 
-      {/* Optional: Add a style tag for the keyword highlighting */}
-      <style jsx>{`
-        .keyword-highlight {
-          color: green;
-          background-color: #ccffd1;
-          padding: 0 2px;
-          border-radius: 2px;
-        }
-      `}</style>
+      {/* RGBA Color Picker Popover */}
+      <Popover
+        open={Boolean(colorPickerAnchorEl)}
+        anchorEl={colorPickerAnchorEl}
+        onClose={handleCloseColorPicker}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "center",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+      >
+        <Paper sx={{ p: 2, width: 300 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            RGBA Color Picker
+          </Typography>
+
+          <Stack spacing={2} sx={{ mt: 2 }}>
+            <Box>
+              <Typography variant="caption" gutterBottom>
+                Red: {rgbaColor.r}
+              </Typography>
+              <Slider
+                value={rgbaColor.r}
+                min={0}
+                max={255}
+                onChange={(_, value) =>
+                  handleColorChange({
+                    ...rgbaColor,
+                    r: value as number,
+                  })
+                }
+                sx={{
+                  color: "red",
+                  "& .MuiSlider-thumb": {
+                    bgcolor: "white",
+                    border: "2px solid currentColor",
+                  },
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="caption" gutterBottom>
+                Green: {rgbaColor.g}
+              </Typography>
+              <Slider
+                value={rgbaColor.g}
+                min={0}
+                max={255}
+                onChange={(_, value) =>
+                  handleColorChange({
+                    ...rgbaColor,
+                    g: value as number,
+                  })
+                }
+                sx={{
+                  color: "green",
+                  "& .MuiSlider-thumb": {
+                    bgcolor: "white",
+                    border: "2px solid currentColor",
+                  },
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="caption" gutterBottom>
+                Blue: {rgbaColor.b}
+              </Typography>
+              <Slider
+                value={rgbaColor.b}
+                min={0}
+                max={255}
+                onChange={(_, value) =>
+                  handleColorChange({
+                    ...rgbaColor,
+                    b: value as number,
+                  })
+                }
+                sx={{
+                  color: "blue",
+                  "& .MuiSlider-thumb": {
+                    bgcolor: "white",
+                    border: "2px solid currentColor",
+                  },
+                }}
+              />
+            </Box>
+
+            <Box>
+              <Typography variant="caption" gutterBottom>
+                Alpha: {rgbaColor.a.toFixed(2)}
+              </Typography>
+              <Slider
+                value={rgbaColor.a}
+                min={0}
+                max={1}
+                step={0.01}
+                onChange={(_, value) =>
+                  handleColorChange({
+                    ...rgbaColor,
+                    a: value as number,
+                  })
+                }
+                sx={{
+                  color: "grey",
+                  "& .MuiSlider-thumb": {
+                    bgcolor: "white",
+                    border: "2px solid currentColor",
+                  },
+                }}
+              />
+            </Box>
+
+            <Box
+              sx={{
+                height: 48,
+                bgcolor: rgbaToString(rgbaColor),
+                borderRadius: 1,
+                boxShadow: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Typography
+                variant="caption"
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.8)",
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 1,
+                }}
+              >
+                {rgbaToString(rgbaColor)}
+              </Typography>
+            </Box>
+
+            <Button
+              variant="contained"
+              onClick={handleCloseColorPicker}
+              sx={{ mt: 2 }}
+            >
+              Apply Color
+            </Button>
+          </Stack>
+        </Paper>
+      </Popover>
     </Box>
   );
 };

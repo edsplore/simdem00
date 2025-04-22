@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -18,7 +18,7 @@ import {
   MenuItem,
   Select,
   CircularProgress,
-} from '@mui/material';
+} from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
@@ -35,11 +35,11 @@ import {
   Psychology as PsychologyIcon,
   BatteryChargingFull as EnergyIcon,
   Visibility as VisibilityIcon,
-} from '@mui/icons-material';
-import { useAuth } from '../../../../context/AuthContext';
+} from "@mui/icons-material";
+import { useAuth } from "../../../../context/AuthContext";
 
 interface Message {
-  speaker: 'customer' | 'trainee';
+  speaker: "customer" | "trainee";
   text: string;
 }
 
@@ -123,12 +123,12 @@ interface EndCallResponse {
   id: string;
   status: string;
   scores: {
-    'Sim Accuracy': number;
-    'Keyword Score': number;
-    'Click Score': number;
-    'Confidence': number;
-    'Energy': number;
-    'Concentration': number;
+    "Sim Accuracy": number;
+    "Keyword Score": number;
+    "Click Score": number;
+    Confidence: number;
+    Energy: number;
+    Concentration: number;
   };
   duration: number;
   transcript: string;
@@ -148,28 +148,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 }) => {
   // Get authenticated user using useAuth hook
   const { user } = useAuth();
-  const userId = user?.id || '';
-  const userName = user?.name || 'User';
+  const userId = user?.id || "";
+  const userName = user?.name || "User";
 
   // Basic simulation state
   const [isCallActive, setIsCallActive] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [isEndingCall, setIsEndingCall] = useState(false);
-  const [simulationProgressId, setSimulationProgressId] = useState<string | null>(null);
+  const [simulationProgressId, setSimulationProgressId] = useState<
+    string | null
+  >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndCallResponse['scores'] | null>(null);
+  const [scores, setScores] = useState<EndCallResponse["scores"] | null>(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [callStatus, setCallStatus] = useState("Ringing...");
 
   // Visual-audio specific state
-  const [simulationData, setSimulationData] = useState<SimulationData | null>(null);
+  const [simulationData, setSimulationData] = useState<SimulationData | null>(
+    null,
+  );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
+  // Update to track both width and height scales
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingVisuals, setIsLoadingVisuals] = useState(false);
 
@@ -187,12 +192,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   // Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const speechSynthRef = useRef(window.speechSynthesis);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores['Sim Accuracy'] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -203,16 +209,23 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
-      console.log('Current simulation data:', {
+      console.log("Current simulation data:", {
         slidesCount: simulationData.slidesData?.length || 0,
         currentSlideIndex,
         currentSequenceIndex,
-        currentSlide: currentSlide?.imageId || 'none',
+        currentSlide: currentSlide?.imageId || "none",
         currentSequenceLength: currentSequence?.length || 0,
-        slidesMapSize: slides.size
+        slidesMapSize: slides.size,
       });
     }
-  }, [simulationData, currentSlideIndex, currentSequenceIndex, currentSlide, currentSequence, slides.size]);
+  }, [
+    simulationData,
+    currentSlideIndex,
+    currentSequenceIndex,
+    currentSlide,
+    currentSequence,
+    slides.size,
+  ]);
 
   // Initialize timer for simulation
   useEffect(() => {
@@ -232,6 +245,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Reset states when moving to a new item
   useEffect(() => {
+    // Clear any existing timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     // Clean up any previous state
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
@@ -305,13 +324,20 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Process current sequence item
   useEffect(() => {
-    if (!currentItem || isProcessing || !imageLoaded || isPaused || !isCallActive) return;
+    if (
+      !currentItem ||
+      isProcessing ||
+      !imageLoaded ||
+      isPaused ||
+      !isCallActive
+    )
+      return;
 
-    console.log('Processing current item:', {
+    console.log("Processing current item:", {
       type: currentItem.type,
       role: currentItem.role,
       hotspotType: currentItem.hotspotType,
-      text: currentItem.text?.substring(0, 30) + '...'
+      text: currentItem.text?.substring(0, 30) + "...",
     });
 
     const processItem = async () => {
@@ -321,25 +347,25 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
-        // Auto-advance if timeout is set - BUT NEVER FOR BUTTONS OR DROPDOWNS
+        // Setup timeout based on hotspot settings - applicable to all hotspot types now
         const timeout = currentItem.settings?.timeoutDuration;
-        const hotspotType = currentItem.hotspotType || "button";
 
-        if (
-          timeout &&
-          timeout > 0 &&
-          hotspotType !== "button" &&
-          hotspotType !== "dropdown" &&
-          hotspotType !== "checkbox"
-        ) {
-          setTimeout(() => {
+        if (timeout && timeout > 0) {
+          // Clear any existing timeout
+          if (hotspotTimeoutRef.current) {
+            clearTimeout(hotspotTimeoutRef.current);
+          }
+
+          // Set a new timeout that will advance if no interaction occurs
+          hotspotTimeoutRef.current = setTimeout(() => {
+            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
             setIsProcessing(false);
           }, timeout * 1000);
-        } else {
-          setIsProcessing(false);
         }
+
+        setIsProcessing(false);
       } else {
         setIsProcessing(false);
       }
@@ -353,7 +379,32 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     imageLoaded,
     isPaused,
     isProcessing,
-    isCallActive
+    isCallActive,
+  ]);
+
+  // Check for end of simulation
+  useEffect(() => {
+    if (
+      isCallActive &&
+      currentSlideIndex >= slidesData.length - 1 &&
+      currentSequenceIndex >= currentSequence.length - 1 &&
+      currentSequence.length > 0 &&
+      !isEndingCall
+    ) {
+      // We've reached the end of the last slide's sequence
+      console.log("Reached end of simulation content");
+      // Wait a moment for any final animations/transitions
+      setTimeout(() => {
+        handleEndCall();
+      }, 1000);
+    }
+  }, [
+    currentSlideIndex,
+    currentSequenceIndex,
+    slidesData.length,
+    currentSequence.length,
+    isCallActive,
+    isEndingCall,
   ]);
 
   // Function to speak text
@@ -401,21 +452,48 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return `${mins}m ${secs}s`;
   };
 
-  // Calculate image scale when loaded
+  // Updated to calculate both width and height scales
   const handleImageLoad = () => {
     if (imageRef.current && imageContainerRef.current) {
-      const containerWidth = imageContainerRef.current.clientWidth;
       const imageNaturalWidth = imageRef.current.naturalWidth;
-      console.log(`Image natural dimensions: ${imageRef.current.naturalWidth}x${imageRef.current.naturalHeight}`);
-      setImageScale(containerWidth / imageNaturalWidth);
+      const imageNaturalHeight = imageRef.current.naturalHeight;
+
+      // Get the actual rendered dimensions of the image
+      const rect = imageRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      // Calculate the scale based on the actual rendered dimensions
+      const widthScale = renderedWidth / imageNaturalWidth;
+      const heightScale = renderedHeight / imageNaturalHeight;
+
+      // Store both scales for proper coordinate transformation
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
       setImageLoaded(true);
-      console.log(`Image loaded and scaled to: ${containerWidth / imageNaturalWidth}`);
+      console.log(
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+      );
     }
   };
 
   // Move to next item in sequence
   const moveToNextItem = () => {
-    console.log('Moving to next item from', currentSequenceIndex, 'in slide', currentSlideIndex);
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    console.log(
+      "Moving to next item from",
+      currentSequenceIndex,
+      "in slide",
+      currentSlideIndex,
+    );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
@@ -423,12 +501,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // First item in next slide
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
-      console.log('Moving to next slide:', currentSlideIndex + 1);
+      console.log("Moving to next slide:", currentSlideIndex + 1);
       setImageLoaded(false);
     } else {
       // End of slideshow
       setHighlightHotspot(false);
       console.log("Simulation complete");
+      handleEndCall();
     }
   };
 
@@ -443,8 +522,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     )
       return;
 
+    // Clear the timeout when user interacts with a hotspot
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     const hotspotType = currentItem.hotspotType || "button";
-    console.log('Hotspot clicked:', hotspotType);
+    console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
       case "button":
@@ -481,18 +566,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // Function to scale coordinates based on image size
+  // Updated to use both width and height scales
   const scaleCoordinates = (
     coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
-    // Scale coordinates based on image scale
     return {
-      left: coords.x * imageScale,
-      top: coords.y * imageScale,
-      width: coords.width * imageScale,
-      height: coords.height * imageScale,
+      left: coords.x * imageScale.width,
+      top: coords.y * imageScale.height,
+      width: coords.width * imageScale.width,
+      height: coords.height * imageScale.height,
     };
   };
 
@@ -518,6 +602,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const togglePause = () => {
     setIsPaused(!isPaused);
 
+    // When pausing, clear any active timeout
+    if (!isPaused && hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
     if (speaking && !isPaused) {
       speechSynthRef.current.pause();
     } else if (speaking && isPaused) {
@@ -539,7 +629,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   const handleStart = async () => {
     if (!userId) {
-      console.error('Error: User ID is required to start simulation');
+      console.error("Error: User ID is required to start simulation");
       return;
     }
 
@@ -550,16 +640,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       setCallStatus("Loading visual-audio simulation...");
 
       // Make API call to start visual-audio simulation
-      const response = await axios.post<VisualAudioResponse>('/api/simulations/start-visual-audio-preview', {
-        user_id: userId,
-        sim_id: simulationId,
-        assignment_id: '679fc6ffcbee8fef61c99eb1'
-      });
+      const response = await axios.post<VisualAudioResponse>(
+        "/api/simulations/start-visual-audio-preview",
+        {
+          user_id: userId,
+          sim_id: simulationId,
+          assignment_id: "679fc6ffcbee8fef61c99eb1",
+        },
+      );
 
-      console.log('Start visual-audio response:', response.data);
+      console.log("Start visual-audio response:", response.data);
 
       if (response.data.simulation) {
-        console.log('Setting simulation data');
+        console.log("Setting simulation data");
         setSimulationData(response.data.simulation);
         setSimulationProgressId(response.data.id);
         setCallStatus("Connected");
@@ -588,9 +681,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log(`Set ${newSlides.size} slides`);
       }
     } catch (error) {
-      console.error('Error starting visual-audio simulation:', error);
+      console.error("Error starting visual-audio simulation:", error);
       setIsCallActive(false);
-      setCallStatus('Error loading simulation. Please try again.');
+      setCallStatus("Error loading simulation. Please try again.");
     } finally {
       setIsStarting(false);
       setIsLoadingVisuals(false);
@@ -599,17 +692,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Handle end call implementation
   const handleEndCall = async () => {
-    console.log('🔴 END CALL BUTTON PRESSED');
+    console.log("🔴 END CALL BUTTON PRESSED");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
-      console.log('Already ending call, ignoring duplicate request');
+      console.log("Already ending call, ignoring duplicate request");
       return;
     }
 
     // Verify user ID exists
     if (!userId) {
-      console.error('Error: User ID is required to end simulation');
+      console.error("Error: User ID is required to end simulation");
       return;
     }
 
@@ -619,18 +712,25 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log('Timer stopped');
+      console.log("Timer stopped");
     }
 
     // Cancel any ongoing speech
     speechSynthRef.current.cancel();
+
+    // Stop recording if active
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+      setIsRecording(false);
+    }
 
     // Update UI state
     setIsCallActive(false);
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
-      console.error('⚠️ Missing simulationProgressId for end call API');
+      console.error("⚠️ Missing simulationProgressId for end call API");
       setIsEndingCall(false);
       return;
     }
@@ -638,28 +738,31 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     const apiParams = {
       user_id: userId,
       simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId
+      usersimulationprogress_id: simulationProgressId,
     };
 
-    console.log('API Parameters prepared:', apiParams);
+    console.log("API Parameters prepared:", apiParams);
 
     try {
-      console.log('Executing end-visual-audio API call');
-      const response = await axios.post<EndCallResponse>('/api/simulations/end-visual-audio', apiParams);
+      console.log("Executing end-visual-audio API call");
+      const response = await axios.post<EndCallResponse>(
+        "/api/simulations/end-visual-audio",
+        apiParams,
+      );
 
       if (response.data && response.data.scores) {
-        console.log('Setting scores and showing completion screen');
+        console.log("Setting scores and showing completion screen");
         setScores(response.data.scores);
         setDuration(response.data.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
-        console.warn('No scores received in response');
+        console.warn("No scores received in response");
       }
     } catch (error) {
-      console.error('Failed to end visual-audio simulation:', error);
+      console.error("Failed to end visual-audio simulation:", error);
       // Show an error message to the user if needed
     } finally {
-      console.log('End call flow completed');
+      console.log("End call flow completed");
       setIsEndingCall(false);
     }
   };
@@ -676,7 +779,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log('View playback clicked');
+    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
@@ -693,50 +796,50 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   // Render the completion screen based on the image provided
   if (showCompletionScreen) {
     return (
-      <Box 
-        sx={{ 
-          height: '100vh', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          bgcolor: '#f5f7fa'
+      <Box
+        sx={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "#f5f7fa",
         }}
       >
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            width: '650px', 
-            borderRadius: '16px',
-            overflow: 'hidden'
+        <Paper
+          elevation={3}
+          sx={{
+            width: "650px",
+            borderRadius: "16px",
+            overflow: "hidden",
           }}
         >
           {/* Header */}
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               p: 3,
-              display: 'flex', 
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderBottom: '1px solid #eaedf0'
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              borderBottom: "1px solid #eaedf0",
             }}
           >
-            <Box 
-              sx={{ 
-                width: 60, 
-                height: 60, 
-                bgcolor: '#F0F3F5', 
-                borderRadius: '50%',
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                mb: 1
+            <Box
+              sx={{
+                width: 60,
+                height: 60,
+                bgcolor: "#F0F3F5",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 1,
               }}
             >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: 'transparent' }}>
-                <SmartToyIcon sx={{ color: '#A3AED0' }} />
+              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
+                <SmartToyIcon sx={{ color: "#A3AED0" }} />
               </Avatar>
             </Box>
-            <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
               Great work,
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
@@ -745,151 +848,154 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           </Box>
 
           {/* Simulation details */}
-          <Box 
-            sx={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              gap: 2, 
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              gap: 2,
               p: 2,
-              borderBottom: '1px solid #eaedf0'
+              borderBottom: "1px solid #eaedf0",
             }}
           >
-            <Chip 
-              label={simulationName} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={simulationName}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={level} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={level}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={`Sim Type: ${simType}`} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={`Sim Type: ${simType}`}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
-            <Chip 
-              label={`${attemptType} Attempt`} 
-              variant="outlined" 
-              sx={{ 
-                borderRadius: '8px', 
-                color: '#4A5568',
-                bgcolor: '#f7fafc',
-                border: 'none',
-                fontSize: '13px'
-              }} 
+            <Chip
+              label={`${attemptType} Attempt`}
+              variant="outlined"
+              sx={{
+                borderRadius: "8px",
+                color: "#4A5568",
+                bgcolor: "#f7fafc",
+                border: "none",
+                fontSize: "13px",
+              }}
             />
           </Box>
 
           {/* Score details */}
           <Box sx={{ px: 4, py: 3 }}>
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                mb: 3
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 3,
               }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 Score Details
               </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" sx={{ color: '#718096' }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="body2" sx={{ color: "#718096" }}>
                   Min passing score:
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#6366F1', fontWeight: 600 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#6366F1", fontWeight: 600 }}
+                >
                   {MIN_PASSING_SCORE}%
                 </Typography>
-                <Chip 
-                  label={isPassed ? "Passed" : "Failed"} 
+                <Chip
+                  label={isPassed ? "Passed" : "Failed"}
                   size="small"
-                  sx={{ 
-                    bgcolor: isPassed ? '#E6FFFA' : '#FFF5F5',
-                    color: isPassed ? '#319795' : '#E53E3E',
-                    fontSize: '12px',
-                    height: '22px'
-                  }} 
+                  sx={{
+                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
+                    color: isPassed ? "#319795" : "#E53E3E",
+                    fontSize: "12px",
+                    height: "22px",
+                  }}
                 />
               </Box>
             </Box>
 
             {/* Metrics */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {/* Sim Score */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <SignalIcon sx={{ color: '#3182CE' }} />
+                  <SignalIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores['Sim Accuracy'])}%` : '86%'}
+                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
                 </Typography>
               </Box>
 
               {/* Completion Time */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <AccessTimeIcon sx={{ color: '#3182CE' }} />
+                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Completion Time
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -898,117 +1004,126 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               </Box>
 
               {/* Confidence */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <SatisfiedIcon sx={{ color: '#3182CE' }} />
+                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Confidence'] >= 80 ? 'High' : 
-                   scores && scores['Confidence'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Confidence"] >= 80
+                    ? "High"
+                    : scores && scores["Confidence"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
               {/* Concentration */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <PsychologyIcon sx={{ color: '#3182CE' }} />
+                  <PsychologyIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Concentration'] >= 80 ? 'High' : 
-                   scores && scores['Concentration'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Concentration"] >= 80
+                    ? "High"
+                    : scores && scores["Concentration"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
               {/* Energy */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  minWidth: '100px'
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  minWidth: "100px",
                 }}
               >
-                <Box 
-                  sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    bgcolor: '#EBF4FF', 
-                    borderRadius: '50%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    mb: 1
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    bgcolor: "#EBF4FF",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
                   }}
                 >
-                  <EnergyIcon sx={{ color: '#3182CE' }} />
+                  <EnergyIcon sx={{ color: "#3182CE" }} />
                 </Box>
-                <Typography variant="body2" sx={{ color: '#718096', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores['Energy'] >= 80 ? 'High' : 
-                   scores && scores['Energy'] >= 60 ? 'Medium' : 'Low'}
+                  {scores && scores["Energy"] >= 80
+                    ? "High"
+                    : scores && scores["Energy"] >= 60
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
 
             {/* Buttons */}
-            <Box sx={{ display: 'flex', gap: 2, mt: 4 }}>
+            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
               <Button
                 fullWidth
                 variant="outlined"
                 onClick={handleRestartSim}
                 sx={{
-                  borderColor: '#E2E8F0',
-                  color: '#4A5568',
-                  '&:hover': {
-                    borderColor: '#CBD5E0',
-                    bgcolor: '#F7FAFC'
+                  borderColor: "#E2E8F0",
+                  color: "#4A5568",
+                  "&:hover": {
+                    borderColor: "#CBD5E0",
+                    bgcolor: "#F7FAFC",
                   },
                   py: 1.5,
-                  borderRadius: '8px'
+                  borderRadius: "8px",
                 }}
               >
                 Restart Sim
@@ -1018,12 +1133,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                 variant="contained"
                 onClick={handleViewPlayback}
                 sx={{
-                  bgcolor: '#4299E1',
-                  '&:hover': {
-                    bgcolor: '#3182CE'
+                  bgcolor: "#4299E1",
+                  "&:hover": {
+                    bgcolor: "#3182CE",
                   },
                   py: 1.5,
-                  borderRadius: '8px'
+                  borderRadius: "8px",
                 }}
               >
                 View Playback
@@ -1036,7 +1151,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: '100vh', bgcolor: 'white', py: 0, px: 0 }}>
+    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isCallActive}
@@ -1085,62 +1200,107 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       </Modal>
 
       {/* Header */}
-      <Box sx={{ maxWidth: '900px', mx: 'auto', borderRadius: '16px' }}>
+      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
         <Stack
           direction="row"
           sx={{
             p: 2,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: '#F9FAFB',
-            borderRadius: '16px',
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "#F9FAFB",
+            borderRadius: "16px",
             gap: "20px",
-            justifyContent: 'space-between'
+            justifyContent: "space-between",
           }}
         >
-          <Typography variant="body2" color="text.main" sx={{ borderRadius: '8px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{ borderRadius: "8px", padding: "4px 8px" }}
+          >
             {simulationName}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {level}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             Sim Type: {simType}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {attemptType} Attempt
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px', ml: 'auto', color: "#0037ff" }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+              ml: "auto",
+              color: "#0037ff",
+            }}
+          >
             {formatTime(elapsedTime)}
           </Typography>
         </Stack>
       </Box>
 
       {!isCallActive ? (
-        <Box sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '400px',
-          width: "50%",
-          mx: 'auto',
-          my: 10,
-          border: "1px solid #DEE2FD",
-          borderRadius: 4
-        }}>
-          <Box sx={{
-            bgcolor: '#f5f7ff',
-            borderRadius: '50%',
-            p: 2,
-            mb: 2,
-          }}>
-            <VisibilityIcon sx={{ fontSize: 48, color: '#DEE2FD' }} />
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "400px",
+            width: "50%",
+            mx: "auto",
+            my: 10,
+            border: "1px solid #DEE2FD",
+            borderRadius: 4,
+          }}
+        >
+          <Box
+            sx={{
+              bgcolor: "#f5f7ff",
+              borderRadius: "50%",
+              p: 2,
+              mb: 2,
+            }}
+          >
+            <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
           </Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, color: '#1a1a1a', mb: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+          >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: '#666', mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 4 }}>
             Press start to attempt the Visual-Audio Simulation
           </Typography>
           <Button
@@ -1149,41 +1309,56 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             onClick={handleStart}
             disabled={isStarting || !userId}
             sx={{
-              bgcolor: '#0037ff',
-              color: 'white',
+              bgcolor: "#0037ff",
+              color: "white",
               px: 6,
               py: 1.5,
               borderRadius: 2,
-              textTransform: 'none',
-              fontSize: '16px',
-              '&:hover': {
-                bgcolor: '#002ed4',
-              }
+              textTransform: "none",
+              fontSize: "16px",
+              "&:hover": {
+                bgcolor: "#002ed4",
+              },
             }}
           >
-            {isStarting ? 'Starting...' : 'Start Simulation'}
+            {isStarting ? "Starting..." : "Start Simulation"}
           </Button>
           <Button
             variant="text"
             onClick={onBackToList}
             sx={{
               mt: 2,
-              color: '#666',
-              textTransform: 'none',
+              color: "#666",
+              textTransform: "none",
               border: "1px solid #DEE2FD",
               px: 8,
               py: 1.5,
               borderRadius: 2,
-              fontSize: '16px',
+              fontSize: "16px",
             }}
           >
             Back to Sim List
           </Button>
         </Box>
       ) : (
-        <Box sx={{ height: "100vh", bgcolor: "background.default", display: "flex", flexDirection: "column" }}>
+        <Box
+          sx={{
+            height: "100vh",
+            bgcolor: "background.default",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
           {/* Main content */}
-          <Box sx={{ flex: 1, display: "flex", maxWidth: '1200px', mx: 'auto', mt: 2 }}>
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              maxWidth: "1200px",
+              mx: "auto",
+              mt: 2,
+            }}
+          >
             {/* Left side - Visual interface */}
             <Box sx={{ flex: 1, p: 2 }} ref={imageContainerRef}>
               <Box
@@ -1200,16 +1375,24 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                 }}
               >
                 {isLoadingVisuals ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
+                  <Box sx={{ textAlign: "center", p: 4 }}>
                     <CircularProgress size={40} sx={{ mb: 2 }} />
                     <Typography>Loading simulation visuals...</Typography>
                   </Box>
                 ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
-                  <Box sx={{ textAlign: 'center', p: 4 }}>
-                    <Typography color="text.secondary">No visual content available</Typography>
+                  <Box sx={{ textAlign: "center", p: 4 }}>
+                    <Typography color="text.secondary">
+                      No visual content available
+                    </Typography>
                   </Box>
                 ) : (
-                  <Box sx={{ position: "relative", maxWidth: "100%", maxHeight: "100%" }}>
+                  <Box
+                    sx={{
+                      position: "relative",
+                      maxWidth: "100%",
+                      maxHeight: "100%",
+                    }}
+                  >
                     <img
                       ref={imageRef}
                       src={slides.get(currentSlide.imageId)}
@@ -1249,15 +1432,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 sx={{
                                   height: "100%",
                                   backgroundColor:
-                                    currentItem.settings?.buttonColor || "#444CE7",
-                                  color: currentItem.settings?.textColor || "#FFFFFF",
+                                    currentItem.settings?.buttonColor ||
+                                    "#444CE7",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
                                     backgroundColor:
-                                      currentItem.settings?.buttonColor || "#444CE7",
+                                      currentItem.settings?.buttonColor ||
+                                      "#444CE7",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
-                                    ? "2px solid white"
+                                    ? `2px solid ${currentItem.settings?.highlightColor || "white"}`
                                     : "none",
                                 }}
                               >
@@ -1288,7 +1475,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
-                                      ? "2px solid #444CE7"
+                                      ? `2px solid ${currentItem.settings?.highlightColor || "#444CE7"}`
                                       : "1px solid #ddd",
                                     boxShadow: highlightHotspot ? 2 : 0,
                                   }}
@@ -1307,7 +1494,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     <MenuItem
                                       key={idx}
                                       value={option}
-                                      onClick={() => handleDropdownSelect(option)}
+                                      onClick={() =>
+                                        handleDropdownSelect(option)
+                                      }
                                     >
                                       {option}
                                     </MenuItem>
@@ -1342,7 +1531,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     }px`,
                                   },
                                   color: highlightHotspot
-                                    ? "#444CE7"
+                                    ? currentItem.settings?.highlightColor ||
+                                      "#444CE7"
                                     : "action.active",
                                   "&.Mui-checked": {
                                     color: "#444CE7",
@@ -1374,7 +1564,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               <TextField
                                 fullWidth
                                 value={textInputValue}
-                                onChange={(e) => setTextInputValue(e.target.value)}
+                                onChange={(e) =>
+                                  setTextInputValue(e.target.value)
+                                }
                                 onKeyDown={handleTextInputSubmit}
                                 placeholder={
                                   currentItem.settings?.placeholder ||
@@ -1390,7 +1582,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     bgcolor: "white",
                                     "& fieldset": {
                                       borderColor: highlightHotspot
-                                        ? "#444CE7"
+                                        ? currentItem.settings
+                                            ?.highlightColor || "#444CE7"
                                         : "rgba(0, 0, 0, 0.23)",
                                       borderWidth: highlightHotspot ? 2 : 1,
                                     },
@@ -1411,7 +1604,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                           {currentItem.hotspotType === "highlight" && (
                             <Box
                               onClick={() => {
-                                console.log('Highlight hotspot clicked');
+                                console.log("Highlight hotspot clicked");
                                 handleHotspotClick();
                               }}
                               sx={{
@@ -1449,6 +1642,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                                 height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                                 zIndex: 50,
+                                border: highlightHotspot
+                                  ? `2px solid ${currentItem.settings?.highlightColor || "#1e293b"}`
+                                  : "none",
+                                boxShadow: highlightHotspot ? 3 : 0,
+                                transition: "all 0.3s ease",
                               }}
                             >
                               <Button
@@ -1462,7 +1660,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     backgroundColor: "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
-                                  border: highlightHotspot ? "2px solid white" : "none",
                                 }}
                               >
                                 {currentItem.settings?.tipText ||
@@ -1483,10 +1680,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               sx={{
                 width: 320,
                 borderLeft: 1,
-                borderColor: 'divider',
-                display: 'flex',
-                flexDirection: 'column',
-                bgcolor: 'background.paper',
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                bgcolor: "background.paper",
               }}
             >
               {/* Status + top controls */}
@@ -1494,11 +1691,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                 sx={{
                   p: 2,
                   borderBottom: 1,
-                  borderColor: 'divider',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  height: '60px',
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
                 <Typography variant="subtitle2" color="text.secondary">
@@ -1510,6 +1706,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     sx={{ bgcolor: "grey.100", mr: 1 }}
                   >
                     {isPaused ? <PlayArrow /> : <Pause />}
+                  </IconButton>
+
+                  <IconButton
+                    onClick={handleEndCall}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      "&:hover": { bgcolor: "error.dark" },
+                    }}
+                  >
+                    <CallEnd />
                   </IconButton>
                 </Box>
               </Box>
@@ -1528,6 +1735,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     sx={{
                       display: "flex",
                       flexDirection: "column",
+                      // Removed height: '100%' so everything stays right below the message
                     }}
                   >
                     <Paper
@@ -1535,13 +1743,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                       sx={{
                         p: 2,
                         bgcolor:
-                          currentItem.role === "customer" ? "blue.50" : "green.50",
+                          currentItem.role === "customer"
+                            ? "blue.50"
+                            : "green.50",
                         borderLeft: 4,
                         borderColor:
                           currentItem.role === "customer"
                             ? "primary.main"
                             : "success.main",
                         borderRadius: 1,
+                        // Removed mb: "auto" so it doesn't push controls to the bottom
                         mb: 2,
                       }}
                     >
@@ -1580,6 +1791,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     </Paper>
 
                     {/* Interaction controls / Next Button */}
+                    {/* Placed directly below message bubble (and separated by small margin). */}
                     <Box>
                       {/* Trainee recording indicator */}
                       {(currentItem.role === "Trainee" ||
@@ -1632,7 +1844,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               <Typography variant="body2" fontWeight="medium">
                                 Listening...
                               </Typography>
-                              <Typography variant="caption" color="text.secondary">
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
                                 {formatTime(recordingTime)}
                               </Typography>
                             </Box>
@@ -1737,16 +1952,23 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: '10px auto',
+              margin: "10px auto",
               p: 2,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
             }}
           >
-            <Typography variant="subtitle1" sx={{ color: "black", flexGrow: 1 }}>
-              <span style={{ fontWeight: "normal" }}>Visual-Audio Simulation - </span>
-              <span style={{ fontWeight: "bold" }}>{formatTime(elapsedTime)}</span>
+            <Typography
+              variant="subtitle1"
+              sx={{ color: "black", flexGrow: 1 }}
+            >
+              <span style={{ fontWeight: "normal" }}>
+                Visual-Audio Simulation -{" "}
+              </span>
+              <span style={{ fontWeight: "bold" }}>
+                {formatTime(elapsedTime)}
+              </span>
             </Typography>
 
             <Button

@@ -1,24 +1,29 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
+  Card,
   Button,
   Stack,
-  Card,
   Avatar,
   IconButton,
   TextField,
+  Modal,
+  Fade,
+  CircularProgress,
 } from "@mui/material";
 import {
   HeadsetMic,
   PlayArrow,
+  Pause,
   CallEnd,
   Send as SendIcon,
   SmartToy as SmartToyIcon,
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
+import axios from "axios";
 import { RetellWebClient } from "retell-client-js-sdk";
+import SimulationEndAnimation from "./SimulationEndAnimation";
 import VisualAudioPreview from "./VisualAudioPreview";
 import VisualChatPreview from "./VisualChatPreview";
 import VisualPreview from "./VisualPreview";
@@ -107,8 +112,12 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   const [isStarting, setIsStarting] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+
+  // New state for simulation ending animation
+  const [showEndAnimation, setShowEndAnimation] = useState(false);
 
   useEffect(() => {
     if (simulationType === "audio") {
@@ -118,12 +127,12 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
       webClient.on("conversationEnded", ({ code, reason }) => {
         console.log("Conversation ended:", code, reason);
-        setIsCallActive(false);
+        handleEndSimulation();
       });
 
       webClient.on("error", (error) => {
         console.error("WebRTC error:", error);
-        setIsCallActive(false);
+        handleEndSimulation();
       });
 
       webClient.on("update", (update) => {
@@ -242,6 +251,28 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     };
   }, [slides]);
 
+  // Handle simulation end - unified method for all simulation types
+  const handleEndSimulation = () => {
+    // Show ending animation
+    setShowEndAnimation(true);
+
+    // If audio or visual-audio, stop the client
+    if (simulationType === "audio" || simulationType === "visual-audio") {
+      webClient.stopCall();
+    }
+  };
+
+  // Handle the completion of the ending animation
+  const handleEndAnimationComplete = () => {
+    // Reset all states to initial
+    setShowEndAnimation(false);
+    setIsCallActive(false);
+    setMessages([]);
+    // Clear any data that should be reset
+    setSimulationData(null);
+    setSlides(new Map());
+  };
+
   const handleStart = async () => {
     setIsStarting(true);
     try {
@@ -356,34 +387,120 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     }
   };
 
+  // Toggle pause/play
+  const togglePause = () => {
+    setIsPaused(!isPaused);
+  };
+
+  // Original end call function now just calls our unified handler
   const handleEndCall = () => {
-    if (simulationType === "audio" || simulationType === "visual-audio") {
-      webClient.stopCall();
-    }
-    setIsCallActive(false);
+    handleEndSimulation();
   };
 
   // If it's a visual-audio simulation and we have data, render the VisualAudioPreview
   if (simulationType === "visual-audio" && simulationData && slides.size > 0) {
     return (
-      <VisualAudioPreview simulationData={simulationData} slides={slides} />
+      <>
+        {showEndAnimation && (
+          <SimulationEndAnimation onComplete={handleEndAnimationComplete} />
+        )}
+        <VisualAudioPreview
+          simulationData={simulationData}
+          slides={slides}
+          onEndSimulation={handleEndSimulation}
+        />
+      </>
     );
   }
 
   // If it's a visual-chat simulation and we have data, render the VisualChatPreview
   if (simulationType === "visual-chat" && simulationData && slides.size > 0) {
     return (
-      <VisualChatPreview simulationData={simulationData} slides={slides} />
+      <>
+        {showEndAnimation && (
+          <SimulationEndAnimation onComplete={handleEndAnimationComplete} />
+        )}
+        <VisualChatPreview
+          simulationData={simulationData}
+          slides={slides}
+          onEndSimulation={handleEndSimulation}
+        />
+      </>
     );
   }
 
   // If it's a visual simulation and we have data, render the VisualPreview
   if (simulationType === "visual" && simulationData && slides.size > 0) {
-    return <VisualPreview simulationData={simulationData} slides={slides} />;
+    return (
+      <>
+        {showEndAnimation && (
+          <SimulationEndAnimation onComplete={handleEndAnimationComplete} />
+        )}
+        <VisualPreview
+          simulationData={simulationData}
+          slides={slides}
+          onEndSimulation={handleEndSimulation}
+        />
+      </>
+    );
   }
 
   return (
     <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+      {/* Ending Animation */}
+      {showEndAnimation && (
+        <SimulationEndAnimation onComplete={handleEndAnimationComplete} />
+      )}
+
+      {/* Pause Modal - Add for chat type */}
+      {simulationType === "chat" && (
+        <Modal
+          open={isPaused}
+          onClose={togglePause}
+          closeAfterTransition
+          slotProps={{
+            backdrop: {
+              timeout: 500,
+            },
+          }}
+          sx={{
+            backdropFilter: "blur(5px)",
+          }}
+        >
+          <Fade in={isPaused}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 400,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                boxShadow: 24,
+                p: 4,
+                textAlign: "center",
+              }}
+            >
+              <PlayArrow sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+              <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+                Simulation Paused
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Click anywhere or press the play button to continue
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={togglePause}
+                startIcon={<PlayArrow />}
+              >
+                Resume Simulation
+              </Button>
+            </Box>
+          </Fade>
+        </Modal>
+      )}
+
       <Card
         sx={{
           maxWidth: "900px",
@@ -493,7 +610,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                   // For chat type, adjust the height to leave space for the input area
                   height:
                     simulationType === "chat"
-                      ? "calc(100% - 70px)"
+                      ? "calc(100% - 120px)" // Increased to make room for control row
                       : "calc(100% - 80px)",
                   flex: simulationType === "chat" ? 1 : "initial",
                   overflowY: "auto",
@@ -519,6 +636,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                       {message.speaker === "customer" && (
                         <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
                       )}
+
                       <Box
                         sx={{
                           maxWidth: "70%",
@@ -558,45 +676,85 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                     borderColor: "divider",
                     bgcolor: "white",
                     display: "flex",
+                    flexDirection: "column",
                     gap: 2,
                     // Ensure the input area has a specific height so it doesn't collapse
-                    minHeight: "64px",
+                    minHeight: "84px",
                     // Add shadow to make the input area more visible
                     boxShadow: "0px -2px 4px rgba(0,0,0,0.03)",
                   }}
                 >
-                  <TextField
-                    fullWidth
-                    multiline
-                    maxRows={4}
-                    placeholder="Type your message..."
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    disabled={isLoading}
+                  {/* Controls Row - New addition */}
+                  <Box
                     sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: 2,
-                      },
-                    }}
-                  />
-                  <IconButton
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim()}
-                    sx={{
-                      bgcolor: "#444CE7",
-                      color: "white",
-                      "&:hover": {
-                        bgcolor: "#3538CD",
-                      },
-                      "&.Mui-disabled": {
-                        bgcolor: "#F5F6FF",
-                        color: "#444CE7",
-                      },
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
                     }}
                   >
-                    <SendIcon />
-                  </IconButton>
+                    <Typography variant="body2" color="text.secondary">
+                      {isCallActive
+                        ? isPaused
+                          ? "Paused"
+                          : "Connected"
+                        : "Offline"}
+                    </Typography>
+                    <Box>
+                      <IconButton
+                        onClick={togglePause}
+                        sx={{ bgcolor: "grey.100", mr: 1 }}
+                      >
+                        {isPaused ? <PlayArrow /> : <Pause />}
+                      </IconButton>
+
+                      <IconButton
+                        onClick={handleEndCall}
+                        sx={{
+                          bgcolor: "error.main",
+                          color: "white",
+                          "&:hover": { bgcolor: "error.dark" },
+                        }}
+                      >
+                        <CallEnd />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {/* Input Row - Existing with pause support */}
+                  <Box sx={{ display: "flex", gap: 2 }}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      maxRows={4}
+                      placeholder="Type your message..."
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      disabled={isLoading || isPaused}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                        },
+                      }}
+                    />
+                    <IconButton
+                      onClick={handleSendMessage}
+                      disabled={isLoading || isPaused || !inputMessage.trim()}
+                      sx={{
+                        bgcolor: "#444CE7",
+                        color: "white",
+                        "&:hover": {
+                          bgcolor: "#3538CD",
+                        },
+                        "&.Mui-disabled": {
+                          bgcolor: "#F5F6FF",
+                          color: "#444CE7",
+                        },
+                      }}
+                    >
+                      <SendIcon />
+                    </IconButton>
+                  </Box>
                 </Box>
               ) : (
                 <Box

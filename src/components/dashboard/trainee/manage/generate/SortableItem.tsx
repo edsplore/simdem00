@@ -31,8 +31,8 @@ const ImagePreview = styled(Card)(({ theme }) => ({
 }));
 
 const ThumbnailContainer = styled(Box)(({ theme }) => ({
-  width: "280px",
-  height: "200px",
+  width: "230px",
+  height: "170px",
   overflow: "hidden",
   borderRadius: theme.spacing(1),
   position: "relative",

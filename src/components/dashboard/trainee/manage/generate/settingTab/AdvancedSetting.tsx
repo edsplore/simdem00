@@ -248,12 +248,24 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   // Check if simulation has script
   const hasScript = simType !== "visual";
 
+  // Get the current state of all level enablement switches
+  // Watch for changes to simulation level enablement
+  const simulationLevelsSettings = watch("settings.simulationLevels") || {};
+  const level1Enabled = simulationLevelsSettings.lvl1 !== false; // Default to true if undefined
+  const level2Enabled = simulationLevelsSettings.lvl2 === true; // Default to false if undefined
+  const level3Enabled = simulationLevelsSettings.lvl3 === true; // Default to false if undefined
+
   // Log form states for debugging
   useEffect(() => {
     const formSettings = watch("settings");
     console.log("Current form settings:", formSettings);
     console.log("Enable Practice settings:", formSettings.enablePractice);
-  }, [watch]);
+    console.log("Level enablement status:", {
+      level1: level1Enabled,
+      level2: level2Enabled,
+      level3: level3Enabled,
+    });
+  }, [watch, level1Enabled, level2Enabled, level3Enabled]);
 
   // Watch for form changes and update settings
   useEffect(() => {
@@ -452,26 +464,38 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                           )}
                         </Stack>
                       </TableCell>
-                      {["lvl1", "lvl2", "lvl3"].map((level) => (
-                        <TableCell key={level} align="center">
-                          <Controller
-                            name={`settings.${key}.${level}`}
-                            control={control}
-                            render={({ field }) => (
-                              <StyledSwitch
-                                checked={field.value || false}
-                                onChange={(e) => {
-                                  console.log(
-                                    `Switching ${key}.${level} to:`,
-                                    e.target.checked,
-                                  );
-                                  field.onChange(e.target.checked);
-                                }}
-                              />
-                            )}
-                          />
-                        </TableCell>
-                      ))}
+                      {["lvl1", "lvl2", "lvl3"].map((level) => {
+                        // Determine if this switch should be disabled based on level enablement
+                        // If the level is disabled and this is not the simulationLevels setting itself,
+                        // then disable the switch
+                        const isLevelDisabled =
+                          key !== "simulationLevels" &&
+                          ((level === "lvl1" && !level1Enabled) ||
+                            (level === "lvl2" && !level2Enabled) ||
+                            (level === "lvl3" && !level3Enabled));
+
+                        return (
+                          <TableCell key={level} align="center">
+                            <Controller
+                              name={`settings.${key}.${level}`}
+                              control={control}
+                              render={({ field }) => (
+                                <StyledSwitch
+                                  checked={field.value || false}
+                                  onChange={(e) => {
+                                    console.log(
+                                      `Switching ${key}.${level} to:`,
+                                      e.target.checked,
+                                    );
+                                    field.onChange(e.target.checked);
+                                  }}
+                                  disabled={isLevelDisabled}
+                                />
+                              )}
+                            />
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   );
                 })}

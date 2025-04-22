@@ -30,6 +30,7 @@ import {
   SupportAgent as SupportAgentIcon,
   Visibility as VisibilityIcon,
   Chat as ChatIcon,
+  Timer as TimerIcon,
 } from "@mui/icons-material";
 
 interface SimulationData {
@@ -97,11 +98,13 @@ interface ChatMessage {
 interface VisualChatPreviewProps {
   simulationData: SimulationData;
   slides: Map<string, string>;
+  onEndSimulation: () => void; // New prop for ending simulation
 }
 
 const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
   simulationData,
   slides,
+  onEndSimulation,
 }) => {
   // Component state for navigation and progress
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -112,7 +115,8 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
 
   // State for image handling
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
+  // Update to track both width and height scales
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
 
   // State for interactive elements
@@ -128,6 +132,10 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
   const [userInput, setUserInput] = useState("");
   const [waitingForUserInput, setWaitingForUserInput] = useState(false);
   const [expectedTraineeResponse, setExpectedTraineeResponse] = useState("");
+
+  // State for timeout
+  const [timeoutActive, setTimeoutActive] = useState(false);
+  const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Refs
   const imageContainerRef = useRef<HTMLDivElement>(null);
@@ -156,8 +164,25 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     };
   }, [isPaused]);
 
+  // Clean up timeout when component unmounts or when sequence changes
+  useEffect(() => {
+    return () => {
+      if (hotspotTimeoutRef.current) {
+        clearTimeout(hotspotTimeoutRef.current);
+        hotspotTimeoutRef.current = null;
+      }
+    };
+  }, [currentSequenceIndex, currentSlideIndex]);
+
   // Reset states when moving to a new item
   useEffect(() => {
+    // Clear any existing timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     setDropdownOpen(false);
     setDropdownValue("");
     setCheckboxChecked(false);
@@ -214,25 +239,28 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
-        // Auto-advance if timeout is set - BUT NEVER FOR BUTTONS OR DROPDOWNS
+        // Setup timeout based on hotspot settings - applicable to all hotspot types now
         const timeout = currentItem.settings?.timeoutDuration;
-        const hotspotType = currentItem.hotspotType || "button";
 
-        if (
-          timeout &&
-          timeout > 0 &&
-          hotspotType !== "button" &&
-          hotspotType !== "dropdown" &&
-          hotspotType !== "checkbox"
-        ) {
-          setTimeout(() => {
+        if (timeout && timeout > 0) {
+          // Clear any existing timeout
+          if (hotspotTimeoutRef.current) {
+            clearTimeout(hotspotTimeoutRef.current);
+          }
+
+          setTimeoutActive(true);
+
+          // Set a new timeout that will advance if no interaction occurs
+          hotspotTimeoutRef.current = setTimeout(() => {
+            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
+            setTimeoutActive(false);
             setIsProcessing(false);
           }, timeout * 1000);
-        } else {
-          setIsProcessing(false);
         }
+
+        setIsProcessing(false);
       } else {
         setIsProcessing(false);
       }
@@ -296,21 +324,54 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Calculate image scale when loaded
+  // Updated handleImageLoad to calculate both width and height scales
   const handleImageLoad = () => {
     if (imageRef.current && imageContainerRef.current) {
-      const containerWidth = imageContainerRef.current.clientWidth;
       const imageNaturalWidth = imageRef.current.naturalWidth;
-      setImageScale(containerWidth / imageNaturalWidth);
+      const imageNaturalHeight = imageRef.current.naturalHeight;
+
+      // Get the actual rendered dimensions of the image
+      const rect = imageRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      // Calculate the scale based on the actual rendered dimensions
+      const widthScale = renderedWidth / imageNaturalWidth;
+      const heightScale = renderedHeight / imageNaturalHeight;
+
+      // Store both scales for proper coordinate transformation
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
       setImageLoaded(true);
       console.log(
-        `Image loaded and scaled to: ${containerWidth / imageNaturalWidth}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
 
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    if (
+      currentItem?.type === "hotspot" &&
+      currentItem.settings?.highlightColor
+    ) {
+      return currentItem.settings.highlightColor;
+    }
+    return "rgba(68, 76, 231, 0.7)"; // Default color
+  };
+
   // Move to next item in sequence
   const moveToNextItem = () => {
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
@@ -320,8 +381,10 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
       setCurrentSequenceIndex(0);
       setImageLoaded(false);
     } else {
-      // End of slideshow
+      // End of slideshow - simulation complete
       console.log("Simulation complete");
+      // Call the parent's end simulation handler
+      onEndSimulation();
     }
   };
 
@@ -334,6 +397,13 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
       isPaused
     )
       return;
+
+    // Clear the timeout when user interacts with a hotspot
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
 
@@ -372,17 +442,17 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     }
   };
 
-  // Function to scale coordinates based on image size
+  // Updated scaleCoordinates to use both width and height scales
   const scaleCoordinates = (
     coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
     return {
-      left: coords.x * imageScale,
-      top: coords.y * imageScale,
-      width: coords.width * imageScale,
-      height: coords.height * imageScale,
+      left: coords.x * imageScale.width,
+      top: coords.y * imageScale.height,
+      width: coords.width * imageScale.width,
+      height: coords.height * imageScale.height,
     };
   };
 
@@ -415,12 +485,39 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
   // Toggle pause/play
   const togglePause = () => {
     setIsPaused(!isPaused);
+
+    // When pausing, clear any active timeout
+    if (!isPaused && hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    // When resuming, restart timeout if needed
+    if (isPaused && currentItem?.type === "hotspot" && timeoutActive) {
+      const timeout = currentItem.settings?.timeoutDuration;
+      if (timeout && timeout > 0) {
+        hotspotTimeoutRef.current = setTimeout(() => {
+          moveToNextItem();
+          setHighlightHotspot(false);
+          setTimeoutActive(false);
+        }, timeout * 1000);
+      }
+    }
   };
 
-  // End call
+  // End call - updated to use the onEndSimulation prop
   const endCall = () => {
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     setCallStatus("Chat Ended");
-    setIsPaused(true);
+
+    // Call the parent's end simulation handler
+    onEndSimulation();
   };
 
   // Show loading state if no data
@@ -533,6 +630,12 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
           >
             {formatTime(elapsedTime)}
           </Typography>
+          <IconButton onClick={togglePause} sx={{ ml: 1 }}>
+            {isPaused ? <PlayArrow /> : <Pause />}
+          </IconButton>
+          <IconButton onClick={endCall} color="error">
+            <CallEnd />
+          </IconButton>
         </Stack>
       </Box>
 
@@ -559,11 +662,34 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                   style={{
                     width: "100%",
                     height: "auto",
+                    objectFit: "contain",
                     display: "block",
                   }}
                   onLoad={handleImageLoad}
                 />
               )}
+
+              {/* Timeout indicator - show timer when timeout is active */}
+              {timeoutActive &&
+                currentItem?.type === "hotspot" &&
+                currentItem.settings?.timeoutDuration &&
+                !isPaused && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      bgcolor: "rgba(0, 0, 0, 0.6)",
+                      color: "white",
+                      p: 1,
+                      borderRadius: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      zIndex: 100,
+                    }}
+                  ></Box>
+                )}
 
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
@@ -598,7 +724,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                             },
                             boxShadow: highlightHotspot ? 4 : 0,
                             border: highlightHotspot
-                              ? "2px solid white"
+                              ? `2px solid ${getHighlightColor()}`
                               : "none",
                           }}
                         >
@@ -629,7 +755,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                               height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                               bgcolor: "white",
                               border: highlightHotspot
-                                ? "2px solid #444CE7"
+                                ? `2px solid ${getHighlightColor()}`
                                 : "1px solid #ddd",
                               boxShadow: highlightHotspot ? 2 : 0,
                             }}
@@ -682,7 +808,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                               }px`,
                             },
                             color: highlightHotspot
-                              ? "#444CE7"
+                              ? getHighlightColor()
                               : "action.active",
                             "&.Mui-checked": {
                               color: "#444CE7",
@@ -729,15 +855,15 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                               bgcolor: "white",
                               "& fieldset": {
                                 borderColor: highlightHotspot
-                                  ? "#444CE7"
+                                  ? getHighlightColor()
                                   : "rgba(0, 0, 0, 0.23)",
                                 borderWidth: highlightHotspot ? 2 : 1,
                               },
                               "&:hover fieldset": {
-                                borderColor: "#444CE7",
+                                borderColor: getHighlightColor(),
                               },
                               "&.Mui-focused fieldset": {
-                                borderColor: "#444CE7",
+                                borderColor: getHighlightColor(),
                               },
                             },
                           }}
@@ -758,11 +884,9 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                           height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                           border: "4px solid",
-                          borderColor:
-                            currentItem.settings?.highlightColor ||
-                            "rgba(68, 76, 231, 0.7)",
+                          borderColor: getHighlightColor(),
                           boxShadow: highlightHotspot
-                            ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                            ? `0 0 12px 3px ${getHighlightColor()}`
                             : "none",
                           borderRadius: "4px",
                           backgroundColor: "transparent",
@@ -803,7 +927,9 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                         backgroundColor: "#0f172a",
                       },
                       boxShadow: highlightHotspot ? 4 : 0,
-                      border: highlightHotspot ? "2px solid white" : "none",
+                      border: highlightHotspot
+                        ? `2px solid ${getHighlightColor()}`
+                        : "none",
                     }}
                   >
                     {currentItem.settings?.tipText ||
@@ -844,25 +970,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
             <Typography variant="subtitle2" color="text.secondary">
               {callStatus}
             </Typography>
-            <Box>
-              <IconButton
-                onClick={togglePause}
-                sx={{ bgcolor: "grey.100", mr: 1 }}
-              >
-                {isPaused ? <PlayArrow /> : <Pause />}
-              </IconButton>
-
-              <IconButton
-                onClick={endCall}
-                sx={{
-                  bgcolor: "error.main",
-                  color: "white",
-                  "&:hover": { bgcolor: "error.dark" },
-                }}
-              >
-                <CallEnd />
-              </IconButton>
-            </Box>
           </Box>
 
           {/* Chat messages area */}

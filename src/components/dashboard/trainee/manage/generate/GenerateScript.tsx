@@ -687,8 +687,8 @@ const GenerateScriptContent = () => {
       else if (isVisualAudioOrChat) {
         return {
           script: true,
-          visuals: true, // Always enabled for visual types
-          settings: true, // Always enable settings tab
+          visuals: scriptData.length > 0, // Only enable if script is not empty
+          settings: scriptData.length > 0, // Only enable if script is not empty
           preview: isPublished,
         };
       }
@@ -710,6 +710,7 @@ const GenerateScriptContent = () => {
     isVisualAudioOrChat,
     isVisualType,
     isLoading,
+    scriptData.length, // Added scriptData.length as a dependency
   ]);
 
   // Initialize the tab value for visual type to skip script tab
@@ -1172,8 +1173,8 @@ const GenerateScriptContent = () => {
       <Box
         sx={{
           bgcolor: "#FFFFFF",
-          px: 4,
-          py: 1.5,
+          px: 2,
+          py: 1,
           borderBottom: "1px solid",
           borderColor: "divider",
           display: "flex",
@@ -1230,7 +1231,7 @@ const GenerateScriptContent = () => {
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        sx={{ px: 4, py: 2 }}
+        sx={{ px: 2, py: 1 }}
       >
         <Stack direction="row" spacing={2} alignItems="center">
           <StyledTabs value={tabValue} onChange={handleTabChange}>
@@ -1283,7 +1284,7 @@ const GenerateScriptContent = () => {
         )}
       </Stack>
 
-      <Box sx={{ px: 4 }}>
+      <Box sx={{ px: 2 }}>
         <Card
           variant="outlined"
           sx={{
@@ -1295,7 +1296,7 @@ const GenerateScriptContent = () => {
             zIndex: 0,
           }}
         >
-          <CardContent sx={{ p: 4 }}>{renderTabContent()}</CardContent>
+          <CardContent sx={{ p: 2 }}>{renderTabContent()}</CardContent>
         </Card>
       </Box>
     </Box>

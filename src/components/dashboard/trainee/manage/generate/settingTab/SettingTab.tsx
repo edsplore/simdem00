@@ -865,12 +865,12 @@ const SettingTab: React.FC<SettingTabProps> = ({
           <Card
             elevation={2}
             sx={{
-              width: 350,
+              width: 320,
               height: 660,
               bgcolor: "#FFFFFF",
               borderRadius: 2,
               py: 1,
-              px: 4,
+              px: 2,
               overflowY: "auto",
               "&::-webkit-scrollbar": {
                 display: "none",
@@ -1036,7 +1036,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
             ref={mainContentRef}
             sx={{
               flex: 1,
-              px: 10,
+              px: 4,
               height: 660,
               overflowY: "auto",
               "&::-webkit-scrollbar": {

@@ -21,6 +21,8 @@ import {
   ArrowForward,
   CheckCircle,
   Visibility as VisibilityIcon,
+  Timer as TimerIcon,
+  CallEnd,
 } from "@mui/icons-material";
 
 interface SimulationData {
@@ -81,11 +83,13 @@ interface SimulationData {
 interface VisualPreviewProps {
   simulationData: SimulationData;
   slides: Map<string, string>;
+  onEndSimulation: () => void; // New prop for ending simulation
 }
 
 const VisualPreview: React.FC<VisualPreviewProps> = ({
   simulationData,
   slides,
+  onEndSimulation,
 }) => {
   // Component state for navigation and progress
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -96,7 +100,8 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
 
   // State for image handling
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [imageScale, setImageScale] = useState(1);
+  // Updated to track both width and height scales
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
 
   // State for interactive elements
@@ -106,11 +111,13 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
   const [checkboxChecked, setCheckboxChecked] = useState(false);
   const [textInputValue, setTextInputValue] = useState("");
   const [showCoachingTip, setShowCoachingTip] = useState(false);
+  const [timeoutActive, setTimeoutActive] = useState(false);
 
   // Refs
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -135,6 +142,13 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
 
   // Reset states when moving to a new item
   useEffect(() => {
+    // Clear any existing timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     setDropdownOpen(false);
     setDropdownValue("");
     setCheckboxChecked(false);
@@ -162,25 +176,28 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
-        // Auto-advance if timeout is set - BUT NEVER FOR BUTTONS OR DROPDOWNS
+        // Setup timeout based on hotspot settings - applicable to all hotspot types now
         const timeout = currentItem.settings?.timeoutDuration;
-        const hotspotType = currentItem.hotspotType || "button";
 
-        if (
-          timeout &&
-          timeout > 0 &&
-          hotspotType !== "button" &&
-          hotspotType !== "dropdown" &&
-          hotspotType !== "checkbox"
-        ) {
-          setTimeout(() => {
+        if (timeout && timeout > 0) {
+          // Clear any existing timeout
+          if (hotspotTimeoutRef.current) {
+            clearTimeout(hotspotTimeoutRef.current);
+          }
+
+          setTimeoutActive(true);
+
+          // Set a new timeout that will advance if no interaction occurs
+          hotspotTimeoutRef.current = setTimeout(() => {
+            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
+            setTimeoutActive(false);
             setIsProcessing(false);
           }, timeout * 1000);
-        } else {
-          setIsProcessing(false);
         }
+
+        setIsProcessing(false);
       } else {
         setIsProcessing(false);
       }
@@ -196,6 +213,16 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     isProcessing,
   ]);
 
+  // Clean up hotspot timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (hotspotTimeoutRef.current) {
+        clearTimeout(hotspotTimeoutRef.current);
+        hotspotTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -205,21 +232,54 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Calculate image scale when loaded
+  // Updated handleImageLoad to calculate both width and height scales
   const handleImageLoad = () => {
     if (imageRef.current && imageContainerRef.current) {
-      const containerWidth = imageContainerRef.current.clientWidth;
       const imageNaturalWidth = imageRef.current.naturalWidth;
-      setImageScale(containerWidth / imageNaturalWidth);
+      const imageNaturalHeight = imageRef.current.naturalHeight;
+
+      // Get the actual rendered dimensions of the image
+      const rect = imageRef.current.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      // Calculate the scale based on the actual rendered dimensions
+      const widthScale = renderedWidth / imageNaturalWidth;
+      const heightScale = renderedHeight / imageNaturalHeight;
+
+      // Store both scales for proper coordinate transformation
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
       setImageLoaded(true);
       console.log(
-        `Image loaded and scaled to: ${containerWidth / imageNaturalWidth}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
 
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    if (
+      currentItem?.type === "hotspot" &&
+      currentItem.settings?.highlightColor
+    ) {
+      return currentItem.settings.highlightColor;
+    }
+    return "rgba(68, 76, 231, 0.7)"; // Default color
+  };
+
   // Move to next item in sequence
   const moveToNextItem = () => {
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
@@ -232,6 +292,8 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
       // End of slideshow
       console.log("Simulation complete");
       setSimulationStatus("Completed");
+      // Call the onEndSimulation prop
+      onEndSimulation();
     }
   };
 
@@ -245,12 +307,18 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     )
       return;
 
+    // Clear the timeout when user interacts with a hotspot
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     const hotspotType = currentItem.hotspotType || "button";
 
     switch (hotspotType) {
       case "button":
-      case "highlight":
-        // For button and highlight, simply advance
+        // For button, simply advance
         setHighlightHotspot(false);
         moveToNextItem();
         break;
@@ -270,6 +338,12 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
         }, 800);
         break;
 
+      case "highlight":
+        // For highlight, clicking also dismisses it
+        setHighlightHotspot(false);
+        moveToNextItem();
+        break;
+
       case "coaching":
       case "coachingtip":
         // For coaching tips, clicking anywhere dismisses it
@@ -282,17 +356,17 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     }
   };
 
-  // Function to scale coordinates based on image size
+  // Updated scaleCoordinates to use both width and height scales
   const scaleCoordinates = (
     coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
     return {
-      left: coords.x * imageScale,
-      top: coords.y * imageScale,
-      width: coords.width * imageScale,
-      height: coords.height * imageScale,
+      left: coords.x * imageScale.width,
+      top: coords.y * imageScale.height,
+      width: coords.width * imageScale.width,
+      height: coords.height * imageScale.height,
     };
   };
 
@@ -317,12 +391,39 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
   // Toggle pause/play
   const togglePause = () => {
     setIsPaused(!isPaused);
+
+    // When pausing, clear any active timeout
+    if (!isPaused && hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    // When resuming, restart timeout if needed
+    if (isPaused && currentItem?.type === "hotspot" && timeoutActive) {
+      const timeout = currentItem.settings?.timeoutDuration;
+      if (timeout && timeout > 0) {
+        hotspotTimeoutRef.current = setTimeout(() => {
+          moveToNextItem();
+          setHighlightHotspot(false);
+          setTimeoutActive(false);
+        }, timeout * 1000);
+      }
+    }
   };
 
-  // End simulation
+  // End simulation function - updated to use the onEndSimulation prop
   const endSimulation = () => {
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
     setSimulationStatus("Ended");
-    setIsPaused(true);
+
+    // Call the parent's end simulation handler
+    onEndSimulation();
   };
 
   // Show loading state if no data
@@ -435,14 +536,19 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
           >
             {formatTime(elapsedTime)}
           </Typography>
-          <Box>
-            <IconButton
-              onClick={togglePause}
-              sx={{ bgcolor: "grey.100", mr: 1 }}
-            >
-              {isPaused ? <PlayArrow /> : <Pause />}
-            </IconButton>
-          </Box>
+          <IconButton onClick={togglePause} sx={{ bgcolor: "grey.100", mr: 1 }}>
+            {isPaused ? <PlayArrow /> : <Pause />}
+          </IconButton>
+          <IconButton
+            onClick={endSimulation}
+            sx={{
+              bgcolor: "error.main",
+              color: "white",
+              "&:hover": { bgcolor: "error.dark" },
+            }}
+          >
+            <CallEnd />
+          </IconButton>
         </Stack>
       </Box>
 
@@ -496,6 +602,29 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                 />
               )}
 
+              {/* Timeout indicator - show timer when timeout is active */}
+              {timeoutActive &&
+                currentItem?.type === "hotspot" &&
+                currentItem.settings?.timeoutDuration &&
+                !isPaused && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      bgcolor: "rgba(0, 0, 0, 0.6)",
+                      color: "white",
+                      p: 1,
+                      borderRadius: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      zIndex: 100,
+                    }}
+                  >
+                  </Box>
+                )}
+
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
@@ -529,7 +658,7 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                             },
                             boxShadow: highlightHotspot ? 4 : 0,
                             border: highlightHotspot
-                              ? "2px solid white"
+                              ? `2px solid ${getHighlightColor()}`
                               : "none",
                           }}
                         >
@@ -560,7 +689,7 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                               height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                               bgcolor: "white",
                               border: highlightHotspot
-                                ? "2px solid #444CE7"
+                                ? `2px solid ${getHighlightColor()}`
                                 : "1px solid #ddd",
                               boxShadow: highlightHotspot ? 2 : 0,
                             }}
@@ -613,7 +742,7 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                               }px`,
                             },
                             color: highlightHotspot
-                              ? "#444CE7"
+                              ? getHighlightColor()
                               : "action.active",
                             "&.Mui-checked": {
                               color: "#444CE7",
@@ -660,15 +789,15 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                               bgcolor: "white",
                               "& fieldset": {
                                 borderColor: highlightHotspot
-                                  ? "#444CE7"
+                                  ? getHighlightColor()
                                   : "rgba(0, 0, 0, 0.23)",
                                 borderWidth: highlightHotspot ? 2 : 1,
                               },
                               "&:hover fieldset": {
-                                borderColor: "#444CE7",
+                                borderColor: getHighlightColor(),
                               },
                               "&.Mui-focused fieldset": {
-                                borderColor: "#444CE7",
+                                borderColor: getHighlightColor(),
                               },
                             },
                           }}
@@ -689,11 +818,9 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                           width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                           height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                           border: "4px solid",
-                          borderColor:
-                            currentItem.settings?.highlightColor ||
-                            "rgba(68, 76, 231, 0.7)",
+                          borderColor: getHighlightColor(),
                           boxShadow: highlightHotspot
-                            ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                            ? `0 0 12px 3px ${getHighlightColor()}`
                             : "none",
                           borderRadius: "4px",
                           backgroundColor: "transparent",
@@ -734,7 +861,9 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                         backgroundColor: "#0f172a",
                       },
                       boxShadow: highlightHotspot ? 4 : 0,
-                      border: highlightHotspot ? "2px solid white" : "none",
+                      border: highlightHotspot
+                        ? `2px solid ${getHighlightColor()}`
+                        : "none",
                     }}
                   >
                     {currentItem.settings?.tipText ||
@@ -744,6 +873,28 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                 </Box>
               )}
           </Box>
+
+          {/* Navigation Controls - Centered at the bottom */}
+          {currentItem && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 2,
+                mb: 1,
+              }}
+            >
+              <Button
+                variant="contained"
+                color="primary"
+                endIcon={<ArrowForward />}
+                onClick={moveToNextItem}
+                sx={{ minWidth: 120 }}
+              >
+                Next
+              </Button>
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>

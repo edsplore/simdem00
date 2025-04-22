@@ -46,7 +46,9 @@ class AuthService {
 
   private async doRefreshToken(workspaceId?: string | null): Promise<string> {
     try {
-      console.log(`Refresh token attempt ${this.refreshAttempts + 1}/${this.maxRefreshAttempts}`);
+      console.log(
+        `Refresh token attempt ${this.refreshAttempts + 1}/${this.maxRefreshAttempts}`,
+      );
 
       // Use the provided workspace ID or the stored one
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
@@ -110,14 +112,14 @@ class AuthService {
 
       // If we haven't reached max attempts, try again after delay
       if (this.refreshAttempts < this.maxRefreshAttempts) {
-        console.log(`Will retry in ${this.refreshRetryDelay/1000} seconds...`);
+        console.log(
+          `Will retry in ${this.refreshRetryDelay / 1000} seconds...`,
+        );
         return new Promise((resolve, reject) => {
           setTimeout(() => {
             // Clear the current promise before making a new attempt
             this.refreshPromise = null;
-            this.refreshToken(workspaceId)
-              .then(resolve)
-              .catch(reject);
+            this.refreshToken(workspaceId).then(resolve).catch(reject);
           }, this.refreshRetryDelay);
         });
       }

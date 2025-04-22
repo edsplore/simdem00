@@ -127,31 +127,38 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
           fetchTeams(currentWorkspaceId)
         ]);
 
+        console.log('Users response:', usersResponse);
+        console.log('Teams response:', teamsResponse);
+
         // Process users
-        const userAssignees: Assignee[] = usersResponse.map(user => ({
-          id: user.user_id,
-          name: user.fullName,
-          email: user.email,
-          type: 'trainee'
-        }));
+        const userAssignees: Assignee[] = Array.isArray(usersResponse) ? 
+          usersResponse.map(user => ({
+            id: user.user_id,
+            name: user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+            email: user.email,
+            type: 'trainee'
+          })) : [];
 
         // Process teams
-        const teamAssignees: Assignee[] = teamsResponse.teams.map(team => ({
-          id: team.team_id,
-          name: team.team_name,
-          type: 'team'
-        }));
+        const teamAssignees: Assignee[] = teamsResponse && teamsResponse.teams ? 
+          teamsResponse.teams.map(team => ({
+            id: team.team_id,
+            name: team.team_name,
+            type: 'team'
+          })) : [];
 
         // Combine users and teams
-        setAssignees([...teamAssignees, ...userAssignees]);
+        const allAssignees = [...teamAssignees, ...userAssignees];
+        setAssignees(allAssignees);
 
         console.log('Loaded assignees:', {
           teams: teamAssignees.length,
           users: userAssignees.length,
-          total: teamAssignees.length + userAssignees.length
+          total: allAssignees.length
         });
       } catch (error) {
         console.error('Error loading assignees:', error);
+        setError('Failed to load users and teams');
       } finally {
         setIsLoadingAssignees(false);
       }
@@ -555,6 +562,8 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                       </Box>
                     ) : assignees.length === 0 ? (
                       <MenuItem disabled>No users or teams available</MenuItem>
+                    ) : filteredAssignees.length === 0 ? (
+                      <MenuItem disabled>No matches found</MenuItem>
                     ) : (
                       filteredAssignees.map((assignee) => (
                         <MenuItem

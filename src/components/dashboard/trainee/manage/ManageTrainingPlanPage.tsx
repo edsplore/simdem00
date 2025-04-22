@@ -23,11 +23,13 @@ import {
   TablePagination,
   CircularProgress,
   TableSortLabel,
+  InputAdornment,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import SortIcon from '@mui/icons-material/Sort';
 import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
@@ -38,6 +40,7 @@ import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
 import { useAuth } from '../../../../context/AuthContext';
 import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
 import { fetchModules, type Module } from '../../../../services/modules';
+import { fetchTags, type Tag } from '../../../../services/tags';
 import { hasCreatePermission } from '../../../../utils/permissions';
 
 type Order = 'asc' | 'desc';
@@ -60,7 +63,7 @@ const ManageTrainingPlanPage = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState('10');
+  const [rowsPerPage, setRowsPerPage] = useState('5');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [trainingPlans, setTrainingPlans] = useState<TrainingPlan[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -76,6 +79,8 @@ const ManageTrainingPlanPage = () => {
   const [editingTrainingPlan, setEditingTrainingPlan] = useState<TrainingPlan | null>(null);
   const [isEditModuleDialogOpen, setIsEditModuleDialogOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
@@ -100,9 +105,28 @@ const ManageTrainingPlanPage = () => {
     }
   };
 
+  // Load tags
+  const loadTags = async () => {
+    if (!user?.id) return;
+
+    try {
+      setIsLoadingTags(true);
+      const tagsData = await fetchTags(user.id);
+      setTags(tagsData);
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    } finally {
+      setIsLoadingTags(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [currentTab, user?.id]);
+
+  useEffect(() => {
+    loadTags();
+  }, [user?.id]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
@@ -174,10 +198,32 @@ const ManageTrainingPlanPage = () => {
   };
 
   const filteredData = currentTab === 'Training Plans'
-    ? trainingPlans.filter(plan =>
-      !searchQuery || plan.name.toLowerCase().includes(searchQuery.toLowerCase()))
-    : modules.filter(module =>
-      !searchQuery || module.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    ? trainingPlans.filter(plan => {
+        // Apply search filter
+        if (searchQuery && !plan.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
+          return false;
+        }
+
+        // Apply tag filter
+        if (selectedTags !== 'All Tags' && (!plan.tags || !plan.tags.includes(selectedTags))) {
+          return false;
+        }
+
+        return true;
+      })
+    : modules.filter(module => {
+        // Apply search filter
+        if (searchQuery && !module.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
+          return false;
+        }
+
+        // Apply tag filter
+        if (selectedTags !== 'All Tags' && (!module.tags || !module.tags.includes(selectedTags))) {
+          return false;
+        }
+
+        return true;
+      });
 
   const sortedData = React.useMemo(() => {
     if (!filteredData.length) return filteredData;
@@ -313,7 +359,21 @@ const ManageTrainingPlanPage = () => {
               }}
               InputProps={{
                 startAdornment: (
-                  <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => setSearchQuery('')}
+                      edge="end"
+                      aria-label="clear search"
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
                 ),
               }}
             />
@@ -330,8 +390,27 @@ const ManageTrainingPlanPage = () => {
                   bgcolor: '#FFFFFF',
                   borderRadius: 2,
                 }}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 300,
+                      overflow: 'auto'
+                    }
+                  }
+                }}
               >
                 <MenuItem value="All Tags">All Tags</MenuItem>
+                {isLoadingTags ? (
+                  <MenuItem disabled>Loading tags...</MenuItem>
+                ) : tags.length === 0 ? (
+                  <MenuItem disabled>No tags available</MenuItem>
+                ) : (
+                  tags.map((tag) => (
+                    <MenuItem key={tag.id} value={tag.name}>
+                      {tag.name}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
               <Select
                 value={selectedStatus}
@@ -557,7 +636,7 @@ const ManageTrainingPlanPage = () => {
                 onPageChange={handleChangePage}
                 rowsPerPage={parseInt(rowsPerPage, 10)}
                 onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 20, 50, 100]}
+                rowsPerPageOptions={[5, 10, 25, 50]}
               />
             </Box>
           </TableContainer>

@@ -2,7 +2,9 @@ import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import { authService } from '../authService';
 
 // Create a custom axios instance
-const apiClient = axios.create();
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || '',
+});
 
 // Request interceptor
 apiClient.interceptors.request.use(

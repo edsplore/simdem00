@@ -38,7 +38,7 @@ const TraineeDashboard = () => {
     <DashboardContent>
       <Container>
         <Stack spacing={4} sx={{ py: 4 }}>
-          <WelcomeBanner userName={user?.name || ''} />
+          <WelcomeBanner userName={user?.name || ''} trainingData={trainingData} />
           {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
           {trainingData && (
             <TrainingPlanTable 

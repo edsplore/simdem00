@@ -17,6 +17,7 @@ import { fetchUserDetails } from '../../services/users';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import MenuOpenIcon from '@mui/icons-material/MenuOpen';
 import ProfileDetailsDialog from '../profile/ProfileDetailsDialog';
+import logoImage from '../../assets/logo.svg';
 
 const StyledMenu = styled(Menu)(({ theme }) => ({
   '& .MuiPaper-root': {
@@ -116,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
             </IconButton>
             <Box
               component="img"
-              src="/src/assets/logo.svg"
+              src={logoImage}
               alt="Logo"
               sx={{
                 height: 32,

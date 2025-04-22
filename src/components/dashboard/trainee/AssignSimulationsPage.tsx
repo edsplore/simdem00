@@ -33,6 +33,7 @@ import {
   ListItemAvatar,
   Avatar,
   Divider,
+  InputAdornment,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -40,6 +41,7 @@ import {
   Person as PersonIcon,
   Group as GroupIcon,
   Close as CloseIcon,
+  Clear as ClearIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
@@ -278,7 +280,7 @@ const AssignSimulationsPage = () => {
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
   const [isSimulationDialogOpen, setIsSimulationDialogOpen] = useState(false);
@@ -307,7 +309,7 @@ const AssignSimulationsPage = () => {
     }
 
     // Then apply search filter
-    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.toLowerCase())) {
+    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
       return false;
     }
 
@@ -561,7 +563,21 @@ const AssignSimulationsPage = () => {
               }}
               InputProps={{
                 startAdornment: (
-                  <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                  </InputAdornment>
+                ),
+                endAdornment: searchQuery && (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() => setSearchQuery('')}
+                      edge="end"
+                      aria-label="clear search"
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
                 ),
               }}
             />
@@ -834,7 +850,7 @@ const AssignSimulationsPage = () => {
                 onPageChange={handleChangePage}
                 rowsPerPage={rowsPerPage}
                 onRowsPerPageChange={handleChangeRowsPerPage}
-                rowsPerPageOptions={[10, 20, 50, 100]}
+                rowsPerPageOptions={[5, 10, 25, 50]}
               />
             </Box>
           </TableContainer>

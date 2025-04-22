@@ -332,7 +332,7 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
   return (
     <Box
       sx={{
-        width: 320,
+        width: 340,
         height: "100%",
         bgcolor: "#F9FAFB",
         borderLeft: "1px solid",

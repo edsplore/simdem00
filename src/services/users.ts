@@ -52,10 +52,10 @@ export interface UserDetails {
 }
 
 // Staging
-const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
+//const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
 
 //Dev
-// const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
+ const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
 
 export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {
@@ -78,10 +78,8 @@ export const fetchUsersSummary = async (workspaceId: string): Promise<User[]> =>
   try {
     // Encode the workspaceId to ensure proper handling of special characters
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
-    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${encodedWorkspaceId}`, {
-      data: {
-        status: 'ACTIVE'
-      }
+    const response = await apiClient.post(`${USERS_URL}/summary?workspace_id=${encodedWorkspaceId}`, {      
+        status: 'ACTIVE'      
     });
     return response.data;
   } catch (error) {

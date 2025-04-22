@@ -126,7 +126,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   }>({ top: 0, left: 0 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const [imageScale, setImageScale] = useState(1);
+  const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [editMode, setEditMode] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
   const [originalImageSize, setOriginalImageSize] = useState({
@@ -140,6 +140,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     null,
   );
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
+
+  // Reference to the actual image element
+  const imageElementRef = useRef<HTMLImageElement | null>(null);
 
   // For RGBA color picker
   const [colorPickerAnchorEl, setColorPickerAnchorEl] =
@@ -322,27 +325,57 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     return () => window.removeEventListener("resize", updateViewportSize);
   }, []);
 
-  // Track image size changes
+  // Track image size and scale changes - crucial for accurate hotspot positioning
   useEffect(() => {
-    const updateImageSize = () => {
-      if (containerRef.current) {
-        const container = containerRef.current;
-        const img = container.querySelector("img");
+    if (!containerRef.current) return;
+
+    const updateImageSizeAndScale = () => {
+      if (containerRef.current && imageElementRef.current) {
+        const img = imageElementRef.current;
         if (img) {
+          // Get the actual rendered dimensions
           const rect = img.getBoundingClientRect();
-          setImageSize({ width: rect.width, height: rect.height });
-          setImageScale(rect.width / img.naturalWidth);
+
+          // Store current rendered dimensions
+          setImageSize({
+            width: rect.width,
+            height: rect.height,
+          });
+
+          // Calculate scales based on original image dimensions
+          if (originalImageSize.width > 0 && originalImageSize.height > 0) {
+            const widthScale = rect.width / originalImageSize.width;
+            const heightScale = rect.height / originalImageSize.height;
+
+            setImageScale({
+              width: widthScale,
+              height: heightScale,
+            });
+
+            console.log(
+              `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
+            );
+          }
         }
       }
     };
 
-    const observer = new ResizeObserver(updateImageSize);
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
+    // Initial update
+    updateImageSizeAndScale();
 
-    return () => observer.disconnect();
-  }, []);
+    // Create observer to track container size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateImageSizeAndScale();
+    });
+
+    // Observe both the container and the window
+    resizeObserver.observe(containerRef.current);
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [containerRef, originalImageSize, containerWidth, processedImageUrl]);
 
   // Initialize options list when editing a dropdown hotspot
   useEffect(() => {
@@ -369,31 +402,36 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   }, [editingHotspot]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !imageElementRef.current) return;
 
-    const img = containerRef.current.querySelector("img");
+    const img = imageElementRef.current;
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
-    // Store coordinates relative to original image size
-    const x = ((e.clientX - rect.left) / rect.width) * originalImageSize.width;
-    const y = ((e.clientY - rect.top) / rect.height) * originalImageSize.height;
+
+    // Store coordinates relative to ORIGINAL image size (not the rendered size)
+    // This is the key to making hotspots work correctly at any scale
+    const x = (e.clientX - rect.left) / imageScale.width;
+    const y = (e.clientY - rect.top) / imageScale.height;
 
     setIsDrawing(true);
     setStartPos({ x, y });
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDrawing || !containerRef.current) return;
+    if (!isDrawing || !containerRef.current || !imageElementRef.current) return;
 
-    const img = containerRef.current.querySelector("img");
+    const img = imageElementRef.current;
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * originalImageSize.width;
-    const y = ((e.clientY - rect.top) / rect.height) * originalImageSize.height;
 
-    // Create a properly structured coordinates object
+    // Get the current mouse position in original image coordinates
+    const x = (e.clientX - rect.left) / imageScale.width;
+    const y = (e.clientY - rect.top) / imageScale.height;
+
+    // Create a properly structured coordinates object that stores positions
+    // in the original image coordinate system
     const coordinates = {
       x: Math.min(startPos.x, x),
       y: Math.min(startPos.y, y),
@@ -434,24 +472,31 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   };
 
   const calculateDialogPosition = (hotspot: Partial<Hotspot>) => {
-    if (!containerRef.current || !hotspot || !hotspot.coordinates) return;
+    if (
+      !containerRef.current ||
+      !hotspot ||
+      !hotspot.coordinates ||
+      !imageElementRef.current
+    )
+      return;
 
     const containerRect = containerRef.current.getBoundingClientRect();
-    const img = containerRef.current.querySelector("img");
+    const img = imageElementRef.current;
     if (!img) return;
 
     const imgRect = img.getBoundingClientRect();
-    const scale = imgRect.width / originalImageSize.width;
     const dialogHeight = 480; // Reduced fixed dialog height
     const dialogWidth = 320; // Fixed dialog width
     const padding = 16; // Padding from edges
 
-    // Calculate initial position relative to the hotspot
-    let x = hotspot.coordinates.x * scale + imgRect.left;
-    let y = hotspot.coordinates.y * scale + imgRect.top;
+    // Convert from original image coordinates to screen coordinates
+    const x = hotspot.coordinates.x * imageScale.width + imgRect.left;
+    const y = hotspot.coordinates.y * imageScale.height + imgRect.top;
+    const width = hotspot.coordinates.width * imageScale.width;
+    const height = hotspot.coordinates.height * imageScale.height;
 
     // Try positioning to the right of the hotspot
-    let left = x + hotspot.coordinates.width * scale + padding;
+    let left = x + width + padding;
 
     // If it would go off the right edge, position to the left instead
     if (left + dialogWidth > viewportSize.width) {
@@ -481,7 +526,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (editingHotspot) {
       calculateDialogPosition(editingHotspot);
     }
-  }, [editingHotspot, viewportSize]);
+  }, [editingHotspot, viewportSize, imageScale]);
 
   // Recalculate on window resize
   useEffect(() => {
@@ -639,14 +684,14 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         break;
     }
 
-    // Create a complete hotspot with explicit coordinates
+    // Create a complete hotspot with coordinates relative to original image
     const hotspot: Hotspot = {
       id,
       name: settings.name || "Untitled hotspot",
       type: "hotspot",
       hotspotType,
       coordinates: {
-        // Explicitly use Number to ensure they're numeric values, not undefined
+        // Keep coordinates relative to original image size (not rendered size)
         x: Number(currentHotspot.coordinates.x),
         y: Number(currentHotspot.coordinates.y),
         width: Number(currentHotspot.coordinates.width),
@@ -672,21 +717,40 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     onHotspotsChange?.(newHotspots);
   };
 
-  // Helper function to safely scale coordinates
-  const scaleCoordinates = (coords?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }) => {
-    if (!coords) return null;
+  // Helper function to render hotspots on the image - converts from original image coordinates to rendered coordinates
+  const renderHotspot = (hotspot: Hotspot) => {
+    if (!hotspot.coordinates || !imageElementRef.current) return null;
 
-    return {
-      left: (coords.x || 0) * imageScale,
-      top: (coords.y || 0) * imageScale,
-      width: (coords.width || 0) * imageScale,
-      height: (coords.height || 0) * imageScale,
+    // Convert coordinates from original image coordinates to rendered coordinates
+    const scaledCoords = {
+      left: hotspot.coordinates.x * imageScale.width,
+      top: hotspot.coordinates.y * imageScale.height,
+      width: hotspot.coordinates.width * imageScale.width,
+      height: hotspot.coordinates.height * imageScale.height,
     };
+
+    return (
+      <Box
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!editMode || editingId !== hotspot.id) {
+            onEditHotspot?.(hotspot);
+          }
+        }}
+        key={hotspot.id}
+        sx={{
+          position: "absolute",
+          left: `${scaledCoords.left}px`,
+          top: `${scaledCoords.top}px`,
+          width: `${scaledCoords.width}px`,
+          height: `${scaledCoords.height}px`,
+          border: "2px solid #444CE7",
+          borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
+          backgroundColor: "rgba(68, 76, 231, 0.1)",
+          cursor: "pointer",
+        }}
+      />
+    );
   };
 
   return (
@@ -722,6 +786,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         {processedImageUrl ? (
           <Box
             component="img"
+            ref={imageElementRef}
             src={processedImageUrl}
             alt="Hotspot canvas"
             onError={(e) => {
@@ -767,51 +832,17 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         )}
 
         {/* Existing hotspots */}
-        {Array.isArray(hotspots) &&
-          hotspots.map((hotspot) => {
-            // Skip rendering if coordinates are missing or invalid
-            if (!hotspot || !hotspot.coordinates) {
-              return null;
-            }
-
-            const scaledCoords = scaleCoordinates(hotspot.coordinates);
-            if (!scaledCoords) {
-              return null;
-            }
-
-            return (
-              <Box
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!editMode || editingId !== hotspot.id) {
-                    onEditHotspot?.(hotspot);
-                  }
-                }}
-                key={hotspot.id}
-                sx={{
-                  position: "absolute",
-                  left: `${(hotspot.coordinates.x / originalImageSize.width) * 100}%`,
-                  top: `${(hotspot.coordinates.y / originalImageSize.height) * 100}%`,
-                  width: `${(hotspot.coordinates.width / originalImageSize.width) * 100}%`,
-                  height: `${(hotspot.coordinates.height / originalImageSize.height) * 100}%`,
-                  border: "2px solid #444CE7",
-                  borderColor: editingId === hotspot.id ? "#00AB55" : "#444CE7",
-                  backgroundColor: "rgba(68, 76, 231, 0.1)",
-                  cursor: "pointer",
-                }}
-              />
-            );
-          })}
+        {Array.isArray(hotspots) && hotspots.map(renderHotspot)}
 
         {/* Currently drawing hotspot */}
-        {currentHotspot && currentHotspot.coordinates && (
+        {currentHotspot && currentHotspot.coordinates && !showSettings && (
           <Box
             sx={{
               position: "absolute",
-              left: `${(currentHotspot.coordinates.x / originalImageSize.width) * 100}%`,
-              top: `${(currentHotspot.coordinates.y / originalImageSize.height) * 100}%`,
-              width: `${(currentHotspot.coordinates.width / originalImageSize.width) * 100}%`,
-              height: `${(currentHotspot.coordinates.height / originalImageSize.height) * 100}%`,
+              left: `${currentHotspot.coordinates.x * imageScale.width}px`,
+              top: `${currentHotspot.coordinates.y * imageScale.height}px`,
+              width: `${currentHotspot.coordinates.width * imageScale.width}px`,
+              height: `${currentHotspot.coordinates.height * imageScale.height}px`,
               border: "2px solid #444CE7",
               backgroundColor: "rgba(68, 76, 231, 0.1)",
               pointerEvents: "none",

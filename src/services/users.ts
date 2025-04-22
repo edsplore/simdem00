@@ -52,10 +52,10 @@ export interface UserDetails {
 }
 
 // Staging
-//const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
+const USERS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/users';
 
 //Dev
- const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
+ // const USERS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/users';
 
 export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {

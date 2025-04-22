@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { useAuth } from '../../../../context/AuthContext';
-import { createTrainingPlan } from '../../../../services/trainingPlans';
-import { fetchModules, type Module } from '../../../../services/modules';
-import { fetchSimulations, type Simulation } from '../../../../services/simulations';
-import { fetchTags, createTag, Tag } from '../../../../services/tags';
+import React, { useState, useEffect, useRef } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { useAuth } from "../../../../context/AuthContext";
+import { createTrainingPlan } from "../../../../services/trainingPlans";
+import { fetchModules, type Module } from "../../../../services/modules";
+import {
+  fetchSimulations,
+  type Simulation,
+} from "../../../../services/simulations";
+import { fetchTags, createTag, Tag } from "../../../../services/tags";
 import {
   Dialog,
   DialogTitle,
@@ -33,19 +36,19 @@ import {
   Autocomplete,
   ListItem,
   ListItemText,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Close as CloseIcon,
   Book as BookIcon,
   Search as SearchIcon,
   Delete as DeleteIcon,
   Add as AddIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 interface Item {
   id: string;
   name: string;
-  type: 'module' | 'simulation';
+  type: "module" | "simulation";
   simCount?: number;
 }
 
@@ -68,7 +71,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
   const [items, setItems] = useState<Item[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showItemsList, setShowItemsList] = useState(false);
   const searchFieldRef = useRef<HTMLDivElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,7 +81,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
   useEffect(() => {
     const loadItems = async () => {
@@ -87,19 +90,33 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         setError(null);
 
         const [modulesData, simulationsData] = await Promise.all([
-          fetchModules(user?.id || 'user123'),
-          fetchSimulations(user?.id || 'user123')
+          fetchModules(user?.id || "user123"),
+          fetchSimulations(user?.id || "user123"),
         ]);
 
+        // Filter simulations to only include published ones
+        const publishedSimulations = simulationsData.filter(
+          (sim) => sim.status === "published",
+        );
+
         const combinedItems: Item[] = [
-          ...modulesData.map(m => ({ id: m.id, name: m.name, type: 'module' as const, simCount: m.simulations_id.length })),
-          ...simulationsData.map(s => ({ id: s.id, name: s.sim_name, type: 'simulation' as const }))
+          ...modulesData.map((m) => ({
+            id: m.id,
+            name: m.name,
+            type: "module" as const,
+            simCount: m.simulations_id.length,
+          })),
+          ...publishedSimulations.map((s) => ({
+            id: s.id,
+            name: s.sim_name,
+            type: "simulation" as const,
+          })),
         ];
 
         setItems(combinedItems);
       } catch (err) {
-        setError('Failed to load items');
-        console.error('Error loading items:', err);
+        setError("Failed to load items");
+        console.error("Error loading items:", err);
       } finally {
         setIsLoading(false);
       }
@@ -113,7 +130,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         const tagsData = await fetchTags(user.id);
         setAvailableTags(tagsData);
       } catch (error) {
-        console.error('Failed to load tags:', error);
+        console.error("Failed to load tags:", error);
       } finally {
         setIsLoadingTags(false);
       }
@@ -132,23 +149,27 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
     watch,
     setValue,
   } = useForm<CreateTrainingPlanFormData>({
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
-      name: 'Untitled Training Plan 01',
+      name: "Untitled Training Plan 01",
       tags: [],
       selectedItems: [],
     },
   });
 
-  const selectedItems = watch('selectedItems');
-  const selectedTags = watch('tags');
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const selectedItems = watch("selectedItems");
+  const selectedTags = watch("tags");
+  const filteredItems = items.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const getModuleAndSimCount = () => {
-    const modules = selectedItems.filter(item => item.type === 'module').length;
-    const sims = selectedItems.filter(item => item.type === 'simulation').length;
+    const modules = selectedItems.filter(
+      (item) => item.type === "module",
+    ).length;
+    const sims = selectedItems.filter(
+      (item) => item.type === "simulation",
+    ).length;
     return { modules, sims };
   };
 
@@ -158,21 +179,21 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
       setSubmitError(null);
 
       const response = await createTrainingPlan({
-        user_id: user?.id || 'user123',
+        user_id: user?.id || "user123",
         training_plan_name: data.name,
         tags: data.tags,
-        added_object: data.selectedItems.map(item => ({
+        added_object: data.selectedItems.map((item) => ({
           type: item.type,
-          id: item.id
-        }))
+          id: item.id,
+        })),
       });
 
-      if (response.status === 'success') {
+      if (response.status === "success") {
         onClose();
       }
     } catch (error) {
-      console.error('Error creating training plan:', error);
-      setSubmitError('Failed to create training plan. Please try again.');
+      console.error("Error creating training plan:", error);
+      setSubmitError("Failed to create training plan. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -180,14 +201,14 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
   const removeItem = (itemToRemove: Item) => {
     setValue(
-      'selectedItems',
-      selectedItems.filter(item => item.id !== itemToRemove.id),
-      { shouldValidate: true }
+      "selectedItems",
+      selectedItems.filter((item) => item.id !== itemToRemove.id),
+      { shouldValidate: true },
     );
   };
 
   const isItemSelected = (item: Item): boolean => {
-    return selectedItems.some(selected => selected.id === item.id);
+    return selectedItems.some((selected) => selected.id === item.id);
   };
 
   const handleItemToggle = (item: Item) => {
@@ -196,12 +217,12 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
     let newItems: Item[] = [];
     if (isCurrentlySelected) {
-      newItems = currentItems.filter(selected => selected.id !== item.id);
+      newItems = currentItems.filter((selected) => selected.id !== item.id);
     } else {
       newItems = [...currentItems, item];
     }
 
-    setValue('selectedItems', newItems, { shouldValidate: true });
+    setValue("selectedItems", newItems, { shouldValidate: true });
   };
 
   const handleCreateTag = async (tagName: string) => {
@@ -219,19 +240,19 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
           created_by: user.id,
           created_at: new Date().toISOString(),
           last_modified_by: user.id,
-          last_modified_at: new Date().toISOString()
+          last_modified_at: new Date().toISOString(),
         };
 
-        setAvailableTags(prev => [...prev, newTag]);
+        setAvailableTags((prev) => [...prev, newTag]);
 
         // Add the new tag to the selected tags
-        setValue('tags', [...selectedTags, tagName.trim()]);
+        setValue("tags", [...selectedTags, tagName.trim()]);
 
         // Clear the input
-        setInputValue('');
+        setInputValue("");
       }
     } catch (error) {
-      console.error('Error creating tag:', error);
+      console.error("Error creating tag:", error);
     } finally {
       setIsCreatingTag(false);
     }
@@ -256,42 +277,42 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         <Stack direction="row" alignItems="center" spacing={2}>
           <Box
             sx={{
-              position: 'relative',
+              position: "relative",
               width: 48,
               height: 48,
             }}
           >
             <Box
               sx={{
-                position: 'absolute',
+                position: "absolute",
                 bottom: -6,
                 left: -6,
                 width: 60,
                 height: 60,
-                borderRadius: '50%',
-                bgcolor: '#EEF4FF',
+                borderRadius: "50%",
+                bgcolor: "#EEF4FF",
                 zIndex: 0,
               }}
             />
             <Box
               sx={{
-                position: 'relative',
+                position: "relative",
                 width: 48,
                 height: 48,
-                borderRadius: '50%',
-                bgcolor: '#F5F6FF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                borderRadius: "50%",
+                bgcolor: "#F5F6FF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 zIndex: 1,
               }}
             >
-              <BookIcon sx={{ color: '#444CE7' }} />
+              <BookIcon sx={{ color: "#444CE7" }} />
             </Box>
           </Box>
 
           <Stack spacing={0.5} flex={1}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Create Training Plan
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -304,21 +325,23 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, pt: '24px !important' }}>
+      <DialogContent sx={{ p: 3, pt: "24px !important" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
-              <Controller
-                name="name"
-                control={control}
-                rules={{ required: true }}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Training Plan Name"
-                    required
-                    fullWidth
-                    size="medium" />
-                )} />
+            <Controller
+              name="name"
+              control={control}
+              rules={{ required: true }}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Training Plan Name"
+                  required
+                  fullWidth
+                  size="medium"
+                />
+              )}
+            />
 
             <Controller
               name="tags"
@@ -328,7 +351,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                   {...field}
                   multiple
                   id="tags-autocomplete"
-                  options={availableTags.map(tag => tag.name)}
+                  options={availableTags.map((tag) => tag.name)}
                   value={field.value}
                   onChange={(_, newValue) => {
                     field.onChange(newValue);
@@ -338,15 +361,19 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                     setInputValue(newInputValue);
                   }}
                   filterOptions={(options, params) => {
-                    const filtered = options.filter(option => 
-                      option.toLowerCase().includes(params.inputValue.toLowerCase())
+                    const filtered = options.filter((option) =>
+                      option
+                        .toLowerCase()
+                        .includes(params.inputValue.toLowerCase()),
                     );
 
                     // Add "Create" option if input is not empty and doesn't exist in options
                     const inputValue = params.inputValue.trim();
-                    if (inputValue !== '' && 
-                        !options.includes(inputValue) && 
-                        !selectedTags.includes(inputValue)) {
+                    if (
+                      inputValue !== "" &&
+                      !options.includes(inputValue) &&
+                      !selectedTags.includes(inputValue)
+                    ) {
                       filtered.unshift(inputValue);
                     }
 
@@ -368,30 +395,36 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                     ))
                   }
                   renderOption={(props, option) => {
-                    const isNewOption = !availableTags.some(tag => tag.name === option);
+                    const isNewOption = !availableTags.some(
+                      (tag) => tag.name === option,
+                    );
 
                     if (isNewOption) {
                       return (
                         <ListItem {...props} key={`create-${option}`}>
-                          <ListItemText primary={
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Typography>Create "{option}"</Typography>
-                              <Button
-                                size="small"
-                                startIcon={<AddIcon />}
-                                variant="contained"
-                                color="primary"
-                                sx={{ ml: 2 }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCreateTag(option);
-                                }}
-                                disabled={isCreatingTag}
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{ display: "flex", alignItems: "center" }}
                               >
-                                {isCreatingTag ? 'Creating...' : 'Create'}
-                              </Button>
-                            </Box>
-                          } />
+                                <Typography>Create "{option}"</Typography>
+                                <Button
+                                  size="small"
+                                  startIcon={<AddIcon />}
+                                  variant="contained"
+                                  color="primary"
+                                  sx={{ ml: 2 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCreateTag(option);
+                                  }}
+                                  disabled={isCreatingTag}
+                                >
+                                  {isCreatingTag ? "Creating..." : "Create"}
+                                </Button>
+                              </Box>
+                            }
+                          />
                         </ListItem>
                       );
                     }
@@ -427,15 +460,19 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
             <Box>
               <Stack spacing={2}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Typography variant="subtitle1">
                     Add Simulations and Modules
                   </Typography>
                   <Chip
                     label={`${modules} Modules | ${sims} Sims`}
                     sx={{
-                      bgcolor: '#F5F6FF',
-                      color: '#444CE7',
+                      bgcolor: "#F5F6FF",
+                      color: "#444CE7",
                       borderRadius: 16,
                       height: 28,
                     }}
@@ -443,7 +480,9 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                 </Stack>
 
                 <Box position="relative" ref={searchFieldRef}>
-                  <ClickAwayListener onClickAway={() => setShowItemsList(false)}>
+                  <ClickAwayListener
+                    onClickAway={() => setShowItemsList(false)}
+                  >
                     <Box>
                       <TextField
                         fullWidth
@@ -456,40 +495,59 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                         }}
                         onClick={() => setShowItemsList(true)}
                         InputProps={{
-                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                          startAdornment: (
+                            <SearchIcon
+                              sx={{ color: "text.secondary", mr: 1 }}
+                            />
+                          ),
                         }}
                       />
                       {showItemsList && (
-                        <Box 
-                          sx={{ 
-                            position: 'absolute',
+                        <Box
+                          sx={{
+                            position: "absolute",
                             zIndex: 1300,
-                            width: searchFieldRef.current?.offsetWidth || '100%',
+                            width:
+                              searchFieldRef.current?.offsetWidth || "100%",
                             left: 0,
                             mt: 0.5,
-                            bgcolor: 'background.paper',
+                            bgcolor: "background.paper",
                             borderRadius: 1,
                             boxShadow: 3,
                             maxHeight: 300,
-                            minHeight: filteredItems.length > 0 ? 250 : 'auto',
-                            overflow: 'auto',
-                            '&::-webkit-scrollbar': {
-                              width: '8px',
+                            minHeight: filteredItems.length > 0 ? 250 : "auto",
+                            overflow: "auto",
+                            "&::-webkit-scrollbar": {
+                              width: "8px",
                             },
-                            '&::-webkit-scrollbar-thumb': {
-                              backgroundColor: '#E5E7EB',
-                              borderRadius: '4px',
+                            "&::-webkit-scrollbar-thumb": {
+                              backgroundColor: "#E5E7EB",
+                              borderRadius: "4px",
                             },
                           }}
                         >
                           {isLoading ? (
-                            <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                            <Box
+                              sx={{
+                                p: 2,
+                                display: "flex",
+                                justifyContent: "center",
+                              }}
+                            >
                               <CircularProgress size={24} />
                             </Box>
                           ) : error ? (
-                            <Typography sx={{ p: 2, color: 'error.main' }}>{error}</Typography>
+                            <Typography sx={{ p: 2, color: "error.main" }}>
+                              {error}
+                            </Typography>
                           ) : filteredItems.length === 0 ? (
-                            <Typography sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
+                            <Typography
+                              sx={{
+                                p: 2,
+                                color: "text.secondary",
+                                textAlign: "center",
+                              }}
+                            >
                               No matches found
                             </Typography>
                           ) : (
@@ -501,16 +559,16 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                                 }}
                                 sx={{
                                   p: 1.5,
-                                  cursor: 'pointer',
-                                  '&:hover': { bgcolor: '#F5F6FF' },
-                                  display: 'grid',
-                                  gridTemplateColumns: 'auto 80px 1fr auto',
-                                  alignItems: 'center', 
+                                  cursor: "pointer",
+                                  "&:hover": { bgcolor: "#F5F6FF" },
+                                  display: "grid",
+                                  gridTemplateColumns: "auto 80px 1fr auto",
+                                  alignItems: "center",
                                   gap: 2,
-                                  width: '100%'
+                                  width: "100%",
                                 }}
                               >
-                                <Checkbox 
+                                <Checkbox
                                   checked={isItemSelected(item)}
                                   sx={{ p: 0 }}
                                 />
@@ -521,12 +579,16 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                                   {item.name}
                                 </Typography>
                                 <Chip
-                                  label={item.type === 'module' ? `Module | ${item.simCount} Sim` : 'Sim'}
+                                  label={
+                                    item.type === "module"
+                                      ? `Module | ${item.simCount} Sim`
+                                      : "Sim"
+                                  }
                                   size="small"
                                   sx={{
-                                    bgcolor: '#F5F6FF',
-                                    color: '#444CE7',
-                                    justifySelf: 'end'
+                                    bgcolor: "#F5F6FF",
+                                    color: "#444CE7",
+                                    justifySelf: "end",
                                   }}
                                 />
                               </Box>
@@ -541,7 +603,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                 {selectedItems.length > 0 && (
                   <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
-                      <TableHead sx={{ bgcolor: '#F9FAFB' }}>
+                      <TableHead sx={{ bgcolor: "#F9FAFB" }}>
                         <TableRow>
                           <TableCell>ID</TableCell>
                           <TableCell>Name</TableCell>
@@ -556,16 +618,23 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
                             <TableCell>{item.name}</TableCell>
                             <TableCell>
                               <Chip
-                                label={item.type === 'module' ? `Module | ${item.simCount} Sim` : 'Sim'}
+                                label={
+                                  item.type === "module"
+                                    ? `Module | ${item.simCount} Sim`
+                                    : "Sim"
+                                }
                                 size="small"
                                 sx={{
-                                  bgcolor: '#F5F6FF',
-                                  color: '#444CE7',
+                                  bgcolor: "#F5F6FF",
+                                  color: "#444CE7",
                                 }}
                               />
                             </TableCell>
                             <TableCell align="right">
-                              <IconButton size="small" onClick={() => removeItem(item)}>
+                              <IconButton
+                                size="small"
+                                onClick={() => removeItem(item)}
+                              >
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
                             </TableCell>
@@ -586,18 +655,18 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
               sx={{
                 mt: 2,
                 py: 1.5,
-                bgcolor: '#444CE7',
-                color: 'white',
-                '&:hover': {
-                  bgcolor: '#3538CD',
+                bgcolor: "#444CE7",
+                color: "white",
+                "&:hover": {
+                  bgcolor: "#3538CD",
                 },
-                '&.Mui-disabled': {
-                  bgcolor: '#F5F6FF',
-                  color: '#444CE7',
+                "&.Mui-disabled": {
+                  bgcolor: "#F5F6FF",
+                  color: "#444CE7",
                 },
               }}
             >
-              {isSubmitting ? 'Creating...' : 'Create Training Plan'}
+              {isSubmitting ? "Creating..." : "Create Training Plan"}
             </Button>
             {submitError && (
               <Alert severity="error" sx={{ mt: 2 }}>

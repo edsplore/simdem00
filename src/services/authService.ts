@@ -3,17 +3,12 @@ import { jwtDecode } from "jwt-decode";
 import { User, DecodedToken } from "../types/auth";
 import apiClient from "./api/interceptors";
 
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
+
 // Environment-specific URLs
-const URLS = {
-  dev: {
-    refreshToken:
-      "https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh",
-  },
-  staging: {
-    refreshToken:
-      "https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh",
-  },
-};
+const REFRESH_TOKEN_URL = `${UAM_API_URL}/uam/auth/tokens/access/refresh`;
+
 
 class AuthService {
   private refreshTokenTimeout?: NodeJS.Timeout;
@@ -54,10 +49,7 @@ class AuthService {
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
       console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
-      // Use staging URL for now, could be made configurable based on environment
-      const refreshTokenUrl = URLS.dev.refreshToken;
-
-      const response = await axios.post(refreshTokenUrl, "", {
+      const response = await axios.post(REFRESH_TOKEN_URL, "", {
         withCredentials: true, // This ensures cookies are sent with the request
         headers: {
           "Access-Control-Allow-Origin": "*",

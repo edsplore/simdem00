@@ -83,16 +83,6 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
         prompt: prompt,
       });
 
-      // const response = await axios.post('https://everise-backend.replit.app/convert/text-to-script', {
-      //   id: 'user123',
-      //   prompt: prompt,
-      // }, {
-      //   headers: {
-      //     'Access-Control-Allow-Origin': '*',
-      //     'Content-Type': 'application/json'
-      //   }
-      // });
-
       // Transform API response into the correct Message format
       if (response.data && Array.isArray(response.data.script)) {
         const transformedScript: Message[] = response.data.script.map((item: any, index: number) => ({

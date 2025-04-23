@@ -1,11 +1,8 @@
 import apiClient from "./api/interceptors";
 
-// Staging
-//const SUGGESTIONS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/suggestions';
-
-// Dev
-const SUGGESTIONS_URL =  "https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/suggestions";
-
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
+const SUGGESTIONS_URL = `${UAM_API_URL}/uam/api/suggestions`;
 
 /**
  * Fetches divisions for a specific workspace

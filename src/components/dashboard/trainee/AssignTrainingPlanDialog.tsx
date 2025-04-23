@@ -132,34 +132,37 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
         console.log('Teams response:', teamsResponse);
 
         // Process users
-        const userAssignees: Assignee[] = Array.isArray(usersResponse) ? 
-          usersResponse.map(user => ({
-            id: user.user_id,
-            name: user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            email: user.email,
-            type: 'trainee'
-          })) : [];
+        const userAssignees: Assignee[] = usersResponse.map(user => ({
+          id: user.user_id,
+          name: user.fullName,
+          email: user.email,
+          type: 'trainee'
+        }));
 
-        // Process teams
-        const teamAssignees: Assignee[] = teamsResponse && teamsResponse.teams ? 
-          teamsResponse.teams.map(team => ({
-            id: team.team_id,
-            name: team.team_name,
-            type: 'team'
-          })) : [];
+        // Process teams - handle both response formats
+        let teamsList: Team[] = [];
+        if (teamsResponse.teams && Array.isArray(teamsResponse.teams)) {
+          teamsList = teamsResponse.teams;
+        } else if (teamsResponse.items && Array.isArray(teamsResponse.items)) {
+          teamsList = teamsResponse.items;
+        }
+
+        const teamAssignees: Assignee[] = teamsList.map(team => ({
+          id: team.team_id,
+          name: team.team_name || team.name || `Team ${team.team_id.slice(-4)}`,
+          type: 'team'
+        }));
 
         // Combine users and teams
-        const allAssignees = [...teamAssignees, ...userAssignees];
-        setAssignees(allAssignees);
+        setAssignees([...teamAssignees, ...userAssignees]);
 
         console.log('Loaded assignees:', {
           teams: teamAssignees.length,
           users: userAssignees.length,
-          total: allAssignees.length
+          total: teamAssignees.length + userAssignees.length
         });
       } catch (error) {
         console.error('Error loading assignees:', error);
-        setError('Failed to load users and teams');
       } finally {
         setIsLoadingAssignees(false);
       }
@@ -563,8 +566,6 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                       </Box>
                     ) : assignees.length === 0 ? (
                       <MenuItem disabled>No users or teams available</MenuItem>
-                    ) : filteredAssignees.length === 0 ? (
-                      <MenuItem disabled>No matches found</MenuItem>
                     ) : (
                       filteredAssignees.map((assignee) => (
                         <MenuItem

@@ -55,7 +55,7 @@ class AuthService {
       console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
       // Use staging URL for now, could be made configurable based on environment
-      const refreshTokenUrl = URLS.staging.refreshToken;
+      const refreshTokenUrl = URLS.dev.refreshToken;
 
       const response = await axios.post(refreshTokenUrl, "", {
         withCredentials: true, // This ensures cookies are sent with the request

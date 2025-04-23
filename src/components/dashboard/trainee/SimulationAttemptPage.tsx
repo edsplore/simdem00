@@ -24,7 +24,10 @@ import { fetchSimulationById } from "../../../services/simulations";
 import type { Simulation } from "../../../types/training";
 
 const SimulationAttemptPage = () => {
-  const { id: simulationId } = useParams<{ id: string }>();
+  const { id: simulationId, assignment_id: assignmentId } = useParams<{
+    id: string;
+    assignment_id: string;
+  }>();
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedAttempt, setSelectedAttempt] = useState<"Test" | "Practice">(
     "Test",
@@ -115,6 +118,7 @@ const SimulationAttemptPage = () => {
         level={selectedLevel}
         simType={simulation.sim_type}
         attemptType={selectedAttempt}
+        assignmentId={assignmentId} // Add this line
         onBackToList={() => setShowStartPage(false)}
       />
     );

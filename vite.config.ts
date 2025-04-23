@@ -22,7 +22,8 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "https://everise-backend-staging.replit.app",
+        target:
+          "https://1d1af155-4b31-443e-b7f4-734bf003281a-00-6px8vaye8p33.pike.replit.dev",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
         secure: false,
@@ -36,8 +37,13 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          mui: ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          vendor: ["react", "react-dom", "react-router-dom"],
+          mui: [
+            "@mui/material",
+            "@mui/icons-material",
+            "@emotion/react",
+            "@emotion/styled",
+          ],
         },
       },
     },

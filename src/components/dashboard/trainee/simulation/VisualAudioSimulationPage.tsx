@@ -110,6 +110,7 @@ interface VisualAudioSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  assignmentId: string;
 }
 
 interface VisualAudioResponse {
@@ -145,6 +146,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  assignmentId,
 }) => {
   // Get authenticated user using useAuth hook
   const { user } = useAuth();
@@ -645,7 +647,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         {
           user_id: userId,
           sim_id: simulationId,
-          assignment_id: "679fc6ffcbee8fef61c99eb1",
+          assignment_id: assignmentId,
         },
       );
 

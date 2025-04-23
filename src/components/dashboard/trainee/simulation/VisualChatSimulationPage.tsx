@@ -115,6 +115,7 @@ interface VisualChatSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  assignmentId: string;
 }
 
 interface VisualChatResponse {
@@ -150,6 +151,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  assignmentId,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -674,7 +676,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         {
           user_id: userId,
           sim_id: simulationId,
-          assignment_id: "679fc6ffcbee8fef61c99eb1",
+          assignment_id: assignmentId,
         },
       );
 

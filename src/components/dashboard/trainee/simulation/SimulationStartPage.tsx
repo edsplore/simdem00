@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useRef, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -8,18 +8,18 @@ import {
   Card,
   Avatar,
   IconButton,
-} from '@mui/material';
+} from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
   Phone,
   Pause,
   CallEnd,
-} from '@mui/icons-material';
-import { RetellWebClient } from 'retell-client-js-sdk';
+} from "@mui/icons-material";
+import { RetellWebClient } from "retell-client-js-sdk";
 
 interface Message {
-  speaker: 'customer' | 'trainee';
+  speaker: "customer" | "trainee";
   text: string;
 }
 
@@ -30,6 +30,7 @@ interface SimulationStartPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  assignmentId: string;
 }
 
 interface AudioResponse {
@@ -48,6 +49,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  assignmentId,
 }) => {
   const [isCallActive, setIsCallActive] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -56,21 +58,21 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    webClient.on('conversationStarted', () => {
-      console.log('Conversation started');
+    webClient.on("conversationStarted", () => {
+      console.log("Conversation started");
     });
 
-    webClient.on('conversationEnded', ({ code, reason }) => {
-      console.log('Conversation ended:', code, reason);
+    webClient.on("conversationEnded", ({ code, reason }) => {
+      console.log("Conversation ended:", code, reason);
       setIsCallActive(false);
     });
 
-    webClient.on('error', (error) => {
-      console.error('WebRTC error:', error);
+    webClient.on("error", (error) => {
+      console.error("WebRTC error:", error);
       setIsCallActive(false);
     });
 
-    webClient.on('update', (update) => {
+    webClient.on("update", (update) => {
       if (update.transcript) {
         const newTranscript = update.transcript;
         const previousTranscript = previousTranscriptRef.current || [];
@@ -85,7 +87,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
           if (newTranscriptLength > prevTranscriptLength) {
             const newMsg = newTranscript[newTranscriptLength - 1];
             updatedMessages.push({
-              speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+              speaker: newMsg.role === "agent" ? "customer" : "trainee",
               text: newMsg.content,
             });
           } else if (newTranscriptLength === prevTranscriptLength) {
@@ -94,11 +96,14 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
 
             if (lastMsgIndex >= 0) {
               const lastMsg = updatedMessages[lastMsgIndex];
-              if (lastMsg.speaker === (newMsg.role === 'agent' ? 'customer' : 'trainee')) {
+              if (
+                lastMsg.speaker ===
+                (newMsg.role === "agent" ? "customer" : "trainee")
+              ) {
                 updatedMessages[lastMsgIndex].text = newMsg.content;
               } else {
                 updatedMessages.push({
-                  speaker: newMsg.role === 'agent' ? 'customer' : 'trainee',
+                  speaker: newMsg.role === "agent" ? "customer" : "trainee",
                   text: newMsg.content,
                 });
               }
@@ -121,24 +126,29 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
     setIsStarting(true);
     try {
       setIsCallActive(true);
-      setMessages([{
-        speaker: 'customer',
-        text: 'Connecting...'
-      }]);
+      setMessages([
+        {
+          speaker: "customer",
+          text: "Connecting...",
+        },
+      ]);
 
-      const response = await axios.post<AudioResponse>('/api/simulations/start-audio', {
-        user_id: 'member2',
-        sim_id: simulationId,
-        assignment_id: '679fc6ffcbee8fef61c99eb1'
-      });
+      const response = await axios.post<AudioResponse>(
+        "/api/simulations/start-audio",
+        {
+          user_id: "member2",
+          sim_id: simulationId,
+          assignment_id: assignmentId,
+        },
+      );
 
       if (response.data.access_token) {
         await webClient.startCall({
-          accessToken: response.data.access_token
+          accessToken: response.data.access_token,
         });
       }
     } catch (error) {
-      console.error('Error starting simulation:', error);
+      console.error("Error starting simulation:", error);
       setIsCallActive(false);
       setMessages([]);
     } finally {
@@ -152,77 +162,136 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
   };
 
   return (
-    <Box sx={{ height: '100vh', bgcolor: 'white', py: 0, px: 0 }}>
+    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
       {/* Header */}
-      <Box sx={{ maxWidth: '900px', mx: 'auto', borderRadius: '16px' }}>
+      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
         <Stack
           direction="row"
           sx={{
             p: 2,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-            backgroundColor: '#F9FAFB',
-            borderRadius: '16px',
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            backgroundColor: "#F9FAFB",
+            borderRadius: "16px",
             gap: "20px",
-            justifyContent: 'space-between'
+            justifyContent: "space-between",
           }}
         >
-          <Typography variant="body2" color="text.main" sx={{ borderRadius: '8px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{ borderRadius: "8px", padding: "4px 8px" }}
+          >
             {simulationName}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {level}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             Sim Type: {simType}
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px' }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+            }}
+          >
             {attemptType} Attempt
           </Typography>
-          <Typography variant="body2" color="text.main" sx={{ backgroundColor: '#ECEFF3', borderRadius: '12px', padding: '4px 8px', ml: 'auto', color: "#0037ff" }}>
+          <Typography
+            variant="body2"
+            color="text.main"
+            sx={{
+              backgroundColor: "#ECEFF3",
+              borderRadius: "12px",
+              padding: "4px 8px",
+              ml: "auto",
+              color: "#0037ff",
+            }}
+          >
             00:00
           </Typography>
         </Stack>
       </Box>
 
-      <Card sx={{ maxWidth: '900px', minHeight: '600px', mx: 'auto', mt: 1, borderRadius: '16px' }}>
-        <Box sx={{
-          p: 2,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          display: 'flex',
-          justifyContent: 'space-between'
-        }}>
-          <Typography variant="subtitle2" color="text.secondary">Customer</Typography>
-          <Typography variant="subtitle2" color="text.secondary">Trainee</Typography>
+      <Card
+        sx={{
+          maxWidth: "900px",
+          minHeight: "600px",
+          mx: "auto",
+          mt: 1,
+          borderRadius: "16px",
+        }}
+      >
+        <Box
+          sx={{
+            p: 2,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography variant="subtitle2" color="text.secondary">
+            Customer
+          </Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            Trainee
+          </Typography>
         </Box>
 
-        <Box sx={{ position: 'relative', height: 'calc(100vh - 200px)' }}>
+        <Box sx={{ position: "relative", height: "calc(100vh - 200px)" }}>
           {!isCallActive ? (
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '400px',
-              width: "50%",
-              mx: 'auto',
-              my: 10,
-              border: "1px solid #DEE2FD",
-              borderRadius: 4
-            }}>
-              <Box sx={{
-                bgcolor: '#f5f7ff',
-                borderRadius: '50%',
-                p: 2,
-                mb: 2,
-              }}>
-                <SmartToyIcon sx={{ fontSize: 48, color: '#DEE2FD' }} />
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "400px",
+                width: "50%",
+                mx: "auto",
+                my: 10,
+                border: "1px solid #DEE2FD",
+                borderRadius: 4,
+              }}
+            >
+              <Box
+                sx={{
+                  bgcolor: "#f5f7ff",
+                  borderRadius: "50%",
+                  p: 2,
+                  mb: 2,
+                }}
+              >
+                <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
               </Box>
-              <Typography variant="h4" sx={{ fontWeight: 800, color: '#1a1a1a', mb: 1 }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+              >
                 Start Simulation
               </Typography>
-              <Typography sx={{ color: '#666', mb: 4 }}>
+              <Typography sx={{ color: "#666", mb: 4 }}>
                 Press start to attempt the Audio Simulation
               </Typography>
               <Button
@@ -231,32 +300,32 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
                 onClick={handleStart}
                 disabled={isStarting}
                 sx={{
-                  bgcolor: '#0037ff',
-                  color: 'white',
+                  bgcolor: "#0037ff",
+                  color: "white",
                   px: 6,
                   py: 1.5,
                   borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '16px',
-                  '&:hover': {
-                    bgcolor: '#002ed4',
-                  }
+                  textTransform: "none",
+                  fontSize: "16px",
+                  "&:hover": {
+                    bgcolor: "#002ed4",
+                  },
                 }}
               >
-                {isStarting ? 'Starting...' : 'Start Simulation'}
+                {isStarting ? "Starting..." : "Start Simulation"}
               </Button>
               <Button
                 variant="text"
                 onClick={onBackToList}
                 sx={{
                   mt: 2,
-                  color: '#666',
-                  textTransform: 'none',
+                  color: "#666",
+                  textTransform: "none",
                   border: "1px solid #DEE2FD",
                   px: 8,
                   py: 1.5,
                   borderRadius: 2,
-                  fontSize: '16px',
+                  fontSize: "16px",
                 }}
               >
                 Back to Sim List
@@ -266,12 +335,12 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
             <Box
               ref={chatContainerRef}
               sx={{
-                height: 'calc(100% - 80px)',
-                overflowY: 'auto',
+                height: "calc(100% - 80px)",
+                overflowY: "auto",
                 px: 3,
                 py: 2,
-                '&::-webkit-scrollbar': { display: 'none' },
-                scrollbarWidth: 'none',
+                "&::-webkit-scrollbar": { display: "none" },
+                scrollbarWidth: "none",
               }}
             >
               <Stack spacing={2}>
@@ -280,26 +349,30 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
                     key={index}
                     direction="row"
                     spacing={2}
-                    justifyContent={message.speaker === 'customer' ? 'flex-start' : 'flex-end'}
+                    justifyContent={
+                      message.speaker === "customer" ? "flex-start" : "flex-end"
+                    }
                     alignItems="flex-start"
                   >
-                    {message.speaker === 'customer' && (
+                    {message.speaker === "customer" && (
                       <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
                     )}
                     <Box
                       sx={{
-                        maxWidth: '70%',
-                        bgcolor: '#FAFAFF',
+                        maxWidth: "70%",
+                        bgcolor: "#FAFAFF",
                         p: 2,
                         borderRadius: 3,
-                        border: '2px solid #6D7295',
-                        borderTopLeftRadius: message.speaker === 'customer' ? 0 : 3,
-                        borderTopRightRadius: message.speaker === 'trainee' ? 0 : 3,
+                        border: "2px solid #6D7295",
+                        borderTopLeftRadius:
+                          message.speaker === "customer" ? 0 : 3,
+                        borderTopRightRadius:
+                          message.speaker === "trainee" ? 0 : 3,
                       }}
                     >
                       <Typography variant="body1">{message.text}</Typography>
                     </Box>
-                    {message.speaker === 'trainee' && (
+                    {message.speaker === "trainee" && (
                       <Avatar
                         src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
                         sx={{ width: 32, height: 32 }}
@@ -317,7 +390,7 @@ const SimulationStartPage: React.FC<SimulationStartPageProps> = ({
           spacing={2}
           sx={{
             maxWidth: 900,
-            margin: '0 auto',
+            margin: "0 auto",
             p: 2,
             bgcolor: "#F9FAFB",
             borderTop: "1px solid #E5E7EB",

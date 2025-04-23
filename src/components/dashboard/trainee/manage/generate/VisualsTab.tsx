@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from "react";
 import {
   DndContext,
   closestCenter,
@@ -205,73 +211,6 @@ const processImageUrl = (imageData: string): string => {
   }
 };
 
-// Debug utility to help identify image data issues
-const debugImageData = (data: string, label: string = "Image data") => {
-  if (!data) {
-    console.log(`${label}: [empty]`);
-    return;
-  }
-
-  // Show truncated data for long strings
-  if (data.length > 100) {
-    console.log(`${label} (${data.length} bytes): ${data.substring(0, 50)}...`);
-  } else {
-    console.log(`${label}: ${data}`);
-  }
-
-  // Check image type
-  if (data.length > 2) {
-    try {
-      const mimeType = detectImageType(data);
-      console.log(`${label} detected type: ${mimeType}`);
-    } catch (e) {
-      // Ignore errors in debug function
-    }
-  }
-
-  // Try to determine the type of data
-  if (data.startsWith("data:")) {
-    console.log(`${label} type: Data URL`);
-
-    // Check if it might be an encoded URL
-    const parts = data.split(",");
-    if (parts.length > 1) {
-      try {
-        const decoded = atob(parts[1]);
-        if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
-          console.log(
-            `${label} contains encoded URL: ${decoded.substring(0, 50)}...`,
-          );
-        }
-      } catch (e) {
-        // Not valid base64
-      }
-    }
-  } else if (data.startsWith("blob:")) {
-    console.log(`${label} type: Blob URL`);
-  } else if (data.startsWith("/api/") || data.startsWith("http")) {
-    console.log(`${label} type: External URL`);
-  } else if (/^[A-Za-z0-9+/=]+$/.test(data.trim())) {
-    // Try to decode it and see what it might be
-    try {
-      const decoded = atob(data);
-      if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
-        console.log(`${label} type: Base64-encoded URL!`);
-        console.log(`${label} decoded: ${decoded.substring(0, 50)}...`);
-      } else {
-        console.log(`${label} type: Base64 data`);
-      }
-    } catch (e) {
-      console.log(`${label} type: Looks like Base64 but couldn't decode`);
-    }
-  } else {
-    console.log(`${label} type: Binary data or other format`);
-    // For binary data, try to detect the image type
-    const mimeType = detectImageType(data);
-    console.log(`${label} probable image type: ${mimeType}`);
-  }
-};
-
 export default function VisualsTab({
   images = [],
   onImagesUpdate,
@@ -289,11 +228,14 @@ export default function VisualsTab({
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // We'll keep the sequence panel default to collapsed
+  // Use useMemo to stabilize the isSequenceExpanded state and prevent unnecessary re-renders
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
 
+  // Keep track of the last stable container width to prevent flickering
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const stableContainerWidth = useRef<number>(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const containerSizeObserver = useRef<ResizeObserver | null>(null);
 
   // For the "Add Script Message" menu
   const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
@@ -306,41 +248,78 @@ export default function VisualsTab({
   // Check if this is pure "visual" type (no script)
   const isPureVisual = simulationType === "visual";
 
-  // Update container width when ref is available
-  useEffect(() => {
-    if (mainContentRef.current) {
-      const updateContainerWidth = () => {
-        setContainerWidth(mainContentRef.current?.clientWidth || 0);
-      };
+  // Memoize the current sequence to prevent unnecessary recalculations
+  const selectedImage = useMemo(
+    () => visualImages.find((img) => img.id === selectedImageId),
+    [visualImages, selectedImageId],
+  );
 
-      updateContainerWidth();
-      window.addEventListener("resize", updateContainerWidth);
+  const currentSequence: SequenceItem[] = useMemo(
+    () => selectedImage?.sequence || [],
+    [selectedImage],
+  );
 
-      return () => {
-        window.removeEventListener("resize", updateContainerWidth);
-      };
+  // Throttled container width update to prevent too frequent state changes
+  const updateContainerWidth = useCallback(() => {
+    if (!mainContentRef.current) return;
+
+    const newWidth = mainContentRef.current.clientWidth;
+
+    // Only update if the change is significant (more than 5px difference)
+    if (Math.abs(newWidth - stableContainerWidth.current) > 5) {
+      stableContainerWidth.current = newWidth;
+      setContainerWidth(newWidth);
     }
-  }, [mainContentRef]);
+  }, []);
 
-  // Update parent when visualImages changes
+  // Update container width when ref is available, but with more stable behavior
   useEffect(() => {
-    if (onImagesUpdate) {
-      onImagesUpdate(visualImages);
+    if (!mainContentRef.current) return;
+
+    // Initialize width
+    updateContainerWidth();
+
+    // Clean up previous observer if it exists
+    if (containerSizeObserver.current) {
+      containerSizeObserver.current.disconnect();
     }
-  }, [visualImages, onImagesUpdate]);
 
-  // Creates a map of images similar to what preview components use
-  const createImageMap = (): Map<string, string> => {
-    const imageMap = new Map<string, string>();
-
-    visualImages.forEach((img) => {
-      if (img.id && img.url) {
-        imageMap.set(img.id, img.url);
+    // Create a new observer with throttling built in
+    let throttleTimeout: number | null = null;
+    containerSizeObserver.current = new ResizeObserver(() => {
+      if (throttleTimeout !== null) {
+        window.clearTimeout(throttleTimeout);
       }
+
+      throttleTimeout = window.setTimeout(() => {
+        updateContainerWidth();
+        throttleTimeout = null;
+      }, 100); // Throttle to max once per 100ms
     });
 
-    return imageMap;
-  };
+    containerSizeObserver.current.observe(mainContentRef.current);
+
+    // Clean up
+    return () => {
+      if (throttleTimeout !== null) {
+        window.clearTimeout(throttleTimeout);
+      }
+      if (containerSizeObserver.current) {
+        containerSizeObserver.current.disconnect();
+      }
+    };
+  }, [updateContainerWidth]);
+
+  // Update parent when visualImages changes, but debounce to prevent excessive updates
+  useEffect(() => {
+    if (!onImagesUpdate) return;
+
+    const debounceTimeout = setTimeout(() => {
+      onImagesUpdate(visualImages);
+    }, 300); // Debounce updates to 300ms
+
+    return () => clearTimeout(debounceTimeout);
+  }, [visualImages, onImagesUpdate]);
 
   // Crucial update: Process images prop into proper visualImages state
   useEffect(() => {
@@ -421,68 +400,11 @@ export default function VisualsTab({
         let processedUrl = "";
 
         if (img.url) {
-          // Debug the URL before processing
-          debugImageData(img.url, `Original URL for image ${img.id}`);
-
-          // Special handling for data URLs that might contain encoded blob URLs
-          if (img.url.startsWith("data:image")) {
-            const parts = img.url.split(",");
-            if (parts.length > 1) {
-              try {
-                const decoded = atob(parts[1]);
-                if (decoded.startsWith("blob:") || decoded.startsWith("http")) {
-                  console.log(
-                    `Image ${img.id}: Found encoded URL in data URL:`,
-                    decoded.substring(0, 50) + "...",
-                  );
-                  processedUrl = decoded;
-                } else {
-                  // Regular data URL
-                  processedUrl = img.url;
-                }
-              } catch (e) {
-                // Not valid base64 or other error
-                processedUrl = img.url;
-              }
-            } else {
-              processedUrl = img.url;
-            }
-          }
-          // Handle direct URLs
-          else if (
-            img.url.startsWith("blob:") ||
-            img.url.startsWith("http") ||
-            img.url.startsWith("/api/")
-          ) {
-            processedUrl = img.url;
-          }
-          // For raw base64
-          else if (
-            /^[A-Za-z0-9+/=]+$/.test(img.url.trim()) &&
-            img.url.length > 20
-          ) {
-            // Try to determine the image type
-            try {
-              const decoded = atob(img.url);
-              const mimeType = detectImageType(decoded);
-              processedUrl = `data:${mimeType};base64,${img.url}`;
-            } catch (e) {
-              // Default to PNG if we can't determine
-              processedUrl = `data:image/png;base64,${img.url}`;
-            }
-          }
-          // For binary data - this approach matches preview components
-          else {
-            processedUrl = img.url; // Keep as is for binary data
-          }
-
-          // Debug the processed URL
-          debugImageData(processedUrl, `Processed URL for image ${img.id}`);
+          processedUrl = img.url;
         }
         // For file objects, create a proper object URL
         else if (img.file) {
           processedUrl = URL.createObjectURL(img.file);
-          console.log(`Created object URL for file: ${img.name}`);
         }
 
         return {
@@ -494,69 +416,64 @@ export default function VisualsTab({
         };
       });
 
-      console.log("Processed images:", processedImages);
       setVisualImages(processedImages);
-
-      // Create and log the image map that would be used by preview components
-      const imageMap = createImageMap();
-      console.log("Image map (similar to preview components):", imageMap);
 
       // Set selected image if none is selected
       if (processedImages.length > 0 && !selectedImageId) {
         setSelectedImageId(processedImages[0].id);
       }
     }
-  }, [images]);
+  }, [images, selectedImageId]);
 
   /** Helper: add a hotspot to the selected image's sequence. */
-  const addHotspotToSequence = (imageId: string, hotspot: Hotspot) => {
-    if (!imageId) return;
+  const addHotspotToSequence = useCallback(
+    (imageId: string, hotspot: Hotspot) => {
+      if (!imageId) return;
 
-    setVisualImages((currentImages) =>
-      currentImages.map((img) => {
-        if (img.id === imageId) {
-          const newSequenceItem: SequenceItem = {
-            id: `hotspot-${hotspot.id}`,
-            type: "hotspot",
-            content: hotspot,
-            timestamp: Date.now(),
-          };
+      setVisualImages((currentImages) =>
+        currentImages.map((img) => {
+          if (img.id === imageId) {
+            const newSequenceItem: SequenceItem = {
+              id: `hotspot-${hotspot.id}`,
+              type: "hotspot",
+              content: hotspot,
+              timestamp: Date.now(),
+            };
 
-          return {
-            ...img,
-            sequence: [...img.sequence, newSequenceItem],
-          };
-        }
-        return img;
-      }),
-    );
-  };
-
-  /** Get the selected image object. */
-  const selectedImage = visualImages.find((img) => img.id === selectedImageId);
-
-  // Get the current sequence for the selected image
-  const currentSequence: SequenceItem[] = selectedImage?.sequence || [];
+            return {
+              ...img,
+              sequence: [...img.sequence, newSequenceItem],
+            };
+          }
+          return img;
+        }),
+      );
+    },
+    [],
+  );
 
   // Handle reordering of the sequence
-  const handleSequenceReorder = (newSequence: SequenceItem[]) => {
-    if (!selectedImageId) return;
+  const handleSequenceReorder = useCallback(
+    (newSequence: SequenceItem[]) => {
+      if (!selectedImageId) return;
 
-    setVisualImages((currentImages) =>
-      currentImages.map((img) => {
-        if (img.id === selectedImageId) {
-          return {
-            ...img,
-            sequence: newSequence,
-          };
-        }
-        return img;
-      }),
-    );
-  };
+      setVisualImages((currentImages) =>
+        currentImages.map((img) => {
+          if (img.id === selectedImageId) {
+            return {
+              ...img,
+              sequence: newSequence,
+            };
+          }
+          return img;
+        }),
+      );
+    },
+    [selectedImageId],
+  );
 
   // Extract hotspots from the selected image for the ImageHotspot component
-  const getHotspotsForImageHotspot = () => {
+  const getHotspotsForImageHotspot = useCallback(() => {
     if (!selectedImage || !selectedImage.sequence) return [];
 
     return selectedImage.sequence
@@ -585,70 +502,76 @@ export default function VisualsTab({
           settings: hotspot.settings || {},
         };
       });
-  };
+  }, [selectedImage]);
 
   // For the "Add Script Message" menu
   // Filter out messages that have already been assigned to a visual
-  const unassignedMessages = scriptData.filter((msg) => {
-    if (!msg || !msg.id) return false;
+  const unassignedMessages = useMemo(
+    () =>
+      scriptData.filter((msg) => {
+        if (!msg || !msg.id) return false;
 
-    return !visualImages.some((img) => {
-      if (!img || !img.sequence) return false;
+        return !visualImages.some((img) => {
+          if (!img || !img.sequence) return false;
 
-      return img.sequence.some((item) => {
-        if (!item || item.type !== "message" || !item.content) return false;
+          return img.sequence.some((item) => {
+            if (!item || item.type !== "message" || !item.content) return false;
 
-        // Safely access the ID with type checking
-        const messageContent = item.content as Partial<ScriptMessage>;
-        return messageContent.id === msg.id;
-      });
-    });
-  });
-
-  const handleOpenScriptMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setScriptMenuAnchor(event.currentTarget);
-  };
-
-  const handleCloseScriptMenu = () => {
-    setScriptMenuAnchor(null);
-  };
-
-  const handleAddMessage = (message: {
-    id: string;
-    role: string;
-    message: string;
-  }) => {
-    if (!selectedImageId) return;
-
-    const newMsg: ScriptMessage = {
-      id: message.id,
-      role: message.role as "Customer" | "Trainee",
-      text: message.message,
-      visualId: selectedImageId,
-      order: 0, // We're not using this anymore as we rely on sequence order
-    };
-
-    const newSequenceItem: SequenceItem = {
-      id: `message-${message.id}`,
-      type: "message",
-      content: newMsg,
-      timestamp: Date.now(),
-    };
-
-    setVisualImages((currentImages) =>
-      currentImages.map((img) => {
-        if (img.id === selectedImageId) {
-          return {
-            ...img,
-            sequence: [...img.sequence, newSequenceItem],
-          };
-        }
-        return img;
+            // Safely access the ID with type checking
+            const messageContent = item.content as Partial<ScriptMessage>;
+            return messageContent.id === msg.id;
+          });
+        });
       }),
-    );
+    [scriptData, visualImages],
+  );
 
-    handleCloseScriptMenu();
-  };
+  const handleOpenScriptMenu = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      setScriptMenuAnchor(event.currentTarget);
+    },
+    [],
+  );
+
+  const handleCloseScriptMenu = useCallback(() => {
+    setScriptMenuAnchor(null);
+  }, []);
+
+  const handleAddMessage = useCallback(
+    (message: { id: string; role: string; message: string }) => {
+      if (!selectedImageId) return;
+
+      const newMsg: ScriptMessage = {
+        id: message.id,
+        role: message.role as "Customer" | "Trainee",
+        text: message.message,
+        visualId: selectedImageId,
+        order: 0, // We're not using this anymore as we rely on sequence order
+      };
+
+      const newSequenceItem: SequenceItem = {
+        id: `message-${message.id}`,
+        type: "message",
+        content: newMsg,
+        timestamp: Date.now(),
+      };
+
+      setVisualImages((currentImages) =>
+        currentImages.map((img) => {
+          if (img.id === selectedImageId) {
+            return {
+              ...img,
+              sequence: [...img.sequence, newSequenceItem],
+            };
+          }
+          return img;
+        }),
+      );
+
+      handleCloseScriptMenu();
+    },
+    [selectedImageId, handleCloseScriptMenu],
+  );
 
   // For draggable thumbnails on the left
   const sensors = useSensors(
@@ -658,22 +581,23 @@ export default function VisualsTab({
     }),
   );
 
-  const handleThumbnailsDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
+  const handleThumbnailsDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
 
-    const oldIndex = visualImages.findIndex((img) => img.id === active.id);
-    const newIndex = visualImages.findIndex((img) => img.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
+      const oldIndex = visualImages.findIndex((img) => img.id === active.id);
+      const newIndex = visualImages.findIndex((img) => img.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return;
 
-    const newArr = [...visualImages];
-    const [moved] = newArr.splice(oldIndex, 1);
-    newArr.splice(newIndex, 0, moved);
-    setVisualImages(newArr);
-  };
+      const newArr = arrayMove(visualImages, oldIndex, newIndex);
+      setVisualImages(newArr);
+    },
+    [visualImages],
+  );
 
   // Image Upload
-  const handleFiles = (files: File[]) => {
+  const handleFiles = useCallback((files: File[]) => {
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
     const newImages = imageFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
@@ -682,38 +606,47 @@ export default function VisualsTab({
       file: file, // Store the actual File reference
       sequence: [], // Initialize with empty sequence
     }));
-    setVisualImages([...visualImages, ...newImages]);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    handleFiles(Array.from(e.target.files));
-  };
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    handleFiles(Array.from(e.dataTransfer.files));
+    setVisualImages((prev) => [...prev, ...newImages]);
   }, []);
+
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files) return;
+      handleFiles(Array.from(e.target.files));
+    },
+    [handleFiles],
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      handleFiles(Array.from(e.dataTransfer.files));
+    },
+    [handleFiles],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
   }, []);
 
   // Delete a thumbnail
-  const handleDeleteImage = (imgId: string) => {
-    if (selectedImageId === imgId) {
-      setSelectedImageId(null);
-    }
-    setVisualImages(visualImages.filter((img) => img.id !== imgId));
-  };
+  const handleDeleteImage = useCallback(
+    (imgId: string) => {
+      if (selectedImageId === imgId) {
+        setSelectedImageId(null);
+      }
+      setVisualImages((prev) => prev.filter((img) => img.id !== imgId));
+    },
+    [selectedImageId],
+  );
 
   // Clicking a thumbnail
-  const handleSelectImage = (imgId: string) => {
+  const handleSelectImage = useCallback((imgId: string) => {
     setSelectedImageId(imgId);
     setEditingHotspot(null);
-  };
+  }, []);
 
-  const handleSaveAndContinue = async () => {
+  const handleSaveAndContinue = useCallback(async () => {
     if (visualImages.length === 0) {
       setError("Please add at least one image before continuing");
       return;
@@ -725,10 +658,6 @@ export default function VisualsTab({
     try {
       // Create FormData for multipart/form-data submission with files
       const formData = new FormData();
-
-      // First check if we have actual file objects to upload
-      const hasFiles = visualImages.some((img) => img.file !== undefined);
-      console.log("Has files to upload:", hasFiles);
 
       // Convert visualImages to slidesData format for API
       const slidesData = visualImages.map((img, index) => {
@@ -800,35 +729,15 @@ export default function VisualsTab({
       });
 
       // Add the slides data as JSON to FormData
-      console.log("Sending slidesData:", JSON.stringify(slidesData));
       formData.append("slidesData", JSON.stringify(slidesData));
 
       // Add file objects to FormData when available
-      let fileCount = 0;
       visualImages.forEach((image) => {
         if (image.file) {
-          fileCount++;
           // Use image ID in the key name to maintain correct mapping
           formData.append(`slide_${image.id}`, image.file, image.name);
         }
       });
-      console.log(`Added ${fileCount} files to form data`);
-
-      // Debug what's in the FormData
-      for (const pair of formData.entries()) {
-        // Don't log the actual file content, just log that a file was included
-        if (pair[1] instanceof File) {
-          console.log(
-            `FormData contains file: ${pair[0]} - ${(pair[1] as File).name}`,
-          );
-        } else if (typeof pair[1] === "string" && pair[1].length > 100) {
-          console.log(
-            `FormData contains ${pair[0]} (large string, ${pair[1].length} chars)`,
-          );
-        } else {
-          console.log(`FormData contains: ${pair[0]} - ${pair[1]}`);
-        }
-      }
 
       // Call create/update simulation for all visual-related types
       if (createSimulation) {
@@ -838,9 +747,6 @@ export default function VisualsTab({
 
         // Call the update function
         const response = await createSimulation(formData);
-
-        // Log the full response for debugging
-        console.log("API Response:", response);
 
         // More robust response checking
         if (response) {
@@ -887,74 +793,62 @@ export default function VisualsTab({
       setIsSubmitting(false);
       setIsEditing(false); // Reset editing mode after saving
     }
-  };
+  }, [visualImages, simulationType, createSimulation, onComplete]);
 
-  // Update hotspots in the sequence
-  const updateImageHotspots = (imageId: string, newHotspots: Hotspot[]) => {
-    if (!imageId) return;
+  // Update hotspots in the sequence - optimized to minimize state updates
+  const updateImageHotspots = useCallback(
+    (imageId: string, newHotspots: Hotspot[]) => {
+      if (!imageId) return;
 
-    // Find the current image
-    const currentImage = visualImages.find((img) => img.id === imageId);
-    if (!currentImage) return;
+      setVisualImages((currentImages) => {
+        // Find the current image
+        const currentImageIndex = currentImages.findIndex(
+          (img) => img.id === imageId,
+        );
+        if (currentImageIndex === -1) return currentImages;
 
-    // Find all sequence items that are hotspots
-    const currentHotspotItems = currentImage.sequence.filter(
-      (item) => item.type === "hotspot",
-    );
-    const currentHotspots = currentHotspotItems.map(
-      (item) => item.content as Hotspot,
-    );
+        const currentImage = currentImages[currentImageIndex];
 
-    // Identify deleted hotspots
-    const deletedHotspots = currentHotspots.filter(
-      (oldHotspot) =>
-        !newHotspots.some((newHotspot) => newHotspot.id === oldHotspot.id),
-    );
+        // Find all sequence items that are hotspots
+        const currentHotspotItems = currentImage.sequence.filter(
+          (item) => item.type === "hotspot",
+        );
+        const currentHotspots = currentHotspotItems.map(
+          (item) => item.content as Hotspot,
+        );
 
-    // Identify new hotspots
-    const addedHotspots = newHotspots.filter(
-      (newHotspot) =>
-        !currentHotspots.some((oldHotspot) => oldHotspot.id === newHotspot.id),
-    );
+        // Identify deleted hotspots
+        const deletedHotspotIds = currentHotspots
+          .filter(
+            (oldHotspot) =>
+              !newHotspots.some(
+                (newHotspot) => newHotspot.id === oldHotspot.id,
+              ),
+          )
+          .map((hotspot) => hotspot.id);
 
-    // Updated hotspots (existing but modified)
-    const updatedHotspots = newHotspots.filter((newHotspot) =>
-      currentHotspots.some((oldHotspot) => oldHotspot.id === newHotspot.id),
-    );
+        // Updated/added hotspots map for quick lookup
+        const updatedHotspotsMap = new Map(
+          newHotspots.map((hotspot) => [hotspot.id, hotspot]),
+        );
 
-    // Update the image's sequence
-    setVisualImages((currentImages) =>
-      currentImages.map((img) => {
-        if (img.id === imageId) {
-          // Remove deleted hotspot items
-          let updatedSequence = img.sequence.filter(
+        // Process sequence in a single pass
+        const updatedSequence = currentImage.sequence
+          .filter(
             (item) =>
               !(
                 item.type === "hotspot" &&
-                deletedHotspots.some(
-                  (h) => h.id === (item.content as Hotspot).id,
-                )
+                deletedHotspotIds.includes((item.content as Hotspot).id)
               ),
-          );
-
-          // Add new hotspots to the end of the sequence
-          addedHotspots.forEach((hotspot) => {
-            updatedSequence.push({
-              id: `hotspot-${hotspot.id}`,
-              type: "hotspot",
-              content: hotspot,
-              timestamp: Date.now(),
-            });
-          });
-
-          // Update existing hotspots
-          updatedSequence = updatedSequence.map((item) => {
+          )
+          .map((item) => {
             if (item.type === "hotspot") {
               const hotspot = item.content as Hotspot;
-              const updatedHotspot = updatedHotspots.find(
-                (h) => h.id === hotspot.id,
-              );
+              const updatedHotspot = updatedHotspotsMap.get(hotspot.id);
+
               if (updatedHotspot) {
+                // Remove from map to track what's been processed
+                updatedHotspotsMap.delete(hotspot.id);
                 return {
                   ...item,
                   content: updatedHotspot,
@@ -964,65 +858,89 @@ export default function VisualsTab({
             return item;
           });
 
-          return {
-            ...img,
-            sequence: updatedSequence,
-          };
-        }
-        return img;
-      }),
-    );
-  };
+        // Add any remaining new hotspots
+        updatedHotspotsMap.forEach((hotspot) => {
+          updatedSequence.push({
+            id: `hotspot-${hotspot.id}`,
+            type: "hotspot",
+            content: hotspot,
+            timestamp: Date.now(),
+          });
+        });
+
+        // Create a new array with the updated image
+        const newImages = [...currentImages];
+        newImages[currentImageIndex] = {
+          ...currentImage,
+          sequence: updatedSequence,
+        };
+
+        return newImages;
+      });
+    },
+    [],
+  );
 
   // Edit / Delete a single hotspot or message from the sequence
-  const handleDeleteItem = (id: string, type: "hotspot" | "message") => {
-    if (!selectedImageId) return;
+  const handleDeleteItem = useCallback(
+    (id: string, type: "hotspot" | "message") => {
+      if (!selectedImageId) return;
 
-    setVisualImages((currentImages) =>
-      currentImages.map((img) => {
-        if (img.id === selectedImageId) {
-          return {
-            ...img,
-            sequence: img.sequence.filter(
-              (item) =>
-                !(item.type === type && (item.content as any).id === id),
-            ),
-          };
+      setVisualImages((currentImages) =>
+        currentImages.map((img) => {
+          if (img.id === selectedImageId) {
+            return {
+              ...img,
+              sequence: img.sequence.filter(
+                (item) =>
+                  !(item.type === type && (item.content as any).id === id),
+              ),
+            };
+          }
+          return img;
+        }),
+      );
+    },
+    [selectedImageId],
+  );
+
+  const handleEditItem = useCallback(
+    (id: string, type: "hotspot" | "message") => {
+      if (!selectedImageId) return;
+
+      if (type === "hotspot") {
+        // Find the hotspot in the sequence
+        const selectedImage = visualImages.find(
+          (img) => img.id === selectedImageId,
+        );
+        if (!selectedImage) return;
+
+        const hotspotItem = selectedImage.sequence.find(
+          (item) =>
+            item.type === "hotspot" && (item.content as Hotspot).id === id,
+        );
+
+        if (hotspotItem) {
+          setEditingHotspot(hotspotItem.content as Hotspot);
+          setIsEditing(true);
         }
-        return img;
-      }),
-    );
-  };
-
-  const handleEditItem = (id: string, type: "hotspot" | "message") => {
-    if (!selectedImageId) return;
-
-    if (type === "hotspot") {
-      // Find the hotspot in the sequence
-      const selectedImage = visualImages.find(
-        (img) => img.id === selectedImageId,
-      );
-      if (!selectedImage) return;
-
-      const hotspotItem = selectedImage.sequence.find(
-        (item) =>
-          item.type === "hotspot" && (item.content as Hotspot).id === id,
-      );
-
-      if (hotspotItem) {
-        setEditingHotspot(hotspotItem.content as Hotspot);
-        setIsEditing(true);
+      } else {
+        // Handle message editing if needed
+        alert(`Editing message #${id} not implemented`);
       }
-    } else {
-      // Handle message editing if needed
-      alert(`Editing message #${id} not implemented`);
-    }
-  };
+    },
+    [selectedImageId, visualImages],
+  );
 
-  const handleToggleEditMode = () => {
-    setIsEditing(!isEditing);
+  const handleToggleEditMode = useCallback(() => {
+    setIsEditing((prev) => !prev);
     setEditingHotspot(null);
-  };
+  }, []);
+
+  const handleToggleSequencePanel = useCallback(() => {
+    // Use a callback to ensure we're working with the latest state
+    setIsSequenceExpanded((prev) => !prev);
+  }, []);
 
   return (
     <Stack spacing={2}>
@@ -1054,10 +972,7 @@ export default function VisualsTab({
               !Array.isArray(scriptData) ||
               scriptData.length === 0
             }
-            onClick={(e) => {
-              if (!selectedImageId) return;
-              setScriptMenuAnchor(e.currentTarget);
-            }}
+            onClick={handleOpenScriptMenu}
             sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}
           >
             Add Script Message
@@ -1102,7 +1017,7 @@ export default function VisualsTab({
           <Menu
             anchorEl={scriptMenuAnchor}
             open={Boolean(scriptMenuAnchor)}
-            onClose={() => setScriptMenuAnchor(null)}
+            onClose={handleCloseScriptMenu}
             PaperProps={{
               sx: {
                 maxHeight: 300,
@@ -1235,8 +1150,8 @@ export default function VisualsTab({
                           image={img}
                           index={index}
                           selectedImageId={selectedImageId}
-                          onImageClick={(id) => handleSelectImage(id)}
-                          onDelete={(id) => handleDeleteImage(id)}
+                          onImageClick={handleSelectImage}
+                          onDelete={handleDeleteImage}
                         />
                       ))}
                     </Stack>
@@ -1270,8 +1185,15 @@ export default function VisualsTab({
               </Button>
             </Box>
 
-            {/* Main content area */}
-            <Box sx={{ flex: 1, display: "flex", position: "relative" }}>
+            {/* Main content area with proper positioning for dialog */}
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                position: "relative",
+                overflow: "hidden", // Prevent overflow during transitions
+              }}
+            >
               {selectedImageId ? (
                 <Box
                   ref={mainContentRef}
@@ -1281,9 +1203,10 @@ export default function VisualsTab({
                     borderRadius: 2,
                     p: 4,
                     flex: 1,
-                    transition: "all 0.3s ease",
-                    // If sequence is expanded, we'll leave space for it:
-                    marginRight: isSequenceExpanded ? "340px" : "40px",
+                    position: "relative",
+                    // Use padding-right instead of width for better dialog positioning
+                    paddingRight: isSequenceExpanded ? "360px" : "60px",
+                    transition: "padding-right 0.3s ease-out", // Transition padding instead of width
                   }}
                 >
                   <ImageHotspot
@@ -1315,6 +1238,7 @@ export default function VisualsTab({
                 </Box>
               )}
 
+              {/* Sequence panel with proper z-index */}
               {selectedImageId && (
                 <Box
                   sx={{
@@ -1323,10 +1247,10 @@ export default function VisualsTab({
                     top: 0,
                     height: "100%",
                     display: "flex",
-                    transition: "all 0.3s ease",
+                    zIndex: 1, // Proper z-index to prevent overlay issues
                   }}
                 >
-                  {/* Toggle arrow (on the left side of the sequence panel) */}
+                  {/* Toggle button - fixed position */}
                   <Box
                     sx={{
                       width: 40,
@@ -1339,11 +1263,10 @@ export default function VisualsTab({
                     }}
                   >
                     <IconButton
-                      onClick={() => setIsSequenceExpanded(!isSequenceExpanded)}
+                      onClick={handleToggleSequencePanel}
                       sx={{
                         bgcolor: "#F5F6FF",
                         "&:hover": { bgcolor: "#EEF0FF" },
-                        // If expanded, arrow points right => rotate(180)
                         transform: isSequenceExpanded
                           ? "rotate(180deg)"
                           : "none",
@@ -1354,21 +1277,23 @@ export default function VisualsTab({
                     </IconButton>
                   </Box>
 
-                  {/* Sequence panel */}
+                  {/* Sequence panel with proper transitions */}
                   <Box
                     sx={{
-                      transform: isSequenceExpanded
-                        ? "translateX(0)"
-                        : "translateX(100%)",
-                      transition: "transform 0.3s ease",
                       position: "absolute",
                       right: 0,
                       top: 0,
                       height: "100%",
                       width: 340,
+                      transform: isSequenceExpanded
+                        ? "translateX(0)"
+                        : "translateX(100%)",
+                      transition: "transform 0.3s ease-out",
                       borderLeft: "1px solid",
                       borderColor: "divider",
                       bgcolor: "#F9FAFB",
+                      zIndex: 1,
+                      pointerEvents: isSequenceExpanded ? "auto" : "none", // Only capture events when visible
                     }}
                   >
                     <HotspotSequence

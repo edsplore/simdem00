@@ -65,6 +65,11 @@ interface Hotspot {
   options?: string[];
 }
 
+interface ColorOption {
+  name: string;
+  value: string;
+}
+
 interface ImageHotspotProps {
   imageUrl: string;
   onHotspotsChange?: (hotspots: Hotspot[]) => void;
@@ -140,6 +145,17 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     null,
   );
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
+
+  const commonColors: ColorOption[] = [
+    { name: "Blue", value: "#1976D2" },
+    { name: "Green", value: "#2E7D32" },
+    { name: "Red", value: "#D32F2F" },
+    { name: "Purple", value: "#7B1FA2" },
+    { name: "Orange", value: "#ED6C02" },
+    { name: "Gray", value: "#757575" },
+    { name: "Black", value: "#000000" },
+    { name: "White", value: "#FFFFFF" },
+  ];
 
   // Reference to the actual image element
   const imageElementRef = useRef<HTMLImageElement | null>(null);
@@ -471,6 +487,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }
   };
 
+  // Add this improved dialog positioning code to the ImageHotspot.tsx file
+
+  // Replace the existing calculateDialogPosition function with this improved version:
+
   const calculateDialogPosition = (hotspot: Partial<Hotspot>) => {
     if (
       !containerRef.current ||
@@ -495,49 +515,148 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     const width = hotspot.coordinates.width * imageScale.width;
     const height = hotspot.coordinates.height * imageScale.height;
 
-    // Try positioning to the right of the hotspot
-    let left = x + width + padding;
+    // Get the most accurate viewport dimensions
+    const viewportWidth = Math.max(
+      document.documentElement.clientWidth,
+      window.innerWidth || 0,
+    );
+    const viewportHeight = Math.max(
+      document.documentElement.clientHeight,
+      window.innerHeight || 0,
+    );
 
-    // If it would go off the right edge, position to the left instead
-    if (left + dialogWidth > viewportSize.width) {
-      left = x - dialogWidth - padding;
-    }
+    // Find the main content element (nearest scrollable container)
+    const findScrollContainer = (element: HTMLElement | null): HTMLElement => {
+      if (!element) return document.body;
 
-    // If it would go off the left edge, position it at the left edge with padding
-    if (left < padding) {
-      left = padding;
-    }
+      // Check if this element or any parent is scrollable
+      const isScrollable = (el: HTMLElement) => {
+        const style = window.getComputedStyle(el);
+        const overflowY = style.getPropertyValue("overflow-y");
+        return (
+          (overflowY === "auto" || overflowY === "scroll") &&
+          el.scrollHeight > el.clientHeight
+        );
+      };
 
-    // Center vertically by default
-    let top = y - dialogHeight / 2;
+      if (isScrollable(element)) return element;
 
-    // Ensure the dialog stays within the vertical bounds
-    if (top < padding) {
-      top = padding;
-    } else if (top + dialogHeight > viewportSize.height - padding) {
-      top = viewportSize.height - dialogHeight - padding;
-    }
-
-    setDialogPosition({ top, left });
-  };
-
-  // Recalculate position when editing an existing hotspot
-  useEffect(() => {
-    if (editingHotspot) {
-      calculateDialogPosition(editingHotspot);
-    }
-  }, [editingHotspot, viewportSize, imageScale]);
-
-  // Recalculate on window resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (showSettings && currentHotspot) {
-        calculateDialogPosition(currentHotspot);
+      // Check parent
+      if (element.parentElement) {
+        return findScrollContainer(element.parentElement);
       }
+
+      // Default to body
+      return document.body;
     };
 
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const scrollContainer = findScrollContainer(containerRef.current);
+    const scrollRect = scrollContainer.getBoundingClientRect();
+
+    // Use the constraints of both the viewport and the scroll container
+    const effectiveRight = Math.min(viewportWidth, scrollRect.right);
+
+    const effectiveBottom = Math.min(viewportHeight, scrollRect.bottom);
+
+    // Calculate optimal position based on available space
+
+    // Check if there's enough space to the right
+    const rightSpace = effectiveRight - (x + width);
+    const leftSpace = x - scrollRect.left;
+
+    // Determine optimal horizontal position
+    let left;
+    if (rightSpace >= dialogWidth + padding) {
+      // Position to the right of the hotspot
+      left = x + width + padding;
+    } else if (leftSpace >= dialogWidth + padding) {
+      // Position to the left of the hotspot
+      left = x - dialogWidth - padding;
+    } else {
+      // Center it if neither side has enough space
+      // But ensure it doesn't go outside boundaries
+      left = Math.max(
+        padding + scrollRect.left,
+        Math.min(
+          x + width / 2 - dialogWidth / 2,
+          effectiveRight - dialogWidth - padding,
+        ),
+      );
+    }
+
+    // Get the distance from the top of the viewport to determine vertical space
+    const topSpace = y - scrollRect.top;
+    const bottomSpace = effectiveBottom - (y + height);
+
+    // Determine optimal vertical position
+    let top;
+    if (
+      dialogHeight <=
+      Math.min(viewportHeight - 2 * padding, scrollContainer.clientHeight)
+    ) {
+      // Dialog can fit in viewport height
+      if (topSpace >= dialogHeight / 2 && bottomSpace >= dialogHeight / 2) {
+        // Center it vertically relative to the hotspot
+        top = y + height / 2 - dialogHeight / 2;
+      } else if (bottomSpace >= dialogHeight) {
+        // Position below the hotspot
+        top = y + height + padding;
+      } else if (topSpace >= dialogHeight) {
+        // Position above the hotspot
+        top = y - dialogHeight - padding;
+      } else {
+        // Place it as high as possible while keeping it visible
+        top = Math.max(
+          scrollRect.top + padding,
+          Math.min(
+            y - dialogHeight / 2,
+            effectiveBottom - dialogHeight - padding,
+          ),
+        );
+      }
+    } else {
+      // Dialog is taller than viewport - position at top with minimum padding
+      top = scrollRect.top + padding;
+    }
+
+    // Final boundary check
+    left = Math.max(
+      scrollRect.left + padding,
+      Math.min(left, effectiveRight - dialogWidth - padding),
+    );
+    top = Math.max(
+      scrollRect.top + padding,
+      Math.min(top, effectiveBottom - dialogHeight - padding),
+    );
+
+    setDialogPosition({ top, left });
+
+    // Log position for debugging
+    console.log("Dialog positioned at:", { top, left });
+  };
+
+  // Also add this effect to recalculate positions when the container changes
+
+  // Add to your existing useEffect block for responding to container changes
+  useEffect(() => {
+    const mainContentElement =
+      containerRef.current?.closest('[role="main"]') ||
+      containerRef.current?.closest("main") ||
+      containerRef.current?.parentElement;
+
+    if (mainContentElement) {
+      const resizeObserver = new ResizeObserver(() => {
+        if (currentHotspot && showSettings) {
+          calculateDialogPosition(currentHotspot);
+        }
+      });
+
+      resizeObserver.observe(mainContentElement);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
   }, [showSettings, currentHotspot]);
 
   // Handle adding option to the dropdown
@@ -1092,126 +1211,213 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   </Stack>
 
                   <Stack direction="row" spacing={2}>
-                    <TextField
-                      size="medium"
-                      fullWidth
-                      label="Button Color"
-                      value={currentHotspot?.settings?.buttonColor || "#00AB55"}
-                      onChange={(e) =>
-                        setCurrentHotspot((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev?.settings,
-                            buttonColor: e.target.value,
-                          },
-                        }))
-                      }
-                      InputProps={{
-                        style: { height: "48px" },
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Box
-                              sx={{
-                                width: 24,
-                                height: 24,
-                                bgcolor:
+                    <Box>
+                      <TextField
+                        size="medium"
+                        fullWidth
+                        label="Button Color"
+                        value={
+                          currentHotspot?.settings?.buttonColor || "#00AB55"
+                        }
+                        onChange={(e) =>
+                          setCurrentHotspot((prev) => ({
+                            ...prev,
+                            settings: {
+                              ...prev?.settings,
+                              buttonColor: e.target.value,
+                            },
+                          }))
+                        }
+                        InputProps={{
+                          style: { height: "48px" },
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Box
+                                sx={{
+                                  width: 24,
+                                  height: 24,
+                                  bgcolor:
+                                    currentHotspot?.settings?.buttonColor ||
+                                    "#00AB55",
+                                  borderRadius: 0.5,
+                                  border: "1px solid #E5E7EB",
+                                }}
+                              />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <input
+                                type="color"
+                                value={
                                   currentHotspot?.settings?.buttonColor ||
-                                  "#00AB55",
-                                borderRadius: 0.5,
-                                border: "1px solid #E5E7EB",
-                              }}
-                            />
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <input
-                              type="color"
-                              value={
-                                currentHotspot?.settings?.buttonColor ||
-                                "#00AB55"
-                              }
-                              onChange={(e) =>
-                                setCurrentHotspot((prev) => ({
-                                  ...prev,
-                                  settings: {
-                                    ...prev?.settings,
-                                    buttonColor: e.target.value,
-                                  },
-                                }))
-                              }
-                              style={{
-                                width: 24,
-                                height: 24,
-                                border: "none",
-                                padding: 0,
-                                background: "none",
-                              }}
-                            />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
+                                  "#00AB55"
+                                }
+                                onChange={(e) =>
+                                  setCurrentHotspot((prev) => ({
+                                    ...prev,
+                                    settings: {
+                                      ...prev?.settings,
+                                      buttonColor: e.target.value,
+                                    },
+                                  }))
+                                }
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  border: "none",
+                                  padding: 0,
+                                  background: "none",
+                                }}
+                              />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 0.5,
+                          mt: 1,
+                        }}
+                      >
+                        {commonColors.map((color) => (
+                          <Button
+                            key={color.name}
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              setCurrentHotspot((prev) => ({
+                                ...prev,
+                                settings: {
+                                  ...prev?.settings,
+                                  buttonColor: color.value,
+                                },
+                              }))
+                            }
+                            sx={{
+                              minWidth: "auto",
+                              py: 0.5,
+                              px: 1,
+                              fontSize: "11px",
+                              borderColor: "divider",
+                              color: "text.secondary",
+                              textTransform: "none",
+                              "&:hover": {
+                                borderColor: color.value,
+                                color: color.value,
+                              },
+                            }}
+                          >
+                            {color.name}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Box>
 
-                    <TextField
-                      size="medium"
-                      fullWidth
-                      label="Text Color"
-                      value={currentHotspot?.settings?.textColor || "#FFFFFF"}
-                      onChange={(e) =>
-                        setCurrentHotspot((prev) => ({
-                          ...prev,
-                          settings: {
-                            ...prev?.settings,
-                            textColor: e.target.value,
-                          },
-                        }))
-                      }
-                      InputProps={{
-                        style: { height: "48px" },
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <Box
-                              sx={{
-                                width: 24,
-                                height: 24,
-                                bgcolor:
+                    <Box>
+                      <TextField
+                        size="medium"
+                        fullWidth
+                        label="Text Color"
+                        value={currentHotspot?.settings?.textColor || "#FFFFFF"}
+                        onChange={(e) =>
+                          setCurrentHotspot((prev) => ({
+                            ...prev,
+                            settings: {
+                              ...prev?.settings,
+                              textColor: e.target.value,
+                            },
+                          }))
+                        }
+                        InputProps={{
+                          style: { height: "48px" },
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <Box
+                                sx={{
+                                  width: 24,
+                                  height: 24,
+                                  bgcolor:
+                                    currentHotspot?.settings?.textColor ||
+                                    "#FFFFFF",
+                                  borderRadius: 0.5,
+                                  border: "1px solid #E5E7EB",
+                                }}
+                              />
+                            </InputAdornment>
+                          ),
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <input
+                                type="color"
+                                value={
                                   currentHotspot?.settings?.textColor ||
-                                  "#FFFFFF",
-                                borderRadius: 0.5,
-                                border: "1px solid #E5E7EB",
-                              }}
-                            />
-                          </InputAdornment>
-                        ),
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <input
-                              type="color"
-                              value={
-                                currentHotspot?.settings?.textColor || "#FFFFFF"
-                              }
-                              onChange={(e) =>
-                                setCurrentHotspot((prev) => ({
-                                  ...prev,
-                                  settings: {
-                                    ...prev?.settings,
-                                    textColor: e.target.value,
-                                  },
-                                }))
-                              }
-                              style={{
-                                width: 24,
-                                height: 24,
-                                border: "none",
-                                padding: 0,
-                                background: "none",
-                              }}
-                            />
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
+                                  "#FFFFFF"
+                                }
+                                onChange={(e) =>
+                                  setCurrentHotspot((prev) => ({
+                                    ...prev,
+                                    settings: {
+                                      ...prev?.settings,
+                                      textColor: e.target.value,
+                                    },
+                                  }))
+                                }
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  border: "none",
+                                  padding: 0,
+                                  background: "none",
+                                }}
+                              />
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 0.5,
+                          mt: 1,
+                        }}
+                      >
+                        {commonColors.map((color) => (
+                          <Button
+                            key={color.name}
+                            size="small"
+                            variant="outlined"
+                            onClick={() =>
+                              setCurrentHotspot((prev) => ({
+                                ...prev,
+                                settings: {
+                                  ...prev?.settings,
+                                  textColor: color.value,
+                                },
+                              }))
+                            }
+                            sx={{
+                              minWidth: "auto",
+                              py: 0.5,
+                              px: 1,
+                              fontSize: "11px",
+                              borderColor: "divider",
+                              color: "text.secondary",
+                              textTransform: "none",
+                              "&:hover": {
+                                borderColor: color.value,
+                                color: color.value,
+                              },
+                            }}
+                          >
+                            {color.name}
+                          </Button>
+                        ))}
+                      </Box>
+                    </Box>
                   </Stack>
                 </>
               )}

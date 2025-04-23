@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from 'react';
+import React, { Suspense, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,56 +6,58 @@ import {
   Navigate,
   useLocation,
   useNavigate,
-} from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import ThemeProvider from './theme/ThemeProvider';
-import LoadingSpinner from './components/common/LoadingSpinner';
-import ProtectedRoute from './components/common/ProtectedRoute';
-import Layout from './components/layout/Layout';
-import Unauthorized from './components/Unauthorized';
+} from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import ThemeProvider from "./theme/ThemeProvider";
+import LoadingSpinner from "./components/common/LoadingSpinner";
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import Layout from "./components/layout/Layout";
+import Unauthorized from "./components/Unauthorized";
 
 // Lazy load components
-const TraineeDashboard = React.lazy(() =>
-  import('./components/dashboard/trainee/TraineeDashboard')
+const TraineeDashboard = React.lazy(
+  () => import("./components/dashboard/trainee/TraineeDashboard"),
 );
-const TrainingPlanPage = React.lazy(() =>
-  import('./components/dashboard/trainee/TrainingPlanPage')
+const TrainingPlanPage = React.lazy(
+  () => import("./components/dashboard/trainee/TrainingPlanPage"),
 );
-const TrainingPlanDetailsPage = React.lazy(() =>
-  import('./components/dashboard/trainee/TrainingPlanDetailsPage')
+const TrainingPlanDetailsPage = React.lazy(
+  () => import("./components/dashboard/trainee/TrainingPlanDetailsPage"),
 );
-const PlaybackPage = React.lazy(() =>
-  import('./components/dashboard/trainee/PlaybackPage')
+const PlaybackPage = React.lazy(
+  () => import("./components/dashboard/trainee/PlaybackPage"),
 );
-const PlaybackDetailPage = React.lazy(() =>
-  import('./components/dashboard/trainee/playback/PlaybackDetailPage')
+const PlaybackDetailPage = React.lazy(
+  () => import("./components/dashboard/trainee/playback/PlaybackDetailPage"),
 );
-const ManageSimulationsPage = React.lazy(() =>
-  import('./components/dashboard/trainee/manage/ManageSimulationsPage')
+const ManageSimulationsPage = React.lazy(
+  () => import("./components/dashboard/trainee/manage/ManageSimulationsPage"),
 );
-const GenerateScript = React.lazy(() =>
-  import('./components/dashboard/trainee/manage/generate/GenerateScript')
+const GenerateScript = React.lazy(
+  () => import("./components/dashboard/trainee/manage/generate/GenerateScript"),
 );
-const SimulationAttemptPage = React.lazy(() =>
-  import('./components/dashboard/trainee/SimulationAttemptPage')
+const SimulationAttemptPage = React.lazy(
+  () => import("./components/dashboard/trainee/SimulationAttemptPage"),
 );
-const ManageTrainingPlanPage = React.lazy(() =>
-  import('./components/dashboard/trainee/manage/ManageTrainingPlanPage')
+const ManageTrainingPlanPage = React.lazy(
+  () => import("./components/dashboard/trainee/manage/ManageTrainingPlanPage"),
 );
-const AssignSimulationsPage = React.lazy(() =>
-  import('./components/dashboard/trainee/AssignSimulationsPage')
+const AssignSimulationsPage = React.lazy(
+  () => import("./components/dashboard/trainee/AssignSimulationsPage"),
 );
 
 // Component to handle workspace ID from URL
-const WorkspaceHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const WorkspaceHandler: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const location = useLocation();
 
   useEffect(() => {
     // Log the workspace ID from URL for debugging
     const params = new URLSearchParams(location.search);
-    const workspaceId = params.get('workspace_id');
+    const workspaceId = params.get("workspace_id");
     if (workspaceId) {
-      console.log('Workspace ID detected in URL:', workspaceId);
+      console.log("Workspace ID detected in URL:", workspaceId);
     }
   }, [location.search]);
 
@@ -69,12 +71,12 @@ const RootRedirect = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const workspaceId = params.get('workspace_id');
+    const workspaceId = params.get("workspace_id");
 
     // Redirect to dashboard with workspace ID if present
-    const target = workspaceId 
+    const target = workspaceId
       ? `/dashboard?workspace_id=${encodeURIComponent(workspaceId)}`
-      : '/dashboard';
+      : "/dashboard";
 
     navigate(target, { replace: true });
   }, [location, navigate]);
@@ -102,7 +104,7 @@ const App: React.FC = () => {
                     path="/dashboard"
                     element={
                       <ProtectedRoute path="/dashboard">
-                          <TraineeDashboard />
+                        <TraineeDashboard />
                       </ProtectedRoute>
                     }
                   />
@@ -110,7 +112,7 @@ const App: React.FC = () => {
                     path="/training"
                     element={
                       <ProtectedRoute path="/training">
-                          <TrainingPlanPage />
+                        <TrainingPlanPage />
                       </ProtectedRoute>
                     }
                   />
@@ -118,7 +120,7 @@ const App: React.FC = () => {
                     path="/training/:id"
                     element={
                       <ProtectedRoute path="/training">
-                          <TrainingPlanDetailsPage />
+                        <TrainingPlanDetailsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -126,7 +128,7 @@ const App: React.FC = () => {
                     path="/playback"
                     element={
                       <ProtectedRoute path="/playback">
-                          <PlaybackPage />
+                        <PlaybackPage />
                       </ProtectedRoute>
                     }
                   />
@@ -134,7 +136,7 @@ const App: React.FC = () => {
                     path="/playback/:id"
                     element={
                       <ProtectedRoute path="/playback">
-                          <PlaybackDetailPage />
+                        <PlaybackDetailPage />
                       </ProtectedRoute>
                     }
                   />
@@ -142,7 +144,7 @@ const App: React.FC = () => {
                     path="/manage-simulations"
                     element={
                       <ProtectedRoute path="/manage-simulations">
-                          <ManageSimulationsPage />
+                        <ManageSimulationsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -150,7 +152,7 @@ const App: React.FC = () => {
                     path="/generate-scripts"
                     element={
                       <ProtectedRoute path="/manage-simulations">
-                          <GenerateScript />
+                        <GenerateScript />
                       </ProtectedRoute>
                     }
                   />
@@ -162,27 +164,27 @@ const App: React.FC = () => {
                       </ProtectedRoute>
                     }
                   />
-                  <Route 
-                    path="/simulation/:id/attempt" 
+                  <Route
+                    path="/simulation/:id/:assignment_id/attempt"
                     element={
                       <ProtectedRoute path="/training">
-                          <SimulationAttemptPage />
+                        <SimulationAttemptPage />
                       </ProtectedRoute>
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/manage-training-plan" 
+                  <Route
+                    path="/manage-training-plan"
                     element={
                       <ProtectedRoute path="/manage-training-plan">
-                          <ManageTrainingPlanPage />
+                        <ManageTrainingPlanPage />
                       </ProtectedRoute>
-                    } 
+                    }
                   />
                   <Route
                     path="/assign-simulations"
                     element={
                       <ProtectedRoute path="/assign-simulations">
-                          <AssignSimulationsPage />
+                        <AssignSimulationsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -194,7 +196,7 @@ const App: React.FC = () => {
             </Layout>
           </WorkspaceHandler>
         </AuthProvider>
-      </Router>        
+      </Router>
     </ThemeProvider>
   );
 };

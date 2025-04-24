@@ -141,9 +141,24 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
   };
 
   const selectedSimulations = watch("selectedSimulations");
-  const filteredSimulations = simulations.filter((sim) =>
-    sim.sim_name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const isSimulationSelected = (simulation: Simulation) => {
+    return selectedSimulations.some(
+      (selected) => selected.id === simulation.id,
+    );
+  };
+  const filteredSimulations = simulations
+    .filter((sim) =>
+      sim.sim_name.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+    .sort((a, b) => {
+      // Sort selected simulations to the top
+      const aSelected = isSimulationSelected(a);
+      const bSelected = isSimulationSelected(b);
+
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return 0;
+    });
 
   const onSubmit = async (data: EditModuleFormData) => {
     if (!user?.id || !module?.id) {
@@ -187,12 +202,6 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
       "selectedSimulations",
       selectedSimulations.filter((sim) => sim.id !== simulationToRemove.id),
       { shouldValidate: true },
-    );
-  };
-
-  const isSimulationSelected = (simulation: Simulation) => {
-    return selectedSimulations.some(
-      (selected) => selected.id === simulation.id,
     );
   };
 

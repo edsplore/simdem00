@@ -27,6 +27,14 @@ import SimulationEndAnimation from "./SimulationEndAnimation";
 import VisualAudioPreview from "./VisualAudioPreview";
 import VisualChatPreview from "./VisualChatPreview";
 import VisualPreview from "./VisualPreview";
+import {
+  startAudioPreview,
+  startChatPreview,
+  startVisualAudioPreview,
+  startVisualChatPreview,
+  startVisualPreview,
+  createImageMap,
+} from "../../../../../services/simulation_previews";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -276,22 +284,40 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      if (
-        simulationType === "visual-audio" ||
-        simulationType === "visual-chat" ||
-        simulationType === "visual"
-      ) {
-        await fetchSimulationData();
+      if (simulationType === "visual-audio") {
+        const response = await startVisualAudioPreview("user123", simulationId);
+
+        setSimulationData(response.simulation);
+        setSlides(createImageMap(response.images));
         setIsCallActive(true);
         setMessages([
           {
             speaker: "customer",
-            text:
-              simulationType === "visual-chat"
-                ? "Initializing visual chat..."
-                : simulationType === "visual"
-                  ? "Initializing visual simulation..."
-                  : "",
+            text: "",
+          },
+        ]);
+      } else if (simulationType === "visual-chat") {
+        const response = await startVisualChatPreview("user123", simulationId);
+
+        setSimulationData(response.simulation);
+        setSlides(createImageMap(response.images));
+        setIsCallActive(true);
+        setMessages([
+          {
+            speaker: "customer",
+            text: "Initializing visual chat...",
+          },
+        ]);
+      } else if (simulationType === "visual") {
+        const response = await startVisualPreview("user123", simulationId);
+
+        setSimulationData(response.simulation);
+        setSlides(createImageMap(response.images));
+        setIsCallActive(true);
+        setMessages([
+          {
+            speaker: "customer",
+            text: "Initializing visual simulation...",
           },
         ]);
       } else if (simulationType === "audio") {
@@ -303,35 +329,23 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           },
         ]);
 
-        const response = await axios.post(
-          "/api/simulations/start-audio-preview",
-          {
-            user_id: "user123",
-            sim_id: simulationId,
-          },
-        );
+        const response = await startAudioPreview("user123", simulationId);
 
-        if (response.data.access_token) {
+        if (response.access_token) {
           await webClient.startCall({
-            accessToken: response.data.access_token,
+            accessToken: response.access_token,
           });
         }
       } else {
+        // Chat type
         setIsCallActive(true);
-        const response = await axios.post(
-          "/api/simulations/start-chat-preview",
-          {
-            user_id: "user123",
-            sim_id: simulationId,
-            message: "",
-          },
-        );
+        const response = await startChatPreview("user123", simulationId);
 
-        if (response.data.response) {
+        if (response.response) {
           setMessages([
             {
               speaker: "customer",
-              text: response.data.response,
+              text: response.response,
             },
           ]);
         }
@@ -358,18 +372,18 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await axios.post("/api/simulations/start-chat-preview", {
-        user_id: "user123",
-        sim_id: simulationId,
-        message: inputMessage.trim(),
-      });
+      const response = await startChatPreview(
+        "user123",
+        simulationId,
+        inputMessage.trim(),
+      );
 
-      if (response.data.response) {
+      if (response.response) {
         setMessages((prev) => [
           ...prev,
           {
             speaker: "customer",
-            text: response.data.response,
+            text: response.response,
           },
         ]);
       }
@@ -610,7 +624,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                   // For chat type, adjust the height to leave space for the input area
                   height:
                     simulationType === "chat"
-                      ? "calc(100% - 120px)" // Increased to make room for control row
+                      ? "calc(100% - 120px)" // Reduced from 120px to 100px
                       : "calc(100% - 80px)",
                   flex: simulationType === "chat" ? 1 : "initial",
                   overflowY: "auto",
@@ -679,7 +693,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                     flexDirection: "column",
                     gap: 2,
                     // Ensure the input area has a specific height so it doesn't collapse
-                    minHeight: "84px",
+                    minHeight: "80px", // Reduced from 84px to 80px
                     // Add shadow to make the input area more visible
                     boxShadow: "0px -2px 4px rgba(0,0,0,0.03)",
                   }}

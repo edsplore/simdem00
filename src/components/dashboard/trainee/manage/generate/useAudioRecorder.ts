@@ -1,6 +1,6 @@
 // hooks/useAudioRecorder.ts
 import { useState, useRef, useCallback } from "react";
-import axios from "axios";
+import { convertAudioToText } from "../../../../../services/simulation_script";
 
 interface AudioRecorderProps {
   onTranscriptionReceived?: (text: string) => void;
@@ -114,23 +114,16 @@ export const useAudioRecorder = ({
     mediaRecorderRef.current.stop();
   }, [isRecording]);
 
-  // Send audio to backend
+  // Send audio to backend using our new convertAudioToText function
   const sendAudioForTranscription = async (audioBlob: Blob) => {
     try {
-      const formData = new FormData();
-      formData.append("audio_file", audioBlob);
-      formData.append("user_id", userId);
-
-      const response = await axios.post(apiEndpoint, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      // Use our new function from simulation_script.ts
+      const response = await convertAudioToText(userId, audioBlob);
 
       // Handle the transcription result
-      if (response.data && response.data.text) {
+      if (response && response.text) {
         // Just trim any leading/trailing whitespace
-        const transcribedText = response.data.text.trim();
+        const transcribedText = response.text.trim();
 
         if (onTranscriptionReceived) {
           onTranscriptionReceived(transcribedText);

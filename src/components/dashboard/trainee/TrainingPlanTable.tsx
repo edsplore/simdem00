@@ -130,9 +130,9 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "ongoing":
+      case "in_progress":
         return { bg: "#EEF4FF", color: "#3538CD" };
-      case "finished":
+      case "completed":
         return { bg: "#ECFDF3", color: "#027A48" };
       default:
         return { bg: "#FFFAEB", color: "#B54708" };
@@ -1187,7 +1187,7 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({
                           </Grid>
                           <Grid item xs={1.5}>
                             <Typography variant="body2">
-                              {sim.est_time || 0}m
+                              {sim.estTime || 0}m
                             </Typography>
                           </Grid>
                           <Grid item xs={1.5}>
@@ -1289,7 +1289,7 @@ const TrainingPlanTable: React.FC<TrainingPlanTableProps> = ({
                     </Grid>
                     <Grid item xs={1.5}>
                       <Typography variant="body2">
-                        {simulation.est_time || 0}m
+                        {simulation.estTime || 0}m
                       </Typography>
                     </Grid>
                     <Grid item xs={1.5}>

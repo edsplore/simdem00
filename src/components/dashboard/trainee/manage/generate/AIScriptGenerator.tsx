@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -7,15 +7,15 @@ import {
   IconButton,
   Paper,
   CircularProgress,
-} from '@mui/material';
-import { Send as SendIcon, History } from '@mui/icons-material';
-import DrawOutlinedIcon from '@mui/icons-material/DrawOutlined';
-import axios from 'axios';
-import { useAuth } from '../../../../../context/AuthContext';
+} from "@mui/material";
+import { Send as SendIcon, History } from "@mui/icons-material";
+import DrawOutlinedIcon from "@mui/icons-material/DrawOutlined";
+import { useAuth } from "../../../../../context/AuthContext";
+import { convertTextToScript } from "../../../../../services/simulation_script";
 
 interface Message {
   id: string;
-  role: 'Customer' | 'Trainee';
+  role: "Customer" | "Trainee";
   message: string;
   keywords: string[];
 }
@@ -27,37 +27,39 @@ interface Prompt {
 
 const recentPrompts: Prompt[] = [
   {
-    id: '1',
-    text: 'Generate a script for handling customer complaints about delayed delivery',
+    id: "1",
+    text: "Generate a script for handling customer complaints about delayed delivery",
   },
   {
-    id: '2',
-    text: 'Create a script for product return and refund process',
+    id: "2",
+    text: "Create a script for product return and refund process",
   },
   {
-    id: '3',
-    text: 'Write a script for new customer onboarding process',
+    id: "3",
+    text: "Write a script for new customer onboarding process",
   },
   {
-    id: '4',
-    text: 'Generate a script for technical support troubleshooting',
+    id: "4",
+    text: "Generate a script for technical support troubleshooting",
   },
 ];
 
 const loadingMessages = [
-  'Processing your prompt...',
-  'Analyzing customer context...',
-  'Processing sentiments...',
-  'Generating script...',
+  "Processing your prompt...",
+  "Analyzing customer context...",
+  "Processing sentiments...",
+  "Generating script...",
 ];
 
 interface AIScriptGeneratorProps {
   onScriptGenerated: (script: Message[]) => void;
 }
 
-const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated }) => {
+const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({
+  onScriptGenerated,
+}) => {
   const { user } = useAuth();
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const loadingInterval = useRef<NodeJS.Timeout>();
@@ -77,20 +79,21 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
     loadingInterval.current = setInterval(cycleLoadingMessage, 2000);
 
     try {
-      // Make the API call
-      const response = await axios.post('/api/convert/text-to-script', {
-        user_id: user?.id || 'user123',
-        prompt: prompt,
-      });
+
+      // Use our new function from simulation_script.ts
+      const response = await convertTextToScript(user?.id || "user123", prompt);
+
 
       // Transform API response into the correct Message format
-      if (response.data && Array.isArray(response.data.script)) {
-        const transformedScript: Message[] = response.data.script.map((item: any, index: number) => ({
-          id: String(Date.now() + index), // Ensure unique IDs
-          role: item.role || 'Trainee',
-          message: item.message || '',
-          keywords: item.keywords || [],
-        }));
+      if (response && Array.isArray(response.script)) {
+        const transformedScript: Message[] = response.script.map(
+          (item: any, index: number) => ({
+            id: String(Date.now() + index), // Ensure unique IDs
+            role: item.role || "Trainee",
+            message: item.message || "",
+            keywords: item.keywords || [],
+          }),
+        );
 
         // Pass the transformed script to parent
         onScriptGenerated(transformedScript);
@@ -99,21 +102,23 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
         const fallbackScript: Message[] = [
           {
             id: String(Date.now()),
-            role: 'Trainee',
-            message: 'I apologize, but I couldn\'t generate a proper script. Please try again.',
+            role: "Trainee",
+            message:
+              "I apologize, but I couldn't generate a proper script. Please try again.",
             keywords: [],
           },
         ];
         onScriptGenerated(fallbackScript);
       }
     } catch (error) {
-      console.error('Error generating script:', error);
+      console.error("Error generating script:", error);
       // Handle error by showing an error message in the script
       const errorScript: Message[] = [
         {
           id: String(Date.now()),
-          role: 'Trainee',
-          message: 'An error occurred while generating the script. Please try again.',
+          role: "Trainee",
+          message:
+            "An error occurred while generating the script. Please try again.",
           keywords: [],
         },
       ];
@@ -127,8 +132,27 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
   };
 
   return (
-    <Box sx={{ height: "70vh", px: 4, bgcolor: "#fff", borderRadius: 4, display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <Box sx={{ border: "1px solid #CFD1DC", p: 4, bgcolor: "#fff", borderRadius: 4, height: "100%", width: "80%" }}>
+    <Box
+      sx={{
+        height: "70vh",
+        px: 4,
+        bgcolor: "#fff",
+        borderRadius: 4,
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Box
+        sx={{
+          border: "1px solid #CFD1DC",
+          p: 4,
+          bgcolor: "#fff",
+          borderRadius: 4,
+          height: "100%",
+          width: "80%",
+        }}
+      >
         <Stack spacing={4} sx={{ height: "100%" }}>
           {/* Header */}
           <Stack spacing={0}>
@@ -237,7 +261,6 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
                     <DrawOutlinedIcon />
                   </Box>
                 </Paper>
-
               ))}
             </Box>
           </Stack>
@@ -257,15 +280,15 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
               }}
             >
               <CircularProgress size={24} sx={{ color: "#4F46E5" }} />
-              <Typography sx={{ color: "#4F46E5" }}>{loadingMessages[loadingMessageIndex]}</Typography>
+              <Typography sx={{ color: "#4F46E5" }}>
+                {loadingMessages[loadingMessageIndex]}
+              </Typography>
             </Paper>
           )}
-
-
         </Stack>
 
         {/* Input Area */}
-        <Box mt={-5} >
+        <Box mt={-5}>
           <Box
             sx={{
               display: "flex",
@@ -285,7 +308,8 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
               placeholder="Enter a prompt for our script..."
               variant="standard"
               sx={{
-                px: 3, py: 1,
+                px: 3,
+                py: 1,
                 "& .MuiInput-root": {
                   fontSize: "1rem",
                   "&:before, &:after": {
@@ -297,15 +321,13 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({ onScriptGenerated
             <IconButton
               onClick={handleSubmit}
               disabled={isLoading || !prompt.trim()}
-              sx={{ color: "#3F4572" }}>
+              sx={{ color: "#3F4572" }}
+            >
               <SendIcon />
             </IconButton>
           </Box>
         </Box>
-
       </Box>
-
-
     </Box>
   );
 };

@@ -169,9 +169,23 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
   };
 
   const selectedItems = watch("selectedItems");
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const isItemSelected = (item: Item): boolean => {
+    return selectedItems.some((selected) => selected.id === item.id);
+  };
+
+  const filteredItems = items
+    .filter((item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    )
+    .sort((a, b) => {
+      // Sort selected items to the top
+      const aSelected = isItemSelected(a);
+      const bSelected = isItemSelected(b);
+
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      return 0;
+    });
 
   const getModuleAndSimCount = () => {
     const modules = selectedItems.filter(
@@ -229,10 +243,6 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
       selectedItems.filter((item) => item.id !== itemToRemove.id),
       { shouldValidate: true },
     );
-  };
-
-  const isItemSelected = (item: Item): boolean => {
-    return selectedItems.some((selected) => selected.id === item.id);
   };
 
   const handleItemToggle = (item: Item) => {

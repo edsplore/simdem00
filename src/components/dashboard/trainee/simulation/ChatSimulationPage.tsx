@@ -836,7 +836,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
               <Box
                 ref={chatContainerRef}
                 sx={{
-                  height: "calc(100% - 80px)",
+                  height: "calc(100% - 70px)", // Reduced from 80px to 70px
                   overflowY: "auto",
                   px: 3,
                   py: 2,

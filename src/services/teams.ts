@@ -44,6 +44,7 @@ const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const TEAMS_URL = `${UAM_API_URL}/uam/api/teams`;
 
 
+
 /**
  * Fetches teams for a specific workspace
  * @param workspaceId The workspace ID

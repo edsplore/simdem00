@@ -12,7 +12,7 @@ const Unauthorized = () => {
   const navigate = useNavigate();
   const [isRetryingAuth, setIsRetryingAuth] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
+  const maxRetries = 1;
 
   // Try to refresh token when component mounts
   useEffect(() => {
@@ -47,7 +47,7 @@ const Unauthorized = () => {
     if (retryCount < maxRetries) {
       const timer = setTimeout(() => {
         attemptRefresh();
-      }, 3000); // Wait 3 seconds before trying
+      }, 10000); // Wait 10 seconds before trying
 
       return () => clearTimeout(timer);
     }

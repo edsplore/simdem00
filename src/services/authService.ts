@@ -99,26 +99,6 @@ class AuthService {
           : undefined,
       });
 
-      // Increment attempt counter
-      this.refreshAttempts++;
-
-      // If we haven't reached max attempts, try again after delay
-      if (this.refreshAttempts < this.maxRefreshAttempts) {
-        console.log(
-          `Will retry in ${this.refreshRetryDelay / 1000} seconds...`,
-        );
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            // Clear the current promise before making a new attempt
-            this.refreshPromise = null;
-            this.refreshToken(workspaceId).then(resolve).catch(reject);
-          }, this.refreshRetryDelay);
-        });
-      }
-
-      // Reset attempts counter for next time
-      this.refreshAttempts = 0;
-
       // If all attempts failed, clear auth data and throw error
       this.clearAuthData();
       throw error;

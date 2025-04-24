@@ -2,6 +2,9 @@ import React from 'react';
 import { Stack, Grid, Typography, Card, CardContent, Box } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import type { TrainingStats } from '../../../types/training';
+import completionImage from '../../../assets/completion.svg';
+import averageImage from '../../../assets/average.svg';
+import highestImage from '../../../assets/highest.svg';
 
 interface StatsGridProps {
   stats: TrainingStats;
@@ -66,17 +69,17 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       title: 'On Time Completion',
       value: `${stats.timely_completion.percentage}%`,
       subtitle: `${stats.timely_completion.completed_simulations} simulations`,
-      backgroundIcon: '/src/assets/completion.svg',
+      backgroundIcon: {completionImage},
     },
     {
       title: 'Average Sim Score',
       value: `${stats.average_sim_score}%`,
-      backgroundIcon: '/src/assets/average.svg',
+      backgroundIcon: {averageImage},
     },
     {
       title: 'Highest Sim Score',
       value: `${stats.highest_sim_score}%`,
-      backgroundIcon: '/src/assets/highest.svg',
+      backgroundIcon: {highestImage},
     },
   ];
 

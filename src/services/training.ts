@@ -13,7 +13,7 @@ export const fetchTrainingPlanDetails = async (userId: string, planId: string) =
 
 export const fetchTrainingData = async (userId: string): Promise<TrainingData> => {
   try {
-    const response = await apiClient.post('/fetch-assigned-plans', {
+    const response = await apiClient.post('/api/fetch-assigned-plans', {
       user_id: userId
     });
     return response.data;

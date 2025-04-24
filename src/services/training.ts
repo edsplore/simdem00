@@ -3,7 +3,7 @@ import { TrainingData } from '../types/training';
 
 export const fetchTrainingPlanDetails = async (userId: string, planId: string) => {
   try {
-    const response = await apiClient.get(`/api/training-plans/fetch/${planId}`);
+    const response = await apiClient.get(`/training-plans/fetch/${planId}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching training plan details:', error);
@@ -13,7 +13,7 @@ export const fetchTrainingPlanDetails = async (userId: string, planId: string) =
 
 export const fetchTrainingData = async (userId: string): Promise<TrainingData> => {
   try {
-    const response = await apiClient.post('/api/fetch-assigned-plans', {
+    const response = await apiClient.post('/fetch-assigned-plans', {
       user_id: userId
     });
     return response.data;

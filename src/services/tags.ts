@@ -21,7 +21,7 @@ export interface CreateTagResponse {
  */
 export const fetchTags = async (userId: string): Promise<Tag[]> => {
   try {
-    const response = await apiClient.post('/api/tags/fetch', {
+    const response = await apiClient.post('/tags/fetch', {
       user_id: userId
     });
 
@@ -40,7 +40,7 @@ export const fetchTags = async (userId: string): Promise<Tag[]> => {
  */
 export const createTag = async (userId: string, tagName: string): Promise<CreateTagResponse> => {
   try {
-    const response = await apiClient.post('/api/tags/create', {
+    const response = await apiClient.post('/tags/create', {
       user_id: userId,
       name: tagName
     });

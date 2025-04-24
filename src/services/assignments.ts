@@ -37,7 +37,7 @@ export interface CreateAssignmentResponse {
  */
 export const fetchAssignments = async (): Promise<Assignment[]> => {
   try {
-    const response = await apiClient.get('/api/fetch-assignments');
+    const response = await apiClient.get('/fetch-assignments');
     return response.data.assignments;
   } catch (error) {
     console.error('Error fetching assignments:', error);
@@ -52,7 +52,7 @@ export const fetchAssignments = async (): Promise<Assignment[]> => {
  */
 export const createAssignment = async (payload: CreateAssignmentPayload): Promise<CreateAssignmentResponse> => {
   try {
-    const response = await apiClient.post('/api/create-assignment', payload);
+    const response = await apiClient.post('/create-assignment', payload);
     return response.data;
   } catch (error) {
     console.error('Error creating assignment:', error);

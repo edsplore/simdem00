@@ -129,7 +129,7 @@ export const createSimulation = async (
 ): Promise<CreateSimulationResponse> => {
   try {
     const response = await apiClient.post<CreateSimulationResponse>(
-      "/api/simulations/create",
+      "/simulations/create",
       simulationData,
     );
 
@@ -184,7 +184,7 @@ export const updateSimulation = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       updateData,
     );
 
@@ -207,7 +207,7 @@ export const updateSimulationWithFormData = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       formData,
       {
         headers: {
@@ -235,7 +235,7 @@ export const publishSimulation = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       publishData,
     );
 

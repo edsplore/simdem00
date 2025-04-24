@@ -73,7 +73,6 @@ const ManageSimulationsPage = () => {
   const [selectedDepartment, setSelectedDepartment] =
     useState("All Departments");
   const [selectedDivision, setSelectedDivision] = useState("All Divisions");
-  const [selectedStatus, setSelectedStatus] = useState("All Status");
   const [selectedCreator, setSelectedCreator] = useState("Created By");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<Simulation | null>(null);
@@ -164,7 +163,7 @@ const ManageSimulationsPage = () => {
         const tagsData = await fetchTags(user.id);
         setTags(tagsData);
       } catch (error) {
-        console.error('Error loading tags:', error);
+        console.error("Error loading tags:", error);
       } finally {
         setIsLoadingTags(false);
       }
@@ -251,11 +250,6 @@ const ManageSimulationsPage = () => {
         }
       }
 
-      // Apply status filter
-      if (selectedStatus !== "All Status" && row.status !== selectedStatus) {
-        return false;
-      }
-
       // Apply creator filter
       if (
         selectedCreator !== "Created By" &&
@@ -272,7 +266,6 @@ const ManageSimulationsPage = () => {
     selectedDepartment,
     selectedDivision,
     selectedTags,
-    selectedStatus,
     selectedCreator,
     simulations,
   ]);
@@ -434,7 +427,7 @@ const ManageSimulationsPage = () => {
                   <InputAdornment position="end">
                     <IconButton
                       size="small"
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => setSearchQuery("")}
                       edge="end"
                       aria-label="clear search"
                     >
@@ -461,9 +454,9 @@ const ManageSimulationsPage = () => {
                   PaperProps: {
                     style: {
                       maxHeight: 300,
-                      overflow: 'auto'
-                    }
-                  }
+                      overflow: "auto",
+                    },
+                  },
                 }}
               >
                 <MenuItem value="All Tags">All Tags</MenuItem>
@@ -550,23 +543,6 @@ const ManageSimulationsPage = () => {
                 )}
               </Select>
 
-              <Select
-                value={selectedStatus}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedStatus(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
-                }}
-              >
-                <MenuItem value="All Status">All Status</MenuItem>
-                <MenuItem value="Published">Published</MenuItem>
-                <MenuItem value="Draft">Draft</MenuItem>
-                <MenuItem value="Archive">Archive</MenuItem>
-              </Select>
               <Select
                 value={selectedCreator}
                 onChange={(e: SelectChangeEvent) =>

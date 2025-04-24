@@ -643,7 +643,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Make API call to start visual-audio simulation
       const response = await axios.post<VisualAudioResponse>(
-        "/api/simulations/start-visual-audio-preview",
+        "/api/simulations/start-visual-audio-attempt",
         {
           user_id: userId,
           sim_id: simulationId,
@@ -748,7 +748,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     try {
       console.log("Executing end-visual-audio API call");
       const response = await axios.post<EndCallResponse>(
-        "/api/simulations/end-visual-audio",
+        "/api/simulations/end-visual-audio-attempt",
         apiParams,
       );
 

@@ -35,6 +35,7 @@ import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 // Import the AudioRecorder component
 import AudioRecorder from "./AudioRecorder";
+import { convertAudioToScript } from "../../../../../services/simulation_script";
 
 interface Message {
   id: string;
@@ -217,10 +218,6 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("user_id", "user123");
-      formData.append("audio_file", file);
-
       // Show loading message
       const loadingScript: Message[] = [
         {
@@ -232,30 +229,22 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       ];
       setScriptData(loadingScript);
 
-      // Make direct API call without /api prefix
-      const response = await axios.post(
-        "/api/convert/audio-to-script",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 300000,
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round(
-              (progressEvent.loaded * 100) / progressEvent.total!,
-            );
-            console.log("Upload Progress:", percentCompleted + "%");
-          },
+      // Use the new function from simulation_script.ts
+      const response = await convertAudioToScript(
+        "user123", // Or use authenticated user ID: user?.id || "user123"
+        file,
+        (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total!,
+          );
+          console.log("Upload Progress:", percentCompleted + "%");
         },
       );
 
-      console.log("API Response:", response.data);
+      console.log("API Response:", response);
 
-      if (response.data && Array.isArray(response.data.script)) {
-        const transformedScript: Message[] = response.data.script.map(
+      if (response && Array.isArray(response.script)) {
+        const transformedScript: Message[] = response.script.map(
           (item: any, index: number) => ({
             id: String(Date.now() + index),
             role: item.role || "Trainee",

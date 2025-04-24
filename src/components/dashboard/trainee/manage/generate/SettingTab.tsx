@@ -1,25 +1,35 @@
 import { useState } from "react";
-import { Stack, Typography, Box, List, ListItem, ListItemText, Card, styled, Button } from '@mui/material';
-import axios from 'axios';
-import AdvancedSettings from './AdvancedSetting';
-import VoiceAndScoreSettings from './VoiceScoreSetting';
-import PreviewTab from '../PreviewTab';
+import {
+  Stack,
+  Typography,
+  Box,
+  List,
+  ListItem,
+  ListItemText,
+  Card,
+  styled,
+  Button,
+} from "@mui/material";
+import axios from "axios";
+import AdvancedSettings from "./AdvancedSetting";
+import VoiceAndScoreSettings from "./VoiceScoreSetting";
+import PreviewTab from "../PreviewTab";
 
 const NavItem = styled(ListItem)(({ theme }) => ({
   borderRadius: theme.spacing(1),
-  '&:hover': {
-    backgroundColor: '#F5F6FF',
+  "&:hover": {
+    backgroundColor: "#F5F6FF",
   },
-  '&.active': {
-    backgroundColor: '#F5F6FF',
-    color: '#444CE7',
+  "&.active": {
+    backgroundColor: "#F5F6FF",
+    color: "#444CE7",
   },
 }));
 
 interface SettingsTabProps {
   simulationId?: string;
   prompt?: string;
-  simulationType?: 'audio' | 'chat';
+  simulationType?: "audio" | "chat";
   simulationData?: {
     name: string;
     division: string;
@@ -33,9 +43,9 @@ interface SettingsTabProps {
 const SettingsTab: React.FC<SettingsTabProps> = ({
   simulationId,
   prompt,
-  simulationType = 'audio',
+  simulationType = "audio",
   simulationData,
-  script
+  script,
 }) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -50,7 +60,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
       const transformedScript = script?.map(({ id, ...rest }) => ({
         ...rest,
         script_sentence: rest.message,
-        role: rest.role.toLowerCase() === 'trainee' ? 'assistant' : rest.role.toLowerCase()
+        role:
+          rest.role.toLowerCase() === "trainee"
+            ? "assistant"
+            : rest.role.toLowerCase(),
       }));
 
       const payload = {
@@ -71,24 +84,24 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           hide_highlights: false,
           hide_coaching_tips: true,
           enable_post_simulation_survey: true,
-          ai_powered_pauses_and_feedback: true
+          ai_powered_pauses_and_feedback: true,
         },
         lvl2: {
-          is_enabled: false
+          is_enabled: false,
         },
         lvl3: {
-          is_enabled: false
+          is_enabled: false,
         },
         estimated_time_to_attempt_in_mins: 15,
         key_objectives: [
           "Learn basic customer service",
-          "Understand refund process"
+          "Understand refund process",
         ],
         overview_video: "https://example.com/overview.mp4",
         quick_tips: [
           "Listen to the customer carefully.",
           "Be polite and empathetic.",
-          "Provide accurate information."
+          "Provide accurate information.",
         ],
         voice_id: "11labs-Adrian",
         language: "English",
@@ -101,30 +114,30 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         simulation_scoring_metrics: {
           is_enabled: true,
           keyword_score: 20,
-          click_score: 80
+          click_score: 80,
         },
         sim_practice: {
           is_unlimited: false,
-          pre_requisite_limit: 3
+          pre_requisite_limit: 3,
         },
         is_locked: false,
         version: 1,
-        script: transformedScript
+        script: transformedScript,
       };
 
       const response = await axios.put(
         `/api/simulations/${simulationId}/update`,
-        payload
+        payload,
       );
 
       console.log(response.data);
 
-      if (response.data.status === 'success') {
+      if (response.data.status === "success") {
         setPublishedSimId(simulationId);
         setShowPreview(true);
       }
     } catch (error) {
-      console.error('Error publishing simulation:', error);
+      console.error("Error publishing simulation:", error);
     } finally {
       setIsPublishing(false);
     }
@@ -132,7 +145,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
   if (showPreview && publishedSimId) {
     return (
-      <PreviewTab 
+      <PreviewTab
         simulationId={publishedSimId}
         simulationType={simulationType}
       />
@@ -142,10 +155,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
   return (
     <Box
       sx={{
-        bgcolor: '#F9FAFB',
+        bgcolor: "#F9FAFB",
         py: 0,
         px: 0,
-        height: "100vh"
+        height: "100vh",
       }}
     >
       <Stack spacing={1}>
@@ -155,11 +168,11 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           sx={{
             px: 4,
             py: 3,
-            bgcolor: '#FFFFFF',
+            bgcolor: "#FFFFFF",
             borderRadius: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <Box>
@@ -173,24 +186,24 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             onClick={handlePublish}
             disabled={isPublishing}
             sx={{
-              bgcolor: '#444CE7',
-              '&:hover': { bgcolor: '#3538CD' },
+              bgcolor: "#444CE7",
+              "&:hover": { bgcolor: "#3538CD" },
               borderRadius: 2,
               px: 4,
             }}
           >
-            {isPublishing ? 'Publishing...' : 'Publish'}
+            {isPublishing ? "Publishing..." : "Publish"}
           </Button>
         </Card>
 
         {/* Content Section */}
         <Box
           sx={{
-            display: 'flex',
+            display: "flex",
             flex: 1,
-            flexDirection: 'row-reverse',
+            flexDirection: "row-reverse",
             gap: 4,
-            minHeight: 'calc(100vh - 80px)',
+            minHeight: "calc(100vh - 80px)",
           }}
         >
           {/* Sidebar */}
@@ -199,22 +212,26 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
             sx={{
               width: 350,
               height: 660,
-              bgcolor: '#FFFFFF',
+              bgcolor: "#FFFFFF",
               borderRadius: 2,
               py: 1,
               px: 4,
-              overflowY: 'auto',
-              '&::-webkit-scrollbar': {
-                display: 'none',
+              overflowY: "auto",
+              "&::-webkit-scrollbar": {
+                display: "none",
               },
-              '-ms-overflow-style': 'none',
-              'scrollbar-width': 'none',
+              "-ms-overflow-style": "none",
+              "scrollbar-width": "none",
             }}
           >
             <Stack spacing={3}>
               {/* Advanced Settings Navigation */}
               <Stack spacing={1}>
-                <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
+                <Typography
+                  variant="h5"
+                  fontWeight="500"
+                  sx={{ color: "#666666" }}
+                >
                   Advance Settings
                 </Typography>
                 <Button
@@ -240,23 +257,23 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
                 <List disablePadding>
                   {[
-                    'Hide Agent Script',
-                    'Hide Customer Script',
-                    'Hide Keyword Scores',
-                    'Hide Sentiment Scores',
-                    'Hide Highlights',
-                    'Hide Coaching Tips',
-                    'Enable Post Simulations Survey',
-                    'AI Powered Pauses and Feedback',
-                    'Estimated Time to Attempt',
-                    'Key Objectives',
-                    'Quick Tips',
-                    'Overview Video',
+                    "Hide Agent Script",
+                    "Hide Customer Script",
+                    "Hide Keyword Scores",
+                    "Hide Sentiment Scores",
+                    "Hide Highlights",
+                    "Hide Coaching Tips",
+                    "Enable Post Simulations Survey",
+                    "AI Powered Pauses and Feedback",
+                    "Estimated Time to Attempt",
+                    "Key Objectives",
+                    "Quick Tips",
+                    "Overview Video",
                   ].map((item) => (
                     <NavItem
                       key={item}
                       button
-                      className={item === 'Simulation Type' ? 'active' : ''}
+                      className={item === "Simulation Type" ? "active" : ""}
                       sx={{
                         textAlign: "left",
                         padding: "8px 0",
@@ -265,8 +282,8 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
-                          variant: 'body2',
-                          fontWeight: item === 'Simulation Type' ? 600 : 400,
+                          variant: "body2",
+                          fontWeight: item === "Simulation Type" ? 600 : 400,
                         }}
                       />
                     </NavItem>
@@ -276,11 +293,15 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
               {/* Voice & Prompt Settings Navigation */}
               <Stack spacing={2}>
-                <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
+                <Typography
+                  variant="h5"
+                  fontWeight="500"
+                  sx={{ color: "#666666" }}
+                >
                   Voice & Prompt Settings
                 </Typography>
                 <List disablePadding>
-                  {['AI Customer Voice', 'Conversation Prompt'].map((item) => (
+                  {["AI Customer Voice", "Conversation Prompt"].map((item) => (
                     <NavItem
                       key={item}
                       button
@@ -292,7 +313,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
-                          variant: 'body2',
+                          variant: "body2",
                         }}
                       />
                     </NavItem>
@@ -302,11 +323,20 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
 
               {/* Score Settings Navigation */}
               <Stack spacing={2}>
-                <Typography variant="h5" fontWeight="500" sx={{ color: "#666666" }}>
+                <Typography
+                  variant="h5"
+                  fontWeight="500"
+                  sx={{ color: "#666666" }}
+                >
                   Score Settings
                 </Typography>
                 <List disablePadding>
-                  {['Simulation Completion', 'Number of Repetition Allowed', 'Simulation Scoring Metrics', 'Sym Practice'].map((item) => (
+                  {[
+                    "Simulation Completion",
+                    "Number of Repetition Allowed",
+                    "Simulation Scoring Metrics",
+                    "Sym Practice",
+                  ].map((item) => (
                     <NavItem
                       key={item}
                       button
@@ -318,7 +348,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                       <ListItemText
                         primary={item}
                         primaryTypographyProps={{
-                          variant: 'body2',
+                          variant: "body2",
                         }}
                       />
                     </NavItem>
@@ -334,12 +364,12 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
               flex: 1,
               px: 10,
               height: 660,
-              overflowY: 'auto',
-              '&::-webkit-scrollbar': {
-                display: 'none',
+              overflowY: "auto",
+              "&::-webkit-scrollbar": {
+                display: "none",
               },
-              '-ms-overflow-style': 'none',
-              'scrollbar-width': 'none',
+              "-ms-overflow-style": "none",
+              "scrollbar-width": "none",
             }}
           >
             <AdvancedSettings />

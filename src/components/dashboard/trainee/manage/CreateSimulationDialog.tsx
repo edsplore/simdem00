@@ -38,7 +38,7 @@ import {
   fetchDepartments,
 } from "../../../../services/suggestions";
 import { fetchTags, createTag, Tag } from "../../../../services/tags";
-import axios from "axios";
+import { createSimulation } from "../../../../services/simulation_operations";
 
 type CreateSimulationFormData = {
   name: string;
@@ -101,7 +101,7 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
 
   const {
     control,
@@ -158,10 +158,10 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
       const loadTags = async () => {
         setIsLoadingTags(true);
         try {
-          const tagsData = await fetchTags(user?.id || 'user123');
+          const tagsData = await fetchTags(user?.id || "user123");
           setAvailableTags(tagsData);
         } catch (error) {
-          console.error('Failed to load tags:', error);
+          console.error("Failed to load tags:", error);
         } finally {
           setIsLoadingTags(false);
         }
@@ -178,29 +178,25 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
     setErrorMessage(null);
 
     try {
-      // Call the API to create a simulation
-      const response = await axios.post("/api/simulations/create", {
+      // Use the new createSimulation function
+      const response = await createSimulation({
         user_id: user?.id || "user123", // Use authenticated user ID
         name: data.name,
         division_id: data.division || "",
         department_id: data.department || "",
-        type: data.simulationType.toLowerCase(),
+        type: data.simulationType.toLowerCase() as SimulationType,
         tags: data.tags || [],
         script: [], // Empty script to be filled later
         status: "draft", // Start as draft
       });
 
-      if (
-        response.data &&
-        response.data.status === "success" &&
-        response.data.id
-      ) {
+      if (response && response.status === "success" && response.id) {
         // Reset form for next time
         reset();
         // Close dialog
         onClose();
         // Navigate to the generate scripts page with the ID
-        navigate(`/generate-scripts/${response.data.id}`);
+        navigate(`/generate-scripts/${response.id}`);
       } else {
         setErrorMessage("Failed to create simulation. Please try again.");
       }
@@ -231,19 +227,19 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
           created_by: user.id,
           created_at: new Date().toISOString(),
           last_modified_by: user.id,
-          last_modified_at: new Date().toISOString()
+          last_modified_at: new Date().toISOString(),
         };
 
-        setAvailableTags(prev => [...prev, newTag]);
+        setAvailableTags((prev) => [...prev, newTag]);
 
         // Add the new tag to the selected tags
-        setValue('tags', [...selectedTags, tagName.trim()]);
+        setValue("tags", [...selectedTags, tagName.trim()]);
 
         // Clear the input
-        setInputValue('');
+        setInputValue("");
       }
     } catch (error) {
-      console.error('Error creating tag:', error);
+      console.error("Error creating tag:", error);
     } finally {
       setIsCreatingTag(false);
     }
@@ -433,7 +429,7 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                     {...field}
                     multiple
                     id="tags-autocomplete"
-                    options={availableTags.map(tag => tag.name)}
+                    options={availableTags.map((tag) => tag.name)}
                     value={field.value}
                     onChange={(_, newValue) => {
                       field.onChange(newValue);
@@ -443,15 +439,19 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                       setInputValue(newInputValue);
                     }}
                     filterOptions={(options, params) => {
-                      const filtered = options.filter(option => 
-                        option.toLowerCase().includes(params.inputValue.toLowerCase())
+                      const filtered = options.filter((option) =>
+                        option
+                          .toLowerCase()
+                          .includes(params.inputValue.toLowerCase()),
                       );
 
                       // Add "Create" option if input is not empty and doesn't exist in options
                       const inputValue = params.inputValue.trim();
-                      if (inputValue !== '' && 
-                          !options.includes(inputValue) && 
-                          !selectedTags.includes(inputValue)) {
+                      if (
+                        inputValue !== "" &&
+                        !options.includes(inputValue) &&
+                        !selectedTags.includes(inputValue)
+                      ) {
                         filtered.unshift(inputValue);
                       }
 
@@ -475,30 +475,36 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
                       ))
                     }
                     renderOption={(props, option) => {
-                      const isNewOption = !availableTags.some(tag => tag.name === option);
+                      const isNewOption = !availableTags.some(
+                        (tag) => tag.name === option,
+                      );
 
                       if (isNewOption) {
                         return (
                           <ListItem {...props} key={`create-${option}`}>
-                            <ListItemText primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                <Typography>Create "{option}"</Typography>
-                                <Button
-                                  size="small"
-                                  startIcon={<AddIcon />}
-                                  variant="contained"
-                                  color="primary"
-                                  sx={{ ml: 2 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCreateTag(option);
-                                  }}
-                                  disabled={isCreatingTag}
+                            <ListItemText
+                              primary={
+                                <Box
+                                  sx={{ display: "flex", alignItems: "center" }}
                                 >
-                                  {isCreatingTag ? 'Creating...' : 'Create'}
-                                </Button>
-                              </Box>
-                            } />
+                                  <Typography>Create "{option}"</Typography>
+                                  <Button
+                                    size="small"
+                                    startIcon={<AddIcon />}
+                                    variant="contained"
+                                    color="primary"
+                                    sx={{ ml: 2 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCreateTag(option);
+                                    }}
+                                    disabled={isCreatingTag}
+                                  >
+                                    {isCreatingTag ? "Creating..." : "Create"}
+                                  </Button>
+                                </Box>
+                              }
+                            />
                           </ListItem>
                         );
                       }

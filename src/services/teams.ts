@@ -40,7 +40,7 @@ export interface TeamResponse {
 }
 
 // Staging URL - can be switched to staging as needed
-// const TEAMS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/teams';
+//const TEAMS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/teams';
 
 // Dev URL - can be switched to staging as needed
 const TEAMS_URL = 'https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/teams';

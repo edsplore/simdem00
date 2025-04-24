@@ -23,6 +23,10 @@ import ScriptTab from "./ScriptTab";
 import VisualsTab from "./VisualsTab";
 import SettingsTab from "./settingTab/SettingTab";
 import PreviewTab from "./PreviewTab";
+import {
+  updateSimulation,
+  updateSimulationWithFormData,
+} from "../../../../../services/simulation_operations";
 
 interface TabState {
   script: boolean;
@@ -175,23 +179,6 @@ const StyledTab = styled(Tab)(({ theme }) => ({
     pointerEvents: "none",
   },
 }));
-
-// Helper function to create/update simulation with FormData
-const updateSimulationWithFormData = async (
-  simulationId: string,
-  formData: FormData,
-) => {
-  const response = await axios.put(
-    `/api/simulations/${simulationId}/update`,
-    formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    },
-  );
-  return response.data;
-};
 
 /**
  * Attempts to detect the image type from binary data
@@ -810,8 +797,8 @@ const GenerateScriptContent = () => {
         keywords: msg.keywords || [],
       }));
 
-      // Update simulation with script - using the correct field names for the API
-      const response = await axios.put(`/api/simulations/${id}/update`, {
+      // Use updateSimulation from simulation_operations instead of direct axios call
+      const response = await updateSimulation(id, {
         user_id: "user123", // This should come from your auth context
         sim_name: loadedSimulation.name, // Changed 'name' to 'sim_name' to match API
         division_id: loadedSimulation.division || "",
@@ -826,21 +813,15 @@ const GenerateScriptContent = () => {
         sim_type: loadedSimulation.simulationType.toLowerCase(),
       });
 
-      if (response.data) {
-        // Extract data from response, including prompt if available
-        // This handles both response formats (direct status or document wrapper)
-        const responseData = response.data.document || response.data;
-
-        // Check if we have a simulation object in the response
-        const simulationObj = responseData.simulation || responseData;
-
-        const responseStatus = simulationObj.status || "draft";
-        const responseId = simulationObj.id || simulationObj._id || id;
-        const responsePrompt = simulationObj.prompt || "";
+      if (response) {
+        // Extract data from response
+        const responseStatus = response.status || "draft";
+        const responseId = response.id || id;
+        const responsePrompt = response.prompt || "";
 
         // Log the prompt received from API response
         console.log("Received prompt from API:", responsePrompt);
-        console.log("Full API response:", response.data);
+        console.log("Full API response:", response);
 
         // Update simulation response with all available data
         setSimulationResponse({
@@ -921,27 +902,15 @@ const GenerateScriptContent = () => {
         sim_type: loadedSimulation.simulationType.toLowerCase(),
       });
 
-      // Use update API with the simulation ID
-      const response = await axios.put(
-        `/api/simulations/${id}/update`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
+      // Use updateSimulationWithFormData from simulation_operations
+      const response = await updateSimulationWithFormData(id, formData);
 
-      // Handle response with or without document wrapper
+      // Handle response
       if (response) {
-        const responseData = response.data.document || response.data;
-
-        // Check if we have a simulation object in the response
-        const simulationObj = responseData.simulation || responseData;
-
-        const responseStatus = simulationObj.status || "draft";
-        const responseId = simulationObj.id || simulationObj._id || id;
-        const responsePrompt = simulationObj.prompt || "";
+        // Extract the relevant information
+        const responseStatus = response.status || "draft";
+        const responseId = response.id || id;
+        const responsePrompt = response.prompt || "";
 
         // Log the prompt received from API response
         console.log("Received prompt from visual update API:", responsePrompt);

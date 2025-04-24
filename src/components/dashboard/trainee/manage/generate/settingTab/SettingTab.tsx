@@ -17,6 +17,7 @@ import AdvancedSettings from "./AdvancedSetting";
 import VoiceAndScoreSettings from "./VoiceScoreSetting";
 import PreviewTab from "../PreviewTab";
 import { useParams } from "react-router-dom";
+import { publishSimulation } from "../../../../../../services/simulation_operations";
 
 const NavItem = styled(ListItem)(({ theme }) => ({
   cursor: "pointer",
@@ -595,7 +596,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
           ai_powered_pauses_and_feedback:
             levelSettings.aiPoweredPauses?.lvl3 === true,
         },
-        estimated_time_to_attempt_in_mins: parseInt(timeValue),
+        estimated_time_to_attempt_in_mins: timeSettings.enabled
+          ? parseInt(timeValue)
+          : 0,
         key_objectives: objectivesSettings.enabled
           ? processTextToArray(objectivesSettings.text)
           : ["Learn basic customer service", "Understand refund process"],
@@ -656,23 +659,15 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
       console.log("Publishing with settings:", payload);
 
-      const response = await axios.put(
-        `/api/simulations/${simulationId}/update`,
-        payload,
-      );
+      // Use the publishSimulation function instead of direct axios call
+      const response = await publishSimulation(simulationId, payload);
 
-      console.log("Publish response:", response.data);
+      console.log("Publish response:", response);
 
-      // Updated handling to properly extract data from potential nested structures
-      if (response.data) {
-        const responseData = response.data.document || response.data;
+      // Updated handling to properly extract data
+      if (response) {
         // Get simulation object if exists
-        const simObj = responseData.simulation || responseData;
-
-        if (
-          simObj &&
-          (simObj.status === "success" || simObj.status === "published")
-        ) {
+        if (response.status === "success" || response.status === "published") {
           setPublishedSimId(simulationId);
           setShowPreview(true);
           if (onPublish) {

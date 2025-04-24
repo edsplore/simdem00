@@ -66,6 +66,38 @@ const SimulationAttemptPage = () => {
     loadSimulation();
   }, [simulationId]);
 
+  // Check if practice is enabled for the selected level
+  const isPracticeEnabled = () => {
+    if (!simulation || !selectedLevel) return false;
+
+    if (selectedLevel === "Level 01") {
+      return simulation.lvl1?.enablePractice === true;
+    } else if (selectedLevel === "Level 02") {
+      return simulation.lvl2?.enablePractice === true;
+    } else if (selectedLevel === "Level 03") {
+      return simulation.lvl3?.enablePractice === true;
+    }
+    return false;
+  };
+
+  // Update selectedLevel and reset selectedAttempt if needed
+  const handleLevelChange = (level: string) => {
+    setSelectedLevel(level);
+
+    // If practice is not enabled for the new level and practice was selected,
+    // reset to Test mode
+    if (selectedAttempt === "Practice") {
+      const practiceEnabled =
+        (level === "Level 01" && simulation?.lvl1?.enablePractice) ||
+        (level === "Level 02" && simulation?.lvl2?.enablePractice) ||
+        (level === "Level 03" && simulation?.lvl3?.enablePractice);
+
+      if (!practiceEnabled) {
+        setSelectedAttempt("Test");
+      }
+    }
+  };
+
   const handleContinue = () => {
     if (!simulation) return;
     setShowStartPage(true);
@@ -118,7 +150,7 @@ const SimulationAttemptPage = () => {
         level={selectedLevel}
         simType={simulation.sim_type}
         attemptType={selectedAttempt}
-        assignmentId={assignmentId} // Add this line
+        assignmentId={assignmentId}
         onBackToList={() => setShowStartPage(false)}
       />
     );
@@ -187,7 +219,7 @@ const SimulationAttemptPage = () => {
                       <Button
                         key={level.label}
                         disabled={!level.enabled}
-                        onClick={() => setSelectedLevel(level.label)}
+                        onClick={() => handleLevelChange(level.label)}
                         sx={{
                           border:
                             selectedLevel === level.label
@@ -237,17 +269,22 @@ const SimulationAttemptPage = () => {
                         icon: <PlayArrowIcon />,
                         title: "Practice",
                         subtitle: "Subtitle goes here",
+                        disabled: !isPracticeEnabled(),
                       },
                     ].map((option) => (
                       <Card
                         key={option.key}
-                        onClick={() =>
-                          setSelectedAttempt(option.key as "Test" | "Practice")
-                        }
+                        onClick={() => {
+                          if (!option.disabled) {
+                            setSelectedAttempt(
+                              option.key as "Test" | "Practice",
+                            );
+                          }
+                        }}
                         sx={{
                           flex: 1,
                           p: 2,
-                          cursor: "pointer",
+                          cursor: option.disabled ? "not-allowed" : "pointer",
                           border:
                             selectedAttempt === option.key
                               ? "2px solid #001EEE"
@@ -256,6 +293,7 @@ const SimulationAttemptPage = () => {
                             selectedAttempt === option.key
                               ? "#FAFAFF"
                               : "white",
+                          opacity: option.disabled ? 0.5 : 1,
                         }}
                       >
                         <Stack direction="row" spacing={2} alignItems="center">
@@ -277,6 +315,11 @@ const SimulationAttemptPage = () => {
                             <Typography variant="body2">
                               {option.subtitle}
                             </Typography>
+                            {option.disabled && (
+                              <Typography variant="caption" color="error">
+                                Not available for this level
+                              </Typography>
+                            )}
                           </Stack>
                         </Stack>
                       </Card>

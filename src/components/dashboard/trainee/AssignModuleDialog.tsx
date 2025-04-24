@@ -1,10 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
-import { fetchModules, type Module } from '../../../services/modules';
-import { fetchUsersSummary, type User } from '../../../services/users';
-import { fetchTeams, type Team } from '../../../services/teams';
-import { createAssignment } from '../../../services/assignments';
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useForm, Controller } from "react-hook-form";
+import { fetchModules, type Module } from "../../../services/modules";
+import { fetchUsersSummary, type User } from "../../../services/users";
+import { fetchTeams, type Team } from "../../../services/teams";
+import { createAssignment } from "../../../services/assignments";
 import {
   Dialog,
   DialogTitle,
@@ -23,21 +23,21 @@ import {
   ClickAwayListener,
   CircularProgress,
   Alert,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Close as CloseIcon,
   Book as BookIcon,
   Search as SearchIcon,
   Person as PersonIcon,
   Group as GroupIcon,
-} from '@mui/icons-material';
-import { useAuth } from '../../../context/AuthContext';
+} from "@mui/icons-material";
+import { useAuth } from "../../../context/AuthContext";
 
 interface Assignee {
   id: string;
   name: string;
   email?: string;
-  type: 'team' | 'trainee';
+  type: "team" | "trainee";
 }
 
 interface CreateModuleFormData {
@@ -66,12 +66,12 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [showModulesList, setShowModulesList] = useState(false);
   const searchFieldRef = useRef<HTMLDivElement>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
-  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState('');
+  const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
   const [showAssigneesList, setShowAssigneesList] = useState(false);
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
 
@@ -82,12 +82,12 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     watch,
     setValue,
   } = useForm<CreateModuleFormData>({
-    mode: 'onChange',
+    mode: "onChange",
     defaultValues: {
-      name: '',
-      moduleId: '',
-      startDate: '',
-      dueDate: '',
+      name: "",
+      moduleId: "",
+      startDate: "",
+      dueDate: "",
       assignTo: [],
     },
   });
@@ -97,11 +97,11 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchModules(user?.id || 'user123');
+        const data = await fetchModules(user?.id || "user123");
         setModules(data);
       } catch (err) {
-        setError('Failed to load modules');
-        console.error('Error loading modules:', err);
+        setError("Failed to load modules");
+        console.error("Error loading modules:", err);
       } finally {
         setIsLoading(false);
       }
@@ -115,7 +115,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   useEffect(() => {
     const loadAssignees = async () => {
       if (!currentWorkspaceId) {
-        console.error('No workspace ID available');
+        console.error("No workspace ID available");
         return;
       }
 
@@ -124,41 +124,46 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
         // Fetch both users and teams in parallel
         const [usersResponse, teamsResponse] = await Promise.all([
           fetchUsersSummary(currentWorkspaceId),
-          fetchTeams(currentWorkspaceId)
+          fetchTeams(currentWorkspaceId),
         ]);
 
-        console.log('Users response:', usersResponse);
-        console.log('Teams response:', teamsResponse);
+        console.log("Users response:", usersResponse);
+        console.log("Teams response:", teamsResponse);
 
         // Process users
-        const userAssignees: Assignee[] = Array.isArray(usersResponse) ? 
-          usersResponse.map(user => ({
-            id: user.user_id,
-            name: user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            email: user.email,
-            type: 'trainee'
-          })) : [];
+        const userAssignees: Assignee[] = Array.isArray(usersResponse)
+          ? usersResponse.map((user) => ({
+              id: user.user_id,
+              name:
+                user.fullName ||
+                `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+              email: user.email,
+              type: "trainee",
+            }))
+          : [];
 
         // Process teams
-        const teamAssignees: Assignee[] = teamsResponse && teamsResponse.teams ? 
-          teamsResponse.teams.map(team => ({
-            id: team.team_id,
-            name: team.team_name,
-            type: 'team'
-          })) : [];
+        const teamAssignees: Assignee[] =
+          teamsResponse && teamsResponse.teams
+            ? teamsResponse.teams.map((team) => ({
+                id: team.team_id,
+                name: team.team_name,
+                type: "team",
+              }))
+            : [];
 
         // Combine users and teams
         const allAssignees = [...teamAssignees, ...userAssignees];
         setAssignees(allAssignees);
 
-        console.log('Loaded assignees:', {
+        console.log("Loaded assignees:", {
           teams: teamAssignees.length,
           users: userAssignees.length,
-          total: allAssignees.length
+          total: allAssignees.length,
         });
       } catch (error) {
-        console.error('Error loading assignees:', error);
-        setError('Failed to load users and teams');
+        console.error("Error loading assignees:", error);
+        setError("Failed to load users and teams");
       } finally {
         setIsLoadingAssignees(false);
       }
@@ -169,14 +174,18 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     }
   }, [open, currentWorkspaceId]);
 
-  const selectedAssignees = watch('assignTo');
-  const filteredModules = modules.filter(module => 
-    module.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const selectedAssignees = watch("assignTo");
+  const filteredModules = modules.filter((module) =>
+    module.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const filteredAssignees = assignees.filter(assignee => 
-    assignee.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) ||
-    (assignee.email && assignee.email.toLowerCase().includes(assigneeSearchQuery.toLowerCase()))
+  const filteredAssignees = assignees.filter(
+    (assignee) =>
+      assignee.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) ||
+      (assignee.email &&
+        assignee.email
+          .toLowerCase()
+          .includes(assigneeSearchQuery.toLowerCase())),
   );
 
   const onSubmit = async (data: CreateModuleFormData) => {
@@ -185,44 +194,52 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
       setSubmitError(null);
 
       // Split assignees into teams and trainees
-      const teams = data.assignTo.filter(id => 
-        assignees.find(a => a.id === id)?.type === 'team'
+      const teams = data.assignTo.filter(
+        (id) => assignees.find((a) => a.id === id)?.type === "team",
       );
-      const trainees = data.assignTo.filter(id => 
-        assignees.find(a => a.id === id)?.type === 'trainee'
+      const trainees = data.assignTo.filter(
+        (id) => assignees.find((a) => a.id === id)?.type === "trainee",
       );
 
       const response = await createAssignment({
-        user_id: user?.id || 'user123',
+        user_id: user?.id || "user123",
         name: data.name,
-        type: 'Module',
+        type: "Module",
         id: data.moduleId,
         start_date: data.startDate,
         end_date: data.dueDate,
         team_id: teams,
-        trainee_id: trainees
+        trainee_id: trainees,
       });
 
-      if (response.status === 'success') {
+      if (response.status === "success") {
         onAssignmentCreated?.();
         onClose();
       }
     } catch (error) {
-      console.error('Error creating assignment:', error);
-      setSubmitError('Failed to create assignment. Please try again.');
+      console.error("Error creating assignment:", error);
+      setSubmitError("Failed to create assignment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const getSelectedAssigneeName = (id: string) => {
-    return assignees.find(assignee => assignee.id === id)?.name || '';
+    return assignees.find((assignee) => assignee.id === id)?.name || "";
   };
 
-  const handleDeleteAssignee = (assigneeId: string, event: React.MouseEvent) => {
+  const handleDeleteAssignee = (
+    assigneeId: string,
+    event: React.MouseEvent,
+  ) => {
     event.stopPropagation();
-    const newValue = selectedAssignees.filter(id => id !== assigneeId);
-    setValue('assignTo', newValue, { shouldValidate: true });
+    const newValue = selectedAssignees.filter((id) => id !== assigneeId);
+    setValue("assignTo", newValue, { shouldValidate: true });
+  };
+
+  // New handler to prevent event propagation for search input
+  const handleSearchInputKeyDown = (e) => {
+    e.stopPropagation();
   };
 
   return (
@@ -242,42 +259,42 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
         <Stack direction="row" alignItems="center" spacing={2}>
           <Box
             sx={{
-              position: 'relative',
+              position: "relative",
               width: 48,
               height: 48,
             }}
           >
             <Box
               sx={{
-                position: 'absolute',
+                position: "absolute",
                 bottom: -6,
                 left: -6,
                 width: 60,
                 height: 60,
-                borderRadius: '50%',
-                bgcolor: '#EEF4FF',
+                borderRadius: "50%",
+                bgcolor: "#EEF4FF",
                 zIndex: 0,
               }}
             />
             <Box
               sx={{
-                position: 'relative',
+                position: "relative",
                 width: 48,
                 height: 48,
-                borderRadius: '50%',
-                bgcolor: '#F5F6FF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                borderRadius: "50%",
+                bgcolor: "#F5F6FF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 zIndex: 1,
               }}
             >
-              <BookIcon sx={{ color: '#444CE7' }} />
+              <BookIcon sx={{ color: "#444CE7" }} />
             </Box>
           </Box>
 
           <Stack spacing={0.5} flex={1}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
               Assign Module
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -315,8 +332,12 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                 rules={{ required: true }}
                 render={({ field }) => {
                   const selectedModuleDetails = selectedModule ? (
-                    <Stack spacing={0.5} sx={{ width: '100%' }}>
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack spacing={0.5} sx={{ width: "100%" }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
                         <Typography variant="body2" color="text.secondary">
                           {selectedModule.id.slice(-6)}
                         </Typography>
@@ -324,12 +345,12 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                           label={`Module | ${selectedModule.simulations_id.length} Sims`}
                           size="small"
                           sx={{
-                            bgcolor: '#F5F6FF',
-                            color: '#444CE7',
+                            bgcolor: "#F5F6FF",
+                            color: "#444CE7",
                             height: 24,
-                            '& .MuiChip-label': {
+                            "& .MuiChip-label": {
                               px: 1,
-                              fontSize: '12px',
+                              fontSize: "12px",
                             },
                           }}
                         />
@@ -342,7 +363,9 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
 
                   return (
                     <Box position="relative" ref={searchFieldRef}>
-                      <ClickAwayListener onClickAway={() => setShowModulesList(false)}>
+                      <ClickAwayListener
+                        onClickAway={() => setShowModulesList(false)}
+                      >
                         <Box>
                           <TextField
                             {...field}
@@ -355,38 +378,65 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                             }}
                             onClick={() => setShowModulesList(true)}
                             InputProps={{
-                              startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                              startAdornment: (
+                                <SearchIcon
+                                  sx={{ color: "text.secondary", mr: 1 }}
+                                />
+                              ),
                             }}
                           />
                           {selectedModuleDetails && !showModulesList && (
-                            <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                            <Box
+                              sx={{
+                                mt: 1,
+                                p: 2,
+                                border: "1px solid",
+                                borderColor: "divider",
+                                borderRadius: 1,
+                              }}
+                            >
                               {selectedModuleDetails}
                             </Box>
                           )}
                           {showModulesList && (
-                            <Box 
-                              sx={{ 
-                                position: 'absolute',
+                            <Box
+                              sx={{
+                                position: "absolute",
                                 zIndex: 1300,
-                                width: '100%',
+                                width: "100%",
                                 left: 0,
                                 mt: 0.5,
-                                bgcolor: 'background.paper',
+                                bgcolor: "background.paper",
                                 borderRadius: 1,
                                 boxShadow: 3,
                                 maxHeight: 300,
-                                minHeight: filteredModules.length > 0 ? 250 : 'auto',
-                                overflow: 'auto',
+                                minHeight:
+                                  filteredModules.length > 0 ? 250 : "auto",
+                                overflow: "auto",
                               }}
                             >
                               {isLoading ? (
-                                <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
+                                <Box
+                                  sx={{
+                                    p: 2,
+                                    display: "flex",
+                                    justifyContent: "center",
+                                  }}
+                                >
                                   <CircularProgress size={24} />
                                 </Box>
                               ) : error ? (
-                                <Typography sx={{ p: 2, color: 'error.main' }}>{error}</Typography>
+                                <Typography sx={{ p: 2, color: "error.main" }}>
+                                  {error}
+                                </Typography>
                               ) : filteredModules.length === 0 ? (
-                                <Typography sx={{ p: 2, color: 'text.secondary', textAlign: 'center' }}>
+                                <Typography
+                                  sx={{
+                                    p: 2,
+                                    color: "text.secondary",
+                                    textAlign: "center",
+                                  }}
+                                >
                                   No matches found
                                 </Typography>
                               ) : (
@@ -397,29 +447,36 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                                       field.onChange(module.id);
                                       setSelectedModule(module);
                                       setShowModulesList(false);
-                                      setSearchQuery('');
+                                      setSearchQuery("");
                                     }}
                                     sx={{
                                       p: 1.5,
-                                      cursor: 'pointer',
-                                      '&:hover': { bgcolor: '#F5F6FF' },
+                                      cursor: "pointer",
+                                      "&:hover": { bgcolor: "#F5F6FF" },
                                     }}
                                   >
                                     <Stack spacing={0.5}>
-                                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                        <Typography variant="body2" color="text.secondary">
+                                      <Stack
+                                        direction="row"
+                                        justifyContent="space-between"
+                                        alignItems="center"
+                                      >
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                        >
                                           {module.id.slice(-6)}
                                         </Typography>
                                         <Chip
                                           label={`Module | ${module.simulations_id.length} Sims`}
                                           size="small"
                                           sx={{
-                                            bgcolor: '#F5F6FF',
-                                            color: '#444CE7',
+                                            bgcolor: "#F5F6FF",
+                                            color: "#444CE7",
                                             height: 24,
-                                            '& .MuiChip-label': {
+                                            "& .MuiChip-label": {
                                               px: 1,
-                                              fontSize: '12px',
+                                              fontSize: "12px",
                                             },
                                           }}
                                         />
@@ -495,7 +552,9 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                         );
                       }
                       return (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        <Box
+                          sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}
+                        >
                           {selected.map((value) => (
                             <Chip
                               key={value}
@@ -503,22 +562,35 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                               onDelete={(e) => handleDeleteAssignee(value, e)}
                               deleteIcon={<CloseIcon />}
                               avatar={
-                                <Avatar sx={{ bgcolor: '#F5F6FF' }}>
-                                  {assignees.find(a => a.id === value)?.type === 'team' ? (
-                                    <GroupIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                                <Avatar sx={{ bgcolor: "#F5F6FF" }}>
+                                  {assignees.find((a) => a.id === value)
+                                    ?.type === "team" ? (
+                                    <GroupIcon
+                                      sx={{
+                                        color: "#444CE7",
+                                        width: 16,
+                                        height: 16,
+                                      }}
+                                    />
                                   ) : (
-                                    <PersonIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                                    <PersonIcon
+                                      sx={{
+                                        color: "#444CE7",
+                                        width: 16,
+                                        height: 16,
+                                      }}
+                                    />
                                   )}
                                 </Avatar>
                               }
                               sx={{
-                                bgcolor: '#F5F6FF',
-                                border: '1px solid #DEE2FC',
-                                '& .MuiChip-deleteIcon': {
-                                  color: '#444CE7',
+                                bgcolor: "#F5F6FF",
+                                border: "1px solid #DEE2FC",
+                                "& .MuiChip-deleteIcon": {
+                                  color: "#444CE7",
                                   fontSize: 16,
-                                  '&:hover': {
-                                    color: '#3538CD',
+                                  "&:hover": {
+                                    color: "#3538CD",
                                   },
                                 },
                               }}
@@ -534,30 +606,47 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                         },
                       },
                       anchorOrigin: {
-                        vertical: 'bottom',
-                        horizontal: 'left',
+                        vertical: "bottom",
+                        horizontal: "left",
                       },
                       transformOrigin: {
-                        vertical: 'top',
-                        horizontal: 'left',
+                        vertical: "top",
+                        horizontal: "left",
                       },
                     }}
                   >
-                    <Box sx={{ p: 2, position: 'sticky', top: 0, bgcolor: 'background.paper', zIndex: 1 }}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        position: "sticky",
+                        top: 0,
+                        bgcolor: "background.paper",
+                        zIndex: 1,
+                      }}
+                    >
                       <TextField
                         fullWidth
                         size="small"
                         placeholder="Search users or teams..."
                         value={assigneeSearchQuery}
                         onChange={(e) => setAssigneeSearchQuery(e.target.value)}
+                        // Added these handlers to prevent event propagation
+                        onKeyDown={handleSearchInputKeyDown}
+                        onClick={(e) => e.stopPropagation()}
                         InputProps={{
-                          startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                          startAdornment: (
+                            <SearchIcon
+                              sx={{ color: "text.secondary", mr: 1 }}
+                            />
+                          ),
                         }}
                       />
                     </Box>
 
                     {isLoadingAssignees ? (
-                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+                      <Box
+                        sx={{ display: "flex", justifyContent: "center", p: 2 }}
+                      >
                         <CircularProgress size={24} />
                       </Box>
                     ) : assignees.length === 0 ? (
@@ -572,26 +661,45 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                           sx={{
                             py: 1,
                             px: 2,
-                            '&:hover': {
-                              bgcolor: '#F5F6FF',
+                            "&:hover": {
+                              bgcolor: "#F5F6FF",
                             },
                           }}
                         >
-                          <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%' }}>
+                          <Stack
+                            direction="row"
+                            spacing={2}
+                            alignItems="center"
+                            sx={{ width: "100%" }}
+                          >
                             <Checkbox
                               checked={selectedAssignees.includes(assignee.id)}
                               sx={{
-                                color: '#D0D5DD',
-                                '&.Mui-checked': {
-                                  color: '#444CE7',
+                                color: "#D0D5DD",
+                                "&.Mui-checked": {
+                                  color: "#444CE7",
                                 },
                               }}
                             />
-                            <Avatar sx={{ width: 24, height: 24, bgcolor: '#F5F6FF' }}>
-                              {assignee.type === 'team' ? (
-                                <GroupIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                            <Avatar
+                              sx={{ width: 24, height: 24, bgcolor: "#F5F6FF" }}
+                            >
+                              {assignee.type === "team" ? (
+                                <GroupIcon
+                                  sx={{
+                                    color: "#444CE7",
+                                    width: 16,
+                                    height: 16,
+                                  }}
+                                />
                               ) : (
-                                <PersonIcon sx={{ color: '#444CE7', width: 16, height: 16 }} />
+                                <PersonIcon
+                                  sx={{
+                                    color: "#444CE7",
+                                    width: 16,
+                                    height: 16,
+                                  }}
+                                />
                               )}
                             </Avatar>
                             <Stack spacing={0.5} flex={1}>
@@ -599,21 +707,26 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                                 {assignee.name}
                               </Typography>
                               {assignee.email && (
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
                                   {assignee.email}
                                 </Typography>
                               )}
                             </Stack>
                             <Chip
-                              label={assignee.type === 'team' ? 'Team' : 'Trainee'}
+                              label={
+                                assignee.type === "team" ? "Team" : "Trainee"
+                              }
                               size="small"
                               sx={{
-                                bgcolor: '#F5F6FF',
-                                color: '#444CE7',
+                                bgcolor: "#F5F6FF",
+                                color: "#444CE7",
                                 height: 24,
-                                '& .MuiChip-label': {
+                                "& .MuiChip-label": {
                                   px: 1,
-                                  fontSize: '12px',
+                                  fontSize: "12px",
                                 },
                               }}
                             />
@@ -634,18 +747,18 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
               sx={{
                 mt: 2,
                 py: 1.5,
-                bgcolor: '#444CE7',
-                color: 'white',
-                '&:hover': {
-                  bgcolor: '#3538CD',
+                bgcolor: "#444CE7",
+                color: "white",
+                "&:hover": {
+                  bgcolor: "#3538CD",
                 },
-                '&.Mui-disabled': {
-                  bgcolor: '#F5F6FF',
-                  color: '#444CE7',
+                "&.Mui-disabled": {
+                  bgcolor: "#F5F6FF",
+                  color: "#444CE7",
                 },
               }}
             >
-              {isSubmitting ? 'Assigning...' : 'Assign Module'}
+              {isSubmitting ? "Assigning..." : "Assign Module"}
             </Button>
 
             {submitError && (

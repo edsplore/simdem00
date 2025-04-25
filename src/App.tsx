@@ -21,6 +21,9 @@ const TraineeDashboard = React.lazy(
 const ManagerDashboard = React.lazy(
   () => import("./components/dashboard/manager/ManagerDashboard"),
 );
+const AdminDashboard = React.lazy(
+  () => import("./components/dashboard/admin/AdminDashboard"),
+);
 const TrainingPlanPage = React.lazy(
   () => import("./components/dashboard/trainee/TrainingPlanPage"),
 );
@@ -114,6 +117,10 @@ const App: React.FC = () => {
                   <Route
                     path="/dashboard-manager"
                     element={<ManagerDashboard />}
+                  />
+                  <Route
+                    path="/dashboard-admin"
+                    element={<AdminDashboard />}
                   />
                   <Route
                     path="/training"

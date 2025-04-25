@@ -113,7 +113,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -801,7 +801,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
+                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -863,9 +863,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Confidence"] >= 80
+                  {scores && scores.confidence >= 80
                     ? "High"
-                    : scores && scores["Confidence"] >= 60
+                    : scores && scores.confidence >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -898,9 +898,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Concentration"] >= 80
+                  {scores && scores.concentration >= 80
                     ? "High"
-                    : scores && scores["Concentration"] >= 60
+                    : scores && scores.concentration >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -933,9 +933,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Energy"] >= 80
+                  {scores && scores.energy >= 80
                     ? "High"
-                    : scores && scores["Energy"] >= 60
+                    : scores && scores.energy >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>

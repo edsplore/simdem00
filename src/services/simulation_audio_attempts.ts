@@ -39,12 +39,12 @@ export interface EndAudioSimulationResponse {
   id: string;
   status: string;
   scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
+    sim_accuracy: number;
+    keyword_score: number;
+    click_score: number;
+    confidence: number;
+    energy: number;
+    concentration: number;
   };
   duration: number;
   transcript: string;

@@ -90,18 +90,17 @@ export interface EndVisualChatResponse {
   id: string;
   status: string;
   scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
+    sim_accuracy: number;
+    keyword_score: number;
+    click_score: number;
+    confidence: number;
+    energy: number;
+    concentration: number;
   };
   duration: number;
   transcript: string;
   audio_url: string;
 }
-
 /**
  * Starts a visual chat simulation attempt
  * @param userId - The ID of the user starting the simulation

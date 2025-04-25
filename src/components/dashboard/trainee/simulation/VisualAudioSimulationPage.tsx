@@ -125,7 +125,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const speechSynthRef = useRef(window.speechSynthesis);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -885,7 +885,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
+                  {scores ? `${Math.round(scores.sim_accuracyxs)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -947,9 +947,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Confidence"] >= 80
+                  {scores && scores.confidence >= 80
                     ? "High"
-                    : scores && scores["Confidence"] >= 60
+                    : scores && scores.confidence >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -982,9 +982,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Concentration"] >= 80
+                  {scores && scores.concentration >= 80
                     ? "High"
-                    : scores && scores["Concentration"] >= 60
+                    : scores && scores.concentration >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1017,9 +1017,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Energy"] >= 80
+                  {scores && scores.energy >= 80
                     ? "High"
-                    : scores && scores["Energy"] >= 60
+                    : scores && scores.energy >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>

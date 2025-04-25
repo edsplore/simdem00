@@ -93,12 +93,12 @@ export interface VisualSimulationResponse {
 }
 
 export interface SimulationScores {
-  "Sim Accuracy": number;
-  "Keyword Score": number;
-  "Click Score": number;
-  Confidence: number;
-  Energy: number;
-  Concentration: number;
+  sim_accuracy: number;
+  keyword_score: number;
+  click_score: number;
+  confidence: number;
+  energy: number;
+  concentration: number;
 }
 
 export interface EndVisualSimulationResponse {

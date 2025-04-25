@@ -877,7 +877,7 @@ const ManageSimulationsPage = () => {
                             </Stack>
                           </TableCell>
                           <TableCell sx={{ width: 100 }}>
-                            {row.est_time} mins
+                            {row.est_time ? `${row.est_time} mins` : ''}
                           </TableCell>
                           <TableCell sx={{ minWidth: 180 }}>
                             <Stack>

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -17,6 +16,7 @@ import {
   Select,
   CircularProgress,
   InputAdornment,
+  Chip,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -40,6 +40,12 @@ import {
   SmartToy as SmartToyIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../context/AuthContext";
+import {
+  startVisualChatAttempt,
+  endVisualChatAttempt,
+  StartVisualChatResponse,
+  EndVisualChatResponse,
+} from "../../../../services/simulation_visual_chat_attempts";
 
 interface ChatMessage {
   id: string;
@@ -118,29 +124,6 @@ interface VisualChatSimulationPageProps {
   assignmentId: string;
 }
 
-interface VisualChatResponse {
-  id: string;
-  status: string;
-  simulation: SimulationData;
-  images: ImageData[];
-}
-
-interface EndChatResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
-}
-
 // Minimum passing score threshold
 const MIN_PASSING_SCORE = 85;
 
@@ -166,7 +149,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     string | null
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndChatResponse["scores"] | null>(null);
+  const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
+    null,
+  );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -670,30 +655,27 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       setIsStarted(true);
       setCallStatus("Loading visual-chat simulation...");
 
-      // Make API call to start visual-chat simulation
-      const response = await axios.post<VisualChatResponse>(
-        "/api/simulations/start-visual-chat-preview",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
+      // Use the startVisualChatAttempt function instead of direct axios call
+      const response = await startVisualChatAttempt(
+        userId,
+        simulationId,
+        assignmentId,
       );
 
-      console.log("Start visual-chat response:", response.data);
+      console.log("Start visual-chat response:", response);
 
-      if (response.data.simulation) {
+      if (response.simulation) {
         console.log("Setting simulation data");
-        setSimulationData(response.data.simulation);
-        setSimulationProgressId(response.data.id);
+        setSimulationData(response.simulation);
+        setSimulationProgressId(response.id);
         setCallStatus("Online");
       }
 
       // Process image data
-      if (response.data.images && response.data.images.length > 0) {
+      if (response.images && response.images.length > 0) {
         const newSlides = new Map();
-        console.log(`Processing ${response.data.images.length} images`);
-        for (const image of response.data.images) {
+        console.log(`Processing ${response.images.length} images`);
+        for (const image of response.images) {
           // Convert base64 string to Uint8Array
           const binaryString = atob(image.image_data);
           const len = binaryString.length;
@@ -762,25 +744,19 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       return;
     }
 
-    const apiParams = {
-      user_id: userId,
-      simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId,
-    };
-
-    console.log("API Parameters prepared:", apiParams);
-
     try {
       console.log("Executing end-visual-chat API call");
-      const response = await axios.post<EndChatResponse>(
-        "/api/simulations/end-visual-chat",
-        apiParams,
+      // Use the endVisualChatAttempt function instead of direct axios call
+      const response = await endVisualChatAttempt(
+        userId,
+        simulationId,
+        simulationProgressId,
       );
 
-      if (response.data && response.data.scores) {
+      if (response && response.scores) {
         console.log("Setting scores and showing completion screen");
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
         console.warn("No scores received in response");

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -16,6 +15,7 @@ import {
   MenuItem,
   Select,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -32,66 +32,14 @@ import {
   SmartToy as SmartToyIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../context/AuthContext";
-
-interface ImageData {
-  image_id: string;
-  image_data: string;
-}
-
-interface SimulationData {
-  id: string;
-  sim_name: string;
-  version: string;
-  lvl1: {
-    isEnabled: boolean;
-    enablePractice: boolean;
-    hideAgentScript: boolean;
-    hideCustomerScript: boolean;
-    hideKeywordScores: boolean;
-    hideSentimentScores: boolean;
-    hideHighlights: boolean;
-    hideCoachingTips: boolean;
-    enablePostSimulationSurvey: boolean;
-    aiPoweredPausesAndFeedback: boolean;
-  };
-  lvl2: {
-    isEnabled: boolean;
-  };
-  lvl3: {
-    isEnabled: boolean;
-  };
-  sim_type: string;
-  status: string;
-  tags: string[];
-  est_time: string;
-  script: Array<{
-    script_sentence: string;
-    role: string;
-    keywords: string[];
-  }>;
-  slidesData: Array<{
-    imageId: string;
-    imageName: string;
-    imageUrl: string;
-    sequence: Array<{
-      type: string;
-      id: string;
-      name?: string;
-      hotspotType?: string;
-      coordinates?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
-      settings?: any;
-      role?: string;
-      text?: string;
-      options?: string[];
-      tipText?: string;
-    }>;
-  }>;
-}
+import {
+  startVisualSimulation,
+  endVisualSimulation,
+  VisualSimulationResponse,
+  EndVisualSimulationResponse,
+  SimulationData,
+  ImageData,
+} from "../../../../services/simulation_visual_attempts";
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -101,29 +49,6 @@ interface VisualSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   assignmentId: string;
-}
-
-interface VisualSimulationResponse {
-  id: string;
-  status: string;
-  simulation: SimulationData;
-  images: ImageData[];
-}
-
-interface EndSimulationResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
 }
 
 // Minimum passing score threshold
@@ -151,9 +76,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     string | null
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndSimulationResponse["scores"] | null>(
-    null,
-  );
+  const [scores, setScores] = useState<
+    EndVisualSimulationResponse["scores"] | null
+  >(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -558,30 +483,27 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       setIsStarted(true);
       setSimulationStatus("Loading visual simulation...");
 
-      // Make API call to start visual simulation
-      const response = await axios.post<VisualSimulationResponse>(
-        "/api/simulations/start-visual-preview",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
+      // Use the startVisualSimulation function from simulation_visual_attempts
+      const response = await startVisualSimulation(
+        userId,
+        simulationId,
+        assignmentId,
       );
 
-      console.log("Start visual simulation response:", response.data);
+      console.log("Start visual simulation response:", response);
 
-      if (response.data.simulation) {
+      if (response.simulation) {
         console.log("Setting simulation data");
-        setSimulationData(response.data.simulation);
-        setSimulationProgressId(response.data.id);
+        setSimulationData(response.simulation);
+        setSimulationProgressId(response.id);
         setSimulationStatus("Active");
       }
 
       // Process image data
-      if (response.data.images && response.data.images.length > 0) {
+      if (response.images && response.images.length > 0) {
         const newSlides = new Map();
-        console.log(`Processing ${response.data.images.length} images`);
-        for (const image of response.data.images) {
+        console.log(`Processing ${response.images.length} images`);
+        for (const image of response.images) {
           // Convert base64 string to Uint8Array
           const binaryString = atob(image.image_data);
           const len = binaryString.length;
@@ -651,25 +573,20 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       return;
     }
 
-    const apiParams = {
-      user_id: userId,
-      simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId,
-    };
-
-    console.log("API Parameters prepared:", apiParams);
-
     try {
       console.log("Executing end-visual API call");
-      const response = await axios.post<EndSimulationResponse>(
-        "/api/simulations/end-visual",
-        apiParams,
+
+      // Use the endVisualSimulation function from simulation_visual_attempts
+      const response = await endVisualSimulation(
+        userId,
+        simulationId,
+        simulationProgressId,
       );
 
-      if (response.data && response.data.scores) {
+      if (response && response.scores) {
         console.log("Setting scores and showing completion screen");
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
         console.warn("No scores received in response");

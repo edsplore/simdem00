@@ -24,6 +24,10 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { PlayArrow, Pause } from "@mui/icons-material";
+import {
+  listVoices,
+  filterVoices,
+} from "../../../../../../services/simulation_voices";
 
 interface Voice {
   voice_id: string;
@@ -174,12 +178,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   const fetchVoices = async () => {
     try {
-      const response = await axios.post("/api/list-voices", {
-        user_id: "user123",
-      });
-      console.log("API response - voices:", response.data);
-      if (response.data.voices && Array.isArray(response.data.voices)) {
-        setVoices(response.data.voices);
+      const response = await listVoices("user123");
+      console.log("API response - voices:", response);
+      if (response.voices && Array.isArray(response.voices)) {
+        setVoices(response.voices);
       }
     } catch (error) {
       console.error("Error fetching voices:", error);
@@ -204,12 +206,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   }, [settings.voice.voiceId]);
 
   useEffect(() => {
-    const filtered = voices.filter(
-      (voice) =>
-        voice.accent === accent &&
-        voice.gender.toLowerCase() === gender.toLowerCase() &&
-        voice.age === ageGroup,
-    );
+    const filtered = filterVoices(voices, {
+      accent,
+      gender,
+      age: ageGroup,
+    });
     setFilteredVoices(filtered.slice(0, 3));
   }, [voices, accent, gender, ageGroup]);
 

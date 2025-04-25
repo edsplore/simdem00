@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -24,6 +23,13 @@ import {
   CallEnd as CallEndIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../context/AuthContext"; // Update path as needed
+import {
+  startChatSimulation,
+  sendChatMessage,
+  endChatSimulation,
+  ChatResponse,
+  EndChatResponse,
+} from "../../../../services/simulation_chat_attempts";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -39,29 +45,6 @@ interface ChatSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   assignmentId: string;
-}
-
-interface ChatResponse {
-  id: string;
-  status: string;
-  access_token: string | null;
-  response: string | null;
-}
-
-interface EndChatResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
 }
 
 // Minimum passing score threshold
@@ -144,39 +127,34 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     setIsStarted(true);
     try {
       console.log("Starting chat simulation...");
-      // Initial API call to start chat simulation
-      const response = await axios.post<ChatResponse>(
-        "/api/simulations/start-chat",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
+
+      // Use the startChatSimulation function instead of direct axios call
+      const response = await startChatSimulation(
+        userId,
+        simulationId,
+        assignmentId,
       );
 
-      console.log("Start chat response:", response.data);
+      console.log("Start chat response:", response);
 
-      if (response.data.id) {
-        setSimulationProgressId(response.data.id);
+      if (response.id) {
+        setSimulationProgressId(response.id);
         // Wait for initial response
-        const initialResponse = await axios.post<ChatResponse>(
-          "/api/simulations/start-chat",
-          {
-            user_id: userId,
-            sim_id: simulationId,
-            assignment_id: "679fc6ffcbee8fef61c99eb1",
-            message: "",
-            usersimulationprogress_id: response.data.id,
-          },
+        const initialResponse = await sendChatMessage(
+          userId,
+          simulationId,
+          assignmentId,
+          "",
+          response.id,
         );
 
-        console.log("Initial message response:", initialResponse.data);
+        console.log("Initial message response:", initialResponse);
 
-        if (initialResponse.data.response) {
+        if (initialResponse.response) {
           setMessages([
             {
               speaker: "customer",
-              text: initialResponse.data.response,
+              text: initialResponse.response,
               timestamp: new Date(),
             },
           ]);
@@ -203,25 +181,24 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
 
     try {
       console.log("Sending message:", inputMessage);
-      const response = await axios.post<ChatResponse>(
-        "/api/simulations/start-chat",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: "679fc6ffcbee8fef61c99eb1",
-          message: inputMessage.trim(),
-          usersimulationprogress_id: simulationProgressId,
-        },
+
+      // Use the sendChatMessage function instead of direct axios call
+      const response = await sendChatMessage(
+        userId,
+        simulationId,
+        assignmentId,
+        inputMessage.trim(),
+        simulationProgressId,
       );
 
-      console.log("Message response:", response.data);
+      console.log("Message response:", response);
 
-      if (response.data.response) {
+      if (response.response) {
         setMessages((prev) => [
           ...prev,
           {
             speaker: "customer",
-            text: response.data.response || "",
+            text: response.response || "",
             timestamp: new Date(),
           },
         ]);
@@ -256,21 +233,19 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
 
       console.log("Ending chat with history:", chatHistory);
 
-      const response = await axios.post<EndChatResponse>(
-        "/api/simulations/end-chat",
-        {
-          user_id: userId,
-          simulation_id: simulationId,
-          usersimulationprogress_id: simulationProgressId,
-          chat_history: chatHistory,
-        },
+      // Use the endChatSimulation function instead of direct axios call
+      const response = await endChatSimulation(
+        userId,
+        simulationId,
+        simulationProgressId,
+        chatHistory,
       );
 
-      console.log("End chat response:", response.data);
+      console.log("End chat response:", response);
 
-      if (response.data.scores) {
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
+      if (response.scores) {
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
         setShowCompletionScreen(true);
       }
     } catch (error) {

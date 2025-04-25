@@ -1,16 +1,18 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
-import { authService } from '../authService';
+import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
+import { authService } from "../authService";
 
 // Create a custom axios instance
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    "https://1d1af155-4b31-443e-b7f4-734bf003281a-00-6px8vaye8p33.pike.replit.dev",
 });
 
 // Request interceptor
 apiClient.interceptors.request.use(
   (config: AxiosRequestConfig): AxiosRequestConfig => {
     // Log request details in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     }
 
@@ -19,23 +21,23 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers = {
         ...config.headers,
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       };
     }
 
     return config;
   },
   (error: AxiosError): Promise<AxiosError> => {
-    console.error('Request error:', error);
+    console.error("Request error:", error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
 apiClient.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => {
     // Log response in development
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.log(`API Response: ${response.status} ${response.config.url}`);
     }
     return response;
@@ -44,7 +46,11 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized errors (token expired)
-    if (error.response?.status === 401 && originalRequest && !originalRequest.headers._retry) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest.headers._retry
+    ) {
       // Mark the request as retried to prevent infinite loops
       originalRequest.headers._retry = true;
 
@@ -63,22 +69,24 @@ apiClient.interceptors.response.use(
 
         // We can't directly navigate here since we're outside of React Router
         // The auth state change will trigger a redirect in the components
-        console.error('Token refresh failed, user will be redirected to unauthorized page');
+        console.error(
+          "Token refresh failed, user will be redirected to unauthorized page",
+        );
 
         return Promise.reject(refreshError);
       }
     }
 
     // Log error details
-    console.error('API Error:', {
+    console.error("API Error:", {
       status: error.response?.status,
       url: originalRequest?.url,
       message: error.message,
-      data: error.response?.data
+      data: error.response?.data,
     });
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

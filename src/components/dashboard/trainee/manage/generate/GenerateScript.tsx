@@ -26,6 +26,8 @@ import PreviewTab from "./PreviewTab";
 import {
   updateSimulation,
   updateSimulationWithFormData,
+  fetchCompleteSimulation,
+  CompleteSimulationResponse,
 } from "../../../../../services/simulation_operations";
 
 interface TabState {
@@ -312,16 +314,18 @@ const GenerateScriptContent = () => {
 
       try {
         setInitialLoading(true);
-        // Updated endpoint to match the actual API
-        const response = await axios.get(`/api/simulations/fetch/${id}`);
+
+        // Use the new fetchCompleteSimulation function instead of axios directly
+        const responseData = await fetchCompleteSimulation(id);
 
         // Check if we have at least some data to work with
-        if (response.data) {
+        if (responseData) {
           // Handle both response formats - with or without document wrapper
-          const responseData = response.data.document || response.data;
-
-          // Extract simulation data from the response
-          const simulation = responseData.simulation || responseData || {};
+          const simulation =
+            responseData.document?.simulation ||
+            responseData.simulation ||
+            responseData ||
+            {};
 
           console.log("API Response simulation data:", simulation);
 
@@ -426,6 +430,15 @@ const GenerateScriptContent = () => {
 
             if (responseData.images && Array.isArray(responseData.images)) {
               responseData.images.forEach((img) => {
+                if (img.image_id && img.image_data) {
+                  imageDataMap.set(img.image_id, img.image_data);
+                }
+              });
+            } else if (
+              responseData.document?.images &&
+              Array.isArray(responseData.document.images)
+            ) {
+              responseData.document.images.forEach((img) => {
                 if (img.image_id && img.image_data) {
                   imageDataMap.set(img.image_id, img.image_data);
                 }
@@ -570,6 +583,66 @@ const GenerateScriptContent = () => {
             // Process each image
             for (let index = 0; index < responseData.images.length; index++) {
               const image = responseData.images[index];
+              if (!image.image_id) continue;
+
+              let blobUrl = "";
+
+              // Process image data properly, similar to preview components
+              if (image.image_data) {
+                if (
+                  image.image_data.startsWith("/api/") ||
+                  image.image_data.startsWith("http") ||
+                  image.image_data.startsWith("blob:") ||
+                  image.image_data.startsWith("data:")
+                ) {
+                  // It's already a URL
+                  blobUrl = image.image_data;
+                } else if (isBase64String(image.image_data)) {
+                  // It's base64 data - ensure it has the proper prefix
+                  if (!image.image_data.startsWith("data:")) {
+                    blobUrl = `data:image/png;base64,${image.image_data}`;
+                  } else {
+                    blobUrl = image.image_data;
+                  }
+                } else {
+                  // Treat as binary data and create blob URL
+                  try {
+                    const mimeType = detectImageType(image.image_data);
+                    blobUrl = createBlobUrl(image.image_data, mimeType);
+                  } catch (e) {
+                    console.error("Error creating blob URL:", e);
+                    blobUrl = "";
+                  }
+                }
+              }
+
+              // Add to processed images
+              processedImages.push({
+                id: image.image_id,
+                url: blobUrl,
+                name: `Image ${index + 1}`,
+                sequence: [], // Empty sequence
+                file: undefined,
+              });
+            }
+          }
+          // Also check for images in the document wrapper
+          else if (
+            responseData.document?.images &&
+            Array.isArray(responseData.document.images)
+          ) {
+            console.log(
+              "Processing images from document wrapper:",
+              responseData.document.images,
+            );
+
+            // Process each image
+            for (
+              let index = 0;
+              index < responseData.document.images.length;
+              index++
+            ) {
+              const image = responseData.document.images[index];
               if (!image.image_id) continue;
 
               let blobUrl = "";

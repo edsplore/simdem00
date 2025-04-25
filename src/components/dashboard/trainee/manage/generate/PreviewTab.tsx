@@ -201,54 +201,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     }
   }, [messages]);
 
-  const fetchSimulationData = async () => {
-    try {
-      // Use different API endpoints based on simulation type
-      let endpoint = "";
 
-      if (simulationType === "visual-chat") {
-        endpoint = "/api/simulations/start-visual-chat-preview";
-      } else if (simulationType === "visual-audio") {
-        endpoint = "/api/simulations/start-visual-audio-preview";
-      } else if (simulationType === "visual") {
-        endpoint = "/api/simulations/start-visual-preview";
-      }
-
-      const response = await axios.post(endpoint, {
-        user_id: "user123",
-        sim_id: simulationId,
-      });
-
-      console.log("Simulation data received:", response.data);
-
-      if (response.data.simulation) {
-        setSimulationData(response.data.simulation);
-      }
-
-      // Process image data
-      if (response.data.images) {
-        const newSlides = new Map();
-        for (const image of response.data.images) {
-          // Convert base64 string to Uint8Array
-          const binaryString = atob(image.image_data);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          // Create blob from Uint8Array
-          const blob = new Blob([bytes], { type: "image/png" });
-          const blobUrl = URL.createObjectURL(blob);
-          newSlides.set(image.image_id, blobUrl);
-        }
-        setSlides(newSlides);
-      }
-    } catch (error) {
-      console.error("Error fetching simulation data:", error);
-      throw error;
-    }
-  };
 
   // Cleanup object URLs when component unmounts
   useEffect(() => {

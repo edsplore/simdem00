@@ -34,8 +34,147 @@ import {
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
-import { adminDashboardData } from '../../../services/mockData/adminDashboard';
+// import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
+// import { adminDashboardData } from '../../../services/mockData/adminDashboard';
+
+const adminDashboardData = {
+  platformStats: {
+    newUsers: {
+      total: 240,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    },
+    activeUsers: {
+      total: 7876,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    },
+    deactivatedUsers: {
+      total: 240,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    },
+    dailyActiveUsers: {
+      total: 873,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    },
+    weeklyActiveUsers: {
+      total: 7876,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    },
+    monthlyActiveUsers: {
+      total: 29898,
+      breakdown: {
+        admin: 4,
+        manager: 24,
+        designer: 4,
+        trainees: 199
+      }
+    }
+  },
+  userActivity: [
+    {
+      id: 1,
+      name: 'John Doe',
+      email: 'johndoe@humana.com',
+      role: 'Trainee',
+      division: 'EverAI Labs',
+      department: 'Engineering',
+      addedOn: '25 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 24
+    },
+    {
+      id: 2,
+      name: 'John Doe',
+      email: 'johndoe@humana.com',
+      role: 'Trainee',
+      division: 'EverAI Labs',
+      department: 'Engineering',
+      addedOn: '25 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 24
+    },
+    {
+      id: 3,
+      name: 'John Doe',
+      email: 'johndoe@humana.com',
+      role: 'Trainee',
+      division: 'EverAI Labs',
+      department: 'Engineering',
+      addedOn: '25 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 24
+    },
+    {
+      id: 4,
+      name: 'John Doe',
+      email: 'johndoe@humana.com',
+      role: 'Trainee',
+      division: 'EverAI Labs',
+      department: 'Engineering',
+      addedOn: '25 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 24
+    },
+    {
+      id: 5,
+      name: 'Jane Smith',
+      email: 'janesmith@humana.com',
+      role: 'Manager',
+      division: 'EverAI Labs',
+      department: 'Product',
+      addedOn: '20 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 12
+    },
+    {
+      id: 6,
+      name: 'Robert Johnson',
+      email: 'robertjohnson@humana.com',
+      role: 'Designer',
+      division: 'EverAI Labs',
+      department: 'Design',
+      addedOn: '18 Dec 2024',
+      status: 'Inactive',
+      assignedSimulations: 8
+    },
+    {
+      id: 7,
+      name: 'Emily Davis',
+      email: 'emilydavis@humana.com',
+      role: 'Admin',
+      division: 'EverAI Labs',
+      department: 'Operations',
+      addedOn: '15 Dec 2024',
+      status: 'Active',
+      assignedSimulations: 0
+    }
+  ],
+  totalUsers: 110
+};
 
 // UserStatsCard component
 const UserStatsCard = ({ title, total, breakdown, icon }) => {

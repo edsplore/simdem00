@@ -47,6 +47,7 @@ import {
   fetchDepartments,
 } from "../../../../services/suggestions";
 import { fetchTags, Tag } from "../../../../services/tags";
+import { fetchUsersByIds, User } from "../../../../services/users";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 
@@ -124,6 +125,10 @@ const ManageSimulationsPage = () => {
   // Flag to track if data is being refreshed (not initial load)
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // State for user name mapping
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
 
@@ -179,6 +184,53 @@ const ManageSimulationsPage = () => {
     currentTab
   ]);
 
+  // Function to fetch user details for creator and modifier IDs
+  const fetchUserDetails = useCallback(async (simulations: Simulation[]) => {
+    if (!currentWorkspaceId || simulations.length === 0) return;
+
+    try {
+      setIsLoadingUsers(true);
+
+      // Collect all unique user IDs from created_by and modified_by fields
+      const userIds = new Set<string>();
+      simulations.forEach(sim => {
+        if (sim.created_by && !userMap[sim.created_by]) {
+          userIds.add(sim.created_by);
+        }
+        if (sim.modified_by && !userMap[sim.modified_by]) {
+          userIds.add(sim.modified_by);
+        }
+      });
+
+      // Skip API call if we already have all user details
+      if (userIds.size === 0) return;
+
+      const userIdsArray = Array.from(userIds);
+      console.log("Fetching user details for IDs:", userIdsArray);
+
+      const usersData = await fetchUsersByIds(currentWorkspaceId, userIdsArray);
+
+      // Create a mapping of user IDs to full names
+      const newUserMap: Record<string, string> = { ...userMap };
+
+      usersData.forEach(userData => {
+        if (userData.user_id) {
+          // Use fullName if available, otherwise construct from first and last name
+          const fullName = userData.fullName || 
+            `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+          newUserMap[userData.user_id] = fullName || userData.user_id;
+        }
+      });
+
+      setUserMap(newUserMap);
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [currentWorkspaceId, userMap]);
+
   const loadSimulations = useCallback(async () => {
     if (!user?.id) return;
 
@@ -210,6 +262,9 @@ const ManageSimulationsPage = () => {
       if (response.simulations.length === 0 && page > 0) {
         setPage(0); // Go back to first page
       }
+
+      // Fetch user details for the simulations
+      await fetchUserDetails(response.simulations);
     } catch (err) {
       setError("Failed to load simulations");
       console.error("Error loading simulations:", err);
@@ -222,7 +277,7 @@ const ManageSimulationsPage = () => {
         tableBodyRef.current.style.opacity = '1';
       }
     }
-  }, [user?.id, paginationParams, page, isRefreshing]);
+  }, [user?.id, paginationParams, page, isRefreshing, fetchUserDetails]);
 
   // Load simulations when component mounts
   useEffect(() => {
@@ -357,6 +412,11 @@ const ManageSimulationsPage = () => {
 
   const handleClearSearch = () => {
     setSearchQuery("");
+  };
+
+  // Helper function to get user name from ID
+  const getUserName = (userId: string): string => {
+    return userMap[userId] || userId;
   };
 
   // Render the table content based on loading state
@@ -495,7 +555,7 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ minWidth: 150 }}>
           <Stack>
             <Typography variant="body2" noWrap>
-              {row.modified_by}
+              {getUserName(row.modified_by)}
             </Typography>
           </Stack>
         </TableCell>
@@ -515,7 +575,7 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ minWidth: 150 }}>
           <Stack>
             <Typography variant="body2" noWrap>
-              {row.created_by}
+              {getUserName(row.created_by)}
             </Typography>
           </Stack>
         </TableCell>
@@ -529,6 +589,19 @@ const ManageSimulationsPage = () => {
         </TableCell>
       </TableRow>
     ));
+  };
+
+  // Update the creator dropdown to show user names instead of IDs
+  const getCreatorOptions = () => {
+    // Get unique creator IDs
+    const creatorIds = Array.from(new Set(simulations.map((sim) => sim.created_by)))
+      .filter(Boolean);
+
+    // Map IDs to names and return as options
+    return creatorIds.map(creatorId => ({
+      id: creatorId,
+      name: getUserName(creatorId)
+    }));
   };
 
   return (
@@ -752,14 +825,12 @@ const ManageSimulationsPage = () => {
                 }}
               >
                 <MenuItem value="Created By">Created By</MenuItem>
-                {/* Add more creators based on unique creators in simulations */}
-                {Array.from(new Set(simulations.map((sim) => sim.created_by)))
-                  .filter(Boolean)
-                  .map((creator) => (
-                    <MenuItem key={creator} value={creator}>
-                      {creator}
-                    </MenuItem>
-                  ))}
+                {/* Show user names instead of IDs in the dropdown */}
+                {getCreatorOptions().map((creator) => (
+                  <MenuItem key={creator.id} value={creator.id}>
+                    {creator.name}
+                  </MenuItem>
+                ))}
               </Select>
             </Stack>
           </Stack>

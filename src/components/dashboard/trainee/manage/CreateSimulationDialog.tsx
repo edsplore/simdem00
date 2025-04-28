@@ -202,7 +202,23 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
       }
     } catch (error) {
       console.error("Error creating simulation:", error);
-      setErrorMessage("An error occurred while creating the simulation");
+
+      // Check for specific HTTP status codes
+      if (error.response) {
+        if (error.response.status === 409) {
+          // 409 Conflict - simulation with same name exists
+          setErrorMessage(
+            "A simulation with this name already exists. Please try a different name.",
+          );
+        } else if (error.response.data && error.response.data.detail) {
+          // Use the server's detailed error message if available
+          setErrorMessage(error.response.data.detail);
+        } else {
+          setErrorMessage("An error occurred while creating the simulation");
+        }
+      } else {
+        setErrorMessage("An error occurred while creating the simulation");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -690,7 +706,15 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         <Alert
           onClose={handleCloseError}
           severity="error"
-          sx={{ width: "100%" }}
+          variant="filled"
+          sx={{
+            width: "100%",
+            fontSize: "1rem",
+            boxShadow: 3,
+            "& .MuiAlert-icon": {
+              fontSize: "1.5rem",
+            },
+          }}
         >
           {errorMessage}
         </Alert>

@@ -1000,4 +1000,3 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 };
 
 export default AudioSimulationPage;
-s

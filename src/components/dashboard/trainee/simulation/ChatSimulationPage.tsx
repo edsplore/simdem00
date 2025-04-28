@@ -79,6 +79,9 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Input container height - used for spacing calculations
+  const inputContainerHeight = 70;
+
   // Check if simulation was passed based on scores
   const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
@@ -636,9 +639,19 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box
+      sx={{
+        height: "calc(100vh - 20px)",
+        bgcolor: "white",
+        py: 0,
+        px: 0,
+        position: "relative",
+      }}
+    >
       {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
+      <Box
+        sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mb: 0.5 }}
+      >
         <Stack
           direction="row"
           sx={{
@@ -710,11 +723,14 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       <Card
         sx={{
           maxWidth: "900px",
-          minHeight: "600px",
+          height: isStarted ? "calc(100vh - 200px)" : "450px",
           mx: "auto",
-          mt: 1,
+          mt: 0.5,
           borderRadius: "16px",
           position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         <Box
@@ -734,209 +750,213 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
           </Typography>
         </Box>
 
-        <Box sx={{ position: "relative", height: "calc(100vh - 200px)" }}>
-          {!isStarted ? (
+        {!isStarted ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+              width: "50%",
+              mx: "auto",
+              my: 2,
+              border: "1px solid #DEE2FD",
+              borderRadius: 4,
+            }}
+          >
             <Box
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "400px",
-                width: "50%",
-                mx: "auto",
-                my: 10,
-                border: "1px solid #DEE2FD",
-                borderRadius: 4,
+                bgcolor: "#f5f7ff",
+                borderRadius: "50%",
+                p: 2,
+                mb: 2,
               }}
             >
-              <Box
+              <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
+            </Box>
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+            >
+              Start Simulation
+            </Typography>
+            <Typography sx={{ color: "#666", mb: 4 }}>
+              Press start to attempt the Chat Simulation
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<SmartToyIcon />}
+              onClick={handleStart}
+              disabled={!userId}
+              sx={{
+                bgcolor: "#0037ff",
+                color: "white",
+                px: 6,
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "16px",
+                "&:hover": {
+                  bgcolor: "#002ed4",
+                },
+              }}
+            >
+              Start Simulation
+            </Button>
+            <Button
+              variant="text"
+              onClick={onBackToList}
+              sx={{
+                mt: 2,
+                color: "#666",
+                textTransform: "none",
+                border: "1px solid #DEE2FD",
+                px: 8,
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: "16px",
+              }}
+            >
+              Back to Sim List
+            </Button>
+          </Box>
+        ) : (
+          <>
+            <Box
+              ref={chatContainerRef}
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                px: 1,
+                py: 0.5,
+                "&::-webkit-scrollbar": { width: "8px" },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: "#E2E8F0",
+                  borderRadius: "4px",
+                },
+                marginBottom: 0,
+              }}
+            >
+              <Stack spacing={0.5}>
+                {messages.map((message, index) => (
+                  <Stack
+                    key={index}
+                    direction="row"
+                    spacing={2}
+                    justifyContent={
+                      message.speaker === "customer" ? "flex-start" : "flex-end"
+                    }
+                    alignItems="flex-start"
+                  >
+                    {message.speaker === "customer" && (
+                      <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
+                    )}
+                    <Box
+                      sx={{
+                        maxWidth: "70%",
+                        bgcolor: "#FAFAFF",
+                        p: 2,
+                        borderRadius: 3,
+                        border: "2px solid #6D7295",
+                        borderTopLeftRadius:
+                          message.speaker === "customer" ? 0 : 3,
+                        borderTopRightRadius:
+                          message.speaker === "trainee" ? 0 : 3,
+                      }}
+                    >
+                      <Typography variant="body1">{message.text}</Typography>
+                    </Box>
+                    {message.speaker === "trainee" && (
+                      <Avatar
+                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                        sx={{ width: 32, height: 32 }}
+                      />
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+
+            {/* Sticky input area at bottom */}
+            <Box
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                p: 1,
+                borderTop: "1px solid",
+                borderColor: "divider",
+                bgcolor: "white",
+                display: "flex",
+                gap: 2,
+                zIndex: 100,
+                boxShadow: "0px -2px 10px rgba(0,0,0,0.05)",
+                marginTop: "auto",
+                borderBottomLeftRadius: "16px",
+                borderBottomRightRadius: "16px",
+              }}
+            >
+              <TextField
+                fullWidth
+                multiline
+                maxRows={2}
+                placeholder="Type your message..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading || isEndingChat}
                 sx={{
-                  bgcolor: "#f5f7ff",
-                  borderRadius: "50%",
-                  p: 2,
-                  mb: 2,
-                }}
-              >
-                <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
-              </Box>
-              <Typography
-                variant="h4"
-                sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
-              >
-                Start Simulation
-              </Typography>
-              <Typography sx={{ color: "#666", mb: 4 }}>
-                Press start to attempt the Chat Simulation
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<SmartToyIcon />}
-                onClick={handleStart}
-                disabled={!userId}
-                sx={{
-                  bgcolor: "#0037ff",
-                  color: "white",
-                  px: 6,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontSize: "16px",
-                  "&:hover": {
-                    bgcolor: "#002ed4",
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
                   },
                 }}
-              >
-                Start Simulation
-              </Button>
-              <Button
-                variant="text"
-                onClick={onBackToList}
-                sx={{
-                  mt: 2,
-                  color: "#666",
-                  textTransform: "none",
-                  border: "1px solid #DEE2FD",
-                  px: 8,
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontSize: "16px",
-                }}
-              >
-                Back to Sim List
-              </Button>
-            </Box>
-          ) : (
-            <>
-              <Box
-                ref={chatContainerRef}
-                sx={{
-                  height: "calc(100% - 70px)", // Reduced from 80px to 70px
-                  overflowY: "auto",
-                  px: 3,
-                  py: 2,
-                  "&::-webkit-scrollbar": { display: "none" },
-                  scrollbarWidth: "none",
-                }}
-              >
-                <Stack spacing={2}>
-                  {messages.map((message, index) => (
-                    <Stack
-                      key={index}
-                      direction="row"
-                      spacing={2}
-                      justifyContent={
-                        message.speaker === "customer"
-                          ? "flex-start"
-                          : "flex-end"
-                      }
-                      alignItems="flex-start"
-                    >
-                      {message.speaker === "customer" && (
-                        <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
-                      )}
-                      <Box
-                        sx={{
-                          maxWidth: "70%",
-                          bgcolor: "#FAFAFF",
-                          p: 2,
-                          borderRadius: 3,
-                          border: "2px solid #6D7295",
-                          borderTopLeftRadius:
-                            message.speaker === "customer" ? 0 : 3,
-                          borderTopRightRadius:
-                            message.speaker === "trainee" ? 0 : 3,
-                        }}
-                      >
-                        <Typography variant="body1">{message.text}</Typography>
-                      </Box>
-                      {message.speaker === "trainee" && (
-                        <Avatar
-                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-                          sx={{ width: 32, height: 32 }}
-                        />
-                      )}
-                    </Stack>
-                  ))}
-                </Stack>
-              </Box>
-
-              <Box
-                sx={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  p: 2,
-                  borderTop: "1px solid",
-                  borderColor: "divider",
-                  bgcolor: "white",
-                  display: "flex",
-                  gap: 2,
-                }}
-              >
-                <TextField
-                  fullWidth
-                  multiline
-                  maxRows={4}
-                  placeholder="Type your message..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isLoading || isEndingChat}
+              />
+              <Stack direction="row" spacing={1}>
+                <IconButton
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !inputMessage.trim() || isEndingChat}
                   sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 2,
+                    bgcolor: "#444CE7",
+                    color: "white",
+                    "&:hover": {
+                      bgcolor: "#3538CD",
+                    },
+                    "&.Mui-disabled": {
+                      bgcolor: "#F5F6FF",
+                      color: "#444CE7",
                     },
                   }}
-                />
-                <Stack direction="row" spacing={1}>
-                  <IconButton
-                    onClick={handleSendMessage}
-                    disabled={isLoading || !inputMessage.trim() || isEndingChat}
-                    sx={{
-                      bgcolor: "#444CE7",
-                      color: "white",
-                      "&:hover": {
-                        bgcolor: "#3538CD",
-                      },
-                      "&.Mui-disabled": {
-                        bgcolor: "#F5F6FF",
-                        color: "#444CE7",
-                      },
-                    }}
-                  >
-                    {isLoading ? (
-                      <CircularProgress size={24} color="inherit" />
-                    ) : (
-                      <SendIcon />
-                    )}
-                  </IconButton>
-                  <IconButton
-                    onClick={handleEndChat}
-                    disabled={isEndingChat || messages.length < 2}
-                    sx={{
-                      bgcolor: "#E6352B",
-                      color: "white",
-                      "&:hover": {
-                        bgcolor: "#C82333",
-                      },
-                      "&.Mui-disabled": {
-                        bgcolor: "#FFD1CF",
-                      },
-                    }}
-                  >
-                    {isEndingChat ? (
-                      <CircularProgress size={24} color="inherit" />
-                    ) : (
-                      <CallEndIcon />
-                    )}
-                  </IconButton>
-                </Stack>
-              </Box>
-            </>
-          )}
-        </Box>
+                >
+                  {isLoading ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    <SendIcon />
+                  )}
+                </IconButton>
+                <IconButton
+                  onClick={handleEndChat}
+                  disabled={isEndingChat || messages.length < 2}
+                  sx={{
+                    bgcolor: "#E6352B",
+                    color: "white",
+                    "&:hover": {
+                      bgcolor: "#C82333",
+                    },
+                    "&.Mui-disabled": {
+                      bgcolor: "#FFD1CF",
+                    },
+                  }}
+                >
+                  {isEndingChat ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    <CallEndIcon />
+                  )}
+                </IconButton>
+              </Stack>
+            </Box>
+          </>
+        )}
 
         {/* Loading overlay for ending chat */}
         {isEndingChat && (

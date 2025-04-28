@@ -124,6 +124,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // Input container height - used for spacing calculations
+  const inputContainerHeight = 80;
+
   // New state for simulation ending animation
   const [showEndAnimation, setShowEndAnimation] = useState(false);
 
@@ -201,7 +204,54 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     }
   }, [messages]);
 
+  const fetchSimulationData = async () => {
+    try {
+      // Use different API endpoints based on simulation type
+      let endpoint = "";
 
+      if (simulationType === "visual-chat") {
+        endpoint = "/api/simulations/start-visual-chat-preview";
+      } else if (simulationType === "visual-audio") {
+        endpoint = "/api/simulations/start-visual-audio-preview";
+      } else if (simulationType === "visual") {
+        endpoint = "/api/simulations/start-visual-preview";
+      }
+
+      const response = await axios.post(endpoint, {
+        user_id: "user123",
+        sim_id: simulationId,
+      });
+
+      console.log("Simulation data received:", response.data);
+
+      if (response.data.simulation) {
+        setSimulationData(response.data.simulation);
+      }
+
+      // Process image data
+      if (response.data.images) {
+        const newSlides = new Map();
+        for (const image of response.data.images) {
+          // Convert base64 string to Uint8Array
+          const binaryString = atob(image.image_data);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+
+          // Create blob from Uint8Array
+          const blob = new Blob([bytes], { type: "image/png" });
+          const blobUrl = URL.createObjectURL(blob);
+          newSlides.set(image.image_id, blobUrl);
+        }
+        setSlides(newSlides);
+      }
+    } catch (error) {
+      console.error("Error fetching simulation data:", error);
+      throw error;
+    }
+  };
 
   // Cleanup object URLs when component unmounts
   useEffect(() => {
@@ -413,7 +463,15 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box
+      sx={{
+        height: "calc(100vh - 20px)",
+        bgcolor: "white",
+        py: 0,
+        px: 0,
+        position: "relative",
+      }}
+    >
       {/* Ending Animation */}
       {showEndAnimation && (
         <SimulationEndAnimation onComplete={handleEndAnimationComplete} />
@@ -471,9 +529,13 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       <Card
         sx={{
           maxWidth: "900px",
-          minHeight: "600px",
+          height: isCallActive ? `calc(100vh - 200px)` : "450px",
           mx: "auto",
           borderRadius: "16px",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         <Box
@@ -493,269 +555,252 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           </Typography>
         </Box>
 
-        <Box
-          sx={{
-            position: "relative",
-            height: "calc(100vh - 200px)",
-            // Ensure the container has a minimum height for smaller viewports
-            minHeight: "500px",
-            // For chat type, ensure container has proper display to contain the message area and input box
-            display:
-              simulationType === "chat" && isCallActive ? "flex" : "block",
-            flexDirection:
-              simulationType === "chat" && isCallActive ? "column" : "initial",
-          }}
-        >
-          {!isCallActive ? (
+        {!isCallActive ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              flex: 1,
+              border: "1px solid #ccc",
+              borderRadius: "16px",
+              mx: "auto",
+              width: "60%",
+              my: 4,
+            }}
+          >
             <Box
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: "400px",
-                border: "1px solid #ccc",
-                borderRadius: "16px",
-                mx: "auto",
-                maxWidth: "80%",
-                my: 4,
+                bgcolor: "#f5f7ff",
+                borderRadius: "50%",
+                p: 3,
+                mb: 3,
               }}
             >
-              <Box
-                sx={{
-                  bgcolor: "#f5f7ff",
-                  borderRadius: "50%",
-                  p: 3,
-                  mb: 3,
-                }}
-              >
-                {simulationType === "audio" ||
-                simulationType === "visual-audio" ? (
-                  <HeadsetMic sx={{ fontSize: 48, color: "#4c6ef5" }} />
-                ) : simulationType === "visual" ? (
-                  <VisibilityIcon sx={{ fontSize: 48, color: "#4c6ef5" }} />
-                ) : (
-                  <SmartToyIcon sx={{ fontSize: 48, color: "#4c6ef5" }} />
-                )}
-              </Box>
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 600, color: "#1a1a1a", mb: 1 }}
-              >
-                Preview Simulation
-              </Typography>
-              <Typography sx={{ color: "#666", mb: 2 }}>
-                Press start to preview the simulation
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<PlayArrow />}
-                onClick={handleStart}
-                disabled={isStarting}
-                sx={{
-                  bgcolor: "#0037ff",
-                  color: "white",
-                  px: 6,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontSize: "16px",
-                  "&:hover": {
-                    bgcolor: "#002ed4",
-                  },
-                }}
-              >
-                {isStarting ? "Starting..." : "Start"}
-              </Button>
+              {simulationType === "audio" ||
+              simulationType === "visual-audio" ? (
+                <HeadsetMic sx={{ fontSize: 48, color: "#4c6ef5" }} />
+              ) : simulationType === "visual" ? (
+                <VisibilityIcon sx={{ fontSize: 48, color: "#4c6ef5" }} />
+              ) : (
+                <SmartToyIcon sx={{ fontSize: 48, color: "#4c6ef5" }} />
+              )}
             </Box>
-          ) : (
-            <>
-              {/* Modified chat container for chat type */}
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 600, color: "#1a1a1a", mb: 1 }}
+            >
+              Preview Simulation
+            </Typography>
+            <Typography sx={{ color: "#666", mb: 2 }}>
+              Press start to preview the simulation
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<PlayArrow />}
+              onClick={handleStart}
+              disabled={isStarting}
+              sx={{
+                bgcolor: "#0037ff",
+                color: "white",
+                px: 6,
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "16px",
+                "&:hover": {
+                  bgcolor: "#002ed4",
+                },
+              }}
+            >
+              {isStarting ? "Starting..." : "Start"}
+            </Button>
+          </Box>
+        ) : (
+          <>
+            {/* Modified chat container for chat type */}
+            <Box
+              ref={chatContainerRef}
+              sx={{
+                flex: 1,
+                overflowY: "auto",
+                px: 1,
+                py: 0.75,
+                "&::-webkit-scrollbar": { width: "8px" },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: "#E2E8F0",
+                  borderRadius: "4px",
+                },
+              }}
+            >
+              <Stack spacing={0.75}>
+                {messages.map((message, index) => (
+                  <Stack
+                    key={index}
+                    direction="row"
+                    spacing={2}
+                    justifyContent={
+                      message.speaker === "customer" ? "flex-start" : "flex-end"
+                    }
+                    alignItems="flex-start"
+                  >
+                    {message.speaker === "customer" && (
+                      <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
+                    )}
+
+                    <Box
+                      sx={{
+                        maxWidth: "70%",
+                        bgcolor: "#FAFAFF",
+                        p: 1,
+                        borderRadius: 3,
+                        border: "2px solid #6D7295",
+                        borderTopLeftRadius:
+                          message.speaker === "customer" ? 0 : 3,
+                        borderTopRightRadius:
+                          message.speaker === "trainee" ? 0 : 3,
+                      }}
+                    >
+                      <Typography variant="body1">{message.text}</Typography>
+                    </Box>
+                    {message.speaker === "trainee" && (
+                      <Avatar
+                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                        sx={{ width: 32, height: 32 }}
+                      />
+                    )}
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+
+            {simulationType === "chat" ? (
               <Box
-                ref={chatContainerRef}
                 sx={{
-                  // For chat type, adjust the height to leave space for the input area
-                  height:
-                    simulationType === "chat"
-                      ? "calc(100% - 120px)" // Reduced from 120px to 100px
-                      : "calc(100% - 80px)",
-                  flex: simulationType === "chat" ? 1 : "initial",
-                  overflowY: "auto",
-                  px: 3,
-                  py: 2,
-                  "&::-webkit-scrollbar": { display: "none" },
-                  scrollbarWidth: "none",
+                  position: "sticky",
+                  bottom: 0,
+                  padding: 1,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "white",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  zIndex: 100,
+                  boxShadow: "0px -2px 10px rgba(0,0,0,0.05)",
+                  marginTop: "auto",
+                  borderBottomLeftRadius: "16px",
+                  borderBottomRightRadius: "16px",
                 }}
               >
-                <Stack spacing={2}>
-                  {messages.map((message, index) => (
-                    <Stack
-                      key={index}
-                      direction="row"
-                      spacing={2}
-                      justifyContent={
-                        message.speaker === "customer"
-                          ? "flex-start"
-                          : "flex-end"
-                      }
-                      alignItems="flex-start"
-                    >
-                      {message.speaker === "customer" && (
-                        <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
-                      )}
-
-                      <Box
-                        sx={{
-                          maxWidth: "70%",
-                          bgcolor: "#FAFAFF",
-                          p: 2,
-                          borderRadius: 3,
-                          border: "2px solid #6D7295",
-                          borderTopLeftRadius:
-                            message.speaker === "customer" ? 0 : 3,
-                          borderTopRightRadius:
-                            message.speaker === "trainee" ? 0 : 3,
-                        }}
-                      >
-                        <Typography variant="body1">{message.text}</Typography>
-                      </Box>
-                      {message.speaker === "trainee" && (
-                        <Avatar
-                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-                          sx={{ width: 32, height: 32 }}
-                        />
-                      )}
-                    </Stack>
-                  ))}
-                </Stack>
-              </Box>
-
-              {simulationType === "chat" ? (
+                {/* Controls Row */}
                 <Box
                   sx={{
-                    // Changed from absolute positioning to flex item for chat type
-                    position: "relative",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    p: 2,
-                    borderTop: "1px solid",
-                    borderColor: "divider",
-                    bgcolor: "white",
                     display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    // Ensure the input area has a specific height so it doesn't collapse
-                    minHeight: "80px", // Reduced from 84px to 80px
-                    // Add shadow to make the input area more visible
-                    boxShadow: "0px -2px 4px rgba(0,0,0,0.03)",
+                    justifyContent: "space-between",
+                    alignItems: "center",
                   }}
                 >
-                  {/* Controls Row - New addition */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Typography variant="body2" color="text.secondary">
-                      {isCallActive
-                        ? isPaused
-                          ? "Paused"
-                          : "Connected"
-                        : "Offline"}
-                    </Typography>
-                    <Box>
-                      <IconButton
-                        onClick={togglePause}
-                        sx={{ bgcolor: "grey.100", mr: 1 }}
-                      >
-                        {isPaused ? <PlayArrow /> : <Pause />}
-                      </IconButton>
-
-                      <IconButton
-                        onClick={handleEndCall}
-                        sx={{
-                          bgcolor: "error.main",
-                          color: "white",
-                          "&:hover": { bgcolor: "error.dark" },
-                        }}
-                      >
-                        <CallEnd />
-                      </IconButton>
-                    </Box>
-                  </Box>
-
-                  {/* Input Row - Existing with pause support */}
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      maxRows={4}
-                      placeholder="Type your message..."
-                      value={inputMessage}
-                      onChange={(e) => setInputMessage(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      disabled={isLoading || isPaused}
-                      sx={{
-                        "& .MuiOutlinedInput-root": {
-                          borderRadius: 2,
-                        },
-                      }}
-                    />
+                  <Typography variant="body2" color="text.secondary">
+                    {isCallActive
+                      ? isPaused
+                        ? "Paused"
+                        : "Connected"
+                      : "Offline"}
+                  </Typography>
+                  <Box>
                     <IconButton
-                      onClick={handleSendMessage}
-                      disabled={isLoading || isPaused || !inputMessage.trim()}
+                      onClick={togglePause}
+                      sx={{ bgcolor: "grey.100", mr: 1 }}
+                    >
+                      {isPaused ? <PlayArrow /> : <Pause />}
+                    </IconButton>
+
+                    <IconButton
+                      onClick={handleEndCall}
                       sx={{
-                        bgcolor: "#444CE7",
+                        bgcolor: "error.main",
                         color: "white",
-                        "&:hover": {
-                          bgcolor: "#3538CD",
-                        },
-                        "&.Mui-disabled": {
-                          bgcolor: "#F5F6FF",
-                          color: "#444CE7",
-                        },
+                        "&:hover": { bgcolor: "error.dark" },
                       }}
                     >
-                      <SendIcon />
+                      <CallEnd />
                     </IconButton>
                   </Box>
                 </Box>
-              ) : (
-                <Box
-                  sx={{
-                    position: "absolute",
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    p: 2,
-                    borderTop: "1px solid",
-                    borderColor: "divider",
-                    bgcolor: "white",
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Button
-                    variant="contained"
-                    color="error"
-                    startIcon={<CallEnd />}
-                    onClick={handleEndCall}
+
+                {/* Input Row */}
+                <Box sx={{ display: "flex", gap: 2 }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    maxRows={2}
+                    placeholder="Type your message..."
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading || isPaused}
                     sx={{
-                      borderRadius: 2,
-                      textTransform: "none",
-                      px: 4,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                      },
+                    }}
+                  />
+                  <IconButton
+                    onClick={handleSendMessage}
+                    disabled={isLoading || isPaused || !inputMessage.trim()}
+                    sx={{
+                      bgcolor: "#444CE7",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "#3538CD",
+                      },
+                      "&.Mui-disabled": {
+                        bgcolor: "#F5F6FF",
+                        color: "#444CE7",
+                      },
                     }}
                   >
-                    End Call
-                  </Button>
+                    <SendIcon />
+                  </IconButton>
                 </Box>
-              )}
-            </>
-          )}
-        </Box>
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  position: "sticky",
+                  bottom: 0,
+                  padding: 1,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "white",
+                  display: "flex",
+                  justifyContent: "center",
+                  zIndex: 100,
+                  boxShadow: "0px -2px 10px rgba(0,0,0,0.05)",
+                  marginTop: "auto",
+                  borderBottomLeftRadius: "16px",
+                  borderBottomRightRadius: "16px",
+                }}
+              >
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<CallEnd />}
+                  onClick={handleEndCall}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    px: 4,
+                  }}
+                >
+                  End Call
+                </Button>
+              </Box>
+            )}
+          </>
+        )}
       </Card>
     </Box>
   );

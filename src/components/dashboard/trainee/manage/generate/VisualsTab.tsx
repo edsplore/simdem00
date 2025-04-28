@@ -1204,9 +1204,9 @@ export default function VisualsTab({
                     p: 4,
                     flex: 1,
                     position: "relative",
-                    // Use padding-right instead of width for better dialog positioning
-                    paddingRight: isSequenceExpanded ? "360px" : "60px",
-                    transition: "padding-right 0.3s ease-out", // Transition padding instead of width
+                    // IMPORTANT: Remove the padding-right that was causing resizing issues
+                    // This ensures the image always has the full width of its container
+                    width: "100%",
                   }}
                 >
                   <ImageHotspot
@@ -1238,7 +1238,7 @@ export default function VisualsTab({
                 </Box>
               )}
 
-              {/* Sequence panel with proper z-index */}
+              {/* Sequence panel with improved overlay design */}
               {selectedImageId && (
                 <Box
                   sx={{
@@ -1247,10 +1247,10 @@ export default function VisualsTab({
                     top: 0,
                     height: "100%",
                     display: "flex",
-                    zIndex: 1, // Proper z-index to prevent overlay issues
+                    zIndex: 10, // Higher z-index to ensure it overlays the image content
                   }}
                 >
-                  {/* Toggle button - fixed position */}
+                  {/* Toggle button - fixed position with higher z-index */}
                   <Box
                     sx={{
                       width: 40,
@@ -1259,7 +1259,11 @@ export default function VisualsTab({
                       alignItems: "center",
                       justifyContent: "center",
                       position: "relative",
-                      zIndex: 2,
+                      zIndex: 12, // Above the sequence panel
+                      backgroundColor: "#F5F6FF", // Add background to make button visible
+                      boxShadow: isSequenceExpanded
+                        ? "-2px 0 5px rgba(0,0,0,0.1)"
+                        : "none",
                     }}
                   >
                     <IconButton
@@ -1277,22 +1281,24 @@ export default function VisualsTab({
                     </IconButton>
                   </Box>
 
-                  {/* Sequence panel with proper transitions */}
+                  {/* Sequence panel with improved overlay styling */}
                   <Box
                     sx={{
                       position: "absolute",
                       right: 0,
                       top: 0,
                       height: "100%",
-                      width: 340,
+                      width: 400, // INCREASED WIDTH
                       transform: isSequenceExpanded
                         ? "translateX(0)"
                         : "translateX(100%)",
                       transition: "transform 0.3s ease-out",
                       borderLeft: "1px solid",
                       borderColor: "divider",
-                      bgcolor: "#F9FAFB",
-                      zIndex: 1,
+                      bgcolor: "rgba(249, 250, 251, 0.97)", // Slightly transparent to show it's an overlay
+                      backdropFilter: "blur(5px)", // Add blur effect for modern look
+                      boxShadow: "-5px 0 15px rgba(0,0,0,0.1)", // Add shadow for depth
+                      zIndex: 11, // Between the toggle button and the image
                       pointerEvents: isSequenceExpanded ? "auto" : "none", // Only capture events when visible
                     }}
                   >

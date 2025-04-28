@@ -122,6 +122,7 @@ function SortableRow({
         style={style}
         sx={{
           p: 2,
+          pr: 3,
           bgcolor: "white",
           borderRadius: 2,
           border: "1px solid",
@@ -145,6 +146,7 @@ function SortableRow({
           style={style}
           sx={{
             p: 2,
+            pr: 3,
             bgcolor: "white",
             borderRadius: 2,
             border: "1px solid",
@@ -168,6 +170,7 @@ function SortableRow({
         style={style}
         sx={{
           p: 2,
+          pr: 3,
           bgcolor: "white",
           borderRadius: 2,
           border: "1px solid",
@@ -190,7 +193,14 @@ function SortableRow({
             ) : (
               <PersonIcon sx={{ color: "#444CE7", fontSize: 20 }} />
             )}
-            <Typography variant="subtitle2" sx={{ flex: 1 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                flex: 1,
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
               {msg.role}
             </Typography>
 
@@ -202,7 +212,15 @@ function SortableRow({
             </IconButton>
           </Stack>
 
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{
+              wordBreak: "break-word",
+              overflowWrap: "break-word",
+              pr: 1,
+            }}
+          >
             {msg.text}
           </Typography>
         </Stack>
@@ -219,6 +237,7 @@ function SortableRow({
           style={style}
           sx={{
             p: 2,
+            pr: 3,
             bgcolor: "white",
             borderRadius: 2,
             border: "1px solid",
@@ -252,6 +271,7 @@ function SortableRow({
         style={style}
         sx={{
           p: 2,
+          pr: 3,
           bgcolor: "white",
           borderRadius: 2,
           border: "1px solid",
@@ -270,7 +290,14 @@ function SortableRow({
 
             {getHotspotIcon(ht.hotspotType || ht.type)}
 
-            <Typography variant="subtitle2" sx={{ flex: 1 }}>
+            <Typography
+              variant="subtitle2"
+              sx={{
+                flex: 1,
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
               {ht.name || "Untitled hotspot"}
             </Typography>
 
@@ -283,14 +310,23 @@ function SortableRow({
           </Stack>
 
           {ht.text && (
-            <Typography variant="body2" color="text.secondary" sx={{ pl: 5 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                pl: 5,
+                pr: 1,
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+              }}
+            >
               {ht.text}
             </Typography>
           )}
           {ht.hotkey && (
             <Typography
               variant="caption"
-              sx={{ pl: 5, color: "text.secondary" }}
+              sx={{ pl: 5, pr: 1, color: "text.secondary" }}
             >
               Hotkey: {ht.hotkey}
             </Typography>
@@ -332,7 +368,7 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
   return (
     <Box
       sx={{
-        width: 340,
+        width: 400,
         height: "100%",
         bgcolor: "#F9FAFB",
         borderLeft: "1px solid",
@@ -346,7 +382,7 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}
+        sx={{ px: 2, pr: 3, py: 2, borderBottom: 1, borderColor: "divider" }}
       >
         <Typography variant="subtitle1" fontWeight="600">
           Sequence
@@ -358,7 +394,9 @@ const HotspotSequence: React.FC<HotspotSequenceProps> = ({
         sx={{
           flex: 1,
           overflowY: "auto",
-          p: 2,
+          px: 2,
+          pr: 3,
+          py: 2,
           "&::-webkit-scrollbar": {
             width: "6px",
           },

@@ -984,7 +984,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isStarted}
@@ -1033,11 +1033,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       </Modal>
 
       {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
+      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mt: 1 }}>
         <Stack
           direction="row"
           sx={{
-            p: 2,
+            p: 1.5,
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "#F9FAFB",
@@ -1109,10 +1109,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "400px",
+            minHeight: "360px",
             width: "50%",
             mx: "auto",
-            my: 10,
+            my: 6,
             border: "1px solid #DEE2FD",
             borderRadius: 4,
           }}
@@ -1133,7 +1133,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: "#666", mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 3 }}>
             Press start to attempt the Visual Simulation
           </Typography>
           <Button
@@ -1176,33 +1176,24 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       ) : (
         <Box
           sx={{
-            height: "100vh",
+            height: "calc(100vh - 130px)",
             bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          {/* Main content - Only the visual interface */}
+          {/* Main content - Modified to be more compact vertically */}
           <Box
             sx={{
               flex: 1,
               display: "flex",
-              overflow: "hidden",
               maxWidth: "1200px",
               mx: "auto",
-              mt: 2,
+              mt: 1,
             }}
           >
-            <Box
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
-              ref={imageContainerRef}
-            >
+            {/* Left side - Visual interface */}
+            <Box sx={{ flex: 1, p: 1 }} ref={imageContainerRef}>
               <Box
                 sx={{
                   width: "100%",
@@ -1211,10 +1202,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   bgcolor: "background.paper",
                   borderRadius: 1,
                   overflow: "hidden",
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
                 }}
               >
                 {isLoadingVisuals ? (
@@ -1229,29 +1216,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                     </Typography>
                   </Box>
                 ) : (
-                  <Box
-                    sx={{
-                      position: "relative",
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <Box sx={{ position: "relative" }}>
                     <img
                       ref={imageRef}
                       src={slides.get(currentSlide.imageId)}
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
-                        maxWidth: "100%",
-                        maxHeight: "calc(100vh - 200px)",
+                        width: "100%",
+                        height: "auto",
+                        objectFit: "contain",
                         display: "block",
-                        margin: "0 auto",
+                        maxHeight: "calc(100vh - 180px)",
                       }}
                       onLoad={handleImageLoad}
                     />
 
-                    {/* Timeout indicator - show timer when timeout is active */}
+                    {/* Timeout indicator (simplified, without text) */}
                     {timeoutActive &&
                       currentItem?.type === "hotspot" &&
                       currentItem.settings?.timeoutDuration &&
@@ -1512,10 +1492,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 variant="contained"
                                 sx={{
                                   height: "100%",
-                                  backgroundColor: "#1e293b",
-                                  color: "white",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
-                                    backgroundColor: "#0f172a",
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
@@ -1534,40 +1521,99 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   </Box>
                 )}
               </Box>
+            </Box>
 
-              {/* Navigation Controls - Centered at the bottom */}
-              {currentItem && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    mt: 2,
-                    mb: 1,
-                  }}
-                >
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    endIcon={<ArrowForward />}
-                    onClick={moveToNextItem}
-                    sx={{ minWidth: 120 }}
+            {/* Right side - Empty sidebar (to match layout of other components) */}
+            <Box
+              sx={{
+                width: 320,
+                borderLeft: 1,
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* Empty sidebar with status header to match other components */}
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  height: "50px",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Visual Mode ({simulationStatus})
+                </Typography>
+                <Box>
+                  <IconButton
+                    onClick={togglePause}
+                    sx={{ bgcolor: "grey.100", mr: 1 }}
+                    size="small"
                   >
-                    Next
-                  </Button>
+                    {isPaused ? (
+                      <PlayArrow fontSize="small" />
+                    ) : (
+                      <Pause fontSize="small" />
+                    )}
+                  </IconButton>
+
+                  <IconButton
+                    onClick={handleEndSimulation}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      "&:hover": { bgcolor: "error.dark" },
+                    }}
+                    size="small"
+                  >
+                    <CallEnd fontSize="small" />
+                  </IconButton>
                 </Box>
-              )}
+              </Box>
+
+              {/* Empty content area - made more compact */}
+              <Box
+                sx={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  p: 2,
+                  color: "text.secondary",
+                  textAlign: "center",
+                }}
+              >
+                <VisibilityIcon
+                  sx={{ fontSize: 36, color: "grey.400", mb: 1 }}
+                />
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Visual Mode
+                </Typography>
+                <Typography variant="caption">
+                  Interact with the interface on the left to navigate through
+                  the simulation
+                </Typography>
+              </Box>
             </Box>
           </Box>
 
-          {/* Simulation controls */}
+          {/* Simulation controls - made more compact */}
+          {/* COMMENTED OUT: Bottom End Simulation Button
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: "10px auto",
-              p: 2,
+              margin: "5px auto",
+              p: 1.5,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
@@ -1583,23 +1629,19 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               </span>
             </Typography>
 
-            <IconButton
-              onClick={togglePause}
-              sx={{ bgcolor: "grey.100", mr: 1 }}
-            >
-              {isPaused ? <PlayArrow /> : <Pause />}
-            </IconButton>
-
             <Button
               variant="contained"
               color="error"
               startIcon={<CallEnd />}
               onClick={handleEndSimulation}
               disabled={isEndingSimulation}
+              size="small"
+              sx={{ py: 0.75 }}
             >
               End Simulation
             </Button>
           </Stack>
+          */}
         </Box>
       )}
     </Box>

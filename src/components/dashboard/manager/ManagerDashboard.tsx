@@ -43,7 +43,19 @@ import {
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
 import { ArrowDropDownIcon } from "@mui/x-date-pickers";
-import { fetchManagerDashboardAggregatedData, type FetchManagerDashboardAggregatedDataPayload,FetchManagerDashboardAggregatedDataResponse } from '../../../services/manager';
+import {
+  fetchManagerDashboardAggregatedData,
+  type FetchManagerDashboardAggregatedDataPayload,
+  FetchManagerDashboardAggregatedDataResponse,
+  fetchTrainingPlansForManagerDashboard,
+  TrainingPlansManagerDashboard,
+  fetchModulesForManagerDashboard,
+  ModulesManagerDashboard,
+  fetchSimulationsForManagerDashboard,
+  SimulationsManagerDashboard,
+} from "../../../services/manager";
+
+// import { fetchManagerDashboardData } from '../../../services/manager';
 
 // Mock data for the dashboard
 const mockData = {
@@ -610,7 +622,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {trainingPlans.map((plan, index) => (
+          {trainingPlans.map((plan: TrainingPlansManagerDashboard, index) => (
             <React.Fragment key={`${plan.id}-${index}`}>
               <TableRow
                 sx={{
@@ -654,7 +666,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                       fontWeight: "medium",
                     }}
                   >
-                    {plan.assignedTrainees}
+                    {plan.trainees.length}
 
                     {plan.trainees.length > 0 &&
                       (expandedRows[`${plan.id}-${index}`] ? (
@@ -677,7 +689,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                       fontWeight: "medium",
                     }}
                   >
-                    {plan.completionRate}%
+                    {plan.completion_rate}%
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -693,7 +705,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                       fontSize: 14,
                     }}
                   >
-                    {plan.adherenceRate}%
+                    {plan.adherence_rate}%
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -709,7 +721,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                       fontSize: 14,
                     }}
                   >
-                    {plan.avgScore}%
+                    {plan.avg_score}%
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -724,7 +736,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                       fontWeight: "medium",
                     }}
                   >
-                    {plan.estTime}
+                    {plan.est_time}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -841,7 +853,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                                     fontSize: 16,
                                   }}
                                 >
-                                  {trainee.classId}
+                                  {trainee.class_id}
                                 </TableCell>
                                 <TableCell>
                                   <Chip
@@ -856,9 +868,9 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                                     }}
                                   />
                                 </TableCell>
-                                <TableCell>{trainee.dueDate}</TableCell>
+                                <TableCell>{trainee.due_date}</TableCell>
                                 <TableCell>
-                                  {trainee.avgScore ? (
+                                  {trainee.avg_score ? (
                                     <Typography
                                       sx={{
                                         color: "#027A48",
@@ -871,7 +883,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                                         fontSize: 14,
                                       }}
                                     >
-                                      {trainee.avgScore}%
+                                      {trainee.avg_score}%
                                     </Typography>
                                   ) : (
                                     <Typography
@@ -982,53 +994,63 @@ const menuItemSx = {
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState(mockData)
-  const [dashboardAggregatedData, setDashboardAggregatedData] = useState<FetchManagerDashboardAggregatedDataResponse>({
-    assignmentCounts: {
-      trainingPlans: {
-        total: 0,
-        completed: 0,
-        inProgress: 0,
-        notStarted: 0,
-        overdue: 0
+  const [dashboardData, setDashboardData] = useState(mockData);
+  const [dashboardAggregatedData, setDashboardAggregatedData] =
+    useState<FetchManagerDashboardAggregatedDataResponse>({
+      assignmentCounts: {
+        trainingPlans: {
+          total: 0,
+          completed: 0,
+          inProgress: 0,
+          notStarted: 0,
+          overdue: 0,
+        },
+        modules: {
+          total: 0,
+          completed: 0,
+          inProgress: 0,
+          notStarted: 0,
+          overdue: 0,
+        },
+        simulations: {
+          total: 0,
+          completed: 0,
+          inProgress: 0,
+          notStarted: 0,
+          overdue: 0,
+        },
       },
-      modules: {
-        total: 0,
-        completed: 0,
-        inProgress: 0,
-        notStarted: 0,
-        overdue: 0
+      completionRates: {
+        trainingPlans: 0,
+        modules: 0,
+        simulations: 0,
       },
-      simulations: {
-        total: 0,
-        completed: 0,
-        inProgress: 0,
-        notStarted: 0,
-        overdue: 0
-      }
-    },
-    completionRates: {
-      trainingPlans: 0,
-      modules: 0,
-      simulations: 0
-    },
-    averageScores: {
-      trainingPlans: 0,
-      modules: 0,
-      simulations: 0
-    },
-    adherenceRates: {
-      trainingPlans: 0,
-      modules: 0,
-      simulations: 0
-    }
-  });
+      averageScores: {
+        trainingPlans: 0,
+        modules: 0,
+        simulations: 0,
+      },
+      adherenceRates: {
+        trainingPlans: 0,
+        modules: 0,
+        simulations: 0,
+      },
+    });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("Training Plans");
   const [teamframe, setTeamframe] = useState("All Teams");
   const [timeframe, setTimeframe] = useState("Today");
   const [searchQuery, setSearchQuery] = useState("");
+  const [trainingPlans, setTraningPlans] = useState<
+    TrainingPlansManagerDashboard[]
+  >([]);
+  const [modules, setModules] = useState<ModulesManagerDashboard[]>([]);
+  const [simulations, setSimulations] = useState<SimulationsManagerDashboard[]>(
+    []
+  );
+
+  const [isTableLoading, setIsTableLoading] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -1037,7 +1059,9 @@ const ManagerDashboard = () => {
           setIsLoading(true);
           setError(null);
           // In a real implementation, we would fetch data from the API
-          const data = await fetchManagerDashboardAggregatedData({ user_id: user.id });
+          const data = await fetchManagerDashboardAggregatedData({
+            user_id: user.id,
+          });
           setDashboardAggregatedData(data);
         } catch (error) {
           console.error("Error loading dashboard data:", error);
@@ -1049,6 +1073,7 @@ const ManagerDashboard = () => {
     };
 
     loadDashboardData();
+    loadTrainingPlansForManagerDashboard();
   }, [user?.id]);
   const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
     setTeamframe(event.target.value);
@@ -1056,8 +1081,65 @@ const ManagerDashboard = () => {
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
+
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+
+    if (newValue === "Training Plan") {
+      // handle empty value if needed
+      loadTrainingPlansForManagerDashboard();
+    } else if (newValue === "Modules") {
+      loadModulesForManagerDashboard();
+    } else if (newValue === "Simulations") {
+      loadSimulationsForManagerDashboard();
+    }
+  };
+
+  const loadTrainingPlansForManagerDashboard = async () => {
+    try {
+      setIsTableLoading(true);
+      const data = await fetchTrainingPlansForManagerDashboard(
+        user?.id || "user123"
+      );
+      // setSimulations(data);
+      setTraningPlans(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load simulations");
+      console.error("Error loading simulations:", err);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  const loadModulesForManagerDashboard = async () => {
+    try {
+      setIsTableLoading(true);
+      const data = await fetchModulesForManagerDashboard(user?.id || "user123");
+      setModules(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load modules");
+      console.error("Error loading modules:", err);
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  const loadSimulationsForManagerDashboard = async () => {
+    try {
+      setIsTableLoading(true);
+      const data = await fetchSimulationsForManagerDashboard(
+        user?.id || "user123"
+      );
+      setSimulations(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load simulations");
+      console.error("Error loading simulations:", err);
+    } finally {
+      setIsTableLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -1192,43 +1274,66 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Training Plans Assigned"
-                  total={dashboardAggregatedData.assignmentCounts.trainingPlans.total}
+                  total={
+                    dashboardAggregatedData.assignmentCounts.trainingPlans.total
+                  }
                   completed={
-                    dashboardAggregatedData.assignmentCounts.trainingPlans.completed
+                    dashboardAggregatedData.assignmentCounts.trainingPlans
+                      .completed
                   }
                   inProgress={
-                    dashboardAggregatedData.assignmentCounts.trainingPlans.inProgress
+                    dashboardAggregatedData.assignmentCounts.trainingPlans
+                      .inProgress
                   }
                   notStarted={
-                    dashboardAggregatedData.assignmentCounts.trainingPlans.notStarted
+                    dashboardAggregatedData.assignmentCounts.trainingPlans
+                      .notStarted
                   }
-                  overdue={dashboardAggregatedData.assignmentCounts.trainingPlans.overdue}
+                  overdue={
+                    dashboardAggregatedData.assignmentCounts.trainingPlans
+                      .overdue
+                  }
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Modules Assigned"
                   total={dashboardAggregatedData.assignmentCounts.modules.total}
-                  completed={dashboardAggregatedData.assignmentCounts.modules.completed}
-                  inProgress={dashboardAggregatedData.assignmentCounts.modules.inProgress}
-                  notStarted={dashboardAggregatedData.assignmentCounts.modules.notStarted}
-                  overdue={dashboardAggregatedData.assignmentCounts.modules.overdue}
+                  completed={
+                    dashboardAggregatedData.assignmentCounts.modules.completed
+                  }
+                  inProgress={
+                    dashboardAggregatedData.assignmentCounts.modules.inProgress
+                  }
+                  notStarted={
+                    dashboardAggregatedData.assignmentCounts.modules.notStarted
+                  }
+                  overdue={
+                    dashboardAggregatedData.assignmentCounts.modules.overdue
+                  }
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Simulation Assigned"
-                  total={dashboardAggregatedData.assignmentCounts.simulations.total}
+                  total={
+                    dashboardAggregatedData.assignmentCounts.simulations.total
+                  }
                   completed={
-                    dashboardAggregatedData.assignmentCounts.simulations.completed
+                    dashboardAggregatedData.assignmentCounts.simulations
+                      .completed
                   }
                   inProgress={
-                    dashboardAggregatedData.assignmentCounts.simulations.inProgress
+                    dashboardAggregatedData.assignmentCounts.simulations
+                      .inProgress
                   }
                   notStarted={
-                    dashboardAggregatedData.assignmentCounts.simulations.notStarted
+                    dashboardAggregatedData.assignmentCounts.simulations
+                      .notStarted
                   }
-                  overdue={dashboardAggregatedData.assignmentCounts.simulations.overdue}
+                  overdue={
+                    dashboardAggregatedData.assignmentCounts.simulations.overdue
+                  }
                 />
               </Grid>
             </Grid>
@@ -1248,7 +1353,9 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardAggregatedData.completionRates.trainingPlans}
+                      value={
+                        dashboardAggregatedData.completionRates.trainingPlans
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -1260,7 +1367,9 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Simulation"
-                      value={dashboardAggregatedData.completionRates.simulations}
+                      value={
+                        dashboardAggregatedData.completionRates.simulations
+                      }
                     />
                   </Grid>
                 </Grid>
@@ -1290,7 +1399,9 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardAggregatedData.averageScores.trainingPlans}
+                      value={
+                        dashboardAggregatedData.averageScores.trainingPlans
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -1333,7 +1444,9 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardAggregatedData.averageScores.trainingPlans}
+                      value={
+                        dashboardAggregatedData.averageScores.trainingPlans
+                      }
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -1463,21 +1576,32 @@ const ManagerDashboard = () => {
                 </Select>
               </Stack>
             </Stack>
-            {/* Training Plans Table */}
-            {activeTab === "Training Plans" && (
-              <TrainingPlanTable trainingPlans={dashboardData.trainingPlans} />
-            )}
-            {/* Modules Table - Would be similar to Training Plans but with module-specific data */}
-            {activeTab === "Modules" && (
-              <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
-                Modules data would be displayed here
-              </Typography>
-            )}
-            {/* Simulations Table - Would be similar to Training Plans but with simulation-specific data */}
-            {activeTab === "Simulations" && (
-              <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
-                Simulations data would be displayed here
-              </Typography>
+
+            {isTableLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                {/* Training Plans Table */}
+                {activeTab === "Training Plans" && (
+                  <TrainingPlanTable trainingPlans={trainingPlans} />
+                )}
+                {/* Modules Table - Would be similar to Training Plans but with module-specific data */}
+                {activeTab === "Modules" && (
+                  // <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
+                  //   Modules data would be displayed here
+                  // </Typography>
+                  <TrainingPlanTable trainingPlans={modules} />
+                )}
+                {/* Simulations Table - Would be similar to Training Plans but with simulation-specific data */}
+                {activeTab === "Simulations" && (
+                  // <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
+                  //   Simulations data would be displayed here
+                  // </Typography>
+                  <TrainingPlanTable trainingPlans={simulations} />
+                )}
+              </>
             )}
           </Stack>
         </Stack>

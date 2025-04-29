@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import {
   fetchSimulations,
   type Simulation,
+  type SimulationPaginationParams,
 } from "../../../services/simulations";
 import { fetchUsersSummary, type User } from "../../../services/users";
 import { fetchTeams, type Team } from "../../../services/teams";
@@ -101,8 +102,23 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchSimulations(user?.id || "user123");
-        setSimulations(data);
+
+        // Use pagination to fetch published simulations
+        const paginationParams: SimulationPaginationParams = {
+          page: 1,
+          pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
+          status: ["published"], // Only fetch published simulations
+          sortBy: "simName",
+          sortDir: "asc"
+        };
+
+        // Add search filter if provided
+        if (searchQuery) {
+          paginationParams.search = searchQuery;
+        }
+
+        const response = await fetchSimulations(user?.id || "user123", paginationParams);
+        setSimulations(response.simulations);
       } catch (err) {
         setError("Failed to load simulations");
         console.error("Error loading simulations:", err);
@@ -114,7 +130,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
     if (open) {
       loadSimulations();
     }
-  }, [open, user?.id]);
+  }, [open, user?.id, searchQuery]);
 
   useEffect(() => {
     const loadAssignees = async () => {
@@ -342,7 +358,10 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
                         justifyContent="space-between"
                         alignItems="center"
                       >
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                        >
                           {selectedSimulation.id.slice(-6)}
                         </Typography>
                         <Chip

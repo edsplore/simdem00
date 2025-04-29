@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useAuth } from "../../../../context/AuthContext";
 import { createTrainingPlan } from "../../../../services/trainingPlans";
-import { fetchModules, type Module } from "../../../../services/modules";
+import { 
+  fetchModules, 
+  type Module 
+} from "../../../../services/modules";
 import {
   fetchSimulations,
   type Simulation,
+  type SimulationPaginationParams,
 } from "../../../../services/simulations";
 import { fetchTags, createTag, Tag } from "../../../../services/tags";
 import {
@@ -89,15 +93,23 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         setIsLoading(true);
         setError(null);
 
-        const [modulesData, simulationsData] = await Promise.all([
+        // Fetch modules and simulations in parallel
+        const [modulesData, simulationsResponse] = await Promise.all([
           fetchModules(user?.id || "user123"),
-          fetchSimulations(user?.id || "user123"),
+          fetchSimulations(user?.id || "user123", {
+            page: 1,
+            pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
+            status: ["published"], // Only fetch published simulations
+            sortBy: "simName",
+            sortDir: "asc"
+          })
         ]);
 
+        // Get simulations from the response
+        const simulationsData = simulationsResponse.simulations;
+
         // Filter simulations to only include published ones
-        const publishedSimulations = simulationsData.filter(
-          (sim) => sim.status === "published",
-        );
+        const publishedSimulations = simulationsData;
 
         const combinedItems: Item[] = [
           ...modulesData.map((m) => ({
@@ -140,7 +152,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
       loadItems();
       loadTags();
     }
-  }, [open, user?.id]);
+  }, [open, user?.id, searchQuery]);
 
   const {
     control,

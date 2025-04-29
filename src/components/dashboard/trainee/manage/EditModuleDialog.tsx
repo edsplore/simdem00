@@ -6,6 +6,7 @@ import { updateModule, Module } from "../../../../services/modules";
 import {
   fetchSimulations,
   type Simulation,
+  type SimulationPaginationParams,
 } from "../../../../services/simulations";
 import {
   Dialog,
@@ -115,11 +116,23 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const simulationsData = await fetchSimulations(user.id);
-      // Filter to only include published simulations
-      const publishedSimulations = simulationsData.filter(
-        (s) => s.status === "published",
-      );
+      // Use pagination to fetch published simulations
+      const paginationParams: SimulationPaginationParams = {
+        page: 1,
+        pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
+        status: ["published"], // Only fetch published simulations
+        sortBy: "simName",
+        sortDir: "asc"
+      };
+
+      // Add search filter if provided
+      if (searchQuery) {
+        paginationParams.search = searchQuery;
+      }
+
+      const simulationsResponse = await fetchSimulations(user.id, paginationParams);
+      const publishedSimulations = simulationsResponse.simulations;
+
       setSimulations(publishedSimulations);
 
       // Find the simulations that are in the module's simulations_id array
@@ -139,6 +152,13 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Reload simulations when search query changes
+  useEffect(() => {
+    if (open && module) {
+      loadSimulations();
+    }
+  }, [searchQuery, open, module]);
 
   const selectedSimulations = watch("selectedSimulations");
   const isSimulationSelected = (simulation: Simulation) => {

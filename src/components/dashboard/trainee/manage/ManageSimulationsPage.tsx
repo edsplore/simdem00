@@ -32,6 +32,8 @@ import {
   MoreVert as MoreVertIcon,
   LockOutlined as LockIcon,
   Clear as ClearIcon,
+  FilterAlt as FilterIcon,
+  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import DashboardContent from "../../DashboardContent";
 import ActionsMenu from "./ActionsMenu";
@@ -106,8 +108,9 @@ const ManageSimulationsPage = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<OrderBy>("sim_name");
+  // Set default order to desc and orderBy to last_modified
+  const [order, setOrder] = useState<Order>("desc");
+  const [orderBy, setOrderBy] = useState<OrderBy>("last_modified");
 
   // New state variables for departments and divisions
   const [divisions, setDivisions] = useState<string[]>([]);
@@ -131,6 +134,18 @@ const ManageSimulationsPage = () => {
 
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
+
+  // Check if any filters are applied
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      selectedTags !== "All Tags" ||
+      selectedDepartment !== "All Departments" ||
+      selectedDivision !== "All Divisions" ||
+      selectedCreator !== "Created By" ||
+      currentTab !== "All"
+    );
+  }, [searchQuery, selectedTags, selectedDepartment, selectedDivision, selectedCreator, currentTab]);
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<SimulationPaginationParams>(() => {
@@ -412,6 +427,17 @@ const ManageSimulationsPage = () => {
 
   const handleClearSearch = () => {
     setSearchQuery("");
+  };
+
+  // New function to reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedTags("All Tags");
+    setSelectedDepartment("All Departments");
+    setSelectedDivision("All Divisions");
+    setSelectedCreator("Created By");
+    setCurrentTab("All");
+    setPage(0);
   };
 
   // Helper function to get user name from ID
@@ -832,6 +858,29 @@ const ManageSimulationsPage = () => {
                   </MenuItem>
                 ))}
               </Select>
+
+              {/* Reset Filters Button */}
+              <Tooltip title="Reset all filters">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ResetIcon />}
+                    onClick={handleResetFilters}
+                    disabled={!hasActiveFilters}
+                    sx={{
+                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
+                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
+                      "&:hover": {
+                        borderColor: "#3538CD",
+                        bgcolor: "#F5F6FF",
+                      },
+                      borderRadius: 2,
+                    }}
+                  >
+                    Reset Filters
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Stack>
 

@@ -43,7 +43,7 @@ import {
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
 import { ArrowDropDownIcon } from "@mui/x-date-pickers";
-// import { fetchManagerDashboardData } from '../../../services/manager';
+import { fetchManagerDashboardAggregatedData, type FetchManagerDashboardAggregatedDataPayload,FetchManagerDashboardAggregatedDataResponse } from '../../../services/manager';
 
 // Mock data for the dashboard
 const mockData = {
@@ -982,7 +982,47 @@ const menuItemSx = {
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState(mockData);
+  const [dashboardData, setDashboardData] = useState(mockData)
+  const [dashboardAggregatedData, setDashboardAggregatedData] = useState<FetchManagerDashboardAggregatedDataResponse>({
+    assignmentCounts: {
+      trainingPlans: {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+        overdue: 0
+      },
+      modules: {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+        overdue: 0
+      },
+      simulations: {
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+        overdue: 0
+      }
+    },
+    completionRates: {
+      trainingPlans: 0,
+      modules: 0,
+      simulations: 0
+    },
+    averageScores: {
+      trainingPlans: 0,
+      modules: 0,
+      simulations: 0
+    },
+    adherenceRates: {
+      trainingPlans: 0,
+      modules: 0,
+      simulations: 0
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("Training Plans");
@@ -997,11 +1037,8 @@ const ManagerDashboard = () => {
           setIsLoading(true);
           setError(null);
           // In a real implementation, we would fetch data from the API
-          // const data = await fetchManagerDashboardData(user.id);
-          // setDashboardData(data);
-
-          // For now, we'll use mock data
-          setDashboardData(mockData);
+          const data = await fetchManagerDashboardAggregatedData({ user_id: user.id });
+          setDashboardAggregatedData(data);
         } catch (error) {
           console.error("Error loading dashboard data:", error);
           setError("Failed to load dashboard data");
@@ -1155,43 +1192,43 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Training Plans Assigned"
-                  total={dashboardData.assignmentCounts.trainingPlans.total}
+                  total={dashboardAggregatedData.assignmentCounts.trainingPlans.total}
                   completed={
-                    dashboardData.assignmentCounts.trainingPlans.completed
+                    dashboardAggregatedData.assignmentCounts.trainingPlans.completed
                   }
                   inProgress={
-                    dashboardData.assignmentCounts.trainingPlans.inProgress
+                    dashboardAggregatedData.assignmentCounts.trainingPlans.inProgress
                   }
                   notStarted={
-                    dashboardData.assignmentCounts.trainingPlans.notStarted
+                    dashboardAggregatedData.assignmentCounts.trainingPlans.notStarted
                   }
-                  overdue={dashboardData.assignmentCounts.trainingPlans.overdue}
+                  overdue={dashboardAggregatedData.assignmentCounts.trainingPlans.overdue}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Modules Assigned"
-                  total={dashboardData.assignmentCounts.modules.total}
-                  completed={dashboardData.assignmentCounts.modules.completed}
-                  inProgress={dashboardData.assignmentCounts.modules.inProgress}
-                  notStarted={dashboardData.assignmentCounts.modules.notStarted}
-                  overdue={dashboardData.assignmentCounts.modules.overdue}
+                  total={dashboardAggregatedData.assignmentCounts.modules.total}
+                  completed={dashboardAggregatedData.assignmentCounts.modules.completed}
+                  inProgress={dashboardAggregatedData.assignmentCounts.modules.inProgress}
+                  notStarted={dashboardAggregatedData.assignmentCounts.modules.notStarted}
+                  overdue={dashboardAggregatedData.assignmentCounts.modules.overdue}
                 />
               </Grid>
               <Grid item xs={12} md={4}>
                 <AssignmentCard
                   title="Simulation Assigned"
-                  total={dashboardData.assignmentCounts.simulations.total}
+                  total={dashboardAggregatedData.assignmentCounts.simulations.total}
                   completed={
-                    dashboardData.assignmentCounts.simulations.completed
+                    dashboardAggregatedData.assignmentCounts.simulations.completed
                   }
                   inProgress={
-                    dashboardData.assignmentCounts.simulations.inProgress
+                    dashboardAggregatedData.assignmentCounts.simulations.inProgress
                   }
                   notStarted={
-                    dashboardData.assignmentCounts.simulations.notStarted
+                    dashboardAggregatedData.assignmentCounts.simulations.notStarted
                   }
-                  overdue={dashboardData.assignmentCounts.simulations.overdue}
+                  overdue={dashboardAggregatedData.assignmentCounts.simulations.overdue}
                 />
               </Grid>
             </Grid>
@@ -1211,19 +1248,19 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardData.completionRates.trainingPlan}
+                      value={dashboardAggregatedData.completionRates.trainingPlans}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Modules"
-                      value={dashboardData.completionRates.modules}
+                      value={dashboardAggregatedData.completionRates.modules}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Simulation"
-                      value={dashboardData.completionRates.simulation}
+                      value={dashboardAggregatedData.completionRates.simulations}
                     />
                   </Grid>
                 </Grid>
@@ -1253,19 +1290,19 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardData.averageScores.trainingPlan}
+                      value={dashboardAggregatedData.averageScores.trainingPlans}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Modules"
-                      value={dashboardData.averageScores.modules}
+                      value={dashboardAggregatedData.averageScores.modules}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Simulation"
-                      value={dashboardData.averageScores.simulation}
+                      value={dashboardAggregatedData.averageScores.simulations}
                     />
                   </Grid>
                 </Grid>
@@ -1296,19 +1333,19 @@ const ManagerDashboard = () => {
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Training Plan"
-                      value={dashboardData.averageScores.trainingPlan}
+                      value={dashboardAggregatedData.averageScores.trainingPlans}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Modules"
-                      value={dashboardData.averageScores.modules}
+                      value={dashboardAggregatedData.averageScores.modules}
                     />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <CircularProgressCards
                       title="Simulation"
-                      value={dashboardData.averageScores.simulation}
+                      value={dashboardAggregatedData.averageScores.simulations}
                     />
                   </Grid>
                 </Grid>

@@ -455,6 +455,8 @@ const GenerateScriptContent = () => {
               // Try to get image data from the map
               const imageData = imageDataMap.get(slide.imageId);
 
+              // Comment out the direct URL handling
+              /* 
               // First check if we have a valid API URL in slide.imageUrl
               if (
                 slide.imageUrl &&
@@ -464,8 +466,9 @@ const GenerateScriptContent = () => {
                 // Use the API URL directly
                 blobUrl = slide.imageUrl;
               }
-              // If no valid URL but we have image data, process it
-              else if (imageData) {
+              */
+              // If we have image data, process it
+              if (imageData) {
                 // Process the binary image data properly - similar to how preview components do it
                 if (typeof imageData === "string") {
                   if (
@@ -521,8 +524,8 @@ const GenerateScriptContent = () => {
                         id: `hotspot-${item.id}`,
                         type: "hotspot",
                         content: {
-                          id: item.id,
-                          name: item.name || "Untitled hotspot",
+                          id: item.id || String(Date.now()),
+                          name: item.name || "Untitled Hotspot",
                           type: "hotspot",
                           hotspotType: item.hotspotType || "button",
                           coordinates: item.coordinates
@@ -547,11 +550,11 @@ const GenerateScriptContent = () => {
                         id: `message-${item.id}`,
                         type: "message",
                         content: {
-                          id: item.id,
+                          id: item.id || String(Date.now()),
                           role: item.role || "Customer", // Preserve the original role
                           text: item.text || "",
                           visualId: slide.imageId,
-                          order: 0, // Default order
+                          order: item.order || 0,
                         },
                         timestamp: Date.now(),
                       };

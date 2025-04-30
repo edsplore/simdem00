@@ -12,6 +12,7 @@ import {
   CircularProgress,
   Alert,
   ButtonGroup,
+  Tooltip,
 } from "@mui/material";
 import axios from "axios";
 import AdvancedSettings from "./AdvancedSetting";
@@ -171,6 +172,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const [activeSection, setActiveSection] = useState("Simulation Type");
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
@@ -374,6 +376,58 @@ const SettingTab: React.FC<SettingTabProps> = ({
     // If no stored settings, create from simulationData
     return createSettingsFromData();
   });
+
+  // NEW: Validate settings before publishing
+  const validateSettings = () => {
+    // Check if at least one level is enabled
+    const levels = settingsState.advancedSettings?.levels?.simulationLevels;
+    const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
+
+    // Check if estimated time is specified and enabled
+    const estimatedTime = settingsState.advancedSettings?.estimatedTime;
+    const isEstimatedTimeValid =
+      estimatedTime?.enabled &&
+      estimatedTime?.value &&
+      estimatedTime.value.trim() !== "";
+
+    // Build validation error message if needed
+    let errorMessage = null;
+
+    if (!isAnyLevelEnabled && !isEstimatedTimeValid) {
+      errorMessage =
+        "At least one level must be enabled and estimated time must be specified before publishing.";
+    } else if (!isAnyLevelEnabled) {
+      errorMessage = "At least one level must be enabled before publishing.";
+    } else if (!isEstimatedTimeValid) {
+      errorMessage = "Estimated time must be specified before publishing.";
+    }
+
+    setValidationError(errorMessage);
+    return errorMessage === null;
+  };
+
+  // NEW: Check validation state for UI (disabling buttons, etc.)
+  const isPublishDisabled = useMemo(() => {
+    if (isPublishing || !simulationId) return true;
+
+    // Check if at least one level is enabled
+    const levels = settingsState.advancedSettings?.levels?.simulationLevels;
+    const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
+
+    // Check if estimated time is specified and enabled
+    const estimatedTime = settingsState.advancedSettings?.estimatedTime;
+    const isEstimatedTimeValid =
+      estimatedTime?.enabled &&
+      estimatedTime?.value &&
+      estimatedTime.value.trim() !== "";
+
+    return !isAnyLevelEnabled || !isEstimatedTimeValid;
+  }, [
+    isPublishing,
+    simulationId,
+    settingsState.advancedSettings?.levels?.simulationLevels,
+    settingsState.advancedSettings?.estimatedTime,
+  ]);
 
   // Save settings to localStorage when they change
   useEffect(() => {
@@ -645,8 +699,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
       return;
     }
 
+    // Run validation before proceeding
+    if (!validateSettings()) {
+      return; // Don't proceed if validation fails
+    }
+
     setIsPublishing(true);
     setError(null);
+    setValidationError(null);
 
     try {
       const payload = createSimulationPayload("published");
@@ -835,6 +895,16 @@ const SettingTab: React.FC<SettingTabProps> = ({
         </Alert>
       )}
 
+      {validationError && (
+        <Alert
+          severity="warning"
+          onClose={() => setValidationError(null)}
+          sx={{ mb: 2 }}
+        >
+          {validationError}
+        </Alert>
+      )}
+
       <Stack spacing={1}>
         {/* Header Section */}
         <Card
@@ -878,23 +948,37 @@ const SettingTab: React.FC<SettingTabProps> = ({
                 "Save as Draft"
               )}
             </Button>
-            <Button
-              variant="contained"
-              onClick={handlePublish}
-              disabled={isPublishing || !simulationId}
-              sx={{
-                bgcolor: "#444CE7",
-                "&:hover": { bgcolor: "#3538CD" },
-                borderRadius: 2,
-                px: 4,
-              }}
+            <Tooltip
+              title={
+                isPublishDisabled
+                  ? "At least one level must be enabled and estimated time must be specified before publishing"
+                  : ""
+              }
+              arrow
+              placement="top"
             >
-              {isPublishing ? (
-                <CircularProgress size={24} sx={{ color: "white" }} />
-              ) : (
-                "Publish"
-              )}
-            </Button>
+              <span>
+                {" "}
+                {/* Span wrapper needed for disabled button tooltip */}
+                <Button
+                  variant="contained"
+                  onClick={handlePublish}
+                  disabled={isPublishDisabled}
+                  sx={{
+                    bgcolor: "#444CE7",
+                    "&:hover": { bgcolor: "#3538CD" },
+                    borderRadius: 2,
+                    px: 4,
+                  }}
+                >
+                  {isPublishing ? (
+                    <CircularProgress size={24} sx={{ color: "white" }} />
+                  ) : (
+                    "Publish"
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
           </Box>
         </Card>
 

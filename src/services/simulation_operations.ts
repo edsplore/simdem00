@@ -184,6 +184,20 @@ export interface CompleteSimulationResponse {
   [key: string]: any; // For any additional fields or direct simulation data
 }
 
+// New interface for simulation cloning request
+export interface CloneSimulationRequest {
+  user_id: string;
+  simulation_id: string;
+}
+
+// New interface for simulation cloning response
+export interface CloneSimulationResponse {
+  status: string;
+  id?: string;
+  message?: string;
+  [key: string]: any; // For any additional fields that might be returned
+}
+
 /**
  * Creates a new simulation
  * @param simulationData - The data for the new simulation
@@ -327,6 +341,34 @@ export const fetchCompleteSimulation = async (
     return response.data;
   } catch (error) {
     console.error("Error fetching simulation:", error);
+    throw error;
+  }
+};
+
+/**
+ * Clones an existing simulation
+ * @param userId - The ID of the user cloning the simulation
+ * @param simulationId - The ID of the simulation to clone
+ * @returns A promise with the simulation cloning response
+ */
+export const cloneSimulation = async (
+  userId: string,
+  simulationId: string,
+): Promise<CloneSimulationResponse> => {
+  try {
+    const cloneData: CloneSimulationRequest = {
+      user_id: userId,
+      simulation_id: simulationId,
+    };
+
+    const response = await apiClient.post<CloneSimulationResponse>(
+      "/simulations/clone",
+      cloneData,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error cloning simulation:", error);
     throw error;
   }
 };

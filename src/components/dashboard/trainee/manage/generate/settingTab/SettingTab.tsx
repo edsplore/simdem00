@@ -23,7 +23,7 @@ import {
   publishSimulation,
   updateSimulation,
 } from "../../../../../../services/simulation_operations";
-
+import { useAuth } from "../../../../../../context/AuthContext";
 const NavItem = styled(ListItem)(({ theme }) => ({
   cursor: "pointer",
   "&:hover": {
@@ -174,6 +174,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  const { user, currentWorkspaceId } = useAuth();
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
@@ -573,7 +574,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
     // Use settings in the payload with proper access to nested properties
     return {
-      user_id: "userId1",
+      user_id: user?.id || "private_user",
       sim_name: simulationData?.name, // Changed from 'name' to 'sim_name'
       division_id: simulationData?.division,
       department_id: simulationData?.department,

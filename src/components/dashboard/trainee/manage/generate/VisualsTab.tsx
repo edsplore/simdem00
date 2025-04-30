@@ -34,6 +34,11 @@ import {
   Tooltip,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -103,10 +108,11 @@ const DropZone = styled(Box)(({ theme }) => ({
   justifyContent: "center",
   textAlign: "center",
   cursor: "pointer",
-  transition: "border-color 0.2s ease-in-out",
+  transition: "border-color 0.2s ease-in-out, transform 0.2s ease-in-out",
   minHeight: "320px",
   "&:hover": {
     borderColor: theme.palette.primary.main,
+    transform: "scale(1.005)",
   },
 }));
 
@@ -211,6 +217,16 @@ const processImageUrl = (imageData: string): string => {
   }
 };
 
+/**
+ * Strips HTML tags from a string
+ * Returns clean text content
+ */
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+  // This regex removes all HTML tags while preserving the text content
+  return html.replace(/<\/?[^>]+(>|$)/g, "");
+};
+
 export default function VisualsTab({
   images = [],
   onImagesUpdate,
@@ -227,6 +243,10 @@ export default function VisualsTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Confirm dialog for deleting the last slide
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
 
   // Use useMemo to stabilize the isSequenceExpanded state and prevent unnecessary re-renders
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
@@ -418,10 +438,19 @@ export default function VisualsTab({
 
       setVisualImages(processedImages);
 
-      // Set selected image if none is selected
-      if (processedImages.length > 0 && !selectedImageId) {
+      // Only auto-select if coming from zero images OR if the current selection doesn't exist
+      const currentSelectionExists = processedImages.some(
+        (img) => img.id === selectedImageId,
+      );
+      if (!currentSelectionExists && processedImages.length > 0) {
         setSelectedImageId(processedImages[0].id);
       }
+    } else if (images && images.length === 0) {
+      // If we receive an empty images array, clear our state completely
+      setVisualImages([]);
+      setSelectedImageId(null);
+      setEditingHotspot(null);
+      setIsEditing(false);
     }
   }, [images, selectedImageId]);
 
@@ -544,7 +573,7 @@ export default function VisualsTab({
       const newMsg: ScriptMessage = {
         id: message.id,
         role: message.role as "Customer" | "Trainee",
-        text: message.message,
+        text: stripHtmlTags(message.message), // Strip HTML tags when adding to sequence
         visualId: selectedImageId,
         order: 0, // We're not using this anymore as we rely on sequence order
       };
@@ -629,15 +658,81 @@ export default function VisualsTab({
     e.preventDefault();
   }, []);
 
-  // Delete a thumbnail
+  // Enhanced delete function with better state management
   const handleDeleteImage = useCallback(
     (imgId: string) => {
-      if (selectedImageId === imgId) {
-        setSelectedImageId(null);
+      console.log("Deleting image with ID:", imgId);
+      console.log("Before deletion - visualImages count:", visualImages.length);
+      console.log("Current selected image ID:", selectedImageId);
+
+      // Check if this is the last image - show confirmation dialog
+      if (visualImages.length === 1) {
+        setImageToDelete(imgId);
+        setShowDeleteConfirm(true);
+        return;
       }
-      setVisualImages((prev) => prev.filter((img) => img.id !== imgId));
+
+      // Process deletion for non-last image
+      performDeleteImage(imgId);
     },
-    [selectedImageId],
+    [selectedImageId, visualImages],
+  );
+
+  // Actual deletion function separated for clarity
+  const performDeleteImage = useCallback(
+    (imgId: string) => {
+      // First determine what images will remain after deletion
+      const newImages = visualImages.filter((img) => img.id !== imgId);
+      console.log("After deletion - new images count:", newImages.length);
+
+      const isLastImage = visualImages.length === 1;
+      const isSelectedImage = selectedImageId === imgId;
+
+      // If we're deleting the selected image, find the next image to select BEFORE deletion
+      let nextSelectedId: string | null = null;
+      if (isSelectedImage && newImages.length > 0) {
+        const currentIndex = visualImages.findIndex((img) => img.id === imgId);
+        const newIndex = Math.min(currentIndex, newImages.length - 1);
+        nextSelectedId = newImages[newIndex].id;
+        console.log("Will select new image:", nextSelectedId);
+      }
+
+      // Important - reset editing states to avoid any conflicts
+      if (isSelectedImage) {
+        setEditingHotspot(null);
+        setIsEditing(false);
+      }
+
+      // First update the visualImages state to actually delete the image
+      setVisualImages(newImages);
+
+      // Then handle selection changes AFTER deletion is done
+      if (isSelectedImage) {
+        if (nextSelectedId) {
+          // Select the new image immediately
+          setSelectedImageId(nextSelectedId);
+          console.log("Selected new image:", nextSelectedId);
+        } else {
+          // No images left, reset selection
+          setSelectedImageId(null);
+        }
+      }
+
+      // If this was the last image, force reset all states
+      if (isLastImage) {
+        console.log("Last image deleted, resetting all states");
+        setSelectedImageId(null);
+        setEditingHotspot(null);
+        setIsEditing(false);
+        setIsSequenceExpanded(false);
+
+        // Force rerender the drop zone (not usually needed but helps with edge cases)
+        setTimeout(() => {
+          setVisualImages([]);
+        }, 50);
+      }
+    },
+    [selectedImageId, visualImages],
   );
 
   // Clicking a thumbnail
@@ -942,6 +1037,20 @@ export default function VisualsTab({
     setIsSequenceExpanded((prev) => !prev);
   }, []);
 
+  // Track if user is actively dragging over the component
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // Enhanced handlers to provide visual feedback
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+
   return (
     <Stack spacing={2}>
       {/* Error alert */}
@@ -1049,7 +1158,9 @@ export default function VisualsTab({
                     <Typography variant="caption" color="text.secondary">
                       {msg.role}
                     </Typography>
-                    <Typography variant="body2">{msg.message}</Typography>
+                    <Typography variant="body2">
+                      {stripHtmlTags(msg.message)}
+                    </Typography>
                   </Stack>
                 </MenuItem>
               ))
@@ -1059,7 +1170,19 @@ export default function VisualsTab({
       </Stack>
 
       {visualImages.length === 0 ? (
-        <DropZone onDrop={handleDrop} onDragOver={handleDragOver}>
+        <DropZone
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          sx={{
+            borderColor: isDraggingOver ? "#444CE7" : "#DEE2FC",
+            boxShadow: isDraggingOver
+              ? "0 0 10px rgba(68, 76, 231, 0.3)"
+              : "none",
+            backgroundColor: isDraggingOver ? "#F5F6FF" : "#FCFCFE",
+          }}
+        >
           <DescriptionIcon sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
           <Typography
             variant="h5"
@@ -1315,6 +1438,35 @@ export default function VisualsTab({
           </Box>
         </Stack>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+      >
+        <DialogTitle>Delete Last Slide?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This is the last slide. Deleting it will reset the visuals section.
+            Are you sure you want to proceed?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (imageToDelete) {
+                performDeleteImage(imageToDelete);
+                setImageToDelete(null);
+              }
+              setShowDeleteConfirm(false);
+            }}
+            color="error"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

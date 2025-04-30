@@ -742,7 +742,7 @@ const GenerateScriptContent = () => {
         return {
           script: false, // Disable script tab for visual type
           visuals: true, // Always enabled for visual type
-          settings: true, // Always enable settings tab
+          settings: visualImages.length > 0,
           preview: isPublished,
         };
       }

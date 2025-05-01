@@ -26,6 +26,7 @@ import {
   InputAdornment,
   Tooltip,
   Alert,
+  Autocomplete,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -49,7 +50,7 @@ import {
   fetchDepartments,
 } from "../../../../services/suggestions";
 import { fetchTags, Tag } from "../../../../services/tags";
-import { fetchUsersByIds, User } from "../../../../services/users";
+import { fetchUsersSummary, User } from "../../../../services/users";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 
@@ -94,10 +95,13 @@ const ManageSimulationsPage = () => {
   const [currentTab, setCurrentTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState("All Tags");
-  const [selectedDepartment, setSelectedDepartment] =
-    useState("All Departments");
+  const [tagsSearchQuery, setTagsSearchQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("All Departments");
+  const [departmentSearchQuery, setDepartmentSearchQuery] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("All Divisions");
+  const [divisionSearchQuery, setDivisionSearchQuery] = useState("");
   const [selectedCreator, setSelectedCreator] = useState("Created By");
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<Simulation | null>(null);
   const [page, setPage] = useState(0);
@@ -131,6 +135,7 @@ const ManageSimulationsPage = () => {
   // State for user name mapping
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
@@ -245,6 +250,40 @@ const ManageSimulationsPage = () => {
       setIsLoadingUsers(false);
     }
   }, [currentWorkspaceId, userMap]);
+
+  // Load all users for the creator filter
+  const loadAllUsers = useCallback(async () => {
+    if (!currentWorkspaceId) return;
+
+    try {
+      setIsLoadingUsers(true);
+      const usersData = await fetchUsersSummary(currentWorkspaceId);
+      setUsers(usersData);
+
+      // Also update the user map with these users
+      const newUserMap: Record<string, string> = { ...userMap };
+      usersData.forEach(userData => {
+        if (userData.user_id) {
+          // Use fullName if available, otherwise construct from first and last name
+          const fullName = userData.fullName || 
+            `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+          newUserMap[userData.user_id] = fullName || userData.user_id;
+        }
+      });
+
+      setUserMap(newUserMap);
+    } catch (error) {
+      console.error("Error loading all users:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [currentWorkspaceId, userMap]);
+
+  // Load all users when component mounts
+  useEffect(() => {
+    loadAllUsers();
+  }, [loadAllUsers]);
 
   const loadSimulations = useCallback(async () => {
     if (!user?.id) return;
@@ -405,23 +444,23 @@ const ManageSimulationsPage = () => {
     setPage(0); // Reset to first page when filter changes
   };
 
-  const handleTagsChange = (e: SelectChangeEvent) => {
-    setSelectedTags(e.target.value);
+  const handleTagsChange = (event: any, newValue: string | null) => {
+    setSelectedTags(newValue || "All Tags");
     setPage(0); // Reset to first page when filter changes
   };
 
-  const handleDepartmentChange = (e: SelectChangeEvent) => {
-    setSelectedDepartment(e.target.value);
+  const handleDepartmentChange = (event: any, newValue: string | null) => {
+    setSelectedDepartment(newValue || "All Departments");
     setPage(0); // Reset to first page when filter changes
   };
 
-  const handleDivisionChange = (e: SelectChangeEvent) => {
-    setSelectedDivision(e.target.value);
+  const handleDivisionChange = (event: any, newValue: string | null) => {
+    setSelectedDivision(newValue || "All Divisions");
     setPage(0); // Reset to first page when filter changes
   };
 
-  const handleCreatorChange = (e: SelectChangeEvent) => {
-    setSelectedCreator(e.target.value);
+  const handleCreatorChange = (event: any, newValue: string | null) => {
+    setSelectedCreator(newValue || "Created By");
     setPage(0); // Reset to first page when filter changes
   };
 
@@ -436,6 +475,10 @@ const ManageSimulationsPage = () => {
     setSelectedDepartment("All Departments");
     setSelectedDivision("All Divisions");
     setSelectedCreator("Created By");
+    setCreatorSearchQuery("");
+    setTagsSearchQuery("");
+    setDepartmentSearchQuery("");
+    setDivisionSearchQuery("");
     setCurrentTab("All");
     setPage(0);
   };
@@ -444,6 +487,42 @@ const ManageSimulationsPage = () => {
   const getUserName = (userId: string): string => {
     return userMap[userId] || userId;
   };
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const fullName = user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      const email = user.email || '';
+
+      return !creatorSearchQuery || 
+        fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(creatorSearchQuery.toLowerCase());
+    });
+  }, [users, creatorSearchQuery]);
+
+  // Filter tags based on search query
+  const filteredTags = useMemo(() => {
+    return tags.filter(tag => {
+      return !tagsSearchQuery || 
+        tag.name.toLowerCase().includes(tagsSearchQuery.toLowerCase());
+    });
+  }, [tags, tagsSearchQuery]);
+
+  // Filter divisions based on search query
+  const filteredDivisions = useMemo(() => {
+    return divisions.filter(division => {
+      return !divisionSearchQuery || 
+        division.toLowerCase().includes(divisionSearchQuery.toLowerCase());
+    });
+  }, [divisions, divisionSearchQuery]);
+
+  // Filter departments based on search query
+  const filteredDepartments = useMemo(() => {
+    return departments.filter(department => {
+      return !departmentSearchQuery || 
+        department.toLowerCase().includes(departmentSearchQuery.toLowerCase());
+    });
+  }, [departments, departmentSearchQuery]);
 
   // Render the table content based on loading state
   const renderTableContent = () => {
@@ -617,19 +696,6 @@ const ManageSimulationsPage = () => {
     ));
   };
 
-  // Update the creator dropdown to show user names instead of IDs
-  const getCreatorOptions = () => {
-    // Get unique creator IDs
-    const creatorIds = Array.from(new Set(simulations.map((sim) => sim.created_by)))
-      .filter(Boolean);
-
-    // Map IDs to names and return as options
-    return creatorIds.map(creatorId => ({
-      id: creatorId,
-      name: getUserName(creatorId)
-    }));
-  };
-
   return (
     <DashboardContent>
       <Container>
@@ -742,122 +808,174 @@ const ManageSimulationsPage = () => {
             />
 
             <Stack direction="row" spacing={2} sx={{ ml: "auto" }}>
-              <Select
-                value={selectedTags}
+              {/* Tags Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedTags === "All Tags" ? null : selectedTags}
                 onChange={handleTagsChange}
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+                inputValue={tagsSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setTagsSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Tags">All Tags</MenuItem>
-                {isLoadingTags ? (
-                  <MenuItem disabled>Loading tags...</MenuItem>
-                ) : tags.length === 0 ? (
-                  <MenuItem disabled>No tags available</MenuItem>
-                ) : (
-                  tags.map((tag) => (
-                    <MenuItem key={tag.id} value={tag.name}>
-                      {tag.name}
-                    </MenuItem>
-                  ))
+                options={["All Tags", ...filteredTags.map(tag => tag.name)]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Tags"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingTags ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingTags}
+                loadingText="Loading tags..."
+                noOptionsText="No tags found"
+                sx={{ width: 150 }}
+              />
 
-              {/* Division Filter - Updated */}
-              <Select
-                value={selectedDivision}
+              {/* Division Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedDivision === "All Divisions" ? null : selectedDivision}
                 onChange={handleDivisionChange}
-                size="small"
-                sx={{
-                  minWidth: 150,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+                inputValue={divisionSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setDivisionSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Divisions">All Divisions</MenuItem>
-                {isLoadingDivisions ? (
-                  <MenuItem disabled>Loading divisions...</MenuItem>
-                ) : divisions.length === 0 ? (
-                  <MenuItem disabled>No divisions available</MenuItem>
-                ) : (
-                  divisions.map((division) => (
-                    <MenuItem key={division} value={division}>
-                      {division}
-                    </MenuItem>
-                  ))
+                options={["All Divisions", ...filteredDivisions]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Divisions"
+                    size="small"
+                    sx={{
+                      minWidth: 150,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingDivisions ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingDivisions}
+                loadingText="Loading divisions..."
+                noOptionsText="No divisions found"
+                sx={{ width: 180 }}
+              />
 
-              {/* Department Filter - Updated */}
-              <Select
-                value={selectedDepartment}
+              {/* Department Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedDepartment === "All Departments" ? null : selectedDepartment}
                 onChange={handleDepartmentChange}
-                size="small"
-                sx={{
-                  minWidth: 150,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+                inputValue={departmentSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setDepartmentSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Departments">All Departments</MenuItem>
-                {isLoadingDepartments ? (
-                  <MenuItem disabled>Loading departments...</MenuItem>
-                ) : departments.length === 0 ? (
-                  <MenuItem disabled>No departments available</MenuItem>
-                ) : (
-                  departments.map((department) => (
-                    <MenuItem key={department} value={department}>
-                      {department}
-                    </MenuItem>
-                  ))
+                options={["All Departments", ...filteredDepartments]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Departments"
+                    size="small"
+                    sx={{
+                      minWidth: 150,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingDepartments ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingDepartments}
+                loadingText="Loading departments..."
+                noOptionsText="No departments found"
+                sx={{ width: 180 }}
+              />
 
-              <Select
-                value={selectedCreator}
+              {/* Created By Filter - Updated to use Autocomplete with search */}
+              <Autocomplete
+                value={selectedCreator === "Created By" ? null : selectedCreator}
                 onChange={handleCreatorChange}
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+                inputValue={creatorSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setCreatorSearchQuery(newInputValue);
                 }}
-              >
-                <MenuItem value="Created By">Created By</MenuItem>
-                {/* Show user names instead of IDs in the dropdown */}
-                {getCreatorOptions().map((creator) => (
-                  <MenuItem key={creator.id} value={creator.id}>
-                    {creator.name}
-                  </MenuItem>
-                ))}
-              </Select>
+                options={filteredUsers.map(user => user.user_id)}
+                getOptionLabel={(option) => {
+                  if (option === "Created By") return "Created By";
+                  const user = users.find(u => u.user_id === option);
+                  if (!user) return option;
+                  return user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || option;
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Created By"
+                    size="small"
+                    sx={{
+                      minWidth: 180,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingUsers ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                loading={isLoadingUsers}
+                loadingText="Loading users..."
+                noOptionsText="No users found"
+                sx={{ width: 200 }}
+              />
 
               {/* Reset Filters Button */}
               <Tooltip title="Reset all filters">
@@ -875,9 +993,9 @@ const ManageSimulationsPage = () => {
                         bgcolor: "#F5F6FF",
                       },
                       borderRadius: 2,
+                      height: 40,
                     }}
                   >
-                    Reset Filters
                   </Button>
                 </span>
               </Tooltip>

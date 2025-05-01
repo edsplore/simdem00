@@ -29,6 +29,7 @@ import {
   fetchCompleteSimulation,
   CompleteSimulationResponse,
 } from "../../../../../services/simulation_operations";
+import { useAuth } from "../../../../../context/AuthContext";
 
 interface TabState {
   script: boolean;
@@ -279,6 +280,7 @@ const GenerateScriptContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, currentWorkspaceId } = useAuth();
 
   const {
     scriptData,
@@ -875,7 +877,7 @@ const GenerateScriptContent = () => {
 
       // Use updateSimulation from simulation_operations instead of direct axios call
       const response = await updateSimulation(id, {
-        user_id: "user123", // This should come from your auth context
+        user_id: user?.id || "private_user", // This should come from your auth context
         sim_name: loadedSimulation.name, // Changed 'name' to 'sim_name' to match API
         division_id: loadedSimulation.division || "",
         department_id: loadedSimulation.department || "",
@@ -957,7 +959,7 @@ const GenerateScriptContent = () => {
         : [];
 
       // Add script data and other required fields to formData
-      formData.append("user_id", "user123"); // This should come from your auth context
+      formData.append("user_id", user?.id || "private_user"); // This should come from your auth context
       formData.append("sim_name", loadedSimulation.name); // Changed to sim_name
       formData.append("division_id", loadedSimulation.division || "");
       formData.append("department_id", loadedSimulation.department || "");

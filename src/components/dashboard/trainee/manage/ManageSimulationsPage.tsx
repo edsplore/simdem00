@@ -137,6 +137,9 @@ const ManageSimulationsPage = () => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
 
+  // Ref to track if users have been loaded
+  const hasLoadedUsers = useRef(false);
+
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
 
@@ -228,26 +231,26 @@ const ManageSimulationsPage = () => {
 
       const usersData = await fetchUsersByIds(currentWorkspaceId, userIdsArray);
 
-      // Create a mapping of user IDs to full names
-      const newUserMap: Record<string, string> = { ...userMap };
+      // Use functional update to avoid dependency on current userMap
+      setUserMap(prevUserMap => {
+        const newUserMap = { ...prevUserMap };
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
 
-      usersData.forEach(userData => {
-        if (userData.user_id) {
-          // Use fullName if available, otherwise construct from first and last name
-          const fullName = userData.fullName || 
-            `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-
-          newUserMap[userData.user_id] = fullName || userData.user_id;
-        }
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+        return newUserMap;
       });
-
-      setUserMap(newUserMap);
     } catch (error) {
       console.error("Error fetching user details:", error);
     }
-  }, [currentWorkspaceId, userMap]);
+  }, [currentWorkspaceId]); // Removed userMap from dependency array
 
-  // Load all users for the creator filter
+  // Load all users for the creator filter - FIXED to avoid repeated API calls
   const loadAllUsers = useCallback(async () => {
     if (!currentWorkspaceId) return;
 
@@ -256,30 +259,34 @@ const ManageSimulationsPage = () => {
       const usersData = await fetchUsersSummary(currentWorkspaceId);
       setUsers(usersData);
 
-      // Also update the user map with these users
-      const newUserMap: Record<string, string> = { ...userMap };
-      usersData.forEach(userData => {
-        if (userData.user_id) {
-          // Use fullName if available, otherwise construct from first and last name
-          const fullName = userData.fullName || 
-            `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+      // Use functional update to avoid dependency on current userMap
+      setUserMap(prevUserMap => {
+        const newUserMap = { ...prevUserMap };
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
 
-          newUserMap[userData.user_id] = fullName || userData.user_id;
-        }
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+        return newUserMap;
       });
-
-      setUserMap(newUserMap);
     } catch (error) {
       console.error("Error loading all users:", error);
     } finally {
       setIsLoadingUsers(false);
     }
-  }, [currentWorkspaceId, userMap]);
+  }, [currentWorkspaceId]); // Removed userMap from dependency array
 
-  // Load all users when component mounts
+  // Load all users when component mounts - use ref to ensure it only runs once
   useEffect(() => {
-    loadAllUsers();
-  }, [loadAllUsers]);
+    if (!hasLoadedUsers.current && currentWorkspaceId) {
+      loadAllUsers();
+      hasLoadedUsers.current = true;
+    }
+  }, [loadAllUsers, currentWorkspaceId]);
 
   const loadSimulations = useCallback(async () => {
     if (!user?.id) return;

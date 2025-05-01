@@ -50,7 +50,7 @@ import {
   fetchDepartments,
 } from "../../../../services/suggestions";
 import { fetchTags, Tag } from "../../../../services/tags";
-import { fetchUsersSummary, User } from "../../../../services/users";
+import { fetchUsersSummary, User, fetchUsersByIds } from "../../../../services/users";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 

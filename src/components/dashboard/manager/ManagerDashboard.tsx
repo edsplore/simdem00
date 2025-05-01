@@ -45,7 +45,7 @@ import {
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
 import { ArrowDropDownIcon } from "@mui/x-date-pickers";
-// import { fetchManagerDashboardData } from '../../../services/manager';
+import { fetchManagerDashboardAggregatedData, fetchTrainingEntityAttemptsStatsForManagerDashboard, type ManagerDashboardAggregatedDataPayload,ManagerDashboardAggregatedDataResponse, ManagerDashboardTrainingEntityAttemptsStatsResponse } from '../../../services/manager';
 
 
 // Mock data for the dashboard
@@ -1062,19 +1062,22 @@ const menuItemSx = {
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState(mockData);
+  const [dashboardData, setDashboardData] =  useState<ManagerDashboardAggregatedDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("Training Plans");
+  const [activeTab, setActiveTab] = useState("TrainingPlan");
   const [teamframe, setTeamframe] = useState("All Teams");
   const [timeframe, setTimeframe] = useState("Today");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isTableLoading, setIsTableLoading] = useState(false);
+  const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<ManagerDashboardTrainingEntityAttemptsStatsResponse[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [userActivityData, setUserActivityData] = useState({
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
   });
+  //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
 
 
   useEffect(() => {
@@ -1084,12 +1087,8 @@ const ManagerDashboard = () => {
           setIsLoading(true);
           setError(null);
           // In a real implementation, we would fetch data from the API
-          // const data = await fetchManagerDashboardData(user.id);
-          // setDashboardData(data);
-
-
-          // For now, we'll use mock data
-          setDashboardData(mockData);
+          const data = await fetchManagerDashboardAggregatedData({user_id: user.id});
+          setDashboardData(data);
         } catch (error) {
           console.error("Error loading dashboard data:", error);
           setError("Failed to load dashboard data");
@@ -1098,18 +1097,35 @@ const ManagerDashboard = () => {
         }
       }
     };
-
-
     loadDashboardData();
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   }, [user?.id]);
+
   const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
     setTeamframe(event.target.value);
   };
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (event: any, newValue: any) => {
     setActiveTab(newValue);
+    loadTrainingEntityAttemptsForManagerDashboard(newValue);
+  };
+
+  const loadTrainingEntityAttemptsForManagerDashboard = async (type: string) => {
+    try {
+      setIsTableLoading(true);
+      const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard(
+        {user_id: user?.id || "user123", type: type}
+      );
+      setTrainingEntityAttempts(data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load training entity attempts");
+      console.error("Error loading training entity attempts:", err);
+    } finally {
+      setIsTableLoading(false);
+    }
   };
 
 
@@ -1250,49 +1266,64 @@ const ManagerDashboard = () => {
             </Stack>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
-                <AssignmentCard
-                  title="Training Plans Assigned"
-                  total={dashboardData.assignmentCounts.trainingPlans.total}
-                  completed={
-                    dashboardData.assignmentCounts.trainingPlans.completed
-                  }
-                  inProgress={
-                    dashboardData.assignmentCounts.trainingPlans.inProgress
-                  }
-                  notStarted={
-                    dashboardData.assignmentCounts.trainingPlans.notStarted
-                  }
-                  overdue={dashboardData.assignmentCounts.trainingPlans.overdue}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {
+                  dashboardData &&
+                  (
+                    <AssignmentCard
+                      title="Training Plans Assigned"
+                      total={dashboardData.assignmentCounts.trainingPlans.total}
+                      completed={
+                        dashboardData.assignmentCounts.trainingPlans.completed
+                      }
+                      inProgress={
+                        dashboardData.assignmentCounts.trainingPlans.inProgress
+                      }
+                      notStarted={
+                        dashboardData.assignmentCounts.trainingPlans.notStarted
+                      }
+                      overdue={dashboardData.assignmentCounts.trainingPlans.overdue}
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )
+                }
               </Grid>
               <Grid item xs={12} md={4}>
-                <AssignmentCard
-                  title="Modules Assigned"
-                  total={dashboardData.assignmentCounts.modules.total}
-                  completed={dashboardData.assignmentCounts.modules.completed}
-                  inProgress={dashboardData.assignmentCounts.modules.inProgress}
-                  notStarted={dashboardData.assignmentCounts.modules.notStarted}
-                  overdue={dashboardData.assignmentCounts.modules.overdue}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {
+                  dashboardData &&
+                  (
+                    <AssignmentCard
+                      title="Modules Assigned"
+                      total={dashboardData.assignmentCounts.modules.total}
+                      completed={dashboardData.assignmentCounts.modules.completed}
+                      inProgress={dashboardData.assignmentCounts.modules.inProgress}
+                      notStarted={dashboardData.assignmentCounts.modules.notStarted}
+                      overdue={dashboardData.assignmentCounts.modules.overdue}
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )
+                }
               </Grid>
               <Grid item xs={12} md={4}>
-                <AssignmentCard
-                  title="Simulation Assigned"
-                  total={dashboardData.assignmentCounts.simulations.total}
-                  completed={
-                    dashboardData.assignmentCounts.simulations.completed
-                  }
-                  inProgress={
-                    dashboardData.assignmentCounts.simulations.inProgress
-                  }
-                  notStarted={
-                    dashboardData.assignmentCounts.simulations.notStarted
-                  }
-                  overdue={dashboardData.assignmentCounts.simulations.overdue}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {
+                  dashboardData &&
+                  (
+                    <AssignmentCard
+                      title="Simulation Assigned"
+                      total={dashboardData.assignmentCounts.simulations.total}
+                      completed={
+                        dashboardData.assignmentCounts.simulations.completed
+                      }
+                      inProgress={
+                        dashboardData.assignmentCounts.simulations.inProgress
+                      }
+                      notStarted={
+                        dashboardData.assignmentCounts.simulations.notStarted
+                      }
+                      overdue={dashboardData.assignmentCounts.simulations.overdue}
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )
+                }
               </Grid>
             </Grid>
           </Stack>
@@ -1309,37 +1340,51 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Training Plan"
-                      value={dashboardData.completionRates.trainingPlan}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                      (
+                        <CircularProgressCards
+                          title="Training Plan"
+                          value={dashboardData.completionRates.trainingPlans}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )
+                    }
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Modules"
-                      value={dashboardData.completionRates.modules}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                      (
+                        <CircularProgressCards
+                          title="Modules"
+                          value={dashboardData.completionRates.modules}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )
+                    }
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Simulation"
-                      value={dashboardData.completionRates.simulation}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                      (
+                        <CircularProgressCards
+                          title="Simulation"
+                          value={dashboardData.completionRates.simulations}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )
+                    }
                   </Grid>
                 </Grid>
               </Grid>
 
-
               <Grid item xs={12} md={4}>
-                <LeaderBoard
-                  data={dashboardData.leaderBoards.completion}
-                  title="Completion Rate Leader Board"
-                  sortBy="High to Low"
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {dashboardData &&
+                (
+                  <LeaderBoard
+                    data={dashboardData.leaderBoards.completion}
+                    title="Completion Rate Leader Board"
+                    sortBy="High to Low"
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
             </Grid>
           </Stack>
@@ -1356,37 +1401,48 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Training Plan"
-                      value={dashboardData.averageScores.trainingPlan}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Training Plan"
+                        value={dashboardData.averageScores.trainingPlans}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Modules"
-                      value={dashboardData.averageScores.modules}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Modules"
+                        value={dashboardData.averageScores.modules}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Simulation"
-                      value={dashboardData.averageScores.simulation}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Simulation"
+                        value={dashboardData.averageScores.simulations}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                 </Grid>
               </Grid>
 
-
               <Grid item xs={12} md={4}>
-                <LeaderBoard
-                  data={dashboardData.leaderBoards.averageScore}
-                  title="Completion Rate Leader Board"
-                  sortBy="High to Low"
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {dashboardData &&
+                (
+                  <LeaderBoard
+                    data={dashboardData.leaderBoards.averageScore}
+                    title="Average Score Leader Board"
+                    sortBy="High to Low"
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
             </Grid>
           </Stack>
@@ -1399,43 +1455,55 @@ const ManagerDashboard = () => {
               variant="h4"
               fontWeight="semibold"
             >
-              Adherence Rate (On-Time Completion Rate)
+            Adherence Rate (On-Time Completion Rate)
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Training Plan"
-                      value={dashboardData.averageScores.trainingPlan}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Training Plan"
+                        value={dashboardData.adherenceRates.trainingPlans}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Modules"
-                      value={dashboardData.averageScores.modules}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Modules"
+                        value={dashboardData.adherenceRates.modules}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    <CircularProgressCards
-                      title="Simulation"
-                      value={dashboardData.averageScores.simulation}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
+                    {dashboardData &&
+                    (
+                      <CircularProgressCards
+                        title="Simulation"
+                        value={dashboardData.adherenceRates.simulations}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                 </Grid>
               </Grid>
 
 
               <Grid item xs={12} md={4}>
-                <LeaderBoard
-                  data={dashboardData.leaderBoards.averageScore}
-                  title="Completion Rate Leader Board"
-                  sortBy="High to Low"
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+                {dashboardData &&
+                (
+                  <LeaderBoard
+                    data={dashboardData.leaderBoards.adherence}
+                    title="Adherence Rate Leader Board"
+                    sortBy="High to Low"
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
             </Grid>
           </Stack>
@@ -1483,9 +1551,9 @@ const ManagerDashboard = () => {
                   },
                 }}
               >
-                <Tab label="Training Plans" value="Training Plans" />
-                <Tab label="Modules" value="Modules" />
-                <Tab label="Simulations" value="Simulations" />
+                <Tab label="Training Plans" value="TrainingPlan" />
+                <Tab label="Modules" value="Module" />
+                <Tab label="Simulations" value="Simulation" />
               </Tabs>
             </Box>
             {/* Search and Filters */}
@@ -1579,28 +1647,14 @@ const ManagerDashboard = () => {
               </Stack>
             </Stack>
             {/* Training Plans Table */}
-            {activeTab === "Training Plans" && (
-              <TrainingPlanTable trainingPlans={dashboardData.trainingPlans} />
-            )}
-            {/* Modules Table - Would be similar to Training Plans but with module-specific data */}
-            {activeTab === "Modules" && (
-              <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
-                Modules data would be displayed here
-              </Typography>
-            )}
-            {/* Simulations Table - Would be similar to Training Plans but with simulation-specific data */}
-            {activeTab === "Simulations" && (
-              <Typography variant="body1" sx={{ textAlign: "center", py: 4 }}>
-                Simulations data would be displayed here
-              </Typography>
-            )}
+            <TrainingPlanTable trainingPlans={trainingEntityAttempts} />
+            
           </Stack>
         </Stack>
       </Container>
     </DashboardContent>
   );
 };
-
 
 export default ManagerDashboard;
 

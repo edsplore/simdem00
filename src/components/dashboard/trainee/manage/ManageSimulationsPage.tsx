@@ -135,7 +135,13 @@ const ManageSimulationsPage = () => {
   // State for user name mapping
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(false); // New state for user details
   const [users, setUsers] = useState<User[]>([]);
+
+  // Derived state to track if any user loading operation is in progress
+  const isCreatedByFilterLoading = useMemo(() => {
+    return isLoadingUsers || isLoadingUserDetails;
+  }, [isLoadingUsers, isLoadingUserDetails]);
 
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
@@ -209,7 +215,7 @@ const ManageSimulationsPage = () => {
     if (!currentWorkspaceId || simulations.length === 0) return;
 
     try {
-      setIsLoadingUsers(true);
+      setIsLoadingUserDetails(true); // Use dedicated loading state
 
       // Collect all unique user IDs from created_by and modified_by fields
       const userIds = new Set<string>();
@@ -247,7 +253,7 @@ const ManageSimulationsPage = () => {
     } catch (error) {
       console.error("Error fetching user details:", error);
     } finally {
-      setIsLoadingUsers(false);
+      setIsLoadingUserDetails(false); // Always reset loading state
     }
   }, [currentWorkspaceId, userMap]);
 
@@ -931,7 +937,7 @@ const ManageSimulationsPage = () => {
                 sx={{ width: 180 }}
               />
 
-              {/* Created By Filter - Updated to use Autocomplete with search */}
+              {/* Created By Filter - Updated with fixed loading indicator */}
               <Autocomplete
                 value={selectedCreator === "Created By" ? null : selectedCreator}
                 onChange={handleCreatorChange}
@@ -939,7 +945,7 @@ const ManageSimulationsPage = () => {
                 onInputChange={(event, newInputValue) => {
                   setCreatorSearchQuery(newInputValue);
                 }}
-                options={filteredUsers.map(user => user.user_id)}
+                options={["Created By", ...filteredUsers.map(user => user.user_id)]}
                 getOptionLabel={(option) => {
                   if (option === "Created By") return "Created By";
                   const user = users.find(u => u.user_id === option);
@@ -964,14 +970,14 @@ const ManageSimulationsPage = () => {
                       ...params.InputProps,
                       endAdornment: (
                         <>
-                          {isLoadingUsers ? <CircularProgress size={20} /> : null}
+                          {isCreatedByFilterLoading && <CircularProgress size={20} />}
                           {params.InputProps.endAdornment}
                         </>
                       ),
                     }}
                   />
                 )}
-                loading={isLoadingUsers}
+                loading={isCreatedByFilterLoading}
                 loadingText="Loading users..."
                 noOptionsText="No users found"
                 sx={{ width: 200 }}

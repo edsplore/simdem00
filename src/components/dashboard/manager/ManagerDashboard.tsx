@@ -1,52 +1,52 @@
-import React, { useState, useEffect } from "react";
 import {
-  Container,
-  Stack,
-  Typography,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
+  ExpandLess as ExpandLessIcon,
+  ExpandMore as ExpandMoreIcon,
+  InfoOutlined,
+  MoreVert as MoreVertIcon,
+  Search as SearchIcon,
+} from "@mui/icons-material";
+import {
   Box,
   Card,
-  Grid,
+  Chip,
   CircularProgress,
-  Tabs,
-  Tab,
-  TextField,
+  circularProgressClasses,
+  Collapse,
+  Container,
+  FormControl,
+  Grid,
+  IconButton,
   InputAdornment,
-  Select,
+  ListSubheader,
   MenuItem,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
+  TableFooter,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
-  Collapse,
-  Chip,
-  FormControl,
-  SelectChangeEvent,
+  Tabs,
+  TextField,
   Tooltip,
-  ListSubheader,
-  InputBase,
-  Divider,
-  circularProgressClasses,
-  TableFooter,
+  Typography,
 } from "@mui/material";
-import {
-  Search as SearchIcon,
-  Info as InfoIcon,
-  MoreVert as MoreVertIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  ChevronLeft as ChevronLeftIcon,
-  ChevronRight as ChevronRightIcon,
-  InfoOutlined,
-} from "@mui/icons-material";
-import DashboardContent from "../DashboardContent";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import { ArrowDropDownIcon } from "@mui/x-date-pickers";
-import { fetchManagerDashboardAggregatedData, fetchTrainingEntityAttemptsStatsForManagerDashboard, type ManagerDashboardAggregatedDataPayload,ManagerDashboardAggregatedDataResponse, ManagerDashboardTrainingEntityAttemptsStatsResponse } from '../../../services/manager';
-
+import {
+  fetchManagerDashboardAggregatedData,
+  fetchTrainingEntityAttemptsStatsForManagerDashboard,
+  ManagerDashboardAggregatedDataResponse,
+  ManagerDashboardTrainingEntityAttemptsStatsResponse,
+} from "../../../services/manager";
+import DashboardContent from "../DashboardContent";
 
 // Mock data for the dashboard
 const mockData = {
@@ -197,7 +197,6 @@ const mockData = {
   ],
 };
 
-
 // CircularProgressWithLabel component
 const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
   return (
@@ -266,7 +265,6 @@ const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
     </Box>
   );
 };
-
 
 // LeaderBoard component
 const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
@@ -466,7 +464,6 @@ const AssignmentCard = ({
           <InfoIconPopup title={popupText} />
         </Stack>
 
-
         <Typography
           variant="h2"
           sx={{ fontSize: 44 }}
@@ -475,7 +472,6 @@ const AssignmentCard = ({
         >
           {total}
         </Typography>
-
 
         <Grid container gap="14px">
           <Grid item>
@@ -532,7 +528,6 @@ const AssignmentCard = ({
   );
 };
 
-
 const CircularProgressCards = ({ value, title, popupText }) => {
   return (
     <Card
@@ -570,11 +565,9 @@ const CircularProgressCards = ({ value, title, popupText }) => {
   );
 };
 
-
 // TrainingPlanTable component
 const TrainingPlanTable = ({ trainingPlans }) => {
   const [expandedRows, setExpandedRows] = useState({});
-
 
   const toggleRow = (id) => {
     setExpandedRows((prev) => ({
@@ -582,7 +575,6 @@ const TrainingPlanTable = ({ trainingPlans }) => {
       [id]: !prev[id],
     }));
   };
-
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -597,7 +589,6 @@ const TrainingPlanTable = ({ trainingPlans }) => {
     }
   };
 
-
   return (
     <TableContainer
       component={Paper}
@@ -606,14 +597,28 @@ const TrainingPlanTable = ({ trainingPlans }) => {
       <Table>
         <TableHead sx={{ bgcolor: "#F9FAFB" }}>
           <TableRow>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>ID No.</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>TRP Name</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>Assigned Trainees</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>Completion rate</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>Adherence Rate</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>Avg. Score</TableCell>
-            <TableCell sx={{ py: 1, px: 2 , color: "#00000066",  }}>Est. Time</TableCell>
-            <TableCell sx={{ py: 1, px: 2  , color: "#00000066", }}></TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              ID No.
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              TRP Name
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              Assigned Trainees
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              Completion rate
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              Adherence Rate
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              Avg. Score
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
+              Est. Time
+            </TableCell>
+            <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}></TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -662,7 +667,6 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                     }}
                   >
                     {plan.assignedTrainees}
-
 
                     {plan.trainees.length > 0 &&
                       (expandedRows[`${plan.id}-${index}`] ? (
@@ -741,7 +745,6 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                   </IconButton>
                 </TableCell>
               </TableRow>
-
 
               {/* Expanded row for trainees */}
               {plan.trainees.length > 0 && (
@@ -984,12 +987,10 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                   1 - 10 of 10
                 </Typography>
 
-
                 {/* <IconButton disabled={page === 0}> */}
                 <IconButton>
                   <ChevronLeftIcon />
                 </IconButton>
-
 
                 <IconButton
                 // disabled={
@@ -1006,7 +1007,6 @@ const TrainingPlanTable = ({ trainingPlans }) => {
     </TableContainer>
   );
 };
-
 
 const menuSelectsx = {
   border: "1px solid #00000014",
@@ -1059,10 +1059,10 @@ const menuItemSx = {
   },
 };
 
-
 const ManagerDashboard = () => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] =  useState<ManagerDashboardAggregatedDataResponse | null>(null);
+  const [dashboardData, setDashboardData] =
+    useState<ManagerDashboardAggregatedDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("TrainingPlan");
@@ -1070,7 +1070,9 @@ const ManagerDashboard = () => {
   const [timeframe, setTimeframe] = useState("Today");
   const [searchQuery, setSearchQuery] = useState("");
   const [isTableLoading, setIsTableLoading] = useState(false);
-  const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<ManagerDashboardTrainingEntityAttemptsStatsResponse[]>([]);
+  const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<
+    ManagerDashboardTrainingEntityAttemptsStatsResponse[]
+  >([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [userActivityData, setUserActivityData] = useState({
@@ -1078,7 +1080,10 @@ const ManagerDashboard = () => {
     total: mockData.trainingPlans,
   });
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
-
+  const filteredTrainingEntities = trainingEntityAttempts.filter((entity) => {
+    const query = searchQuery.toLowerCase();
+    return entity.name.toLowerCase().includes(query);
+  });
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -1087,7 +1092,9 @@ const ManagerDashboard = () => {
           setIsLoading(true);
           setError(null);
           // In a real implementation, we would fetch data from the API
-          const data = await fetchManagerDashboardAggregatedData({user_id: user.id});
+          const data = await fetchManagerDashboardAggregatedData({
+            user_id: user.id,
+          });
           setDashboardData(data);
         } catch (error) {
           console.error("Error loading dashboard data:", error);
@@ -1112,12 +1119,15 @@ const ManagerDashboard = () => {
     loadTrainingEntityAttemptsForManagerDashboard(newValue);
   };
 
-  const loadTrainingEntityAttemptsForManagerDashboard = async (type: string) => {
+  const loadTrainingEntityAttemptsForManagerDashboard = async (
+    type: string
+  ) => {
     try {
       setIsTableLoading(true);
-      const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard(
-        {user_id: user?.id || "user123", type: type}
-      );
+      const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
+        user_id: user?.id || "user123",
+        type: type,
+      });
       setTrainingEntityAttempts(data);
       setError(null);
     } catch (err) {
@@ -1127,7 +1137,6 @@ const ManagerDashboard = () => {
       setIsTableLoading(false);
     }
   };
-
 
   if (isLoading) {
     return (
@@ -1141,7 +1150,6 @@ const ManagerDashboard = () => {
     );
   }
 
-
   if (error) {
     return (
       <DashboardContent>
@@ -1153,7 +1161,6 @@ const ManagerDashboard = () => {
       </DashboardContent>
     );
   }
-
 
   return (
     <DashboardContent>
@@ -1175,11 +1182,10 @@ const ManagerDashboard = () => {
                 My Team's Assignment and Progress
               </Typography>
 
-
               <Stack
                 direction={{
-                  sm: 'column',
-                  md: 'row',
+                  sm: "column",
+                  md: "row",
                 }}
                 justifyContent="center"
                 gap="12px"
@@ -1213,7 +1219,6 @@ const ManagerDashboard = () => {
                     </MenuItem>
                   </Select>
                 </FormControl>
-
 
                 <FormControl size="small" sx={{ minWidth: 120 }}>
                   <Select
@@ -1266,64 +1271,61 @@ const ManagerDashboard = () => {
             </Stack>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}>
-                {
-                  dashboardData &&
-                  (
-                    <AssignmentCard
-                      title="Training Plans Assigned"
-                      total={dashboardData.assignmentCounts.trainingPlans.total}
-                      completed={
-                        dashboardData.assignmentCounts.trainingPlans.completed
-                      }
-                      inProgress={
-                        dashboardData.assignmentCounts.trainingPlans.inProgress
-                      }
-                      notStarted={
-                        dashboardData.assignmentCounts.trainingPlans.notStarted
-                      }
-                      overdue={dashboardData.assignmentCounts.trainingPlans.overdue}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
-                  )
-                }
+                {dashboardData && (
+                  <AssignmentCard
+                    title="Training Plans Assigned"
+                    total={dashboardData.assignmentCounts.trainingPlans.total}
+                    completed={
+                      dashboardData.assignmentCounts.trainingPlans.completed
+                    }
+                    inProgress={
+                      dashboardData.assignmentCounts.trainingPlans.inProgress
+                    }
+                    notStarted={
+                      dashboardData.assignmentCounts.trainingPlans.notStarted
+                    }
+                    overdue={
+                      dashboardData.assignmentCounts.trainingPlans.overdue
+                    }
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} md={4}>
-                {
-                  dashboardData &&
-                  (
-                    <AssignmentCard
-                      title="Modules Assigned"
-                      total={dashboardData.assignmentCounts.modules.total}
-                      completed={dashboardData.assignmentCounts.modules.completed}
-                      inProgress={dashboardData.assignmentCounts.modules.inProgress}
-                      notStarted={dashboardData.assignmentCounts.modules.notStarted}
-                      overdue={dashboardData.assignmentCounts.modules.overdue}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
-                  )
-                }
+                {dashboardData && (
+                  <AssignmentCard
+                    title="Modules Assigned"
+                    total={dashboardData.assignmentCounts.modules.total}
+                    completed={dashboardData.assignmentCounts.modules.completed}
+                    inProgress={
+                      dashboardData.assignmentCounts.modules.inProgress
+                    }
+                    notStarted={
+                      dashboardData.assignmentCounts.modules.notStarted
+                    }
+                    overdue={dashboardData.assignmentCounts.modules.overdue}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} md={4}>
-                {
-                  dashboardData &&
-                  (
-                    <AssignmentCard
-                      title="Simulation Assigned"
-                      total={dashboardData.assignmentCounts.simulations.total}
-                      completed={
-                        dashboardData.assignmentCounts.simulations.completed
-                      }
-                      inProgress={
-                        dashboardData.assignmentCounts.simulations.inProgress
-                      }
-                      notStarted={
-                        dashboardData.assignmentCounts.simulations.notStarted
-                      }
-                      overdue={dashboardData.assignmentCounts.simulations.overdue}
-                      popupText="On time completed test Sim / Total no. of test sims completed"
-                    />
-                  )
-                }
+                {dashboardData && (
+                  <AssignmentCard
+                    title="Simulation Assigned"
+                    total={dashboardData.assignmentCounts.simulations.total}
+                    completed={
+                      dashboardData.assignmentCounts.simulations.completed
+                    }
+                    inProgress={
+                      dashboardData.assignmentCounts.simulations.inProgress
+                    }
+                    notStarted={
+                      dashboardData.assignmentCounts.simulations.notStarted
+                    }
+                    overdue={dashboardData.assignmentCounts.simulations.overdue}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                )}
               </Grid>
             </Grid>
           </Stack>
@@ -1340,44 +1342,37 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                      (
-                        <CircularProgressCards
-                          title="Training Plan"
-                          value={dashboardData.completionRates.trainingPlans}
-                          popupText="On time completed test Sim / Total no. of test sims completed"
-                        />
-                      )
-                    }
+                    {dashboardData && (
+                      <CircularProgressCards
+                        title="Training Plan"
+                        value={dashboardData.completionRates.trainingPlans}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                      (
-                        <CircularProgressCards
-                          title="Modules"
-                          value={dashboardData.completionRates.modules}
-                          popupText="On time completed test Sim / Total no. of test sims completed"
-                        />
-                      )
-                    }
+                    {dashboardData && (
+                      <CircularProgressCards
+                        title="Modules"
+                        value={dashboardData.completionRates.modules}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                      (
-                        <CircularProgressCards
-                          title="Simulation"
-                          value={dashboardData.completionRates.simulations}
-                          popupText="On time completed test Sim / Total no. of test sims completed"
-                        />
-                      )
-                    }
+                    {dashboardData && (
+                      <CircularProgressCards
+                        title="Simulation"
+                        value={dashboardData.completionRates.simulations}
+                        popupText="On time completed test Sim / Total no. of test sims completed"
+                      />
+                    )}
                   </Grid>
                 </Grid>
               </Grid>
 
               <Grid item xs={12} md={4}>
-                {dashboardData &&
-                (
+                {dashboardData && (
                   <LeaderBoard
                     data={dashboardData.leaderBoards.completion}
                     title="Completion Rate Leader Board"
@@ -1401,8 +1396,7 @@ const ManagerDashboard = () => {
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Training Plan"
                         value={dashboardData.averageScores.trainingPlans}
@@ -1411,8 +1405,7 @@ const ManagerDashboard = () => {
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Modules"
                         value={dashboardData.averageScores.modules}
@@ -1421,8 +1414,7 @@ const ManagerDashboard = () => {
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Simulation"
                         value={dashboardData.averageScores.simulations}
@@ -1434,8 +1426,7 @@ const ManagerDashboard = () => {
               </Grid>
 
               <Grid item xs={12} md={4}>
-                {dashboardData &&
-                (
+                {dashboardData && (
                   <LeaderBoard
                     data={dashboardData.leaderBoards.averageScore}
                     title="Average Score Leader Board"
@@ -1447,7 +1438,6 @@ const ManagerDashboard = () => {
             </Grid>
           </Stack>
 
-
           {/* Adherence Rate Section */}
           <Stack gap={2}>
             <Typography
@@ -1455,14 +1445,13 @@ const ManagerDashboard = () => {
               variant="h4"
               fontWeight="semibold"
             >
-            Adherence Rate (On-Time Completion Rate)
+              Adherence Rate (On-Time Completion Rate)
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} md={8}>
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Training Plan"
                         value={dashboardData.adherenceRates.trainingPlans}
@@ -1471,8 +1460,7 @@ const ManagerDashboard = () => {
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Modules"
                         value={dashboardData.adherenceRates.modules}
@@ -1481,8 +1469,7 @@ const ManagerDashboard = () => {
                     )}
                   </Grid>
                   <Grid item xs={12} sm={4}>
-                    {dashboardData &&
-                    (
+                    {dashboardData && (
                       <CircularProgressCards
                         title="Simulation"
                         value={dashboardData.adherenceRates.simulations}
@@ -1493,10 +1480,8 @@ const ManagerDashboard = () => {
                 </Grid>
               </Grid>
 
-
               <Grid item xs={12} md={4}>
-                {dashboardData &&
-                (
+                {dashboardData && (
                   <LeaderBoard
                     data={dashboardData.leaderBoards.adherence}
                     title="Adherence Rate Leader Board"
@@ -1531,7 +1516,7 @@ const ManagerDashboard = () => {
                   color: "#00000066",
                   fontSize: 16,
                   fontWeight: "semibold",
-                  
+
                   minHeight: 30,
                   "& .MuiTab-root": {
                     minHeight: 30,
@@ -1559,8 +1544,8 @@ const ManagerDashboard = () => {
             {/* Search and Filters */}
             <Stack
               direction={{
-                sm: 'column',
-                md: 'row',
+                sm: "column",
+                md: "row",
               }}
               bgcolor="#F9FAFB"
               borderRadius={1.5}
@@ -1580,7 +1565,6 @@ const ManagerDashboard = () => {
                     </InputAdornment>
                   ),
                 }}
-                
                 sx={{
                   // width: 300,
                   bgcolor: "white",
@@ -1602,11 +1586,13 @@ const ManagerDashboard = () => {
                 size="small"
               />
 
-
-              <Stack direction={{
-                sm: 'column',
-                md: 'row',
-              }}  gap={2}>
+              <Stack
+                direction={{
+                  sm: "column",
+                  md: "row",
+                }}
+                gap={2}
+              >
                 <Select
                   IconComponent={ExpandMoreIcon}
                   MenuProps={menuSelectProps}
@@ -1619,7 +1605,6 @@ const ManagerDashboard = () => {
                   </MenuItem>
                 </Select>
 
-
                 <Select
                   IconComponent={ExpandMoreIcon}
                   MenuProps={menuSelectProps}
@@ -1631,7 +1616,6 @@ const ManagerDashboard = () => {
                     All Time
                   </MenuItem>
                 </Select>
-
 
                 <Select
                   value="All Creators"
@@ -1647,8 +1631,13 @@ const ManagerDashboard = () => {
               </Stack>
             </Stack>
             {/* Training Plans Table */}
-            <TrainingPlanTable trainingPlans={trainingEntityAttempts} />
-            
+            <TrainingPlanTable
+              trainingPlans={
+                filteredTrainingEntities
+                  ? filteredTrainingEntities
+                  : trainingEntityAttempts
+              }
+            />
           </Stack>
         </Stack>
       </Container>
@@ -1657,6 +1646,3 @@ const ManagerDashboard = () => {
 };
 
 export default ManagerDashboard;
-
-
-

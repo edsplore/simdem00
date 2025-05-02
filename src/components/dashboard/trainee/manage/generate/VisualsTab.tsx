@@ -247,6 +247,7 @@ export default function VisualsTab({
   // Confirm dialog for deleting the last slide
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [isLastImage, setIsLastImage] = useState(false);
 
   // Use useMemo to stabilize the isSequenceExpanded state and prevent unnecessary re-renders
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
@@ -341,9 +342,14 @@ export default function VisualsTab({
     return () => clearTimeout(debounceTimeout);
   }, [visualImages, onImagesUpdate]);
 
-  // Crucial update: Process images prop into proper visualImages state
+  // Only process images prop on initial mount or when explicitly needed
+  const didInitializeRef = useRef(false);
+
   useEffect(() => {
-    console.log("Images prop changed:", images);
+    // Skip if we've already initialized (only sync from props once)
+    if (didInitializeRef.current) return;
+
+    console.log("Initial images processing:", images);
     if (images && images.length > 0) {
       // Transform the input images to our internal format
       const processedImages = images.map((img) => {
@@ -438,19 +444,22 @@ export default function VisualsTab({
 
       setVisualImages(processedImages);
 
-      // Only auto-select if coming from zero images OR if the current selection doesn't exist
-      const currentSelectionExists = processedImages.some(
-        (img) => img.id === selectedImageId,
-      );
-      if (!currentSelectionExists && processedImages.length > 0) {
+      // Auto-select the first image if there's no current selection
+      if (processedImages.length > 0 && !selectedImageId) {
         setSelectedImageId(processedImages[0].id);
       }
+
+      // Mark that we've initialized
+      didInitializeRef.current = true;
     } else if (images && images.length === 0) {
       // If we receive an empty images array, clear our state completely
       setVisualImages([]);
       setSelectedImageId(null);
       setEditingHotspot(null);
       setIsEditing(false);
+
+      // Mark that we've initialized
+      didInitializeRef.current = true;
     }
   }, [images, selectedImageId]);
 
@@ -661,79 +670,41 @@ export default function VisualsTab({
   // Enhanced delete function with better state management
   const handleDeleteImage = useCallback(
     (imgId: string) => {
-      console.log("Deleting image with ID:", imgId);
-      console.log("Before deletion - visualImages count:", visualImages.length);
-      console.log("Current selected image ID:", selectedImageId);
-
-      // Check if this is the last image - show confirmation dialog
-      if (visualImages.length === 1) {
-        setImageToDelete(imgId);
-        setShowDeleteConfirm(true);
-        return;
-      }
-
-      // Process deletion for non-last image
-      performDeleteImage(imgId);
+      // Store the ID of the image to delete
+      setImageToDelete(imgId);
+      // Check if this is the last image - for different dialog message
+      setIsLastImage(visualImages.length === 1);
+      // Always show confirmation dialog
+      setShowDeleteConfirm(true);
     },
-    [selectedImageId, visualImages],
+    [visualImages.length],
   );
 
-  // Actual deletion function separated for clarity
-  const performDeleteImage = useCallback(
-    (imgId: string) => {
-      // First determine what images will remain after deletion
-      const newImages = visualImages.filter((img) => img.id !== imgId);
-      console.log("After deletion - new images count:", newImages.length);
+  // Actual deletion function separated for clarity and improved with functional updates
+  const performDeleteImage = useCallback((imgId: string) => {
+    // Use functional updates to ensure we always work with the latest state
+    setVisualImages((prevImages) => {
+      const idx = prevImages.findIndex((img) => img.id === imgId);
+      const nextImages = prevImages.filter((img) => img.id !== imgId);
 
-      const isLastImage = visualImages.length === 1;
-      const isSelectedImage = selectedImageId === imgId;
-
-      // If we're deleting the selected image, find the next image to select BEFORE deletion
-      let nextSelectedId: string | null = null;
-      if (isSelectedImage && newImages.length > 0) {
-        const currentIndex = visualImages.findIndex((img) => img.id === imgId);
-        const newIndex = Math.min(currentIndex, newImages.length - 1);
-        nextSelectedId = newImages[newIndex].id;
-        console.log("Will select new image:", nextSelectedId);
-      }
-
-      // Important - reset editing states to avoid any conflicts
-      if (isSelectedImage) {
-        setEditingHotspot(null);
-        setIsEditing(false);
-      }
-
-      // First update the visualImages state to actually delete the image
-      setVisualImages(newImages);
-
-      // Then handle selection changes AFTER deletion is done
-      if (isSelectedImage) {
-        if (nextSelectedId) {
-          // Select the new image immediately
-          setSelectedImageId(nextSelectedId);
-          console.log("Selected new image:", nextSelectedId);
-        } else {
-          // No images left, reset selection
-          setSelectedImageId(null);
+      // Choose the slide that will be selected afterwards
+      setSelectedImageId((currentSel) => {
+        if (currentSel !== imgId) return currentSel; // Nothing to fix
+        if (nextImages.length === 0) {
+          // If this was the last image, also reset sequence expanded state
+          setIsSequenceExpanded(false);
+          return null; // List became empty
         }
-      }
+        return nextImages[Math.min(idx, nextImages.length - 1)].id;
+      });
 
-      // If this was the last image, force reset all states
-      if (isLastImage) {
-        console.log("Last image deleted, resetting all states");
-        setSelectedImageId(null);
-        setEditingHotspot(null);
-        setIsEditing(false);
-        setIsSequenceExpanded(false);
+      return nextImages;
+    });
 
-        // Force rerender the drop zone (not usually needed but helps with edge cases)
-        setTimeout(() => {
-          setVisualImages([]);
-        }, 50);
-      }
-    },
-    [selectedImageId, visualImages],
-  );
+    // Clear edit state regardless
+    setEditingHotspot(null);
+    setIsEditing(false);
+  }, []);
 
   // Clicking a thumbnail
   const handleSelectImage = useCallback((imgId: string) => {
@@ -1444,11 +1415,12 @@ export default function VisualsTab({
         open={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
       >
-        <DialogTitle>Delete Last Slide?</DialogTitle>
+        <DialogTitle>Delete Slide?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            This is the last slide. Deleting it will reset the visuals section.
-            Are you sure you want to proceed?
+            {isLastImage
+              ? "This is the last slide. Deleting it will reset the visuals section."
+              : "Are you sure you want to delete this slide?"}
           </DialogContentText>
         </DialogContent>
         <DialogActions>

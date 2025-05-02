@@ -123,7 +123,6 @@ export const fetchManagerDashboardAggregatedData = async (
   payload: ManagerDashboardAggregatedDataPayload
 ): Promise<ManagerDashboardAggregatedDataResponse> => {
   try {
-    debugger;
     const response = await apiClient.post(
       "/manager-dashboard-data/fetch",
       payload

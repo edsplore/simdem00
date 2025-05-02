@@ -575,8 +575,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -610,8 +610,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -645,8 +645,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1000,4 +1000,3 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 };
 
 export default AudioSimulationPage;
-s

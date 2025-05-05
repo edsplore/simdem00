@@ -51,7 +51,7 @@ import {
 } from "../../../services/manager";
 import DashboardContent from "../DashboardContent";
 import { fetchReporteeUsers, User } from "../../../services/users";
-import {fetchTeams} from "../../../services/teams"
+import {fetchTeams, TeamResponse, Team} from "../../../services/teams"
 
 // Mock data for the dashboard
 const mockData = {
@@ -1069,9 +1069,9 @@ const ManagerDashboard = () => {
   const [reporteeUser, setReporteeUser] = useState<null | User[]>(null);
   const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
   const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
-  const [reporteeTeam, setReporteeTeam] = useState<null | User[]>(null);
-  const [filteredReporteeTeamIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
-  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
+  const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
+
+  const [reporteeTeamIdsMapToName, setReporteeTeamIdsMapToName] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("TrainingPlan");
@@ -1125,10 +1125,6 @@ const ManagerDashboard = () => {
         const data = await fetchReporteeUsers(workspaceId || "");
         console.log("repoertee users --------", data);
         const userData = data?.map((user: User) => user.user_id) || []
-        // const userDataMap = data?..reduce<Record<string, string>>((acc, user) => {
-        //     acc[user.user_id] = user.fullName;
-        //     return acc;
-        //   }, {})
         setReporteeUser(data);
         setFilteredReporteeUserIds(userData)
         // setReporteeUserIdsMapToName(data.reduce<Record<string, string>>((acc, user) => {

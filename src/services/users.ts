@@ -91,7 +91,7 @@ export const fetchUsersSummary = async (
         accept: "application/json",
       },
     });
-    return response.data;
+    return response.data.items;
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;

@@ -1070,7 +1070,7 @@ const ManagerDashboard = () => {
   const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
   const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
   const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
-
+  const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<[] | string[]>([]);
   const [reporteeTeamIdsMapToName, setReporteeTeamIdsMapToName] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1127,12 +1127,37 @@ const ManagerDashboard = () => {
         const userData = data?.map((user: User) => user.user_id) || []
         setReporteeUser(data);
         setFilteredReporteeUserIds(userData)
-        // setReporteeUserIdsMapToName(data.reduce<Record<string, string>>((acc, user) => {
-        //   acc[user.user_id] = user.fullName;
-        //   return acc;
-        // }, {}));
         const userMap = new Map(data?.map(user => [user.user_id, user.fullName]));
         setReporteeUserIdsMapToName(userMap);
+      } catch (error) {
+        console.error("Error loading reportee users:", error);
+        setError("Failed to load reportee users");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const loadReporteeTeams = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // In a real implementation, we would fetch data from the API
+        const params = new URLSearchParams(location.search);
+        const workspaceId = params.get("workspace_id");
+        const data = await fetchTeams(workspaceId || "");
+        console.log("repoertee users --------", data);
+        const teamsData = data?.items?.map((team: Team) => team.team_id)
+        setReporteeTeam(data);
+        if(teamsData) {
+          setFilteredReporteeTeamIds(teamsData)
+        }
+        
+        const teamMap = new Map(data?.items?.map(team => [team.team_id, team.name]));
+        if(teamMap) {
+          setReporteeTeamIdsMapToName(teamMap);
+        }
       } catch (error) {
         console.error("Error loading reportee users:", error);
         setError("Failed to load reportee users");
@@ -1164,6 +1189,7 @@ const ManagerDashboard = () => {
 
   useEffect(() => {
     loadReporteeUser();
+    loadReporteeTeams();
   }, [user?.id]);
 
   useEffect(() => {
@@ -1357,16 +1383,16 @@ const ManagerDashboard = () => {
                     >
                       Teams
                     </ListSubheader>
-                    {mockData.dropdownData[1].items
-                      .filter((user) =>
-                        user
+                    {filteredReporteeTeamIds
+                      .filter((team) =>
+                        team
                           .toLowerCase()
                           .includes(dropdownSearchQuery.toLowerCase())
                       )
-                      .map((team) => (
-                        <MenuItem key={team} sx={menuItemSx} value={team}>
-                          {team}
-                          {teamframe.includes(team) && (
+                      .map((teamId) => (
+                        <MenuItem key={teamId} sx={menuItemSx} value={teamId}>
+                          {reporteeTeamIdsMapToName.get(teamId)}
+                          {teamframe.includes(teamId) && (
                             <ListItemIcon>
                               <Check fontSize="small" color="primary" />
                             </ListItemIcon>
@@ -1764,9 +1790,22 @@ const ManagerDashboard = () => {
                   value="All Teams"
                   size="small"
                 >
-                  <MenuItem sx={menuItemSx} value="All Teams">
-                    All Teams
-                  </MenuItem>
+                  {filteredReporteeTeamIds
+                    .filter((team) =>
+                      team
+                        .toLowerCase()
+                        .includes(dropdownSearchQuery.toLowerCase())
+                    )
+                    .map((teamId, idx) => (
+                      <MenuItem key={teamId} sx={menuItemSx} value={teamId} selected={idx === 0}>
+                        {reporteeTeamIdsMapToName.get(teamId)}
+                        {teamframe.includes(teamId) && (
+                          <ListItemIcon>
+                            <Check fontSize="small" color="primary" />
+                          </ListItemIcon>
+                        )}
+                      </MenuItem>
+                    ))}
                 </Select>
 
                 <Select

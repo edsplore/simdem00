@@ -1,4 +1,5 @@
-import apiClient from './api/interceptors';
+import apiClient from "./api/interceptors";
+
 
 /**
  * Interface for a voice entry
@@ -37,12 +38,12 @@ export interface ListVoicesResponse {
  * @param userId - The ID of the user making the request
  * @returns A promise with the list of available voices
  */
-export const listVoices = async (userId: string): Promise<ListVoicesResponse> => {
+export const listVoices = async (userId: string,): Promise<ListVoicesResponse> => {
   try {
     const response = await apiClient.post<ListVoicesResponse>(
-      "/api/list-voices",
+      "/list-voices", 
       {
-        user_id: userId
+      user_id: userId,
       }
     );
 
@@ -60,19 +61,21 @@ export const listVoices = async (userId: string): Promise<ListVoicesResponse> =>
  * @returns Filtered array of voices
  */
 export const filterVoices = (
-  voices: Voice[], 
+  voices: Voice[],
   criteria: {
     accent?: string;
     gender?: string;
     age?: string;
     provider?: string;
-  }
+  },
 ): Voice[] => {
-  return voices.filter(voice => 
-    (!criteria.accent || voice.accent === criteria.accent) &&
-    (!criteria.gender || voice.gender.toLowerCase() === criteria.gender.toLowerCase()) &&
-    (!criteria.age || voice.age === criteria.age) &&
-    (!criteria.provider || voice.provider === criteria.provider)
+  return voices.filter(
+    (voice) =>
+      (!criteria.accent || voice.accent === criteria.accent) &&
+      (!criteria.gender ||
+        voice.gender.toLowerCase() === criteria.gender.toLowerCase()) &&
+      (!criteria.age || voice.age === criteria.age) &&
+      (!criteria.provider || voice.provider === criteria.provider),
   );
 };
 
@@ -82,6 +85,9 @@ export const filterVoices = (
  * @param voiceId - ID of the voice to find
  * @returns The voice with the matching ID or undefined if not found
  */
-export const getVoiceById = (voices: Voice[], voiceId: string): Voice | undefined => {
-  return voices.find(voice => voice.voice_id === voiceId);
+export const getVoiceById = (
+  voices: Voice[],
+  voiceId: string,
+): Voice | undefined => {
+  return voices.find((voice) => voice.voice_id === voiceId);
 };

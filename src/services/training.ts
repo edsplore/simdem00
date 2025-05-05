@@ -6,7 +6,7 @@ export const fetchTrainingPlanDetails = async (
   planId: string,
 ) => {
   try {
-    const response = await apiClient.get(`/api/training-plans/fetch/${planId}`);
+    const response = await apiClient.get(`/training-plans/fetch/${planId}`);
     return response.data;
   } catch (error) {
     console.error("Error fetching training plan details:", error);
@@ -18,8 +18,8 @@ export const fetchTrainingData = async (
   userId: string,
 ): Promise<TrainingData> => {
   try {
-    const response = await apiClient.post("/api/fetch-assigned-plans", {
-      user_id: userId,
+    const response = await apiClient.post('/fetch-assigned-plans', {
+      user_id: userId
     });
     return response.data;
   } catch (error) {

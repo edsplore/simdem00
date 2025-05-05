@@ -1,8 +1,5 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
-import axios from "axios";
 import WaveSurfer from "wavesurfer.js";
 import {
   Card,

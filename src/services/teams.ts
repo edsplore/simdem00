@@ -39,12 +39,9 @@ export interface TeamResponse {
   total_count?: number;
 }
 
-// Staging URL - can be switched to staging as needed
-//const TEAMS_URL = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/api/teams';
-
-// Dev URL - can be switched to staging as needed
-const TEAMS_URL =
-  "https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/api/teams";
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
+const TEAMS_URL = `${UAM_API_URL}/uam/api/teams`;
 
 /**
  * Fetches teams for a specific workspace

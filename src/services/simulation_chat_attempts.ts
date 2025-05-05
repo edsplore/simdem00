@@ -64,7 +64,7 @@ export const startChatSimulation = async (
 ): Promise<ChatResponse> => {
   try {
     const response = await apiClient.post<ChatResponse>(
-      "/api/simulations/start-chat",
+      "/simulations/start-chat",
       {
         user_id: userId,
         sim_id: simId,
@@ -97,7 +97,7 @@ export const sendChatMessage = async (
 ): Promise<ChatResponse> => {
   try {
     const response = await apiClient.post<ChatResponse>(
-      "/api/simulations/start-chat", // Note: The endpoint is still start-chat despite being used for message sending
+      "/simulations/start-chat", // Note: The endpoint is still start-chat despite being used for message sending
       {
         user_id: userId,
         sim_id: simId,
@@ -130,7 +130,7 @@ export const endChatSimulation = async (
 ): Promise<EndChatResponse> => {
   try {
     const response = await apiClient.post<EndChatResponse>(
-      "/api/simulations/end-chat",
+      "/simulations/end-chat",
       {
         user_id: userId,
         simulation_id: simId,

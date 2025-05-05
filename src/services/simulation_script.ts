@@ -64,7 +64,7 @@ export const convertAudioToScript = async (
     formData.append("audio_file", audioFile);
 
     const response = await apiClient.post<AudioToScriptResponse>(
-      "/api/convert/audio-to-script",
+      "/convert/audio-to-script",
       formData,
       {
         headers: {
@@ -100,7 +100,7 @@ export const convertAudioToText = async (
     formData.append("audio_file", audioData);
 
     const response = await apiClient.post<AudioToTextResponse>(
-      "/api/convert/audio-to-text",
+      "/convert/audio-to-text",
       formData,
       {
         headers: {
@@ -128,7 +128,7 @@ export const convertTextToScript = async (
 ): Promise<TextToScriptResponse> => {
   try {
     const response = await apiClient.post<TextToScriptResponse>(
-      "/api/convert/text-to-script",
+      "/convert/text-to-script",
       {
         user_id: userId,
         prompt: prompt,

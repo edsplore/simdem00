@@ -19,19 +19,9 @@ export default defineConfig({
       "@mui/icons-material": "@mui/icons-material/esm",
     },
   },
+  // Removed the `/api` proxy configuration
   server: {
-    proxy: {
-      "/api": {
-        target:
-          "https://1d1af155-4b31-443e-b7f4-734bf003281a-00-6px8vaye8p33.pike.replit.dev",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-        secure: false,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      },
-    },
+    // keep this block if you still want to add other dev-server options later
   },
   build: {
     rollupOptions: {

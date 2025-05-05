@@ -61,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   // Define all possible nav items
   const allNavItems = [
     { path: '/dashboard', icon: BarChartIcon, label: 'Dashboard', permission: 'dashboard-trainee' },
-    { path: '/training', icon: MenuBookIcon, label: 'Training plan', permission: 'training-plan' },
+    { path: '/training', icon: MenuBookIcon, label: 'Training Plan', permission: 'training-plan' },
     { path: '/playback', icon: PlayCircleIcon, label: 'Playback', permission: 'playback' },
     { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations', permission: 'assign-simulations' },
     { path: '/manage-simulations', icon: SmartToyIcon, label: 'Manage Simulations', permission: 'manage-simulations' },

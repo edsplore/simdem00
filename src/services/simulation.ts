@@ -68,7 +68,7 @@ export const publishSimulation = async (
 ): Promise<SimulationResponse> => {
   try {
     const response = await apiClient.put(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       payload
     );
     return response.data;

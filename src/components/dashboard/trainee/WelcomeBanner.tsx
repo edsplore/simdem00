@@ -5,6 +5,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../../context/AuthContext';
 import type { TrainingData, Simulation } from '../../../types/training';
+import welcomeBannerImage from '../../../assets/banner.svg';
 
 interface WelcomeBannerProps {
   userName: string;
@@ -124,7 +125,7 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData })
         </Stack>
         <Box
           component="img"
-          src="/src/assets/banner.svg"
+          src={welcomeBannerImage}
           alt="Dashboard illustration"
           sx={{
             width: 300,

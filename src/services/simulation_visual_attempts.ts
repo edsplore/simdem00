@@ -125,7 +125,7 @@ export const startVisualSimulation = async (
 ): Promise<VisualSimulationResponse> => {
   try {
     const response = await apiClient.post<VisualSimulationResponse>(
-      "/api/simulations/start-visual-attempt",
+      "/simulations/start-visual-attempt",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -154,7 +154,7 @@ export const endVisualSimulation = async (
 ): Promise<EndVisualSimulationResponse> => {
   try {
     const response = await apiClient.post<EndVisualSimulationResponse>(
-      "/api/simulations/end-visual-attempt",
+      "/simulations/end-visual-attempt",
       {
         user_id: userId,
         simulation_id: simulationId,

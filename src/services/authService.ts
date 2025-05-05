@@ -3,17 +3,12 @@ import { jwtDecode } from "jwt-decode";
 import { User, DecodedToken } from "../types/auth";
 import apiClient from "./api/interceptors";
 
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
+
 // Environment-specific URLs
-const URLS = {
-  dev: {
-    refreshToken:
-      "https://eu2ccapdagl001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh",
-  },
-  staging: {
-    refreshToken:
-      "https://eu2ccapsal001.eastus2.cloudapp.azure.com/uam/auth/tokens/access/refresh",
-  },
-};
+const REFRESH_TOKEN_URL = `https://api.dev.everailabs.com/uam/auth/tokens/access/refresh`;
+
 
 class AuthService {
   private refreshTokenTimeout?: NodeJS.Timeout;
@@ -54,29 +49,24 @@ class AuthService {
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
       console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
-      // Use staging URL for now, could be made configurable based on environment
-      const refreshTokenUrl = URLS.dev.refreshToken;
+      const response = await axios.post(REFRESH_TOKEN_URL, "", {
+        withCredentials: true, // This ensures cookies are sent with the request
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          ...(effectiveWorkspaceId
+            ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
+            : {}),
+        },
+      });
 
-      // const response = await axios.post(refreshTokenUrl, "", {
-      //   withCredentials: true, // This ensures cookies are sent with the request
-      //   headers: {
-      //     "Access-Control-Allow-Origin": "*",
-      //     ...(effectiveWorkspaceId
-      //       ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
-      //       : {}),
-      //   },
-      // });
+      console.log("Refresh token response:", {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data,
+      });
 
-      // console.log("Refresh token response:", {
-      //   status: response.status,
-      //   statusText: response.statusText,
-      //   headers: response.headers,
-      //   data: response.data,
-      // });
-
-      // const newToken = response.data;
-      const newToken =
-        "eyJhbGciOiJSUzI1NiJ9.eyJkaXZpc2lvbiI6IkV2ZXJBSSBMYWJzIiwic3ViIjoiYW5tb2xfdGVzdEB5b3BtYWlsLmNvbSIsInVzZXJfaWQiOiI2N2Y2Mjg2Yjc1YjkyMjZhOWFmYWJmYWEiLCJpc3MiOiJzZWxmIiwiV1MtMSI6eyJwZXJtaXNzaW9ucyI6eyJzaW11bGF0b3IiOnsibWFuYWdlLXRyYWluaW5nLXBsYW4iOltbIkFDQ0VTUyIsIkNSRUFURSIsIlJFQUQiLCJVUERBVEUiLCJERUxFVEUiXV0sIm1hbmFnZS1zaW11bGF0aW9ucyI6W1siQUNDRVNTIiwiQ1JFQVRFIiwiUkVBRCIsIlVQREFURSIsIkRFTEVURSJdXSwiZGFzaGJvYXJkLXRyYWluZWUiOltbIkFDQ0VTUyIsIlJFQUQiXV0sInRyYWluaW5nLXBsYW4iOltbIkFDQ0VTUyIsIlJFQUQiXV0sInBsYXliYWNrIjpbWyJBQ0NFU1MiLCJSRUFEIl1dLCJkYXNoYm9hcmQtbWFuYWdlciI6W1tdXSwiZGFzaGJvYXJkLWFkbWluIjpbW11dLCJhc3NpZ24tc2ltdWxhdGlvbnMiOltbIkFDQ0VTUyIsIkNSRUFURSIsIlJFQUQiXV19fSwicm9sZXMiOnsic2ltdWxhdG9yIjpbImFubW9sX3Rlc3QiXX19LCJsYXN0X25hbWUiOiJSaXNoaSIsInJlcG9ydGluZ190byI6IlNpbXVsYXRvciBNYW5hZ2VyIiwiZXhwIjoxNzQ2NDA1NDI4LCJkZXBhcnRtZW50IjoiUHJvZHVjdCBEZXNpZ24gZGV2IiwiaWF0IjoxNzQ2NDA0MjI4LCJmaXJzdF9uYW1lIjoiQW5tb2wifQ.CT7HU5xZE4cL5DnAmQJLiXl8igJxvj_LMWH9ubO0YSDWlG9n8upo4d5OjyQiYxk0t8ZZ7uHJjmElcY2YylQDzeJ-m4x_2tiloaap79ezPLARSiR5eBT0fXSZkD4UU8RoPpvgtFnG5Gm9rpDOUW0ojPJL_t5TqnPwWcc-wTB_GUsWQLM9xgd6fjNMUlo_pleB12KIvm8ha23wKLe8TGKRqvyB7GSRkjGHFKRpDmfZI9afu7WaIkIlQzZ3EyGJd2lwh-vZDWYjD4DXOqjERKT9EeINhjJq32igUwFlKQpz7tb5PiwRN_7dw4jPOOKJc4LcnGIM--bLgn_IXmBJeMpyKw";
+      const newToken = response.data;
       this.token = newToken;
 
       // Reset refresh attempts on success
@@ -108,26 +98,6 @@ class AuthService {
             }
           : undefined,
       });
-
-      // Increment attempt counter
-      this.refreshAttempts++;
-
-      // If we haven't reached max attempts, try again after delay
-      if (this.refreshAttempts < this.maxRefreshAttempts) {
-        console.log(
-          `Will retry in ${this.refreshRetryDelay / 1000} seconds...`,
-        );
-        return new Promise((resolve, reject) => {
-          setTimeout(() => {
-            // Clear the current promise before making a new attempt
-            this.refreshPromise = null;
-            this.refreshToken(workspaceId).then(resolve).catch(reject);
-          }, this.refreshRetryDelay);
-        });
-      }
-
-      // Reset attempts counter for next time
-      this.refreshAttempts = 0;
 
       // If all attempts failed, clear auth data and throw error
       this.clearAuthData();

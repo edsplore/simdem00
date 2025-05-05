@@ -22,7 +22,7 @@ export type CreateSimulationResponse = {
 
 export const createSimulation = async (payload: CreateSimulationPayload): Promise<CreateSimulationResponse> => {
   try {
-    const response = await apiClient.post('/api/simulations/create', payload);
+    const response = await apiClient.post('/simulations/create', payload);
     return response.data;
   } catch (error) {
     console.error('Error creating simulation:', error);

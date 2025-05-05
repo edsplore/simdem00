@@ -1,6 +1,9 @@
 import React from 'react';
 import { Stack, Grid, Typography, Card, CardContent, Box } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
+import completionImage from '../../../../assets/completion.svg';
+import averageImage from '../../../../assets/average.svg';
+import highestImage from '../../../../assets/highest.svg';
 
 interface StatData {
   title: string;

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Stack, Box } from '@mui/material';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -41,7 +40,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {children}
         </Box>
       </Stack>
-      {/* <Footer /> */}
     </Stack>
   );
 };

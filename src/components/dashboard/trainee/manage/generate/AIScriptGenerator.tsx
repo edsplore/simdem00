@@ -79,8 +79,10 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({
     loadingInterval.current = setInterval(cycleLoadingMessage, 2000);
 
     try {
+
       // Use our new function from simulation_script.ts
       const response = await convertTextToScript(user?.id || "user123", prompt);
+
 
       // Transform API response into the correct Message format
       if (response && Array.isArray(response.script)) {

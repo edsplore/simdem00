@@ -59,8 +59,8 @@ export const fetchTrainingPlans = async (
   userId: string,
 ): Promise<TrainingPlan[]> => {
   try {
-    const response = await apiClient.post("/api/training-plans/fetch", {
-      user_id: userId,
+    const response = await apiClient.post('/training-plans/fetch', {
+      user_id: userId
     });
     return response.data.training_plans;
   } catch (error) {
@@ -73,7 +73,7 @@ export const createTrainingPlan = async (
   payload: CreateTrainingPlanPayload,
 ): Promise<CreateTrainingPlanResponse> => {
   try {
-    const response = await apiClient.post("/api/training-plans/create", {
+    const response = await apiClient.post('/training-plans/create', {
       user_id: payload.user_id,
       training_plan_name: payload.training_plan_name,
       tags: payload.tags,
@@ -102,15 +102,12 @@ export const updateTrainingPlan = async (
       payload,
     );
 
-    const response = await apiClient.put(
-      `/api/training-plans/${trainingPlanId}/update`,
-      {
-        user_id: payload.user_id,
-        training_plan_name: payload.training_plan_name,
-        tags: payload.tags,
-        added_object: payload.added_object,
-      },
-    );
+    const response = await apiClient.put(`/training-plans/${trainingPlanId}/update`, {
+      user_id: payload.user_id,
+      training_plan_name: payload.training_plan_name,
+      tags: payload.tags,
+      added_object: payload.added_object
+    });
 
     console.log("Update training plan response:", response.data);
     return response.data;

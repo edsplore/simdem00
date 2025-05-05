@@ -4,12 +4,15 @@ import BlockIcon from '@mui/icons-material/Block';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_FRONTEND_URL;
+
 const Unauthorized = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isRetryingAuth, setIsRetryingAuth] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 2;
+  const maxRetries = 1;
 
   // Try to refresh token when component mounts
   useEffect(() => {
@@ -44,7 +47,7 @@ const Unauthorized = () => {
     if (retryCount < maxRetries) {
       const timer = setTimeout(() => {
         attemptRefresh();
-      }, 3000); // Wait 3 seconds before trying
+      }, 10000); // Wait 10 seconds before trying
 
       return () => clearTimeout(timer);
     }
@@ -54,7 +57,7 @@ const Unauthorized = () => {
     // Preserve workspace_id when redirecting to login
     const params = new URLSearchParams(location.search);
     const workspaceId = params.get('workspace_id');
-    const baseUrl = 'https://eu2ccapsal001.eastus2.cloudapp.azure.com';
+    const baseUrl = UAM_API_URL;
 
     if (workspaceId) {
       window.location.href = `${baseUrl}?workspace_id=${encodeURIComponent(workspaceId)}`;

@@ -208,7 +208,7 @@ export const createSimulation = async (
 ): Promise<CreateSimulationResponse> => {
   try {
     const response = await apiClient.post<CreateSimulationResponse>(
-      "/api/simulations/create",
+      "/simulations/create",
       simulationData,
     );
 
@@ -264,7 +264,7 @@ export const updateSimulation = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       updateData,
     );
 
@@ -287,7 +287,7 @@ export const updateSimulationWithFormData = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       formData,
       {
         headers: {
@@ -315,7 +315,7 @@ export const publishSimulation = async (
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
-      `/api/simulations/${simulationId}/update`,
+      `/simulations/${simulationId}/update`,
       publishData,
     );
 
@@ -336,7 +336,7 @@ export const fetchCompleteSimulation = async (
 ): Promise<CompleteSimulationResponse> => {
   try {
     const response = await apiClient.get<CompleteSimulationResponse>(
-      `/api/simulations/fetch/${simulationId}`,
+      `/simulations/fetch/${simulationId}`,
     );
 
     return response.data;
@@ -363,7 +363,7 @@ export const cloneSimulation = async (
     };
 
     const response = await apiClient.post<CloneSimulationResponse>(
-      "/api/simulations/clone",
+      "/simulations/clone",
       cloneData,
     );
 

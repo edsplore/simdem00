@@ -61,7 +61,7 @@ export const startAudioSimulation = async (
 ): Promise<StartAudioSimulationResponse> => {
   try {
     const response = await apiClient.post<StartAudioSimulationResponse>(
-      "/api/simulations/start-audio",
+      "/simulations/start-audio",
       params,
     );
     return response.data;
@@ -83,7 +83,7 @@ export const endAudioSimulation = async (
     console.log("Executing end-audio API call with params:", params);
 
     const response = await apiClient.post<EndAudioSimulationResponse>(
-      "/api/simulations/end-audio",
+      "/simulations/end-audio",
       params,
       {
         timeout: 10000, // 10 second timeout

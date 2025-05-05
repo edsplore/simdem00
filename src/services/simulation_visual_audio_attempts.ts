@@ -109,7 +109,7 @@ export const startVisualAudioAttempt = async (
 ): Promise<StartVisualAudioResponse> => {
   try {
     const response = await apiClient.post<StartVisualAudioResponse>(
-      "/api/simulations/start-visual-audio-attempt",
+      "/simulations/start-visual-audio-attempt",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -138,7 +138,7 @@ export const endVisualAudioAttempt = async (
 ): Promise<EndVisualAudioResponse> => {
   try {
     const response = await apiClient.post<EndVisualAudioResponse>(
-      "/api/simulations/end-visual-audio-attempt",
+      "/simulations/end-visual-audio-attempt",
       {
         user_id: userId,
         simulation_id: simulationId,

@@ -161,7 +161,7 @@ export const fetchSimulations = async (
     }
 
     console.log('Fetching simulations with payload:', payload);
-    const response = await apiClient.post('/api/simulations/fetch', payload);
+    const response = await apiClient.post('/simulations/fetch', payload);
     console.log('Simulations API response:', response.data);
 
     // Return the response with the correct structure based on the API response
@@ -182,7 +182,7 @@ export const fetchSimulations = async (
 
 export const fetchSimulationById = async (simulationId: string): Promise<Simulation> => {
   try {
-    const response = await apiClient.get(`/api/simulations/fetch/${simulationId}`);
+    const response = await apiClient.get(`/simulations/fetch/${simulationId}`);
     return response.data.simulation;
   } catch (error) {
     console.error('Error fetching simulation:', error);

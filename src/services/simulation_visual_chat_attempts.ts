@@ -115,7 +115,7 @@ export const startVisualChatAttempt = async (
 ): Promise<StartVisualChatResponse> => {
   try {
     const response = await apiClient.post<StartVisualChatResponse>(
-      "/api/simulations/start-visual-chat-attempt",
+      "/simulations/start-visual-chat-attempt",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -144,7 +144,7 @@ export const endVisualChatAttempt = async (
 ): Promise<EndVisualChatResponse> => {
   try {
     const response = await apiClient.post<EndVisualChatResponse>(
-      "/api/simulations/end-visual-chat-attempt",
+      "/simulations/end-visual-chat-attempt",
       {
         user_id: userId,
         simulation_id: simulationId,

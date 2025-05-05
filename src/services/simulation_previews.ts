@@ -116,7 +116,7 @@ export const startAudioPreview = async (
 ): Promise<AudioPreviewResponse> => {
   try {
     const response = await apiClient.post<AudioPreviewResponse>(
-      "/api/simulations/start-audio-preview",
+      "/simulations/start-audio-preview",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -159,8 +159,12 @@ export const startChatPreview = async (
     console.log("Chat preview request payload:", payload);
 
     const response = await apiClient.post<ChatPreviewResponse>(
-      "/api/simulations/start-chat-preview",
-      payload,
+      "/simulations/start-chat-preview",
+      {
+        user_id: userId,
+        sim_id: simulationId,
+        message: message,
+      },
     );
 
     console.log("Chat preview response:", response.data);
@@ -183,7 +187,7 @@ export const startVisualAudioPreview = async (
 ): Promise<VisualPreviewResponse> => {
   try {
     const response = await apiClient.post<VisualPreviewResponse>(
-      "/api/simulations/start-visual-audio-preview",
+      "/simulations/start-visual-audio-preview",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -209,7 +213,7 @@ export const startVisualChatPreview = async (
 ): Promise<VisualPreviewResponse> => {
   try {
     const response = await apiClient.post<VisualPreviewResponse>(
-      "/api/simulations/start-visual-chat-preview",
+      "/simulations/start-visual-chat-preview",
       {
         user_id: userId,
         sim_id: simulationId,
@@ -235,7 +239,7 @@ export const startVisualPreview = async (
 ): Promise<VisualPreviewResponse> => {
   try {
     const response = await apiClient.post<VisualPreviewResponse>(
-      "/api/simulations/start-visual-preview",
+      "/simulations/start-visual-preview",
       {
         user_id: userId,
         sim_id: simulationId,

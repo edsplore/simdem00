@@ -33,7 +33,7 @@ import {
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchManagerDashboardData } from '../../../services/manager';
+// import { fetchManagerDashboardData } from '../../../services/manager';
 
 // Mock data for the dashboard
 const mockData = {

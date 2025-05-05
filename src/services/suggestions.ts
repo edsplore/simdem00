@@ -24,17 +24,7 @@ export const fetchDivisions = async (
     return response.data?.division || [];
   } catch (error) {
     console.error("Error fetching divisions:", error);
-    return [
-      "EverAI Labs",
-      "EverAI Product",
-      "EverAI BPO",
-      "new div",
-      "newDivision",
-      "Development",
-      "IT",
-      "sales",
-      "Test",
-    ];
+    return [];
   }
 };
 
@@ -58,22 +48,6 @@ export const fetchDepartments = async (
     return response.data?.department || [];
   } catch (error) {
     console.error("Error fetching departments:", error);
-    return [
-      "Product Design dev",
-      "Product Design VD",
-      "Product Design Admin",
-      "BPO Services",
-      "Engineering Dev",
-      "Engineering VD",
-      "Engineering Admin",
-      "new dep",
-      "newDept",
-      "Hardware",
-      "Payroll",
-      "sales",
-      "IT",
-      "Test",
-      "NewDpt1",
-    ];
+    return [];
   }
 };

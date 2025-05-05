@@ -81,7 +81,7 @@ export const fetchUsersSummary = async (
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
     const response = await apiClient.get(`${USERS_URL}/platform`, {
       params: {
-        page: 0,
+        page: 1,
         limit: 50,
         workspace_id: encodedWorkspaceId,
         status: "ACTIVE",
@@ -91,7 +91,7 @@ export const fetchUsersSummary = async (
         accept: "application/json",
       },
     });
-    return response.data.items;
+    return response.data;
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;

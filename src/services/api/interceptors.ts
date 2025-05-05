@@ -1,6 +1,16 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { authService } from "../authService";
 
+// Create a custom event for API errors
+export const API_ERROR_EVENT = 'api-error';
+export const dispatchApiError = (error: { message: string; status?: number }) => {
+  const event = new CustomEvent(API_ERROR_EVENT, { 
+    detail: error,
+    bubbles: true,
+  });
+  window.dispatchEvent(event);
+};
+
 // Create a custom axios instance
 const apiClient = axios.create({
   baseURL:
@@ -76,6 +86,15 @@ apiClient.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
+
+    // Dispatch API error event for global error handling
+    const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+    const errorStatus = error.response?.status;
+
+    dispatchApiError({
+      message: errorMessage,
+      status: errorStatus
+    });
 
     // Log error details
     console.error("API Error:", {

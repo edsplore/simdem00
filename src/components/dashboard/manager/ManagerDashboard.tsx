@@ -1,4 +1,5 @@
 import {
+  Check,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ExpandLess as ExpandLessIcon,
@@ -9,6 +10,7 @@ import {
 } from "@mui/icons-material";
 import {
   Box,
+  Button,
   Card,
   Chip,
   CircularProgress,
@@ -19,6 +21,7 @@ import {
   Grid,
   IconButton,
   InputAdornment,
+  ListItemIcon,
   ListSubheader,
   MenuItem,
   Paper,
@@ -47,27 +50,17 @@ import {
   ManagerDashboardTrainingEntityAttemptsStatsResponse,
 } from "../../../services/manager";
 import DashboardContent from "../DashboardContent";
+import { fetchReporteeUsers, User } from "../../../services/users";
+import {fetchTeams} from "../../../services/teams"
 
 // Mock data for the dashboard
 const mockData = {
   dropdownData: [
     {
-      group: "Users",
-      items: [
-        { id: "user-1", name: "User_name 01" },
-        { id: "user-2", name: "User_name 02" },
-        { id: "search", name: "Search User or Team", isSearch: true },
-        { id: "user-3", name: "User_name 03" },
-      ],
+      items: ["user_name 01", "user_name 02", "user_name 03", "user_name 04"],
     },
     {
-      group: "Teams",
-      items: [
-        { id: "team-1", name: "Team 01" },
-        { id: "team-2", name: "Team 02" },
-        { id: "team-3", name: "Team 03" },
-        { id: "team-4", name: "Team 04" },
-      ],
+      items: ["Team 01", "Team 02", "Team 03", "Team 04"],
     },
   ],
   assignmentCounts: {
@@ -589,6 +582,11 @@ const TrainingPlanTable = ({ trainingPlans }) => {
     }
   };
 
+  const getCompactId = (id: string) => {
+    if (!id || id.length < 6) return id;
+    return `${id.slice(0, 3)}..${id.slice(-3)}`;
+  };
+
   return (
     <TableContainer
       component={Paper}
@@ -636,7 +634,7 @@ const TrainingPlanTable = ({ trainingPlans }) => {
                   color="#000000CC"
                   sx={{ py: "40px", px: 2, fontSize: 16, fontWeight: "medium" }}
                 >
-                  {plan.id}
+                  {getCompactId(plan.id)}
                 </TableCell>
                 <TableCell
                   sx={{
@@ -1041,8 +1039,13 @@ const menuSelectProps = {
   },
 };
 const menuItemSx = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
   py: 1.5,
   fontSize: 14,
+  fontWeight: "medium",
   color: "#00000099",
   borderBottom: "1px solid #f0f0f0",
   "&:hover": {
@@ -1063,54 +1066,120 @@ const ManagerDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] =
     useState<ManagerDashboardAggregatedDataResponse | null>(null);
+  const [reporteeUser, setReporteeUser] = useState<null | User[]>(null);
+  const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
+  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
+  const [reporteeTeam, setReporteeTeam] = useState<null | User[]>(null);
+  const [filteredReporteeTeamIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
+  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("TrainingPlan");
-  const [teamframe, setTeamframe] = useState("All Teams");
+  const [teamframe, setTeamframe] = useState<[] | string[]>([]);
+  const [teamframeNames, setTeamframeNames] = useState<[] | string[]>([]);
   const [timeframe, setTimeframe] = useState("Today");
   const [searchQuery, setSearchQuery] = useState("");
   const [isTableLoading, setIsTableLoading] = useState(false);
   const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
+  const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [userActivityData, setUserActivityData] = useState({
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
   });
+  
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
+  const handleTeamframeChange = (event) => {
+    const {
+      target: { value },
+    } = event;
+    //debugger;
+    //const selectedUserIds = value.split(",")
+    const selectedUserNames = value.map((id: string) => reporteeUserIdsMapToName.get(id));
+    // setTeamframe(selectedUserNames)
+    setTeamframe(typeof value === "string" ? value.split(",") : value);
+    setTeamframeNames(selectedUserNames)
+  };
+
+  const handleApplyClick = () => {
+    // Handle the selected users/teams here
+    console.log("teamframe", teamframe, dropdownSearchQuery);
+  };
+  
   const filteredTrainingEntities = trainingEntityAttempts.filter((entity) => {
     const query = searchQuery.toLowerCase();
     return entity.name.toLowerCase().includes(query);
   });
 
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      if (user?.id) {
-        try {
-          setIsLoading(true);
-          setError(null);
-          // In a real implementation, we would fetch data from the API
-          const data = await fetchManagerDashboardAggregatedData({
-            user_id: user.id,
-          });
-          setDashboardData(data);
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
-          setError("Failed to load dashboard data");
-        } finally {
-          setIsLoading(false);
-        }
+  const loadReporteeUser = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // In a real implementation, we would fetch data from the API
+        const params = new URLSearchParams(location.search);
+        const workspaceId = params.get("workspace_id");
+        const data = await fetchReporteeUsers(workspaceId || "");
+        console.log("repoertee users --------", data);
+        const userData = data?.map((user: User) => user.user_id) || []
+        // const userDataMap = data?..reduce<Record<string, string>>((acc, user) => {
+        //     acc[user.user_id] = user.fullName;
+        //     return acc;
+        //   }, {})
+        setReporteeUser(data);
+        setFilteredReporteeUserIds(userData)
+        // setReporteeUserIdsMapToName(data.reduce<Record<string, string>>((acc, user) => {
+        //   acc[user.user_id] = user.fullName;
+        //   return acc;
+        // }, {}));
+        const userMap = new Map(data?.map(user => [user.user_id, user.fullName]));
+        setReporteeUserIdsMapToName(userMap);
+      } catch (error) {
+        console.error("Error loading reportee users:", error);
+        setError("Failed to load reportee users");
+      } finally {
+        setIsLoading(false);
       }
-    };
-    loadDashboardData();
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    }
+  };
+
+  const loadDashboardData = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // In a real implementation, we would fetch data from the API
+        const data = await fetchManagerDashboardAggregatedData({
+          user_id: user.id,
+          reportee_user_ids: filteredReporteeUserIds,
+        });
+        setDashboardData(data);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        setError("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadReporteeUser();
   }, [user?.id]);
 
-  const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
-    setTeamframe(event.target.value);
-  };
+  useEffect(() => {
+    if (filteredReporteeUserIds && filteredReporteeUserIds?.length > 0) {
+      loadDashboardData();
+      loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    }
+  }, [filteredReporteeUserIds]);
+
+  // const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
+  //   setTeamframe(event.target.value);
+  // };
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
@@ -1120,13 +1189,14 @@ const ManagerDashboard = () => {
   };
 
   const loadTrainingEntityAttemptsForManagerDashboard = async (
-    type: string
+    type: string,
   ) => {
     try {
       setIsTableLoading(true);
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
         type: type,
+        reportee_user_ids: filteredReporteeUserIds,
       });
       setTrainingEntityAttempts(data);
       setError(null);
@@ -1191,15 +1261,61 @@ const ManagerDashboard = () => {
                 gap="12px"
                 alignItems="center"
               >
-                <FormControl size="small" sx={{ minWidth: 120 }}>
+                <FormControl size="small" sx={{ minWidth: 230, maxWidth: 230 }}>
                   <Select
+                    multiple
                     value={teamframe}
                     onChange={handleTeamframeChange}
                     displayEmpty
                     IconComponent={ExpandMoreIcon}
-                    MenuProps={menuSelectProps}
+                    renderValue={(selected) =>
+                      selected.length === 0 ? (
+                        <>Select Users or Teams</>
+                      ) : (
+                        selected.join(", ") + "..."
+                      )
+                    }
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          mt: 1,
+                          border: "1px solid #0000001A",
+                          borderRadius: 2,
+                          boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
+                          bgcolor: "white",
+                          width: 230,
+                        },
+                      },
+                      MenuListProps: {
+                        sx: {
+                          padding: 0,
+                        },
+                      },
+                    }}
                     sx={menuSelectsx}
                   >
+                    <Stack sx={{ padding: 0.5 }}>
+                      <TextField
+                        placeholder="Search User or Team"
+                        value={dropdownSearchQuery}
+                        onChange={(e) => setDropdownSearchQuery(e.target.value)}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment sx={{ p: 0 }} position="start">
+                              <SearchIcon />
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          bgcolor: "white",
+                          fontSize: 14,
+                          borderRadius: "8px",
+                          boxShadow: "0px 1px 2px 0px #1018280D",
+                        }}
+                        size="small"
+                      />
+                    </Stack>
+                    
                     <ListSubheader
                       sx={{
                         fontSize: 12,
@@ -1214,9 +1330,61 @@ const ManagerDashboard = () => {
                     >
                       Users
                     </ListSubheader>
-                    <MenuItem sx={menuItemSx} value="All Teams">
-                      All Teams
-                    </MenuItem>
+                    {filteredReporteeUserIds
+                      .filter((user) =>
+                        user
+                          .toLowerCase()
+                          .includes(dropdownSearchQuery.toLowerCase())
+                      )
+                      .map((userId) => (
+                        <MenuItem key={userId} sx={menuItemSx} value={userId}>
+                          {reporteeUserIdsMapToName.get(userId)}
+                          {teamframe.includes(userId) && (
+                            <ListItemIcon>
+                              <Check fontSize="small" color="primary" />
+                            </ListItemIcon>
+                          )}
+                        </MenuItem>
+                      ))}
+
+                    <ListSubheader
+                      sx={{
+                        fontSize: 12,
+                        lineHeight: 2,
+                        fontWeight: 600,
+                        color: "#00000066",
+                        borderBottom: "1px solid #0000001A",
+                        bgcolor: "#F9FAFB",
+                        py: 0.5,
+                        px: 2,
+                      }}
+                    >
+                      Teams
+                    </ListSubheader>
+                    {mockData.dropdownData[1].items
+                      .filter((user) =>
+                        user
+                          .toLowerCase()
+                          .includes(dropdownSearchQuery.toLowerCase())
+                      )
+                      .map((team) => (
+                        <MenuItem key={team} sx={menuItemSx} value={team}>
+                          {team}
+                          {teamframe.includes(team) && (
+                            <ListItemIcon>
+                              <Check fontSize="small" color="primary" />
+                            </ListItemIcon>
+                          )}
+                        </MenuItem>
+                      ))}
+                    {/* <MenuItem>{teamframe}</MenuItem> */}
+                    {teamframe.length > 0 && (
+                      <Stack p={0.5}>
+                        <Button variant="contained" onClick={handleApplyClick}>
+                          Apply
+                        </Button>
+                      </Stack>
+                    )}
                   </Select>
                 </FormControl>
 

@@ -21,6 +21,7 @@ import {
   Slider,
   Alert,
   CircularProgress,
+  Tooltip,
 } from "@mui/material";
 import {
   Close as CloseIcon,
@@ -28,6 +29,12 @@ import {
   Edit as EditIcon,
   ColorLens as ColorLensIcon,
   Timer as TimerIcon,
+  ChatBubble as ChatBubbleIcon,
+  Highlight as HighlightIcon,
+  List as ListIcon,
+  CheckBox as CheckBoxIcon,
+  TextFields as TextFieldsIcon,
+  Lightbulb as LightbulbIcon,
 } from "@mui/icons-material";
 
 interface Hotspot {
@@ -110,6 +117,58 @@ const detectImageType = (data: string): string => {
   return "image/jpeg";
 };
 
+// Resize handle positions and cursor mapping
+const resizeHandles = [
+  { position: "top-left", cursor: "nwse-resize" },
+  { position: "top-right", cursor: "nesw-resize" },
+  { position: "bottom-left", cursor: "nesw-resize" },
+  { position: "bottom-right", cursor: "nwse-resize" },
+  { position: "top", cursor: "ns-resize" },
+  { position: "right", cursor: "ew-resize" },
+  { position: "bottom", cursor: "ns-resize" },
+  { position: "left", cursor: "ew-resize" },
+];
+
+// Helper to get hotspot type icon
+const getHotspotTypeIcon = (hotspotType: string) => {
+  switch (hotspotType) {
+    case "button":
+      return <ChatBubbleIcon fontSize="small" />;
+    case "highlight":
+      return <HighlightIcon fontSize="small" />;
+    case "dropdown":
+      return <ListIcon fontSize="small" />;
+    case "checkbox":
+      return <CheckBoxIcon fontSize="small" />;
+    case "textfield":
+      return <TextFieldsIcon fontSize="small" />;
+    case "coaching":
+      return <LightbulbIcon fontSize="small" />;
+    default:
+      return <ChatBubbleIcon fontSize="small" />;
+  }
+};
+
+// Helper to get readable type name
+const getHotspotTypeName = (hotspotType: string) => {
+  switch (hotspotType) {
+    case "button":
+      return "Button";
+    case "highlight":
+      return "Highlight";
+    case "dropdown":
+      return "Dropdown";
+    case "checkbox":
+      return "Checkbox";
+    case "textfield":
+      return "Text Field";
+    case "coaching":
+      return "Coaching Tip";
+    default:
+      return hotspotType.charAt(0).toUpperCase() + hotspotType.slice(1);
+  }
+};
+
 const ImageHotspot: React.FC<ImageHotspotProps> = ({
   imageUrl,
   onHotspotsChange,
@@ -149,6 +208,20 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   // Add state for moving hotspots
   const [movingHotspot, setMovingHotspot] = useState<string | null>(null);
   const [moveStart, setMoveStart] = useState({ x: 0, y: 0 });
+
+  // Add state for resizing hotspots
+  const [resizingHotspot, setResizingHotspot] = useState<string | null>(null);
+  const [resizeHandle, setResizeHandle] = useState<string | null>(null);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0 });
+  const [resizeOriginal, setResizeOriginal] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  // Add hover state for showing hotspot type tooltip
+  const [hoveredHotspot, setHoveredHotspot] = useState<string | null>(null);
 
   const commonColors: ColorOption[] = [
     { name: "Blue", value: "#1976D2" },
@@ -463,6 +536,27 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }
   }, [movingHotspot]);
 
+  // Add effect for handling global mouse events during hotspot resizing
+  useEffect(() => {
+    if (resizingHotspot) {
+      const handleGlobalMouseMove = (e: MouseEvent) => {
+        handleResizeHotspot(e as unknown as React.MouseEvent);
+      };
+
+      const handleGlobalMouseUp = () => {
+        handleEndResize();
+      };
+
+      window.addEventListener("mousemove", handleGlobalMouseMove);
+      window.addEventListener("mouseup", handleGlobalMouseUp);
+
+      return () => {
+        window.removeEventListener("mousemove", handleGlobalMouseMove);
+        window.removeEventListener("mouseup", handleGlobalMouseUp);
+      };
+    }
+  }, [resizingHotspot]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current || !imageElementRef.current) return;
 
@@ -602,6 +696,177 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   // End the move operation
   const handleEndMove = () => {
     setMovingHotspot(null);
+  };
+
+  // Start resizing a hotspot
+  const handleStartResize = (
+    e: React.MouseEvent,
+    hotspotId: string,
+    handle: string,
+  ) => {
+    e.stopPropagation();
+    if (!imageElementRef.current) return;
+
+    // Find the hotspot
+    const hotspot = hotspots.find((h) => h.id === hotspotId);
+    if (!hotspot || !hotspot.coordinates) return;
+
+    // Store starting mouse position in screen coordinates
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+    });
+
+    // Store original hotspot coordinates for reference during resize
+    setResizeOriginal({
+      x: hotspot.coordinates.x,
+      y: hotspot.coordinates.y,
+      width: hotspot.coordinates.width,
+      height: hotspot.coordinates.height,
+    });
+
+    setResizingHotspot(hotspotId);
+    setResizeHandle(handle);
+
+    // Important: DON'T set editingHotspot to null here to keep the selected state
+    // This allows the resizing to be reflected in the currently edited hotspot
+    if (editingHotspot?.id !== hotspotId) {
+      setEditingHotspot(null);
+    }
+  };
+
+  // Handle mouse movement during resize
+  const handleResizeHotspot = (e: React.MouseEvent) => {
+    if (
+      !resizingHotspot ||
+      !imageElementRef.current ||
+      !resizeHandle ||
+      !resizeOriginal
+    )
+      return;
+
+    const hotspot = hotspots.find((h) => h.id === resizingHotspot);
+    if (!hotspot || !hotspot.coordinates) return;
+
+    const rect = imageElementRef.current.getBoundingClientRect();
+
+    // Calculate mouse movement in original image coordinates
+    const deltaX = (e.clientX - resizeStart.x) / imageScale.width;
+    const deltaY = (e.clientY - resizeStart.y) / imageScale.height;
+
+    // Initialize new coordinates with original values
+    let newX = resizeOriginal.x;
+    let newY = resizeOriginal.y;
+    let newWidth = resizeOriginal.width;
+    let newHeight = resizeOriginal.height;
+
+    // Update coordinates based on which handle is being dragged
+    switch (resizeHandle) {
+      case "top-left":
+        newX = Math.min(
+          resizeOriginal.x + resizeOriginal.width - 5,
+          Math.max(0, resizeOriginal.x + deltaX),
+        );
+        newY = Math.min(
+          resizeOriginal.y + resizeOriginal.height - 5,
+          Math.max(0, resizeOriginal.y + deltaY),
+        );
+        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
+        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        break;
+      case "top-right":
+        newY = Math.min(
+          resizeOriginal.y + resizeOriginal.height - 5,
+          Math.max(0, resizeOriginal.y + deltaY),
+        );
+        newWidth = Math.max(5, resizeOriginal.width + deltaX);
+        newWidth = Math.min(newWidth, originalImageSize.width - newX);
+        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        break;
+      case "bottom-left":
+        newX = Math.min(
+          resizeOriginal.x + resizeOriginal.width - 5,
+          Math.max(0, resizeOriginal.x + deltaX),
+        );
+        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
+        newHeight = Math.max(5, resizeOriginal.height + deltaY);
+        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        break;
+      case "bottom-right":
+        newWidth = Math.max(5, resizeOriginal.width + deltaX);
+        newHeight = Math.max(5, resizeOriginal.height + deltaY);
+        newWidth = Math.min(newWidth, originalImageSize.width - newX);
+        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        break;
+      case "top":
+        newY = Math.min(
+          resizeOriginal.y + resizeOriginal.height - 5,
+          Math.max(0, resizeOriginal.y + deltaY),
+        );
+        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        break;
+      case "right":
+        newWidth = Math.max(5, resizeOriginal.width + deltaX);
+        newWidth = Math.min(newWidth, originalImageSize.width - newX);
+        break;
+      case "bottom":
+        newHeight = Math.max(5, resizeOriginal.height + deltaY);
+        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        break;
+      case "left":
+        newX = Math.min(
+          resizeOriginal.x + resizeOriginal.width - 5,
+          Math.max(0, resizeOriginal.x + deltaX),
+        );
+        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
+        break;
+    }
+
+    // Ensure minimum size
+    newWidth = Math.max(5, newWidth);
+    newHeight = Math.max(5, newHeight);
+
+    // Update all hotspots with the resized one
+    const updatedHotspots = hotspots.map((h) => {
+      if (h.id === resizingHotspot) {
+        return {
+          ...h,
+          coordinates: {
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: newHeight,
+          },
+        };
+      }
+      return h;
+    });
+
+    // Update parent with the new positions
+    onHotspotsChange?.(updatedHotspots);
+
+    // If this is also the currently editing hotspot, update currentHotspot state too
+    if (editingHotspot && editingHotspot.id === resizingHotspot) {
+      setCurrentHotspot((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          coordinates: {
+            x: newX,
+            y: newY,
+            width: newWidth,
+            height: newHeight,
+          },
+        };
+      });
+    }
+  };
+
+  // End the resize operation
+  const handleEndResize = () => {
+    setResizingHotspot(null);
+    setResizeHandle(null);
+    setResizeOriginal(null);
   };
 
   // Replace the existing calculateDialogPosition function with this improved version:
@@ -931,7 +1196,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       type: "hotspot",
       hotspotType,
       coordinates: {
-        // Keep coordinates relative to original image size (not rendered size)
+        // Use coordinates from currentHotspot, which may have been updated via resizing
         x: Number(currentHotspot.coordinates.x),
         y: Number(currentHotspot.coordinates.y),
         width: Number(currentHotspot.coordinates.width),
@@ -957,6 +1222,82 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     onHotspotsChange?.(newHotspots);
   };
 
+  // Helper function to render resize handles for a hotspot
+  const renderResizeHandles = (hotspot: Hotspot) => {
+    if (!hotspot.coordinates || !imageElementRef.current) return null;
+
+    const isEditing =
+      editingId === hotspot.id || resizingHotspot === hotspot.id;
+
+    if (!isEditing) return null;
+
+    // Create resize handles for the hotspot
+    return resizeHandles.map((handle) => {
+      let handleStyle: React.CSSProperties = {
+        position: "absolute",
+        width: "12px",
+        height: "12px",
+        backgroundColor: "#444CE7",
+        borderRadius: "50%",
+        cursor: handle.cursor,
+        zIndex: 3,
+        border: "2px solid white",
+        boxShadow: "0 0 4px rgba(0,0,0,0.3)",
+      };
+
+      // Position the handle based on its position name
+      switch (handle.position) {
+        case "top-left":
+          handleStyle.top = "-6px";
+          handleStyle.left = "-6px";
+          break;
+        case "top-right":
+          handleStyle.top = "-6px";
+          handleStyle.right = "-6px";
+          break;
+        case "bottom-left":
+          handleStyle.bottom = "-6px";
+          handleStyle.left = "-6px";
+          break;
+        case "bottom-right":
+          handleStyle.bottom = "-6px";
+          handleStyle.right = "-6px";
+          break;
+        case "top":
+          handleStyle.top = "-6px";
+          handleStyle.left = "50%";
+          handleStyle.transform = "translateX(-50%)";
+          break;
+        case "right":
+          handleStyle.top = "50%";
+          handleStyle.right = "-6px";
+          handleStyle.transform = "translateY(-50%)";
+          break;
+        case "bottom":
+          handleStyle.bottom = "-6px";
+          handleStyle.left = "50%";
+          handleStyle.transform = "translateX(-50%)";
+          break;
+        case "left":
+          handleStyle.top = "50%";
+          handleStyle.left = "-6px";
+          handleStyle.transform = "translateY(-50%)";
+          break;
+      }
+
+      return (
+        <Box
+          key={handle.position}
+          style={handleStyle}
+          onMouseDown={(e) => {
+            e.stopPropagation();
+            handleStartResize(e, hotspot.id, handle.position);
+          }}
+        />
+      );
+    });
+  };
+
   // Helper function to render hotspots on the image - converts from original image coordinates to rendered coordinates
   const renderHotspot = (hotspot: Hotspot) => {
     if (!hotspot.coordinates || !imageElementRef.current) return null;
@@ -971,56 +1312,128 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
     // Determine states for visual styling
     const isMoving = movingHotspot === hotspot.id;
+    const isResizing = resizingHotspot === hotspot.id;
     const isEditing = editingId === hotspot.id;
+    const isActive = isMoving || isResizing || isEditing;
+    const isHovered = hoveredHotspot === hotspot.id;
+
+    // Get tooltip text for hotspot
+    const tooltipText = `${getHotspotTypeName(hotspot.hotspotType)}: ${hotspot.name}`;
+
+    // Get the icon for the hotspot type
+    const hotspotIcon = getHotspotTypeIcon(hotspot.hotspotType);
 
     return (
-      <Box
-        onClick={(e) => {
-          e.stopPropagation();
-          if (!isEditing && !isMoving) {
-            onEditHotspot?.(hotspot);
-          }
-        }}
+      <Tooltip
         key={hotspot.id}
-        sx={{
-          position: "absolute",
-          left: `${scaledCoords.left}px`,
-          top: `${scaledCoords.top}px`,
-          width: `${scaledCoords.width}px`,
-          height: `${scaledCoords.height}px`,
-          border: "2px solid",
-          borderColor: isEditing ? "#00AB55" : isMoving ? "#FF4785" : "#444CE7",
-          backgroundColor: "rgba(68, 76, 231, 0.1)",
-          cursor: isMoving ? "move" : "pointer",
-          // Add move handle
-          "&::before": {
-            content: '""',
+        title={tooltipText}
+        arrow
+        placement="top"
+        PopperProps={{
+          sx: { zIndex: 1400 },
+        }}
+      >
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!isEditing && !isMoving && !isResizing) {
+              onEditHotspot?.(hotspot);
+            }
+          }}
+          onMouseEnter={() => setHoveredHotspot(hotspot.id)}
+          onMouseLeave={() => setHoveredHotspot(null)}
+          sx={{
             position: "absolute",
-            right: "-15px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: "12px",
-            height: "12px",
-            borderRadius: "50%",
-            backgroundColor: isEditing
+            left: `${scaledCoords.left}px`,
+            top: `${scaledCoords.top}px`,
+            width: `${scaledCoords.width}px`,
+            height: `${scaledCoords.height}px`,
+            border: "2px solid",
+            borderColor: isEditing
               ? "#00AB55"
-              : isMoving
+              : isMoving || isResizing
                 ? "#FF4785"
                 : "#444CE7",
-            cursor: "move",
-            zIndex: 2,
-          },
-        }}
-        onMouseDown={
-          isMoving
-            ? undefined
-            : (e) => {
-                if (e.target === e.currentTarget) {
-                  handleStartMove(e, hotspot.id);
+            backgroundColor: isHovered
+              ? "rgba(68, 76, 231, 0.2)"
+              : "rgba(68, 76, 231, 0.1)",
+            cursor: isMoving ? "move" : "pointer",
+            transition: "background-color 0.2s ease",
+            // Add hotspot label for better identification
+            "&::after": isHovered
+              ? {
+                  content: '""',
+                  position: "absolute",
+                  top: "-28px",
+                  left: "0",
+                  backgroundColor: "rgba(0, 0, 0, 0.7)",
+                  color: "#FFF",
+                  padding: "4px 8px",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                  whiteSpace: "nowrap",
+                  zIndex: 3,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
                 }
-              }
-        }
-      />
+              : {},
+            // Add move handle
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              right: "-14px",
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: "12px",
+              height: "12px",
+              borderRadius: "50%",
+              backgroundColor: isEditing
+                ? "#00AB55"
+                : isMoving || isResizing
+                  ? "#FF4785"
+                  : "#444CE7",
+              cursor: "move",
+              zIndex: 2,
+              boxShadow: "0 0 4px rgba(0,0,0,0.3)",
+              border: "2px solid white",
+            },
+          }}
+          onMouseDown={
+            isMoving || isResizing
+              ? undefined
+              : (e) => {
+                  if (e.target === e.currentTarget) {
+                    handleStartMove(e, hotspot.id);
+                  }
+                }
+          }
+        >
+          {/* Type icon indicator in top left */}
+          {isHovered && (
+            <Box
+              sx={{
+                position: "absolute",
+                top: "4px",
+                left: "4px",
+                color: "#444CE7",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                borderRadius: "50%",
+                padding: "2px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+              }}
+            >
+              {hotspotIcon}
+            </Box>
+          )}
+
+          {/* Add resize handles when hotspot is being edited */}
+          {renderResizeHandles(hotspot)}
+        </Box>
+      </Tooltip>
     );
   };
 
@@ -1054,6 +1467,40 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
+        {/* Editing instructions overlay */}
+        {editMode && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: "rgba(0, 0, 0, 0.7)",
+              color: "white",
+              padding: "8px 16px",
+              zIndex: 1,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              backdropFilter: "blur(2px)",
+            }}
+          >
+            <Typography variant="body2">
+              Click to select a hotspot. Drag to move. Resize with the blue
+              handles.
+            </Typography>
+            <Button
+              variant="contained"
+              size="small"
+              color="primary"
+              onClick={() => setEditMode(false)}
+              sx={{ ml: 2 }}
+            >
+              Exit Edit Mode
+            </Button>
+          </Box>
+        )}
+
         {processedImageUrl ? (
           <Box
             component="img"
@@ -1240,6 +1687,28 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   <MenuItem value="coaching">Coaching Tip</MenuItem>
                 </Select>
               </FormControl>
+
+              {/* Coordinates display (read-only) */}
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: 1,
+                  padding: 1.5,
+                  backgroundColor: "#f5f5f5",
+                }}
+              >
+                <Typography variant="body2" fontWeight="600">
+                  Dimensions:
+                </Typography>
+                <Typography variant="body2">
+                  {currentHotspot?.coordinates
+                    ? `W: ${Math.round(currentHotspot.coordinates.width)}, 
+                     H: ${Math.round(currentHotspot.coordinates.height)}`
+                    : "No coordinates"}
+                </Typography>
+              </Box>
 
               {/* Common settings for all hotspot types */}
               <FormControl

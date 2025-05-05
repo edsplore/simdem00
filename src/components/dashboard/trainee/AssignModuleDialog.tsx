@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
-import { fetchModules, type Module } from "../../../services/modules";
+import { 
+  fetchModules, 
+  type Module, 
+  type ModulePaginationParams 
+} from "../../../services/modules";
 import { fetchUsersSummary, type User } from "../../../services/users";
 import { fetchTeams, type Team } from "../../../services/teams";
 import { createAssignment } from "../../../services/assignments";
@@ -74,6 +78,9 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
   const [showAssigneesList, setShowAssigneesList] = useState(false);
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMoreModules, setHasMoreModules] = useState(true);
+  const [totalModules, setTotalModules] = useState(0);
 
   const {
     control,
@@ -97,8 +104,37 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchModules(user?.id || "user123");
-        setModules(data);
+
+        // Create pagination params
+        const paginationParams: ModulePaginationParams = {
+          page: page,
+          pagesize: 20, // Fetch a larger number to avoid pagination in the dialog
+          sortBy: "name",
+          sortDir: "asc"
+        };
+
+        // Add search filter if provided
+        if (searchQuery) {
+          paginationParams.search = searchQuery;
+        }
+
+        const response = await fetchModules(user?.id || "user123", paginationParams);
+
+        // If this is the first page, replace the data
+        if (page === 1) {
+          setModules(response.modules);
+        } else {
+          // Otherwise append to existing data
+          setModules(prev => [...prev, ...response.modules]);
+        }
+
+        // Update pagination state
+        if (response.pagination) {
+          setTotalModules(response.pagination.total_count);
+          setHasMoreModules(page < response.pagination.total_pages);
+        } else {
+          setHasMoreModules(false);
+        }
       } catch (err) {
         setError("Failed to load modules");
         console.error("Error loading modules:", err);
@@ -110,7 +146,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     if (open) {
       loadModules();
     }
-  }, [open, user?.id]);
+  }, [open, user?.id, searchQuery, page]);
 
   useEffect(() => {
     const loadAssignees = async () => {
@@ -174,7 +210,18 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     }
   }, [open, currentWorkspaceId]);
 
+  // Reset search and pagination when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSearchQuery("");
+      setPage(1);
+      setModules([]);
+    }
+  }, [open]);
+
   const selectedAssignees = watch("assignTo");
+
+  // Filter modules based on search query
   const filteredModules = modules.filter((module) =>
     module.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -187,6 +234,20 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
           .toLowerCase()
           .includes(assigneeSearchQuery.toLowerCase())),
   );
+
+  // Load more modules when scrolling
+  const handleLoadMore = () => {
+    if (!isLoading && hasMoreModules) {
+      setPage(prevPage => prevPage + 1);
+    }
+  };
+
+  // Handler for module search input change
+  const handleModuleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1); // Reset to first page when search changes
+    setModules([]); // Clear existing results
+  };
 
   const onSubmit = async (data: CreateModuleFormData) => {
     try {
@@ -372,10 +433,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                             fullWidth
                             placeholder="Search modules..."
                             value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              setShowModulesList(true);
-                            }}
+                            onChange={handleModuleSearchChange}
                             onClick={() => setShowModulesList(true)}
                             InputProps={{
                               startAdornment: (
@@ -415,7 +473,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                                 overflow: "auto",
                               }}
                             >
-                              {isLoading ? (
+                              {isLoading && page === 1 ? (
                                 <Box
                                   sx={{
                                     p: 2,
@@ -440,53 +498,82 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                                   No matches found
                                 </Typography>
                               ) : (
-                                filteredModules.map((module) => (
-                                  <Box
-                                    key={module.id}
-                                    onClick={() => {
-                                      field.onChange(module.id);
-                                      setSelectedModule(module);
-                                      setShowModulesList(false);
-                                      setSearchQuery("");
-                                    }}
-                                    sx={{
-                                      p: 1.5,
-                                      cursor: "pointer",
-                                      "&:hover": { bgcolor: "#F5F6FF" },
-                                    }}
-                                  >
-                                    <Stack spacing={0.5}>
-                                      <Stack
-                                        direction="row"
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                      >
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
+                                <>
+                                  {filteredModules.map((module) => (
+                                    <Box
+                                      key={module.id}
+                                      onClick={() => {
+                                        field.onChange(module.id);
+                                        setSelectedModule(module);
+                                        setShowModulesList(false);
+                                        setSearchQuery("");
+                                      }}
+                                      sx={{
+                                        p: 1.5,
+                                        cursor: "pointer",
+                                        "&:hover": { bgcolor: "#F5F6FF" },
+                                      }}
+                                    >
+                                      <Stack spacing={0.5}>
+                                        <Stack
+                                          direction="row"
+                                          justifyContent="space-between"
+                                          alignItems="center"
                                         >
-                                          {module.id.slice(-6)}
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                          >
+                                            {module.id.slice(-6)}
+                                          </Typography>
+                                          <Chip
+                                            label={`Module | ${module.simulations_id.length} Sims`}
+                                            size="small"
+                                            sx={{
+                                              bgcolor: "#F5F6FF",
+                                              color: "#444CE7",
+                                              height: 24,
+                                              "& .MuiChip-label": {
+                                                px: 1,
+                                                fontSize: "12px",
+                                              },
+                                            }}
+                                          />
+                                        </Stack>
+                                        <Typography variant="body1">
+                                          {module.name}
                                         </Typography>
-                                        <Chip
-                                          label={`Module | ${module.simulations_id.length} Sims`}
-                                          size="small"
-                                          sx={{
-                                            bgcolor: "#F5F6FF",
-                                            color: "#444CE7",
-                                            height: 24,
-                                            "& .MuiChip-label": {
-                                              px: 1,
-                                              fontSize: "12px",
-                                            },
-                                          }}
-                                        />
                                       </Stack>
-                                      <Typography variant="body1">
-                                        {module.name}
-                                      </Typography>
-                                    </Stack>
-                                  </Box>
-                                ))
+                                    </Box>
+                                  ))}
+
+                                  {/* Load more button */}
+                                  {hasMoreModules && (
+                                    <Box
+                                      sx={{
+                                        p: 1.5,
+                                        display: "flex",
+                                        justifyContent: "center",
+                                      }}
+                                    >
+                                      <Button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleLoadMore();
+                                        }}
+                                        disabled={isLoading}
+                                        size="small"
+                                      >
+                                        {isLoading ? (
+                                          <CircularProgress size={20} />
+                                        ) : (
+                                          "Load More"
+                                        )}
+                                      </Button>
+                                    </Box>
+                                  )}
+                                </>
                               )}
                             </Box>
                           )}

@@ -43,6 +43,28 @@ export interface UpdateModuleResponse {
   estimated_time: number;
 }
 
+export interface ModulePaginationParams {
+  page: number;
+  pagesize: number;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+  createdFrom?: string;
+  createdTo?: string;
+  createdBy?: string;
+  tags?: string | string[];
+  search?: string;
+}
+
+export interface ModulesResponse {
+  modules: Module[];
+  pagination?: {
+    total_count: number;
+    page: number;
+    pagesize: number;
+    total_pages: number;
+  };
+}
+
 export const createModule = async (payload: CreateModulePayload): Promise<CreateModuleResponse> => {
   try {
     const response = await apiClient.post('/modules/create', payload);
@@ -53,12 +75,79 @@ export const createModule = async (payload: CreateModulePayload): Promise<Create
   }
 };
 
-export const fetchModules = async (userId: string): Promise<Module[]> => {
+/**
+ * Fetches modules with pagination, filtering, and sorting
+ * @param userId User ID
+ * @param pagination Pagination, filtering, and sorting parameters
+ * @returns Promise with modules response
+ */
+export const fetchModules = async (
+  userId: string,
+  pagination?: ModulePaginationParams
+): Promise<ModulesResponse> => {
   try {
-    const response = await apiClient.post('/modules/fetch', {
+    const payload: any = {
       user_id: userId
-    });
-    return response.data.modules;
+    };
+
+    // Add pagination parameters if provided
+    if (pagination) {
+      payload.pagination = {
+        page: pagination.page,
+        pagesize: pagination.pagesize
+      };
+
+      // Add optional sorting
+      if (pagination.sortBy) {
+        payload.pagination.sortBy = pagination.sortBy;
+      }
+      if (pagination.sortDir) {
+        payload.pagination.sortDir = pagination.sortDir;
+      }
+
+      // Add optional date filters
+      if (pagination.createdFrom) {
+        payload.pagination.createdFrom = pagination.createdFrom;
+      }
+      if (pagination.createdTo) {
+        payload.pagination.createdTo = pagination.createdTo;
+      }
+
+      // Add optional creator filter
+      if (pagination.createdBy) {
+        payload.pagination.createdBy = pagination.createdBy;
+      }
+
+      // Add optional search
+      if (pagination.search) {
+        payload.pagination.search = pagination.search;
+      }
+
+      // Tags should be an array of strings
+      if (pagination.tags) {
+        if (Array.isArray(pagination.tags)) {
+          payload.pagination.tags = pagination.tags;
+        } else if (pagination.tags !== "All Tags") {
+          // If it's a single string (not "All Tags"), convert to array
+          payload.pagination.tags = [pagination.tags];
+        }
+      }
+    }
+
+    console.log('Fetching modules with payload:', payload);
+    const response = await apiClient.post('/modules/fetch', payload);
+    console.log('Modules API response:', response.data);
+
+    // Return the response with the correct structure
+    return {
+      modules: response.data.modules || [],
+      pagination: response.data.pagination || {
+        total_count: response.data.modules?.length || 0,
+        page: pagination?.page || 1,
+        pagesize: pagination?.pagesize || 10,
+        total_pages: Math.ceil((response.data.modules?.length || 0) / (pagination?.pagesize || 10))
+      }
+    };
   } catch (error) {
     console.error('Error fetching modules:', error);
     throw error;

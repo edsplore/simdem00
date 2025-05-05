@@ -13,6 +13,8 @@ import LoadingSpinner from "./components/common/LoadingSpinner";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import Unauthorized from "./components/Unauthorized";
+import { NotificationProvider } from './context/NotificationContext';
+import ErrorListener from './components/common/ErrorListener';
 
 // Lazy load components
 const TraineeDashboard = React.lazy(
@@ -93,124 +95,127 @@ const RootRedirect = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <Router>
-        <AuthProvider>
-          <WorkspaceHandler>
-            <Layout>
-              <Suspense fallback={<LoadingSpinner />}>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/unauthorized" element={<Unauthorized />} />
-
-                  {/* Default redirect - now preserves workspace ID */}
-                  <Route path="/" element={<RootRedirect />} />
-
-                  {/* Protected routes */}
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute path="/dashboard">
-                        <TraineeDashboard />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/dashboard-manager"
-                    element={<ManagerDashboard />}
-                  />
-                  <Route
-                    path="/dashboard-admin"
-                    element={<AdminDashboard />}
-                  />
-                  <Route
-                    path="/training"
-                    element={
-                      <ProtectedRoute path="/training">
-                        <TrainingPlanPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/training/:id"
-                    element={
-                      <ProtectedRoute path="/training">
-                        <TrainingPlanDetailsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/playback"
-                    element={
-                      <ProtectedRoute path="/playback">
-                        <PlaybackPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/playback/:id"
-                    element={
-                      <ProtectedRoute path="/playback">
-                        <PlaybackDetailPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/manage-simulations"
-                    element={
-                      <ProtectedRoute path="/manage-simulations">
-                        <ManageSimulationsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/generate-scripts"
-                    element={
-                      <ProtectedRoute path="/manage-simulations">
-                        <GenerateScript />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/generate-scripts/:id"
-                    element={
-                      <ProtectedRoute path="/manage-simulations">
-                        <GenerateScript />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/simulation/:id/:assignment_id/attempt"
-                    element={
-                      <ProtectedRoute path="/training">
-                        <SimulationAttemptPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/manage-training-plan"
-                    element={
-                      <ProtectedRoute path="/manage-training-plan">
-                        <ManageTrainingPlanPage />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/assign-simulations"
-                    element={
-                      <ProtectedRoute path="/assign-simulations">
-                        <AssignSimulationsPage />
-                      </ProtectedRoute>
-                    }
-                  />
-
-                  {/* Catch all - redirect to dashboard with workspace ID preservation */}
-                  <Route path="*" element={<RootRedirect />} />
-                </Routes>
-              </Suspense>
-            </Layout>
-          </WorkspaceHandler>
-        </AuthProvider>
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <AuthProvider>
+            <ErrorListener />
+            <WorkspaceHandler>
+              <Layout>
+                <Suspense fallback={<LoadingSpinner />}>
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/unauthorized" element={<Unauthorized />} />
+  
+                    {/* Default redirect - now preserves workspace ID */}
+                    <Route path="/" element={<RootRedirect />} />
+  
+                    {/* Protected routes */}
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute path="/dashboard">
+                          <TraineeDashboard />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/dashboard-manager"
+                      element={<ManagerDashboard />}
+                    />
+                    <Route
+                      path="/dashboard-admin"
+                      element={<AdminDashboard />}
+                    />
+                    <Route
+                      path="/training"
+                      element={
+                        <ProtectedRoute path="/training">
+                          <TrainingPlanPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/training/:id"
+                      element={
+                        <ProtectedRoute path="/training">
+                          <TrainingPlanDetailsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/playback"
+                      element={
+                        <ProtectedRoute path="/playback">
+                          <PlaybackPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/playback/:id"
+                      element={
+                        <ProtectedRoute path="/playback">
+                          <PlaybackDetailPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/manage-simulations"
+                      element={
+                        <ProtectedRoute path="/manage-simulations">
+                          <ManageSimulationsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/generate-scripts"
+                      element={
+                        <ProtectedRoute path="/manage-simulations">
+                          <GenerateScript />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/generate-scripts/:id"
+                      element={
+                        <ProtectedRoute path="/manage-simulations">
+                          <GenerateScript />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/simulation/:id/:assignment_id/attempt"
+                      element={
+                        <ProtectedRoute path="/training">
+                          <SimulationAttemptPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/manage-training-plan"
+                      element={
+                        <ProtectedRoute path="/manage-training-plan">
+                          <ManageTrainingPlanPage />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route
+                      path="/assign-simulations"
+                      element={
+                        <ProtectedRoute path="/assign-simulations">
+                          <AssignSimulationsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+  
+                    {/* Catch all - redirect to dashboard with workspace ID preservation */}
+                    <Route path="*" element={<RootRedirect />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </WorkspaceHandler>
+          </AuthProvider>
+        </Router>
+      </NotificationProvider>
     </ThemeProvider>
   );
 };

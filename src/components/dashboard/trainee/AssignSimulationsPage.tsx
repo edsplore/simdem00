@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Container,
   Stack,
@@ -12,35 +12,32 @@ import {
   TableRow,
   Paper,
   TextField,
-  Select,
-  MenuItem,
+  IconButton,
   Box,
   Tabs,
   Tab,
-  SelectChangeEvent,
   TablePagination,
-  IconButton,
   Chip,
   CircularProgress,
   Alert,
   TableSortLabel,
   InputAdornment,
+  Autocomplete,
 } from '@mui/material';
 import {
   Search as SearchIcon,
-  LockOutlined as LockIcon,
-  Person as PersonIcon,
-  Group as GroupIcon,
-  Close as CloseIcon,
   Clear as ClearIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
 import AssignModuleDialog from './AssignModuleDialog';
 import AssignSimulationsDialog from './AssignSimulationsDialog';
-import { fetchAssignments, type Assignment } from '../../../services/assignments';
-import { fetchUsersByIds, type User } from '../../../services/users';
-import { fetchTeams, type Team } from '../../../services/teams';
+import { 
+  fetchAssignments, 
+  type Assignment, 
+  type AssignmentPaginationParams,
+} from '../../../services/assignments';
+import { fetchUsersByIds, fetchUsersSummary, type User } from '../../../services/users';
 import { useAuth } from '../../../context/AuthContext';
 import { hasCreatePermission } from '../../../utils/permissions';
 import AssignmentDetailsDialog from './AssignmentDetailsDialog';
@@ -57,13 +54,27 @@ const formatDate = (dateString: string) => {
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'type' | 'teams' | 'trainees' | 'start_date' | 'end_date' | 'status' | 'last_modified_at' | 'last_modified_by' | 'created_at' | 'created_by';
 
+// Map frontend OrderBy to backend sortBy
+const orderByToSortBy: Record<OrderBy, string> = {
+  name: "name",
+  type: "type",
+  teams: "teamCount",
+  trainees: "traineeCount",
+  start_date: "startDate",
+  end_date: "endDate",
+  status: "status",
+  last_modified_at: "lastModifiedAt",
+  last_modified_by: "lastModifiedBy",
+  created_at: "createdAt",
+  created_by: "createdBy"
+};
+
 const AssignSimulationsPage = () => {
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTags, setSelectedTags] = useState('All Tags');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
@@ -76,72 +87,222 @@ const AssignSimulationsPage = () => {
   const [orderBy, setOrderBy] = useState<OrderBy>('name');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+
+  // State for user name mapping
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
 
   // Check if user has create permission for assign-simulations
   const canAssignSimulations = hasCreatePermission('assign-simulations');
 
-  // Filter data based on current tab and search query
-  const filteredData = assignments.filter((item) => {
-    // First apply tab filter
-    if (currentTab === 'Training Plans' && item.type !== 'TrainingPlan') {
-      return false;
-    }
-    if (currentTab === 'Modules' && item.type !== 'Module') {
-      return false;
-    }
-    if (currentTab === 'Simulations' && item.type !== 'Simulation') {
-      return false;
+  // Create a memoized pagination params object
+  const paginationParams = useMemo<AssignmentPaginationParams>(() => {
+    const params: AssignmentPaginationParams = {
+      page: page + 1, // API uses 1-based indexing
+      pagesize: rowsPerPage,
+      sortBy: orderByToSortBy[orderBy],
+      sortDir: order
+    };
+
+    // Add filters if they're not set to "All"
+    if (searchQuery) {
+      params.search = searchQuery;
     }
 
-    // Then apply search filter
-    if (searchQuery && !item.name?.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
-      return false;
+    if (selectedCreator !== "Created By") {
+      params.createdBy = selectedCreator;
     }
 
-    return true;
-  });
-
-  const getButtonText = () => {
-    switch (currentTab) {
-      case 'Modules':
-        return 'Assign Module';
-      case 'Simulations':
-        return 'Assign Simulation';
-      default:
-        return 'Assign Training Plan';
+    // Add type filter based on current tab
+    if (currentTab === 'Training Plans') {
+      params.type = 'TrainingPlan';
+    } else if (currentTab === 'Modules') {
+      params.type = 'Module';
+    } else if (currentTab === 'Simulations') {
+      params.type = 'Simulation';
     }
-  };
 
+    return params;
+  }, [
+    page,
+    rowsPerPage,
+    orderBy,
+    order,
+    searchQuery,
+    selectedCreator,
+    currentTab
+  ]);
+
+  // Function to fetch user details for creator and modifier IDs
+  const fetchUserDetails = useCallback(async (assignments: Assignment[]) => {
+    if (!currentWorkspaceId || assignments.length === 0) return;
+
+    try {
+      // Collect all unique user IDs from created_by and modified_by fields
+      const userIds = new Set<string>();
+      assignments.forEach(assignment => {
+        if (assignment.created_by && !userMap[assignment.created_by]) {
+          userIds.add(assignment.created_by);
+        }
+        if (assignment.last_modified_by && !userMap[assignment.last_modified_by]) {
+          userIds.add(assignment.last_modified_by);
+        }
+      });
+
+      // Skip API call if we already have all user details
+      if (userIds.size === 0) return;
+
+      const userIdsArray = Array.from(userIds);
+
+      const usersData = await fetchUsersByIds(currentWorkspaceId, userIdsArray);
+
+      // Create a mapping of user IDs to full names
+      const newUserMap: Record<string, string> = { ...userMap };
+
+      usersData.forEach(userData => {
+        if (userData.user_id) {
+          // Use fullName if available, otherwise construct from first and last name
+          const fullName = userData.fullName || 
+            `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+          newUserMap[userData.user_id] = fullName || userData.user_id;
+        }
+      });
+
+      setUserMap(newUserMap);
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
+  }, [currentWorkspaceId, userMap]);
+
+  // Load all users for the creator filter - only once when component mounts
   useEffect(() => {
-    const loadAssignments = async () => {
+    if (!currentWorkspaceId || usersLoaded) return;
+
+    const loadAllUsers = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
-        const data = await fetchAssignments();
-        setAssignments(data);
-      } catch (err) {
-        setError('Failed to load assignments');
-        console.error('Error loading assignments:', err);
+        setIsLoadingUsers(true);
+        const usersData = await fetchUsersSummary(currentWorkspaceId);
+        setUsers(usersData);
+
+        // Also update the user map with these users
+        const newUserMap: Record<string, string> = { ...userMap };
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+
+        setUserMap(newUserMap);
+        setUsersLoaded(true);
+      } catch (error) {
+        console.error("Error loading all users:", error);
       } finally {
-        setIsLoading(false);
+        setIsLoadingUsers(false);
       }
     };
 
+    loadAllUsers();
+  }, [currentWorkspaceId, userMap, usersLoaded]);
+
+  const loadAssignments = useCallback(async () => {
+    if (!paginationParams) return;
+
+    try {
+      // Only show loading spinner on initial load, not on refreshes
+      if (!isRefreshing) {
+        setIsLoading(true);
+      } else {
+        // For refreshes, we'll just update a specific part of the UI
+        if (tableBodyRef.current) {
+          tableBodyRef.current.style.opacity = '0.6';
+        }
+      }
+
+      setError(null);
+
+      const response = await fetchAssignments(paginationParams);
+
+      setAssignments(response.assignments);
+
+      // Update pagination information from the response
+      if (response.pagination) {
+        setTotalCount(response.pagination.total_count);
+        setTotalPages(response.pagination.total_pages);
+      }
+
+      // If we got fewer results than expected and we're not on page 1,
+      // it might mean we're on a page that no longer exists after filtering
+      if (response.assignments.length === 0 && page > 0) {
+        setPage(0); // Go back to first page
+      }
+
+      // Fetch user details for the assignments
+      await fetchUserDetails(response.assignments);
+    } catch (err) {
+      setError("Failed to load assignments");
+      console.error("Error loading assignments:", err);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+
+      // Restore opacity after refresh
+      if (tableBodyRef.current) {
+        tableBodyRef.current.style.opacity = '1';
+      }
+    }
+  }, [paginationParams, page, isRefreshing, fetchUserDetails]);
+
+  // Initial data load
+  useEffect(() => {
     loadAssignments();
   }, []);
 
+  // When pagination params change, refresh data without full loading state
+  useEffect(() => {
+    // Skip the initial load which is handled by the mount effect
+    if (isLoading) return;
+
+    setIsRefreshing(true);
+    loadAssignments();
+  }, [paginationParams]);
+
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
-    setPage(0);
+    setPage(0); // Reset to first page when changing tabs
   };
 
   const handleChangePage = (_: unknown, newPage: number) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChangeRowsPerPage = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+  };
+
+  const handleRequestSort = (property: OrderBy) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+    setPage(0); // Reset to first page when sorting changes
+  };
+
+  const handleRowClick = (assignment: Assignment) => {
+    setSelectedAssignment(assignment);
+    setIsDetailsDialogOpen(true);
   };
 
   const handleOpenAssignDialog = () => {
@@ -168,94 +329,152 @@ const AssignSimulationsPage = () => {
 
   const handleAssignmentCreated = () => {
     // Refresh the assignments list
-    const loadAssignments = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await fetchAssignments();
-        setAssignments(data);
-      } catch (err) {
-        setError('Failed to load assignments');
-        console.error('Error loading assignments:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadAssignments();
   };
 
-  const handleRequestSort = (property: OrderBy) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(0); // Reset to first page when filter changes
   };
 
-  const handleRowClick = (assignment: Assignment) => {
-    setSelectedAssignment(assignment);
-    setIsDetailsDialogOpen(true);
+  const handleCreatorChange = (event: any, newValue: string | null) => {
+    setSelectedCreator(newValue || "Created By");
+    setPage(0); // Reset to first page when filter changes
   };
 
-  const sortedData = React.useMemo(() => {
-    if (!filteredData.length) return filteredData;
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
 
-    return [...filteredData].sort((a, b) => {
-      let aValue, bValue;
+  const getButtonText = () => {
+    switch (currentTab) {
+      case 'Modules':
+        return 'Assign Module';
+      case 'Simulations':
+        return 'Assign Simulation';
+      default:
+        return 'Assign Training Plan';
+    }
+  };
 
-      switch (orderBy) {
-        case 'name':
-          aValue = a.name || '';
-          bValue = b.name || '';
-          break;
-        case 'type':
-          aValue = a.type || '';
-          bValue = b.type || '';
-          break;
-        case 'teams':
-          aValue = a.team_id?.length || 0;
-          bValue = b.team_id?.length || 0;
-          break;
-        case 'trainees':
-          aValue = a.trainee_id?.length || 0;
-          bValue = b.trainee_id?.length || 0;
-          break;
-        case 'start_date':
-          aValue = new Date(a.start_date || 0).getTime();
-          bValue = new Date(b.start_date || 0).getTime();
-          break;
-        case 'end_date':
-          aValue = new Date(a.end_date || 0).getTime();
-          bValue = new Date(b.end_date || 0).getTime();
-          break;
-        case 'status':
-          aValue = a.status || '';
-          bValue = b.status || '';
-          break;
-        case 'last_modified_at':
-          aValue = new Date(a.last_modified_at || 0).getTime();
-          bValue = new Date(b.last_modified_at || 0).getTime();
-          break;
-        case 'last_modified_by':
-          aValue = a.last_modified_by || '';
-          bValue = b.last_modified_by || '';
-          break;
-        case 'created_at':
-          aValue = new Date(a.created_at || 0).getTime();
-          bValue = new Date(b.created_at || 0).getTime();
-          break;
-        case 'created_by':
-          aValue = a.created_by || '';
-          bValue = b.created_by || '';
-          break;
-        default:
-          aValue = a.name || '';
-          bValue = b.name || '';
-      }
+  // Helper function to get user name from ID
+  const getUserName = (userId: string): string => {
+    return userMap[userId] || userId;
+  };
 
-      const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
-      return order === 'asc' ? result : -result;
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const fullName = user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      const email = user.email || '';
+
+      return !creatorSearchQuery || 
+        fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(creatorSearchQuery.toLowerCase());
     });
-  }, [filteredData, order, orderBy]);
+  }, [users, creatorSearchQuery]);
+
+  // Render the table content based on loading state
+  const renderTableContent = () => {
+    if (isLoading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <CircularProgress />
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (error) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <Alert severity="error">{error}</Alert>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (assignments.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <Typography variant="body1" color="text.secondary">
+              No assignments found matching your criteria.
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return assignments.map((row, index) => (
+      <TableRow 
+        key={index}
+        onClick={() => handleRowClick(row)}
+        sx={{ 
+          cursor: 'pointer',
+          '&:hover': { bgcolor: 'action.hover' }
+        }}
+      >
+        <TableCell sx={{ minWidth: 250 }}>
+          {row.name || 'Untitled Assignment'}
+        </TableCell>
+        <TableCell>
+          <Chip
+            label={row.type}
+            size="small"
+            sx={{
+              bgcolor: '#F5F6FF',
+              color: '#444CE7',
+            }}
+          />
+        </TableCell>
+        <TableCell>{row.team_id?.length || 0} Teams</TableCell>
+        <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
+        <TableCell>{formatDate(row.start_date)}</TableCell>
+        <TableCell>{formatDate(row.end_date)}</TableCell>
+        <TableCell>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip
+              label={row.status}
+              size="small"
+              sx={{
+                bgcolor: '#F5F6FF',
+                color: '#444CE7',
+              }}
+            />
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ minWidth: 180 }}>
+          <Stack>
+            <Typography variant="body2">{formatDate(row.last_modified_at)}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(row.last_modified_at).toLocaleTimeString()}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell>
+          <Stack>
+            <Typography variant="body2" noWrap>{getUserName(row.last_modified_by)}</Typography>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ minWidth: 180 }}>
+          <Stack>
+            <Typography variant="body2">{formatDate(row.created_at)}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(row.created_at).toLocaleTimeString()}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell>
+          <Stack>
+            <Typography variant="body2" noWrap>{getUserName(row.created_by)}</Typography>
+          </Stack>
+        </TableCell>
+      </TableRow>
+    ));
+  };
 
   return (
     <DashboardContent>
@@ -337,7 +556,7 @@ const AssignSimulationsPage = () => {
               placeholder="Search by Assignment Name or ID"
               size="small"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               sx={{
                 width: 300,
                 bgcolor: '#FFFFFF',
@@ -356,7 +575,7 @@ const AssignSimulationsPage = () => {
                   <InputAdornment position="end">
                     <IconButton
                       size="small"
-                      onClick={() => setSearchQuery('')}
+                      onClick={handleClearSearch}
                       edge="end"
                       aria-label="clear search"
                     >
@@ -367,43 +586,52 @@ const AssignSimulationsPage = () => {
               }}
             />
 
-            <Stack direction="row" spacing={2} sx={{ ml: 'auto' }}>
-              <Select
-                value={selectedTags}
-                onChange={(e: SelectChangeEvent) => setSelectedTags(e.target.value)}
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
+            <Stack direction="row" spacing={2} sx={{ ml: "auto" }}>
+              {/* Created By Filter - Updated to use Autocomplete with search */}
+              <Autocomplete
+                value={selectedCreator === "Created By" ? null : selectedCreator}
+                onChange={handleCreatorChange}
+                inputValue={creatorSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setCreatorSearchQuery(newInputValue);
                 }}
-              >
-                <MenuItem value="All Tags">All Tags</MenuItem>
-              </Select>
-              <Select
-                value={selectedStatus}
-                onChange={(e: SelectChangeEvent) => setSelectedStatus(e.target.value)}
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
+                options={["Created By", ...filteredUsers.map(user => user.user_id)]}
+                getOptionLabel={(option) => {
+                  if (option === "Created By") return "Created By";
+                  const user = users.find(u => u.user_id === option);
+                  if (!user) return option;
+                  return user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || option;
                 }}
-              >
-                <MenuItem value="All Status">All Status</MenuItem>
-              </Select>
-              <Select
-                value={selectedCreator}
-                onChange={(e: SelectChangeEvent) => setSelectedCreator(e.target.value)}
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
-                }}
-              >
-                <MenuItem value="Created By">Created By</MenuItem>
-              </Select>
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Created By"
+                    size="small"
+                    sx={{
+                      minWidth: 180,
+                      bgcolor: '#FFFFFF',
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingUsers ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                loading={isLoadingUsers}
+                loadingText="Loading users..."
+                noOptionsText="No users found"
+                sx={{ width: 200 }}
+              />
             </Stack>
           </Stack>
 
@@ -550,75 +778,10 @@ const AssignSimulationsPage = () => {
                     </TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
-                  {sortedData
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row, index) => (
-                      <TableRow 
-                        key={index}
-                        onClick={() => handleRowClick(row)}
-                        sx={{ 
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: 'action.hover' }
-                        }}
-                      >
-                        <TableCell sx={{ minWidth: 250 }}>
-                          {row.name || 'Untitled Assignment'}
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={row.type}
-                            size="small"
-                            sx={{
-                              bgcolor: '#F5F6FF',
-                              color: '#444CE7',
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>{row.team_id?.length || 0} Teams</TableCell>
-                        <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
-                        <TableCell>{formatDate(row.start_date)}</TableCell>
-                        <TableCell>{formatDate(row.end_date)}</TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip
-                              label={row.status}
-                              size="small"
-                              sx={{
-                                bgcolor: '#F5F6FF',
-                                color: '#444CE7',
-                              }}
-                            />
-                          </Stack>
-                        </TableCell>
-                        <TableCell sx={{ minWidth: 180 }}>
-                          <Stack>
-                            <Typography variant="body2">{formatDate(row.last_modified_at)}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(row.last_modified_at).toLocaleTimeString()}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Stack>
-                            <Typography variant="body2" noWrap>{row.last_modified_by}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell sx={{ minWidth: 180 }}>
-                          <Stack>
-                            <Typography variant="body2">{formatDate(row.created_at)}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {new Date(row.created_at).toLocaleTimeString()}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Stack>
-                            <Typography variant="body2" noWrap>{row.created_by}</Typography>
-                          </Stack>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+
+                {/* Table Body - This is the part that will be updated */}
+                <TableBody ref={tableBodyRef}>
+                  {renderTableContent()}
                 </TableBody>
               </Table>
             </Box>
@@ -630,7 +793,7 @@ const AssignSimulationsPage = () => {
             >
               <TablePagination
                 component="div"
-                count={filteredData.length}
+                count={totalCount}
                 page={page}
                 onPageChange={handleChangePage}
                 rowsPerPage={rowsPerPage}

@@ -7,6 +7,7 @@ export interface CreateModuleResponse {
 
 export interface ManagerDashboardAggregatedDataPayload {
   user_id: string;
+  reportee_user_ids?: string[];
 }
 
 export interface ManagerDashboardTrainingEntityCounts {
@@ -24,14 +25,14 @@ export interface ManagerDashboardAggregateValues {
 }
 
 export interface ManagerDashboardLeaderBoardTeamWiseMetrics {
-    team: string;
-    score: number;
+  team: string;
+  score: number;
 }
 
 export interface ManagerDashboardLeaderBoard {
-    completion: ManagerDashboardLeaderBoardTeamWiseMetrics[];
-    averageScore: ManagerDashboardLeaderBoardTeamWiseMetrics[];
-    adherence: ManagerDashboardLeaderBoardTeamWiseMetrics[];
+  completion: ManagerDashboardLeaderBoardTeamWiseMetrics[];
+  averageScore: ManagerDashboardLeaderBoardTeamWiseMetrics[];
+  adherence: ManagerDashboardLeaderBoardTeamWiseMetrics[];
 }
 
 export interface TrainingPlansManagerDashboard {
@@ -86,25 +87,26 @@ export interface ModulesManagerDashboard {
 }
 
 export interface ManagerDashboardTrainingEntityAttemptsStatsPayload {
-    user_id: string;
-    type: string;
+  user_id: string;
+  type: string;
+  reportee_user_ids?: string[];
 }
 
 export interface ManagerDashboardTrainingEntityAttemptsStatsResponse {
-    id: number;
+  id: number;
+  name: string;
+  assigned_trainees: number;
+  completion_rate: string;
+  adherence_rate: string;
+  avg_score: string;
+  est_time: string;
+  trainees: {
     name: string;
-    assigned_trainees: number;
-    completion_rate: string;
-    adherence_rate: string;
-    avg_score: string;
-    est_time: string;
-    trainees: {
-      name: string;
-      class_id: number;
-      status: string;
-      due_date: string;
-      avg_score?: string;
-    }[];
+    class_id: number;
+    status: string;
+    due_date: string;
+    avg_score?: string;
+  }[];
 }
 
 export interface ManagerDashboardAggregatedDataResponse {
@@ -120,12 +122,12 @@ export interface ManagerDashboardAggregatedDataResponse {
 }
 
 export const fetchManagerDashboardAggregatedData = async (
-  payload: ManagerDashboardAggregatedDataPayload
+  payload: ManagerDashboardAggregatedDataPayload,
 ): Promise<ManagerDashboardAggregatedDataResponse> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/fetch",
-      payload
+      payload,
     );
     return response.data;
   } catch (error) {
@@ -135,29 +137,29 @@ export const fetchManagerDashboardAggregatedData = async (
 };
 
 export const fetchTrainingEntityAttemptsStatsForManagerDashboard = async (
-    payload: ManagerDashboardTrainingEntityAttemptsStatsPayload
-  ): Promise<any> => {
-    try {
-      const response = await apiClient.post(
-        "/manager-dashboard-data/fetch/training-entity",
-        payload
-      );
-      return response.data.training_entity;
-    } catch (error) {
-      console.error("Error fetching training entity attempts stats:", error);
-      throw error;
-    }
-  };
+  payload: ManagerDashboardTrainingEntityAttemptsStatsPayload,
+): Promise<any> => {
+  try {
+    const response = await apiClient.post(
+      "/manager-dashboard-data/fetch/training-entity",
+      payload,
+    );
+    return response.data.training_entity;
+  } catch (error) {
+    console.error("Error fetching training entity attempts stats:", error);
+    throw error;
+  }
+};
 
 export const fetchTrainingPlansForManagerDashboard = async (
-  userId: string
+  userId: string,
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/training-plans/fetch",
       {
         user_id: userId,
-      }
+      },
     );
     return response.data.training_plans;
   } catch (error) {
@@ -167,14 +169,14 @@ export const fetchTrainingPlansForManagerDashboard = async (
 };
 
 export const fetchSimulationsForManagerDashboard = async (
-  userId: string
+  userId: string,
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/simulations/fetch",
       {
         user_id: userId,
-      }
+      },
     );
     return response.data.simulations;
   } catch (error) {
@@ -184,14 +186,14 @@ export const fetchSimulationsForManagerDashboard = async (
 };
 
 export const fetchModulesForManagerDashboard = async (
-  userId: string
+  userId: string,
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/modules/fetch",
       {
         user_id: userId,
-      }
+      },
     );
     return response.data.modules;
   } catch (error) {

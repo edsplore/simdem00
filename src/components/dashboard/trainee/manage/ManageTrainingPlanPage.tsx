@@ -41,9 +41,12 @@ import {
   fetchTrainingPlans, 
   type TrainingPlan, 
   type TrainingPlanPaginationParams,
-  type TrainingPlansResponse
 } from '../../../../services/trainingPlans';
-import { fetchModules, type Module } from '../../../../services/modules';
+import { 
+  fetchModules, 
+  type Module,
+  type ModulePaginationParams,
+} from '../../../../services/modules';
 import { fetchTags, type Tag } from '../../../../services/tags';
 import { fetchUsersSummary, type User } from '../../../../services/users';
 import { hasCreatePermission } from '../../../../utils/permissions';
@@ -103,6 +106,7 @@ const ManageTrainingPlanPage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
@@ -140,12 +144,46 @@ const ManageTrainingPlanPage = () => {
     selectedCreator
   ]);
 
-  // Load all users for the creator filter - only once when component mounts
+  // Create a memoized pagination params object for modules
+  const modulePaginationParams = useMemo<ModulePaginationParams>(() => {
+    const params: ModulePaginationParams = {
+      page: page + 1, // API uses 1-based indexing
+      pagesize: rowsPerPage,
+      sortBy: orderByToSortBy[orderBy],
+      sortDir: order
+    };
+
+    // Add filters if they're not set to "All"
+    if (searchQuery) {
+      params.search = searchQuery;
+    }
+
+    if (selectedTags !== "All Tags") {
+      params.tags = [selectedTags];
+    }
+
+    if (selectedCreator !== "Created By") {
+      params.createdBy = selectedCreator;
+    }
+
+    return params;
+  }, [
+    page,
+    rowsPerPage,
+    orderBy,
+    order,
+    searchQuery,
+    selectedTags,
+    selectedCreator
+  ]);
+
+  // Load all users once when component mounts
   useEffect(() => {
     const loadAllUsers = async () => {
       if (!currentWorkspaceId) return;
 
       try {
+        setIsLoadingUsers(true);
         const usersData = await fetchUsersSummary(currentWorkspaceId);
         setUsers(usersData);
 
@@ -164,6 +202,8 @@ const ManageTrainingPlanPage = () => {
         setUserMap(newUserMap);
       } catch (error) {
         console.error("Error loading all users:", error);
+      } finally {
+        setIsLoadingUsers(false);
       }
     };
 
@@ -210,8 +250,20 @@ const ManageTrainingPlanPage = () => {
           setPage(0); // Go back to first page
         }
       } else {
-        const moduleData = await fetchModules(user?.id || 'user123');
-        setModules(moduleData);
+        const response = await fetchModules(user?.id || 'user123', modulePaginationParams);
+        setModules(response.modules);
+
+        // Update pagination information from the response
+        if (response.pagination) {
+          setTotalCount(response.pagination.total_count);
+          setTotalPages(response.pagination.total_pages);
+        }
+
+        // If we got fewer results than expected and we're not on page 1,
+        // it might mean we're on a page that no longer exists after filtering
+        if (response.modules.length === 0 && page > 0) {
+          setPage(0); // Go back to first page
+        }
       }
     } catch (err) {
       setError(`Failed to load ${currentTab.toLowerCase()}`);
@@ -234,7 +286,7 @@ const ManageTrainingPlanPage = () => {
 
     setIsRefreshing(true);
     loadData();
-  }, [trainingPlanPaginationParams]);
+  }, [currentTab === 'Training Plans' ? trainingPlanPaginationParams : modulePaginationParams]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
@@ -331,26 +383,12 @@ const ManageTrainingPlanPage = () => {
     return userMap[userId] || userId;
   };
 
-  const filteredData = currentTab === 'Training Plans'
-    ? trainingPlans
-    : modules.filter(module => {
-        // Apply search filter
-        if (searchQuery && !module.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
-          return false;
-        }
-
-        // Apply tag filter
-        if (selectedTags !== 'All Tags' && (!module.tags || !module.tags.includes(selectedTags))) {
-          return false;
-        }
-
-        return true;
-      });
+  const currentData = currentTab === 'Training Plans' ? trainingPlans : modules;
 
   const sortedData = React.useMemo(() => {
-    if (!filteredData.length) return filteredData;
+    if (!currentData.length) return currentData;
 
-    return [...filteredData].sort((a, b) => {
+    return [...currentData].sort((a, b) => {
       let aValue, bValue;
 
       switch (orderBy) {
@@ -390,7 +428,7 @@ const ManageTrainingPlanPage = () => {
       const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
       return order === 'asc' ? result : -result;
     });
-  }, [filteredData, order, orderBy]);
+  }, [currentData, order, orderBy]);
 
   return (
     <DashboardContent>
@@ -528,19 +566,8 @@ const ManageTrainingPlanPage = () => {
                         height: 40,
                       },
                     }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {isLoadingTags ? <CircularProgress size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
                   />
                 )}
-                loading={isLoadingTags}
-                loadingText="Loading tags..."
                 noOptionsText="No tags found"
                 sx={{ width: 150 }}
               />
@@ -783,7 +810,7 @@ const ManageTrainingPlanPage = () => {
             <Box sx={{ bgcolor: '#F9FAFB', borderTop: '1px solid rgba(224, 224, 224, 1)' }}>
               <TablePagination
                 component="div"
-                count={currentTab === 'Training Plans' ? totalCount : filteredData.length}
+                count={totalCount}
                 page={page}
                 onPageChange={handleChangePage}
                 rowsPerPage={rowsPerPage}

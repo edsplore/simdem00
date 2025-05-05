@@ -54,6 +54,7 @@ export interface UserDetails {
 // Get the UAM API URL from environment variables
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const USERS_URL = `${UAM_API_URL}/uam/api/users`;
+const REPORTEE_USERS_URL = `${UAM_API_URL}/uam/api/users/self/reportees`;
 
 export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {
@@ -72,8 +73,27 @@ export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   }
 };
 
+export const fetchReporteeUsers = async (
+  workspaceId: string,
+): Promise<User[]> => {
+  try {
+    const response = await apiClient.get(REPORTEE_USERS_URL, {
+      params: {
+        status: "ACTIVE",
+      },
+      headers: {
+        "X-WORKSPACE-ID": workspaceId,
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching manager dashboard aggregated data:", error);
+    throw error;
+  }
+};
+
 export const fetchUsersSummary = async (
-  workspaceId: string
+  workspaceId: string,
 ): Promise<User[]> => {
   try {
     // Encode the workspaceId to ensure proper handling of special characters
@@ -106,7 +126,7 @@ export const fetchUsersSummary = async (
  */
 export const fetchUsersByIds = async (
   workspaceId: string,
-  userIds: string[]
+  userIds: string[],
 ): Promise<User[]> => {
   try {
     // Encode the workspaceId to ensure proper handling of special characters
@@ -116,7 +136,7 @@ export const fetchUsersByIds = async (
       {
         userIds: userIds,
         status: "ACTIVE",
-      }
+      },
     );
     return response.data;
   } catch (error) {
@@ -127,11 +147,11 @@ export const fetchUsersByIds = async (
 
 export const fetchUserDetails = async (
   userId: string,
-  workspaceId: string
+  workspaceId: string,
 ): Promise<UserDetails> => {
   try {
     console.log(
-      `Fetching user details from ${USERS_URL}/${userId} with workspace ID ${workspaceId}`
+      `Fetching user details from ${USERS_URL}/${userId} with workspace ID ${workspaceId}`,
     );
     const response = await apiClient.get(`${USERS_URL}/self`, {
       headers: {

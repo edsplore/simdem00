@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Stack,
   Grid,
@@ -10,10 +10,17 @@ import {
   Chip,
   Select,
   MenuItem,
-  Pagination
-} from '@mui/material';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import SortIcon from '@mui/icons-material/Sort';
+  Pagination,
+  Box,
+  CircularProgress,
+} from "@mui/material";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import SortIcon from "@mui/icons-material/Sort";
+import { useAuth } from "../../../../context/AuthContext";
+import {
+  fetchPlaybackRowData,
+  FetchPlaybackRowDataResponse,
+} from "../../../../services/playback";
 
 interface SimulationRecord {
   id: string;
@@ -37,7 +44,7 @@ const simulationData: SimulationRecord[] = [
     simType: "Visual-Audio",
     level: "Lvl 02",
     score: "56%",
-    status: "Finished"
+    status: "Finished",
   },
   {
     id: "2",
@@ -48,7 +55,7 @@ const simulationData: SimulationRecord[] = [
     simType: "Visual-Audio",
     level: "Lvl 02",
     score: "56%",
-    status: "Finished"
+    status: "Finished",
   },
   {
     id: "3",
@@ -59,7 +66,7 @@ const simulationData: SimulationRecord[] = [
     simType: "Visual-Audio",
     level: "Lvl 02",
     score: "56%",
-    status: "Finished"
+    status: "Finished",
   },
   {
     id: "4",
@@ -70,26 +77,49 @@ const simulationData: SimulationRecord[] = [
     simType: "Visual-Audio",
     level: "Lvl 02",
     score: "56%",
-    status: "Finished"
-  }
+    status: "Finished",
+  },
 ];
 
 const PlaybackTable = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [rowsPerPage, setRowsPerPage] = useState('50');
-
+  const [rowsPerPage, setRowsPerPage] = useState("50");
+  const [playbackData, setPlaybackData] = useState<
+    FetchPlaybackRowDataResponse[] | null
+  >(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const handleRowClick = (id: string) => {
     navigate(`/playback/${id}`);
   };
 
+  useEffect(() => {
+    const loadPlaybackData = async () => {
+      if (user?.id) {
+        try {
+          setIsLoading(true);
+          setError(null);
+          // In a real implementation, we would fetch data from the API
+          const data = await fetchPlaybackRowData({
+            user_id: user.id,
+          });
+          setPlaybackData(data);
+        } catch (error) {
+          console.error("Error loading playback data:", error);
+          setError("Failed to load playback data");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadPlaybackData();
+  }, []);
+
   return (
     <Stack spacing={2}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <TextField
-          placeholder="Search"
-          size="small"
-          sx={{ maxWidth: 300 }}
-        />
+        <TextField placeholder="Search" size="small" sx={{ maxWidth: 300 }} />
         <Stack direction="row" spacing={1}>
           <IconButton>
             <FilterListIcon sx={{ fontSize: 20 }} />
@@ -101,90 +131,120 @@ const PlaybackTable = () => {
       </Stack>
 
       <Paper variant="outlined">
-        <Grid container sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+        <Grid container sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
           <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">Training Plan & Module</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Training Plan & Module
+            </Typography>
           </Grid>
           <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">Sim ID</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Sim ID
+            </Typography>
           </Grid>
           <Grid item xs={3}>
-            <Typography variant="subtitle2" color="text.secondary">Sim Name</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Sim Name
+            </Typography>
           </Grid>
           <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">Sim Type</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Sim Type
+            </Typography>
           </Grid>
           <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">Level</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Level
+            </Typography>
           </Grid>
           <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">Score</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Score
+            </Typography>
           </Grid>
           <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Status
+            </Typography>
           </Grid>
         </Grid>
 
-        {simulationData.map((sim) => (
+        {isLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <></>
+        )}
+
+        {playbackData?.map((playback: FetchPlaybackRowDataResponse) => (
           <Grid
-            key={sim.id}
+            key={playback.id}
             container
             sx={{
               p: 2,
               borderBottom: 1,
-              borderColor: 'divider',
-              '&:hover': {
-                bgcolor: 'action.hover',
-                cursor: 'pointer'
-              }
+              borderColor: "divider",
+              "&:hover": {
+                bgcolor: "action.hover",
+                cursor: "pointer",
+              },
             }}
-            onClick={() => handleRowClick(sim.id)}
+            onClick={() => handleRowClick(playback.id)}
             alignItems="center"
           >
             <Grid item xs={2}>
               <Stack>
-                <Typography variant="body2" fontWeight="medium">{sim.trainingPlan}</Typography>
-                <Typography variant="caption" color="text.secondary">{sim.module}</Typography>
+                <Typography variant="body2" fontWeight="medium">
+                  {playback.trainingPlan}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {playback.moduleName}
+                </Typography>
               </Stack>
             </Grid>
             <Grid item xs={1}>
-              <Typography variant="body2">{sim.simId}</Typography>
+              <Typography variant="body2">
+                {playback.simId.substring(0, 5) + "..."}
+              </Typography>
             </Grid>
             <Grid item xs={3}>
-              <Typography variant="body2">{sim.simName}</Typography>
+              <Typography variant="body2">{playback.simName}</Typography>
             </Grid>
             <Grid item xs={2}>
               <Chip
-                label={sim.simType}
+                label={playback.simType}
                 size="small"
                 sx={{
-                  bgcolor: 'purple.50',
-                  color: 'purple.main',
+                  bgcolor: "purple.50",
+                  color: "purple.main",
                 }}
               />
             </Grid>
             <Grid item xs={1}>
-              <Typography variant="body2">{sim.level}</Typography>
+              <Typography variant="body2">{playback.simLevel}</Typography>
             </Grid>
             <Grid item xs={1}>
               <Typography
                 variant="body2"
                 color={
-                  parseInt(sim.score) >= 80 ? "success.main" :
-                  parseInt(sim.score) >= 60 ? "warning.main" :
-                  "error.main"
+                  playback.score >= 80
+                    ? "success.main"
+                    : playback.score >= 60
+                    ? "warning.main"
+                    : "error.main"
                 }
               >
-                {sim.score}
+                {playback.score}
               </Typography>
             </Grid>
             <Grid item xs={2}>
               <Chip
-                label={sim.status}
+                label={playback.status}
                 size="small"
                 sx={{
-                  bgcolor: 'success.50',
-                  color: 'success.main',
+                  bgcolor: "success.50",
+                  color: "success.main",
                 }}
               />
             </Grid>
@@ -214,11 +274,7 @@ const PlaybackTable = () => {
             <MenuItem value="100">100</MenuItem>
           </Select>
         </Stack>
-        <Pagination
-          count={10}
-          shape="rounded"
-          size="small"
-        />
+        <Pagination count={10} shape="rounded" size="small" />
       </Stack>
     </Stack>
   );

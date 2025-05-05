@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Stack,
   Card,
@@ -10,34 +10,38 @@ import {
   Grid,
   Box,
   Paper,
-} from '@mui/material';
-import SimIcon from '@mui/icons-material/SimCard';
-import TimerIcon from '@mui/icons-material/AccessTime';
-import MouseIcon from '@mui/icons-material/Mouse';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import CloseIcon from '@mui/icons-material/Close';
-import PowerIcon from '@mui/icons-material/Power';
-import PsychologyIcon from '@mui/icons-material/Psychology';
+} from "@mui/material";
+import SimIcon from "@mui/icons-material/SimCard";
+import TimerIcon from "@mui/icons-material/AccessTime";
+import MouseIcon from "@mui/icons-material/Mouse";
+import TextFieldsIcon from "@mui/icons-material/TextFields";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CloseIcon from "@mui/icons-material/Close";
+import PowerIcon from "@mui/icons-material/Power";
+import PsychologyIcon from "@mui/icons-material/Psychology";
 
-import CompletionTime from './ScoreDetailsCard';
-import Label from '../../../../common/StatusLabel';
+import CompletionTime from "./ScoreDetailsCard";
+import Label from "../../../../common/StatusLabel";
+import { FetchPlaybackByIdRowDataResponse } from "../../../../../services/playback";
 
-const PlaybackDetails = () => {
+interface PlaybackDetailsProps {
+  playbackData: FetchPlaybackByIdRowDataResponse;
+}
+const PlaybackDetails = (props: PlaybackDetailsProps) => {
   return (
     <Card
       sx={{
         width: 480,
         p: 2,
         borderRadius: 2,
-        maxHeight: '620px',
-        overflowY: 'auto',
-        paddingRight: '8px',
-        '&::-webkit-scrollbar': {
-          display: 'none', // Hide the scrollbar
+        maxHeight: "620px",
+        overflowY: "auto",
+        paddingRight: "8px",
+        "&::-webkit-scrollbar": {
+          display: "none", // Hide the scrollbar
         },
-        scrollbarWidth: 'none', // For Firefox
+        scrollbarWidth: "none", // For Firefox
       }}
     >
       <Stack spacing={3}>
@@ -54,14 +58,14 @@ const PlaybackDetails = () => {
             </IconButton>
           </Stack>
 
-          <Box sx={{ maxHeight: '350px', overflowY: 'auto' }}>
+          <Box sx={{ maxHeight: "350px", overflowY: "auto" }}>
             <Stack
               spacing={0}
               sx={{
-                border: '1px solid',
-                borderColor: 'divider',
+                border: "1px solid",
+                borderColor: "divider",
                 borderRadius: 1,
-                overflow: 'hidden',
+                overflow: "hidden",
               }}
             >
               {/* Headers */}
@@ -69,19 +73,19 @@ const PlaybackDetails = () => {
                 container
                 sx={{
                   p: 1.5,
-                  bgcolor: '#F9FAFB',
+                  bgcolor: "#F9FAFB",
                 }}
               >
                 <Grid item xs={6}>
                   <Typography
-                    sx={{ fontSize: '12px', color: 'text.secondary' }}
+                    sx={{ fontSize: "12px", color: "text.secondary" }}
                   >
                     Sim Name & ID
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography
-                    sx={{ fontSize: '12px', color: 'text.secondary' }}
+                    sx={{ fontSize: "12px", color: "text.secondary" }}
                   >
                     Completion Date
                   </Typography>
@@ -96,12 +100,12 @@ const PlaybackDetails = () => {
                   <Grid item xs={6}>
                     <Stack spacing={0.5}>
                       <Typography variant="body2">
-                        Humana_MS_PCP Change
+                        {props.playbackData.name}
                       </Typography>
                       <Typography
-                        sx={{ fontSize: '12px', color: 'text.secondary' }}
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
                       >
-                        82840
+                        {props.playbackData.id}
                       </Typography>
                     </Stack>
                   </Grid>
@@ -109,9 +113,9 @@ const PlaybackDetails = () => {
                     <Stack spacing={0.5}>
                       <Typography variant="body2">Dec 20, 2024</Typography>
                       <Typography
-                        sx={{ fontSize: '12px', color: 'text.secondary' }}
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
                       >
-                        12:13pm IST
+                        {props.playbackData.completedAt}
                       </Typography>
                     </Stack>
                   </Grid>
@@ -125,19 +129,19 @@ const PlaybackDetails = () => {
                 container
                 sx={{
                   p: 1.5,
-                  bgcolor: '#F9FAFB',
+                  bgcolor: "#F9FAFB",
                 }}
               >
                 <Grid item xs={6}>
                   <Typography
-                    sx={{ fontSize: '12px', color: 'text.secondary' }}
+                    sx={{ fontSize: "12px", color: "text.secondary" }}
                   >
                     Sim Type
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
                   <Typography
-                    sx={{ fontSize: '12px', color: 'text.secondary' }}
+                    sx={{ fontSize: "12px", color: "text.secondary" }}
                   >
                     Attempt Type
                   </Typography>
@@ -151,30 +155,39 @@ const PlaybackDetails = () => {
                 <Grid container sx={{ p: 1.5 }}>
                   <Grid item xs={6}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip
-                        label="Visual-Audio"
-                        size="small"
-                        sx={{
-                          bgcolor: 'grey.200',
-                          height: 24,
-                          '& .MuiChip-label': {
-                            px: 1,
-                            fontSize: '14px',
-                          },
-                        }}
-                      />
-                      <Chip
-                        label="Lvl 02"
-                        size="small"
-                        sx={{
-                          bgcolor: 'grey.200',
-                          height: 24,
-                          '& .MuiChip-label': {
-                            px: 1,
-                            fontSize: '14px',
-                          },
-                        }}
-                      />
+                      {props.playbackData.type ? (
+                        <Chip
+                          label={props.playbackData.type}
+                          size="small"
+                          sx={{
+                            bgcolor: "grey.200",
+                            height: 24,
+                            "& .MuiChip-label": {
+                              px: 1,
+                              fontSize: "14px",
+                            },
+                          }}
+                        />
+                      ) : (
+                        <></>
+                      )}
+
+                      {props.playbackData.simLevel ? (
+                        <Chip
+                          label={props.playbackData.simLevel}
+                          size="small"
+                          sx={{
+                            bgcolor: "grey.200",
+                            height: 24,
+                            "& .MuiChip-label": {
+                              px: 1,
+                              fontSize: "14px",
+                            },
+                          }}
+                        />
+                      ) : (
+                        <></>
+                      )}
                     </Stack>
                   </Grid>
                   <Grid item xs={6}>
@@ -182,11 +195,11 @@ const PlaybackDetails = () => {
                       label="Test"
                       size="small"
                       sx={{
-                        bgcolor: 'grey.200',
+                        bgcolor: "grey.200",
                         height: 24,
-                        '& .MuiChip-label': {
+                        "& .MuiChip-label": {
                           px: 1,
-                          fontSize: '14px',
+                          fontSize: "14px",
                         },
                       }}
                     />
@@ -212,7 +225,7 @@ const PlaybackDetails = () => {
             elevation={1}
             sx={{
               padding: 2,
-              borderRadius: '8px',
+              borderRadius: "8px",
             }}
           >
             <Stack
@@ -238,7 +251,7 @@ const PlaybackDetails = () => {
             elevation={1}
             sx={{
               padding: 2,
-              borderRadius: '8px',
+              borderRadius: "8px",
             }}
           >
             <Stack spacing={2}>
@@ -283,7 +296,7 @@ const PlaybackDetails = () => {
             elevation={3}
             sx={{
               padding: 2,
-              borderRadius: '8px',
+              borderRadius: "8px",
             }}
           >
             <Stack spacing={1}>
@@ -324,20 +337,20 @@ const PlaybackDetails = () => {
         <Button
           variant="text"
           sx={{
-            color: '#001EEE',
+            color: "#001EEE",
             p: 1,
-            minWidth: 'auto',
-            width: '100%', // Full width
-            textAlign: 'center', // Center the button
-            display: 'block', // Block level element
+            minWidth: "auto",
+            width: "100%", // Full width
+            textAlign: "center", // Center the button
+            display: "block", // Block level element
             mt: 2, // Optional: space from content above
-            backgroundColor: '#F6F6FF', // Set background color
-            '&:hover': {
-              backgroundColor: '#F6F6FF', // Keep the same background color on hover
+            backgroundColor: "#F6F6FF", // Set background color
+            "&:hover": {
+              backgroundColor: "#F6F6FF", // Keep the same background color on hover
             },
-            fontWeight: 'bold', // Ensure normal font weight
-            fontFamily: 'Arial, sans-serif', // Use a specific font family
-            textTransform: 'none', // Prevent uppercase text
+            fontWeight: "bold", // Ensure normal font weight
+            fontFamily: "Arial, sans-serif", // Use a specific font family
+            textTransform: "none", // Prevent uppercase text
           }}
         >
           View Insights

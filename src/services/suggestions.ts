@@ -10,7 +10,7 @@ const SUGGESTIONS_URL = `${UAM_API_URL}/uam/api/suggestions`;
  * @returns Promise with array of division names
  */
 export const fetchDivisions = async (
-  workspaceId: string,
+  workspaceId: string
 ): Promise<string[]> => {
   try {
     console.log(`Fetching divisions for workspace: ${workspaceId}`);
@@ -34,7 +34,7 @@ export const fetchDivisions = async (
  * @returns Promise with array of department names
  */
 export const fetchDepartments = async (
-  workspaceId: string,
+  workspaceId: string
 ): Promise<string[]> => {
   try {
     console.log(`Fetching departments for workspace: ${workspaceId}`);

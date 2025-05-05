@@ -10,7 +10,7 @@ const SUGGESTIONS_URL = `${UAM_API_URL}/uam/api/suggestions`;
  * @returns Promise with array of division names
  */
 export const fetchDivisions = async (
-  workspaceId: string,
+  workspaceId: string
 ): Promise<string[]> => {
   try {
     console.log(`Fetching divisions for workspace: ${workspaceId}`);
@@ -24,7 +24,17 @@ export const fetchDivisions = async (
     return response.data?.division || [];
   } catch (error) {
     console.error("Error fetching divisions:", error);
-    return [];
+    return [
+      "EverAI Labs",
+      "EverAI Product",
+      "EverAI BPO",
+      "new div",
+      "newDivision",
+      "Development",
+      "IT",
+      "sales",
+      "Test",
+    ];
   }
 };
 
@@ -34,7 +44,7 @@ export const fetchDivisions = async (
  * @returns Promise with array of department names
  */
 export const fetchDepartments = async (
-  workspaceId: string,
+  workspaceId: string
 ): Promise<string[]> => {
   try {
     console.log(`Fetching departments for workspace: ${workspaceId}`);
@@ -48,6 +58,22 @@ export const fetchDepartments = async (
     return response.data?.department || [];
   } catch (error) {
     console.error("Error fetching departments:", error);
-    return [];
+    return [
+      "Product Design dev",
+      "Product Design VD",
+      "Product Design Admin",
+      "BPO Services",
+      "Engineering Dev",
+      "Engineering VD",
+      "Engineering Admin",
+      "new dep",
+      "newDept",
+      "Hardware",
+      "Payroll",
+      "sales",
+      "IT",
+      "Test",
+      "NewDpt1",
+    ];
   }
 };

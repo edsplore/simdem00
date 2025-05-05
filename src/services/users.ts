@@ -55,7 +55,6 @@ export interface UserDetails {
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const USERS_URL = `${UAM_API_URL}/uam/api/users`;
 
-
 export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
   try {
     const response = await apiClient.post(USERS_URL, {
@@ -74,7 +73,7 @@ export const fetchUsers = async (workspaceId: string): Promise<User[]> => {
 };
 
 export const fetchUsersSummary = async (
-  workspaceId: string,
+  workspaceId: string
 ): Promise<User[]> => {
   try {
     // Encode the workspaceId to ensure proper handling of special characters
@@ -106,7 +105,7 @@ export const fetchUsersSummary = async (
  */
 export const fetchUsersByIds = async (
   workspaceId: string,
-  userIds: string[],
+  userIds: string[]
 ): Promise<User[]> => {
   try {
     // Encode the workspaceId to ensure proper handling of special characters
@@ -116,7 +115,7 @@ export const fetchUsersByIds = async (
       {
         userIds: userIds,
         status: "ACTIVE",
-      },
+      }
     );
     return response.data;
   } catch (error) {
@@ -127,11 +126,11 @@ export const fetchUsersByIds = async (
 
 export const fetchUserDetails = async (
   userId: string,
-  workspaceId: string,
+  workspaceId: string
 ): Promise<UserDetails> => {
   try {
     console.log(
-      `Fetching user details from ${USERS_URL}/${userId} with workspace ID ${workspaceId}`,
+      `Fetching user details from ${USERS_URL}/${userId} with workspace ID ${workspaceId}`
     );
     const response = await apiClient.get(`${USERS_URL}/self`, {
       headers: {

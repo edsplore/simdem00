@@ -134,7 +134,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [messages, setMessages] = useState<Message[]>(script);
   const [inputText, setInputText] = useState("");
   const [currentRole, setCurrentRole] = useState<"Customer" | "Trainee">(
-    "Customer",
+    "Customer"
   );
 
   // Drag‐and‐drop
@@ -147,14 +147,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState(""); // we store the Quill HTML here
   const [draftRole, setDraftRole] = useState<"Customer" | "Trainee">(
-    "Customer",
+    "Customer"
   ); // NEW: track edited role
   const [editingMinWidth, setEditingMinWidth] = useState<number>(0);
 
   // Add Message Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addMessageRole, setAddMessageRole] = useState<"Customer" | "Trainee">(
-    "Customer",
+    "Customer"
   );
   const [newMessageText, setNewMessageText] = useState("");
   const [addMessageIndex, setAddMessageIndex] = useState<number | null>(null);
@@ -181,11 +181,21 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     () => ({
       toolbar: false, // Hide the default toolbar
     }),
-    [],
+    []
   );
 
   // We define which Quill formats are allowed
-  const formats = useMemo(() => ["keyword", "bold", "italic", "underline"], []);
+  const formats = useMemo(
+    () => [
+      "bold",
+      "italic",
+      "underline",
+      "span",
+      "keyword",
+      "keyword-highlight",
+    ],
+    []
+  );
 
   // ----------------------------
   //  Basic UI logic
@@ -275,7 +285,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const handleDragStart = (
     e: React.DragEvent<HTMLButtonElement>,
     msgId: string,
-    index: number,
+    index: number
   ) => {
     setDraggedMessage(msgId);
     setIsDragging(true);
@@ -340,7 +350,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     newArr.splice(
       dragOverIndex > draggedIndex ? dragOverIndex - 1 : dragOverIndex,
       0,
-      removed,
+      removed
     );
 
     setMessages(newArr);
@@ -362,9 +372,18 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // Start editing
     setEditingId(msg.id);
     // In a real app, 'msg.message' might be plain text or already HTML. We'll assume HTML
+    console.log(msg.message);
+    const inputHtml =
+      '<p><span class="">Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I’m here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>';
+    const safeHtml = inputHtml
+      .replace(/<span[^>]*>/g, "")
+      .replace(/<\/span>/g, "");
+
     setDraftText(msg.message);
     setDraftRole(msg.role); // NEW: initialize draft role
+    console.log(editingKeywords, "-------------------------editingKeywords");
     setEditingKeywords(msg.keywords || []);
+    console.log(editingKeywords, "-------------------------editingKeywords");
 
     // measure bubble width
     const rowEl = messageRefs.current[index];
@@ -391,9 +410,13 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
             keywords: editingKeywords,
             role: draftRole,
           }
-        : m,
+        : m
     );
+    console.log("handle svae edit ", draftText);
     setMessages(updatedMessages);
+    if (onScriptUpdate) {
+      onScriptUpdate(updatedMessages);
+    }
 
     // Update parent component
     if (onScriptUpdate) {
@@ -424,17 +447,22 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   //
   const handleQuillChangeSelection = (
     range: { index: number; length: number } | null,
-    oldRange: { index: number; length: number } | null,
     source: string,
-    editor: any,
+    editor: any
   ) => {
     if (!range || range.length === 0) {
       // no selection
+      const htmlText = editor.getHTML();
+      console.log("html text ---------", htmlText);
+      setDraftText(htmlText);
       setShowKeywordPopper(false);
       return;
     }
+    console.log("range", range);
+    console.log("editor", editor);
     // If the user highlights text, we figure out if it's already a "keyword"
-    const format = editor.getFormat(range.index, range.length);
+    const format = editor.getText(range.index, range.length);
+
     const isKeyword = !!format.keyword;
     setIsAlreadyKeyword(isKeyword);
 
@@ -443,17 +471,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setSelectionLength(range.length);
 
     // Let's get bounding rect of that selection to position a Popper
-    const nativeRange = editor.editor.getSelectionBounds(
-      range.index,
-      range.length,
-    );
+    // const nativeRange = editor.getBounds(
+    //   range.index,
+    //   range.length
+    // );
     // The editor container is offset in the page, so we get the container's position
-    const quillEl = editor.editor.container.getBoundingClientRect();
+    // const quillEl = editor.editor.container.getBoundingClientRect();
 
     // We'll create a Range to anchor the Popper in pure DOM
-    const selectionRange = document.createRange();
-    selectionRange.setStart(editor.editor.scroll.domNode, 0); // minimal anchor
-    setSelectionAnchor(selectionRange);
+    // const selectionRange = document.createRange();
+    // selectionRange.setStart(editor.scroll.domNode, 0); // minimal anchor
+    // setSelectionAnchor(selectionRange);
 
     // Now we show the popper
     setShowKeywordPopper(true);
@@ -466,7 +494,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   //
   // handleQuillChange is the main text change handler for Quill
   //
-  const handleQuillChange = (content: string) => {
+  const handleQuillChange = (content: string, editor: any) => {
     setDraftText(content);
   };
 
@@ -474,16 +502,25 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   // Adding/Removing a Keyword in Quill
   //
   const addKeyword = (quill: any) => {
-    // highlight the selection with the 'keyword' format
+    const range = quill.getSelection();
+    if (!range || range.length === 0) return;
+    debugger;
+    const selectionIndex = range.index;
+    const selectionLength = range.length;
+
+    const substring = quill.getText(selectionIndex, selectionLength);
+
+    setEditingKeywords((prev: string[]) => [...prev, substring]);
+
+    // console.log("newmessages ------", messages);
     quill.formatText(selectionIndex, selectionLength, "keyword", true);
 
-    // also push that substring into `editingKeywords`
-    const substring = quill.getText(selectionIndex, selectionLength);
-    setEditingKeywords((prev) => [...prev, substring]);
-
-    // hide the popper
     setShowKeywordPopper(false);
   };
+
+  useEffect(() => {
+    console.log("Updated messages:", messages);
+  }, [messages]);
 
   const removeKeyword = (quill: any) => {
     // un‐highlight the selection
@@ -751,7 +788,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             value={draftRole}
                             onChange={(e) =>
                               setDraftRole(
-                                e.target.value as "Customer" | "Trainee",
+                                e.target.value as "Customer" | "Trainee"
                               )
                             }
                             size="small"
@@ -776,6 +813,55 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             border: "none",
                           }}
                         />
+                        <Popper
+                          open={showKeywordPopper}
+                          anchorEl={keywordPopperRef.current} // not used in a standard way
+                          style={{
+                            position: "absolute",
+                            left: "40%",
+                            top: "10%",
+                            right: "10%",
+                            zIndex: 1300,
+                            width: "fit-content",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              p: 1,
+                              bgcolor: "background.paper",
+                              border: "1px solid",
+                              borderColor: "divider",
+                              borderRadius: 1,
+                              boxShadow: theme.shadows[2],
+                              display: "flex",
+                              gap: 1,
+                            }}
+                          >
+                            {isAlreadyKeyword ? (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                  const quill = quillRef.current?.getEditor();
+                                  if (quill) removeKeyword(quill);
+                                }}
+                              >
+                                Remove Keyword
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => {
+                                  const quill = quillRef.current?.getEditor();
+                                  if (quill) addKeyword(quill);
+                                }}
+                              >
+                                Add Keyword
+                              </Button>
+                            )}
+                          </Box>
+                        </Popper>
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                           <Button
                             variant="contained"
@@ -927,53 +1013,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       </Dialog>
 
       {/* Keyword Popper */}
-      <Popper
-        open={showKeywordPopper}
-        anchorEl={keywordPopperRef.current} // not used in a standard way
-        style={{
-          position: "absolute",
-          left: popperPos.left,
-          top: popperPos.top,
-          zIndex: 1300,
-        }}
-      >
-        <Box
-          sx={{
-            p: 1,
-            bgcolor: "background.paper",
-            border: "1px solid",
-            borderColor: "divider",
-            borderRadius: 1,
-            boxShadow: theme.shadows[2],
-            display: "flex",
-            gap: 1,
-          }}
-        >
-          {isAlreadyKeyword ? (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => {
-                const quill = quillRef.current?.getEditor();
-                if (quill) removeKeyword(quill);
-              }}
-            >
-              Remove Keyword
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              size="small"
-              onClick={() => {
-                const quill = quillRef.current?.getEditor();
-                if (quill) addKeyword(quill);
-              }}
-            >
-              Add Keyword
-            </Button>
-          )}
-        </Box>
-      </Popper>
 
       {/* Optional: Add a style tag for the keyword highlighting */}
       <style jsx>{`

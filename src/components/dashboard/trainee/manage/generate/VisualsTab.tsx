@@ -234,7 +234,8 @@ export default function VisualsTab({
   createSimulation,
   simulationType,
 }: VisualsTabProps) {
-  const { scriptData } = useSimulationWizard();
+  const { scriptData, assignedScriptMessageIds, setAssignedScriptMessageIds } =
+    useSimulationWizard();
 
   // Initialize visualImages with proper initial state
   const [visualImages, setVisualImages] = useState<VisualImage[]>([]);
@@ -549,19 +550,10 @@ export default function VisualsTab({
       scriptData.filter((msg) => {
         if (!msg || !msg.id) return false;
 
-        return !visualImages.some((img) => {
-          if (!img || !img.sequence) return false;
-
-          return img.sequence.some((item) => {
-            if (!item || item.type !== "message" || !item.content) return false;
-
-            // Safely access the ID with type checking
-            const messageContent = item.content as Partial<ScriptMessage>;
-            return messageContent.id === msg.id;
-          });
-        });
+        // Use the assignedScriptMessageIds Set to filter out already assigned messages
+        return !assignedScriptMessageIds.has(msg.id);
       }),
-    [scriptData, visualImages],
+    [scriptData, assignedScriptMessageIds],
   );
 
   const handleOpenScriptMenu = useCallback(
@@ -606,9 +598,16 @@ export default function VisualsTab({
         }),
       );
 
+      // Update assignedScriptMessageIds to include this message ID
+      setAssignedScriptMessageIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(message.id);
+        return newSet;
+      });
+
       handleCloseScriptMenu();
     },
-    [selectedImageId, handleCloseScriptMenu],
+    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds],
   );
 
   // For draggable thumbnails on the left
@@ -952,6 +951,15 @@ export default function VisualsTab({
     (id: string, type: "hotspot" | "message") => {
       if (!selectedImageId) return;
 
+      // If it's a message being deleted, remove it from assigned IDs
+      if (type === "message") {
+        setAssignedScriptMessageIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+      }
+
       setVisualImages((currentImages) =>
         currentImages.map((img) => {
           if (img.id === selectedImageId) {
@@ -967,7 +975,7 @@ export default function VisualsTab({
         }),
       );
     },
-    [selectedImageId],
+    [selectedImageId, setAssignedScriptMessageIds],
   );
 
   const handleEditItem = useCallback(
@@ -1050,7 +1058,8 @@ export default function VisualsTab({
             disabled={
               !selectedImageId ||
               !Array.isArray(scriptData) ||
-              scriptData.length === 0
+              scriptData.length === 0 ||
+              unassignedMessages.length === 0
             }
             onClick={handleOpenScriptMenu}
             sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}

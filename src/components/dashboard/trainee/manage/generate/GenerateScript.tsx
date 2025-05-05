@@ -293,6 +293,7 @@ const GenerateScriptContent = () => {
     setIsPublished,
     simulationResponse,
     setSimulationResponse,
+    setAssignedScriptMessageIds,
   } = useSimulationWizard();
 
   const [enabledTabs, setEnabledTabs] = useState<TabState>({
@@ -399,7 +400,8 @@ const GenerateScriptContent = () => {
           if (simulation.script && Array.isArray(simulation.script)) {
             const transformedScript = simulation.script.map(
               (scriptItem, index) => ({
-                id: `script-${Date.now()}-${index}`,
+                // Use a more stable ID format that's consistent across sessions
+                id: scriptItem.id || `script-${index}`,
                 role: scriptItem.role === "assistant" ? "Trainee" : "Customer",
                 message: scriptItem.script_sentence || "",
                 keywords: scriptItem.keywords || [],
@@ -418,6 +420,8 @@ const GenerateScriptContent = () => {
 
           // Enhanced processing of visual data (slides, images, sequences)
           const processedImages = [];
+          // Track assigned message IDs
+          const assignedMessageIds = new Set<string>();
 
           // Check if we have slidesData
           if (
@@ -457,18 +461,6 @@ const GenerateScriptContent = () => {
               // Try to get image data from the map
               const imageData = imageDataMap.get(slide.imageId);
 
-              // Comment out the direct URL handling
-              /* 
-              // First check if we have a valid API URL in slide.imageUrl
-              if (
-                slide.imageUrl &&
-                (slide.imageUrl.startsWith("/api/") ||
-                  slide.imageUrl.startsWith("http"))
-              ) {
-                // Use the API URL directly
-                blobUrl = slide.imageUrl;
-              }
-              */
               // If we have image data, process it
               if (imageData) {
                 // Process the binary image data properly - similar to how preview components do it
@@ -547,6 +539,11 @@ const GenerateScriptContent = () => {
                     }
                     // For message type items
                     else if (item.type === "message") {
+                      // Track message IDs that are already assigned to visuals
+                      if (item.id) {
+                        assignedMessageIds.add(item.id);
+                      }
+
                       // Create a proper message sequence item
                       return {
                         id: `message-${item.id}`,
@@ -699,6 +696,10 @@ const GenerateScriptContent = () => {
           } else {
             setVisualImages([]);
           }
+
+          // Set assigned message IDs to context
+          console.log("Setting assigned message IDs:", assignedMessageIds);
+          setAssignedScriptMessageIds(assignedMessageIds);
 
           // If status is published, set isPublished
           if (simulation.status === "published") {

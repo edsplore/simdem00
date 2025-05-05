@@ -11,14 +11,19 @@ import {
   Button,
   CircularProgress,
   Alert,
+  ButtonGroup,
+  Tooltip,
 } from "@mui/material";
 import axios from "axios";
 import AdvancedSettings from "./AdvancedSetting";
 import VoiceAndScoreSettings from "./VoiceScoreSetting";
 import PreviewTab from "../PreviewTab";
-import { useParams } from "react-router-dom";
-import { publishSimulation } from "../../../../../../services/simulation_operations";
-
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  publishSimulation,
+  updateSimulation,
+} from "../../../../../../services/simulation_operations";
+import { useAuth } from "../../../../../../context/AuthContext";
 const NavItem = styled(ListItem)(({ theme }) => ({
   cursor: "pointer",
   "&:hover": {
@@ -99,7 +104,7 @@ interface SettingTabProps {
       pre_requisite_limit?: number;
     };
   };
-  isLoading?: boolean; // Added isLoading prop
+  isLoading?: boolean;
   onPublish?: () => void;
   script?: any[];
 }
@@ -151,21 +156,25 @@ const SettingTab: React.FC<SettingTabProps> = ({
   prompt = "",
   simulationType = "audio",
   simulationData,
-  isLoading = false, // Default to false
+  isLoading = false,
   onPublish,
   script,
 }) => {
   // Use ID from URL params if available, fallback to prop
   const { id: urlId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const simulationId = urlId || propSimulationId;
 
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [publishedSimId, setPublishedSimId] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("Simulation Type");
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
+  const { user, currentWorkspaceId } = useAuth();
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
@@ -369,6 +378,58 @@ const SettingTab: React.FC<SettingTabProps> = ({
     return createSettingsFromData();
   });
 
+  // NEW: Validate settings before publishing
+  const validateSettings = () => {
+    // Check if at least one level is enabled
+    const levels = settingsState.advancedSettings?.levels?.simulationLevels;
+    const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
+
+    // Check if estimated time is specified and enabled
+    const estimatedTime = settingsState.advancedSettings?.estimatedTime;
+    const isEstimatedTimeValid =
+      estimatedTime?.enabled &&
+      estimatedTime?.value &&
+      estimatedTime.value.trim() !== "";
+
+    // Build validation error message if needed
+    let errorMessage = null;
+
+    if (!isAnyLevelEnabled && !isEstimatedTimeValid) {
+      errorMessage =
+        "At least one level must be enabled and estimated time must be specified before publishing.";
+    } else if (!isAnyLevelEnabled) {
+      errorMessage = "At least one level must be enabled before publishing.";
+    } else if (!isEstimatedTimeValid) {
+      errorMessage = "Estimated time must be specified before publishing.";
+    }
+
+    setValidationError(errorMessage);
+    return errorMessage === null;
+  };
+
+  // NEW: Check validation state for UI (disabling buttons, etc.)
+  const isPublishDisabled = useMemo(() => {
+    if (isPublishing || !simulationId) return true;
+
+    // Check if at least one level is enabled
+    const levels = settingsState.advancedSettings?.levels?.simulationLevels;
+    const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
+
+    // Check if estimated time is specified and enabled
+    const estimatedTime = settingsState.advancedSettings?.estimatedTime;
+    const isEstimatedTimeValid =
+      estimatedTime?.enabled &&
+      estimatedTime?.value &&
+      estimatedTime.value.trim() !== "";
+
+    return !isAnyLevelEnabled || !isEstimatedTimeValid;
+  }, [
+    isPublishing,
+    simulationId,
+    settingsState.advancedSettings?.levels?.simulationLevels,
+    settingsState.advancedSettings?.estimatedTime,
+  ]);
+
   // Save settings to localStorage when they change
   useEffect(() => {
     if (simulationId) {
@@ -461,205 +522,198 @@ const SettingTab: React.FC<SettingTabProps> = ({
     );
   };
 
+  // Helper function to create the simulation payload
+  const createSimulationPayload = (status: "published" | "draft") => {
+    // Transform script to required format by removing 'id' field - but only if there's a script
+    const transformedScript =
+      hasScript && script
+        ? script.map(({ id, ...rest }) => ({
+            ...rest,
+            script_sentence: rest.message,
+            role:
+              rest.role.toLowerCase() === "trainee"
+                ? "assistant"
+                : rest.role.toLowerCase(),
+          }))
+        : [];
+
+    // Get values from settings state
+    const { advancedSettings, voiceSettings } = settingsState;
+
+    // Extract specific settings - ensure we're accessing the actual properties
+    const levelSettings = advancedSettings?.levels || {};
+    const timeSettings = advancedSettings?.estimatedTime || {
+      enabled: true,
+      value: "15 mins",
+    };
+    const objectivesSettings = advancedSettings?.objectives || {
+      enabled: true,
+      text: "",
+    };
+    const tipsSettings = advancedSettings?.quickTips || {
+      enabled: true,
+      text: "",
+    };
+    const voiceConfig = voiceSettings?.voice || {};
+    const scoringConfig = voiceSettings?.scoring || {};
+
+    // Parse time value to extract just the number
+    const timeValue =
+      String(timeSettings.value || "15").match(/\d+/)?.[0] || "15";
+
+    // Check enabled levels from simulationLevels setting
+    const lvl1Enabled = levelSettings.simulationLevels?.lvl1 !== false; // Default to true if undefined
+    const lvl2Enabled = levelSettings.simulationLevels?.lvl2 === true;
+    const lvl3Enabled = levelSettings.simulationLevels?.lvl3 === true;
+
+    // Check if practice is enabled for each level - use enablePractice setting
+    // Make sure we're explicitly using === true for the comparison
+    const lvl1PracticeEnabled = levelSettings.enablePractice?.lvl1 === true;
+    const lvl2PracticeEnabled = levelSettings.enablePractice?.lvl2 === true;
+    const lvl3PracticeEnabled = levelSettings.enablePractice?.lvl3 === true;
+
+    // Use settings in the payload with proper access to nested properties
+    return {
+      user_id: user?.id || "private_user",
+      sim_name: simulationData?.name, // Changed from 'name' to 'sim_name'
+      division_id: simulationData?.division,
+      department_id: simulationData?.department,
+      sim_type: simulationData?.simulationType.toLowerCase(), // Changed from 'type' to 'sim_type'
+      tags: simulationData?.tags,
+      status: status, // Use the passed status parameter
+      lvl1: {
+        // Use the value from simulationLevels setting for is_enabled
+        is_enabled: lvl1Enabled,
+        // Use the value from enablePractice setting
+        enable_practice: lvl1PracticeEnabled,
+        // Use the actual values from settings
+        hide_agent_script: levelSettings.hideAgentScript?.lvl1 === true,
+        hide_customer_script: levelSettings.hideCustomerScript?.lvl1 === true,
+        hide_keyword_scores: levelSettings.hideKeywordScores?.lvl1 === true,
+        hide_sentiment_scores: levelSettings.hideSentimentScores?.lvl1 === true,
+        hide_highlights: levelSettings.hideHighlights?.lvl1 === true,
+        hide_coaching_tips: levelSettings.hideCoachingTips?.lvl1 === true,
+        enable_post_simulation_survey:
+          levelSettings.enablePostSurvey?.lvl1 === true,
+        ai_powered_pauses_and_feedback:
+          levelSettings.aiPoweredPauses?.lvl1 === true,
+      },
+      lvl2: {
+        // Use the value from simulationLevels setting for is_enabled
+        is_enabled: lvl2Enabled,
+        // Use the value from enablePractice setting
+        enable_practice: lvl2PracticeEnabled,
+        // Use level 2 settings where relevant
+        hide_agent_script: levelSettings.hideAgentScript?.lvl2 === true,
+        hide_customer_script: levelSettings.hideCustomerScript?.lvl2 === true,
+        hide_keyword_scores: levelSettings.hideKeywordScores?.lvl2 === true,
+        hide_sentiment_scores: levelSettings.hideSentimentScores?.lvl2 === true,
+        hide_highlights: levelSettings.hideHighlights?.lvl2 === true,
+        hide_coaching_tips: levelSettings.hideCoachingTips?.lvl2 === true,
+        enable_post_simulation_survey:
+          levelSettings.enablePostSurvey?.lvl2 === true,
+        ai_powered_pauses_and_feedback:
+          levelSettings.aiPoweredPauses?.lvl2 === true,
+      },
+      lvl3: {
+        // Use the value from simulationLevels setting for is_enabled
+        is_enabled: lvl3Enabled,
+        // Use the value from enablePractice setting
+        enable_practice: lvl3PracticeEnabled,
+        // Use level 3 settings where relevant
+        hide_agent_script: levelSettings.hideAgentScript?.lvl3 === true,
+        hide_customer_script: levelSettings.hideCustomerScript?.lvl3 === true,
+        hide_keyword_scores: levelSettings.hideKeywordScores?.lvl3 === true,
+        hide_sentiment_scores: levelSettings.hideSentimentScores?.lvl3 === true,
+        hide_highlights: levelSettings.hideHighlights?.lvl3 === true,
+        hide_coaching_tips: levelSettings.hideCoachingTips?.lvl3 === true,
+        enable_post_simulation_survey:
+          levelSettings.enablePostSurvey?.lvl3 === true,
+        ai_powered_pauses_and_feedback:
+          levelSettings.aiPoweredPauses?.lvl3 === true,
+      },
+      estimated_time_to_attempt_in_mins: timeSettings.enabled
+        ? parseInt(timeValue)
+        : 0,
+      key_objectives: objectivesSettings.enabled
+        ? processTextToArray(objectivesSettings.text)
+        : ["Learn basic customer service", "Understand refund process"],
+      overview_video: "https://example.com/overview.mp4",
+      quick_tips: tipsSettings.enabled
+        ? processTextToArray(tipsSettings.text)
+        : [
+            "Listen to the customer carefully",
+            "Be polite and empathetic",
+            "Provide accurate information",
+          ],
+      // Use the actual voice ID from settings, only if voice settings should be shown
+      voice_id: showVoiceSettings
+        ? voiceConfig.voiceId || DEFAULT_VOICE_ID
+        : "",
+      language: voiceConfig.language || "English",
+      mood: "Neutral",
+      voice_speed: "Normal",
+      // Use the edited prompt instead of the original one
+      prompt: showPromptSettings ? editedPrompt : "",
+      // IMPORTANT: Explicitly convert simulation settings to correct format
+      simulation_completion_repetition: parseInt(
+        scoringConfig.repetitionsNeeded || "3",
+      ),
+      simulation_max_repetition: parseInt(
+        scoringConfig.repetitionsAllowed || "5",
+      ),
+      // Map simulation score setting to expected string values
+      final_simulation_score_criteria:
+        scoringConfig.simulationScore === "best"
+          ? "Best of three"
+          : scoringConfig.simulationScore === "last"
+            ? "Last attempt"
+            : "Average of all",
+      simulation_scoring_metrics: {
+        is_enabled: scoringConfig.scoringMetrics?.enabled === true,
+        keyword_score: parseInt(
+          (scoringConfig.keywordScore || (hasScript ? "20" : "0")).replace(
+            "%",
+            "",
+          ),
+        ),
+        click_score: parseInt(
+          (scoringConfig.clickScore || (hasScript ? "80" : "100")).replace(
+            "%",
+            "",
+          ),
+        ),
+      },
+      sim_practice: {
+        is_unlimited: scoringConfig.practiceMode === "unlimited",
+        pre_requisite_limit: parseInt(scoringConfig.repetitionsNeeded || "3"),
+      },
+      is_locked: false,
+      version: 1,
+      script: transformedScript,
+    };
+  };
+
   const handlePublish = async () => {
     if (!simulationId || !simulationData) {
       setError("Missing simulation ID or data");
       return;
     }
 
+    // Run validation before proceeding
+    if (!validateSettings()) {
+      return; // Don't proceed if validation fails
+    }
+
     setIsPublishing(true);
     setError(null);
+    setValidationError(null);
 
     try {
-      // Transform script to required format by removing 'id' field - but only if there's a script
-      const transformedScript =
-        hasScript && script
-          ? script.map(({ id, ...rest }) => ({
-              ...rest,
-              script_sentence: rest.message,
-              role:
-                rest.role.toLowerCase() === "trainee"
-                  ? "assistant"
-                  : rest.role.toLowerCase(),
-            }))
-          : [];
-
-      // Get values from settings state
-      const { advancedSettings, voiceSettings } = settingsState;
-
-      // Extract specific settings - ensure we're accessing the actual properties
-      const levelSettings = advancedSettings?.levels || {};
-      const timeSettings = advancedSettings?.estimatedTime || {
-        enabled: true,
-        value: "15 mins",
-      };
-      const objectivesSettings = advancedSettings?.objectives || {
-        enabled: true,
-        text: "",
-      };
-      const tipsSettings = advancedSettings?.quickTips || {
-        enabled: true,
-        text: "",
-      };
-      const voiceConfig = voiceSettings?.voice || {};
-      const scoringConfig = voiceSettings?.scoring || {};
-
-      // Parse time value to extract just the number
-      const timeValue =
-        String(timeSettings.value || "15").match(/\d+/)?.[0] || "15";
-
-      // Check enabled levels from simulationLevels setting
-      const lvl1Enabled = levelSettings.simulationLevels?.lvl1 !== false; // Default to true if undefined
-      const lvl2Enabled = levelSettings.simulationLevels?.lvl2 === true;
-      const lvl3Enabled = levelSettings.simulationLevels?.lvl3 === true;
-
-      // Check if practice is enabled for each level - use enablePractice setting
-      // Make sure we're explicitly using === true for the comparison
-      const lvl1PracticeEnabled = levelSettings.enablePractice?.lvl1 === true;
-      const lvl2PracticeEnabled = levelSettings.enablePractice?.lvl2 === true;
-      const lvl3PracticeEnabled = levelSettings.enablePractice?.lvl3 === true;
-
-      console.log("Practice settings:", {
-        lvl1: lvl1PracticeEnabled,
-        lvl2: lvl2PracticeEnabled,
-        lvl3: lvl3PracticeEnabled,
-      });
-
-      // Log score settings for debugging
-      console.log("Score settings being sent:", {
-        finalSimulationScoreCriteria: scoringConfig.simulationScore,
-        simulationCompletionRepetition: scoringConfig.repetitionsNeeded,
-        simulationMaxRepetition: scoringConfig.repetitionsAllowed,
-        practiceMode: scoringConfig.practiceMode,
-      });
-
-      // Use settings in the payload with proper access to nested properties
-      const payload = {
-        user_id: "userId1",
-        sim_name: simulationData.name, // Changed from 'name' to 'sim_name'
-        division_id: simulationData.division,
-        department_id: simulationData.department,
-        sim_type: simulationData.simulationType.toLowerCase(), // Changed from 'type' to 'sim_type'
-        tags: simulationData.tags,
-        status: "published",
-        lvl1: {
-          // Use the value from simulationLevels setting for is_enabled
-          is_enabled: lvl1Enabled,
-          // Use the value from enablePractice setting
-          enable_practice: lvl1PracticeEnabled,
-          // Use the actual values from settings
-          hide_agent_script: levelSettings.hideAgentScript?.lvl1 === true,
-          hide_customer_script: levelSettings.hideCustomerScript?.lvl1 === true,
-          hide_keyword_scores: levelSettings.hideKeywordScores?.lvl1 === true,
-          hide_sentiment_scores:
-            levelSettings.hideSentimentScores?.lvl1 === true,
-          hide_highlights: levelSettings.hideHighlights?.lvl1 === true,
-          hide_coaching_tips: levelSettings.hideCoachingTips?.lvl1 === true,
-          enable_post_simulation_survey:
-            levelSettings.enablePostSurvey?.lvl1 === true,
-          ai_powered_pauses_and_feedback:
-            levelSettings.aiPoweredPauses?.lvl1 === true,
-        },
-        lvl2: {
-          // Use the value from simulationLevels setting for is_enabled
-          is_enabled: lvl2Enabled,
-          // Use the value from enablePractice setting
-          enable_practice: lvl2PracticeEnabled,
-          // Use level 2 settings where relevant
-          hide_agent_script: levelSettings.hideAgentScript?.lvl2 === true,
-          hide_customer_script: levelSettings.hideCustomerScript?.lvl2 === true,
-          hide_keyword_scores: levelSettings.hideKeywordScores?.lvl2 === true,
-          hide_sentiment_scores:
-            levelSettings.hideSentimentScores?.lvl2 === true,
-          hide_highlights: levelSettings.hideHighlights?.lvl2 === true,
-          hide_coaching_tips: levelSettings.hideCoachingTips?.lvl2 === true,
-          enable_post_simulation_survey:
-            levelSettings.enablePostSurvey?.lvl2 === true,
-          ai_powered_pauses_and_feedback:
-            levelSettings.aiPoweredPauses?.lvl2 === true,
-        },
-        lvl3: {
-          // Use the value from simulationLevels setting for is_enabled
-          is_enabled: lvl3Enabled,
-          // Use the value from enablePractice setting
-          enable_practice: lvl3PracticeEnabled,
-          // Use level 3 settings where relevant
-          hide_agent_script: levelSettings.hideAgentScript?.lvl3 === true,
-          hide_customer_script: levelSettings.hideCustomerScript?.lvl3 === true,
-          hide_keyword_scores: levelSettings.hideKeywordScores?.lvl3 === true,
-          hide_sentiment_scores:
-            levelSettings.hideSentimentScores?.lvl3 === true,
-          hide_highlights: levelSettings.hideHighlights?.lvl3 === true,
-          hide_coaching_tips: levelSettings.hideCoachingTips?.lvl3 === true,
-          enable_post_simulation_survey:
-            levelSettings.enablePostSurvey?.lvl3 === true,
-          ai_powered_pauses_and_feedback:
-            levelSettings.aiPoweredPauses?.lvl3 === true,
-        },
-        estimated_time_to_attempt_in_mins: timeSettings.enabled
-          ? parseInt(timeValue)
-          : 0,
-        key_objectives: objectivesSettings.enabled
-          ? processTextToArray(objectivesSettings.text)
-          : ["Learn basic customer service", "Understand refund process"],
-        overview_video: "https://example.com/overview.mp4",
-        quick_tips: tipsSettings.enabled
-          ? processTextToArray(tipsSettings.text)
-          : [
-              "Listen to the customer carefully",
-              "Be polite and empathetic",
-              "Provide accurate information",
-            ],
-        // Use the actual voice ID from settings, only if voice settings should be shown
-        voice_id: showVoiceSettings
-          ? voiceConfig.voiceId || DEFAULT_VOICE_ID
-          : "",
-        language: voiceConfig.language || "English",
-        mood: "Neutral",
-        voice_speed: "Normal",
-        // Use the edited prompt instead of the original one
-        prompt: showPromptSettings ? editedPrompt : "",
-        // IMPORTANT: Explicitly convert simulation settings to correct format
-        simulation_completion_repetition: parseInt(
-          scoringConfig.repetitionsNeeded || "3",
-        ),
-        simulation_max_repetition: parseInt(
-          scoringConfig.repetitionsAllowed || "5",
-        ),
-        // Map simulation score setting to expected string values
-        final_simulation_score_criteria:
-          scoringConfig.simulationScore === "best"
-            ? "Best of three"
-            : scoringConfig.simulationScore === "last"
-              ? "Last attempt"
-              : "Average of all",
-        simulation_scoring_metrics: {
-          is_enabled: scoringConfig.scoringMetrics?.enabled === true,
-          keyword_score: parseInt(
-            (scoringConfig.keywordScore || (hasScript ? "20" : "0")).replace(
-              "%",
-              "",
-            ),
-          ),
-          click_score: parseInt(
-            (scoringConfig.clickScore || (hasScript ? "80" : "100")).replace(
-              "%",
-              "",
-            ),
-          ),
-        },
-        sim_practice: {
-          is_unlimited: scoringConfig.practiceMode === "unlimited",
-          pre_requisite_limit: parseInt(scoringConfig.repetitionsNeeded || "3"),
-        },
-        is_locked: false,
-        version: 1,
-        script: transformedScript,
-      };
-
+      const payload = createSimulationPayload("published");
       console.log("Publishing with settings:", payload);
 
-      // Use the publishSimulation function instead of direct axios call
+      // Use the publishSimulation function
       const response = await publishSimulation(simulationId, payload);
 
       console.log("Publish response:", response);
@@ -687,6 +741,40 @@ const SettingTab: React.FC<SettingTabProps> = ({
     }
   };
 
+  const handleSaveAsDraft = async () => {
+    if (!simulationId || !simulationData) {
+      setError("Missing simulation ID or data");
+      return;
+    }
+
+    setIsSavingDraft(true);
+    setError(null);
+
+    try {
+      const payload = createSimulationPayload("draft");
+      console.log("Saving as draft with settings:", payload);
+
+      // Use updateSimulation instead of publishSimulation
+      const response = await updateSimulation(simulationId, payload);
+
+      console.log("Save as draft response:", response);
+
+      if (response) {
+        if (response.status === "success" || response.status === "draft") {
+          // Navigate to manage-simulations instead of showing preview
+          navigate("/manage-simulations");
+        } else {
+          setError("Failed to save simulation as draft. Please try again.");
+        }
+      }
+    } catch (error: any) {
+      console.error("Error saving simulation as draft:", error);
+      setError(`Error saving as draft: ${error.message || "Unknown error"}`);
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   // Handle back from preview while keeping settings
   const handleBackFromPreview = () => {
     setShowPreview(false);
@@ -706,10 +794,12 @@ const SettingTab: React.FC<SettingTabProps> = ({
     >
       <CircularProgress size={60} sx={{ mb: 4, color: "#444CE7" }} />
       <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
-        Creating Your Simulation
+        {isPublishing ? "Creating Your Simulation" : "Saving Your Draft"}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-        Please wait while we process your simulation...
+        {isPublishing
+          ? "Please wait while we process your simulation..."
+          : "Please wait while we save your draft..."}
       </Typography>
       <Typography variant="body2" color="text.secondary">
         This may take a few moments
@@ -742,8 +832,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
     );
   }
 
-  // If we're loading or publishing, show the loading screen
-  if (isLoading || isPublishing) {
+  // If we're loading, publishing, or saving draft, show the loading screen
+  if (isLoading || isPublishing || isSavingDraft) {
     return <LoadingScreen />;
   }
 
@@ -806,6 +896,16 @@ const SettingTab: React.FC<SettingTabProps> = ({
         </Alert>
       )}
 
+      {validationError && (
+        <Alert
+          severity="warning"
+          onClose={() => setValidationError(null)}
+          sx={{ mb: 2 }}
+        >
+          {validationError}
+        </Alert>
+      )}
+
       <Stack spacing={1}>
         {/* Header Section */}
         <Card
@@ -827,23 +927,60 @@ const SettingTab: React.FC<SettingTabProps> = ({
               {hasScript ? "voice, " : ""}score, and simulation settings
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            onClick={handlePublish}
-            disabled={isPublishing || !simulationId}
-            sx={{
-              bgcolor: "#444CE7",
-              "&:hover": { bgcolor: "#3538CD" },
-              borderRadius: 2,
-              px: 4,
-            }}
-          >
-            {isPublishing ? (
-              <CircularProgress size={24} sx={{ color: "white" }} />
-            ) : (
-              "Publish"
-            )}
-          </Button>
+          <Box display="flex" gap={2}>
+            <Button
+              variant="outlined"
+              onClick={handleSaveAsDraft}
+              disabled={isSavingDraft || !simulationId}
+              sx={{
+                borderColor: "#444CE7",
+                color: "#444CE7",
+                borderRadius: 2,
+                px: 3,
+                "&:hover": {
+                  borderColor: "#3538CD",
+                  backgroundColor: "rgba(68, 76, 231, 0.04)",
+                },
+              }}
+            >
+              {isSavingDraft ? (
+                <CircularProgress size={24} sx={{ color: "#444CE7" }} />
+              ) : (
+                "Save as Draft"
+              )}
+            </Button>
+            <Tooltip
+              title={
+                isPublishDisabled
+                  ? "At least one level must be enabled and estimated time must be specified before publishing"
+                  : ""
+              }
+              arrow
+              placement="top"
+            >
+              <span>
+                {" "}
+                {/* Span wrapper needed for disabled button tooltip */}
+                <Button
+                  variant="contained"
+                  onClick={handlePublish}
+                  disabled={isPublishDisabled}
+                  sx={{
+                    bgcolor: "#444CE7",
+                    "&:hover": { bgcolor: "#3538CD" },
+                    borderRadius: 2,
+                    px: 4,
+                  }}
+                >
+                  {isPublishing ? (
+                    <CircularProgress size={24} sx={{ color: "white" }} />
+                  ) : (
+                    "Publish"
+                  )}
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
         </Card>
 
         {/* Content Section */}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Container,
   Stack,
@@ -24,22 +24,33 @@ import {
   CircularProgress,
   TableSortLabel,
   InputAdornment,
+  Tooltip,
+  Alert,
+  Autocomplete,
 } from "@mui/material";
 import {
   Search as SearchIcon,
   MoreVert as MoreVertIcon,
-  Lock as LockIcon,
+  LockOutlined as LockIcon,
   Clear as ClearIcon,
+  FilterAlt as FilterIcon,
+  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import DashboardContent from "../../DashboardContent";
 import ActionsMenu from "./ActionsMenu";
 import CreateSimulationDialog from "./CreateSimulationDialog";
-import { fetchSimulations, Simulation } from "../../../../services/simulations";
+import { 
+  fetchSimulations, 
+  type Simulation, 
+  type SimulationPaginationParams,
+  type SimulationsResponse
+} from "../../../../services/simulations";
 import {
   fetchDivisions,
   fetchDepartments,
 } from "../../../../services/suggestions";
 import { fetchTags, Tag } from "../../../../services/tags";
+import { fetchUsersSummary, User, fetchUsersByIds } from "../../../../services/users";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 
@@ -56,6 +67,20 @@ type OrderBy =
   | "created_on"
   | "created_by";
 
+// Map frontend OrderBy to backend sortBy
+const orderByToSortBy: Record<OrderBy, string> = {
+  sim_name: "simName",
+  version: "version",
+  sim_type: "simType",
+  status: "status",
+  tags: "tags",
+  estTime: "estTime",
+  last_modified: "lastModified",
+  modified_by: "modifiedBy",
+  created_on: "createdOn",
+  created_by: "createdBy"
+};
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", {
@@ -70,20 +95,26 @@ const ManageSimulationsPage = () => {
   const [currentTab, setCurrentTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState("All Tags");
-  const [selectedDepartment, setSelectedDepartment] =
-    useState("All Departments");
+  const [tagsSearchQuery, setTagsSearchQuery] = useState("");
+  const [selectedDepartment, setSelectedDepartment] = useState("All Departments");
+  const [departmentSearchQuery, setDepartmentSearchQuery] = useState("");
   const [selectedDivision, setSelectedDivision] = useState("All Divisions");
+  const [divisionSearchQuery, setDivisionSearchQuery] = useState("");
   const [selectedCreator, setSelectedCreator] = useState("Created By");
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedRow, setSelectedRow] = useState<Simulation | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [simulations, setSimulations] = useState<Simulation[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [order, setOrder] = useState<Order>("asc");
-  const [orderBy, setOrderBy] = useState<OrderBy>("sim_name");
+  // Set default order to desc and orderBy to last_modified
+  const [order, setOrder] = useState<Order>("desc");
+  const [orderBy, setOrderBy] = useState<OrderBy>("last_modified");
 
   // New state variables for departments and divisions
   const [divisions, setDivisions] = useState<string[]>([]);
@@ -95,27 +126,229 @@ const ManageSimulationsPage = () => {
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
 
+  // Reference to the table body to only update that part
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+
+  // Flag to track if data is being refreshed (not initial load)
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // State for user name mapping
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+
+  // Ref to track if users have been loaded
+  const hasLoadedUsers = useRef(false);
+
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
 
-  const loadSimulations = async () => {
+  // Check if any filters are applied
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      selectedTags !== "All Tags" ||
+      selectedDepartment !== "All Departments" ||
+      selectedDivision !== "All Divisions" ||
+      selectedCreator !== "Created By" ||
+      currentTab !== "All"
+    );
+  }, [searchQuery, selectedTags, selectedDepartment, selectedDivision, selectedCreator, currentTab]);
+
+  // Create a memoized pagination params object
+  const paginationParams = useMemo<SimulationPaginationParams>(() => {
+    const params: SimulationPaginationParams = {
+      page: page + 1, // API uses 1-based indexing
+      pagesize: rowsPerPage,
+      sortBy: orderByToSortBy[orderBy],
+      sortDir: order
+    };
+
+    // Add filters if they're not set to "All"
+    if (searchQuery) {
+      // Use search instead of searchQuery as per the Pydantic model
+      params.search = searchQuery;
+    }
+
+    if (selectedTags !== "All Tags") {
+      // Convert single tag to array as per the Pydantic model
+      params.tags = [selectedTags];
+    }
+
+    if (selectedDepartment !== "All Departments") {
+      params.department = selectedDepartment;
+    }
+
+    if (selectedDivision !== "All Divisions") {
+      params.division = selectedDivision;
+    }
+
+    if (selectedCreator !== "Created By") {
+      params.createdBy = selectedCreator;
+    }
+
+    // Add status filter based on the current tab
+    if (currentTab !== "All") {
+      // Convert to lowercase and use array as per the Pydantic model
+      params.status = [currentTab.toLowerCase()];
+    }
+
+    return params;
+  }, [
+    page,
+    rowsPerPage,
+    orderBy,
+    order,
+    searchQuery,
+    selectedTags,
+    selectedDepartment,
+    selectedDivision,
+    selectedCreator,
+    currentTab
+  ]);
+
+  // Function to fetch user details for creator and modifier IDs
+  const fetchUserDetails = useCallback(async (simulations: Simulation[]) => {
+    if (!currentWorkspaceId || simulations.length === 0) return;
+
     try {
-      setIsLoading(true);
-      const data = await fetchSimulations(user?.id || "user123");
-      setSimulations(data);
+      // Collect all unique user IDs from created_by and modified_by fields
+      const userIds = new Set<string>();
+      simulations.forEach(sim => {
+        if (sim.created_by && !userMap[sim.created_by]) {
+          userIds.add(sim.created_by);
+        }
+        if (sim.modified_by && !userMap[sim.modified_by]) {
+          userIds.add(sim.modified_by);
+        }
+      });
+
+      // Skip API call if we already have all user details
+      if (userIds.size === 0) return;
+
+      const userIdsArray = Array.from(userIds);
+      console.log("Fetching user details for IDs:", userIdsArray);
+
+      const usersData = await fetchUsersByIds(currentWorkspaceId, userIdsArray);
+
+      // Use functional update to avoid dependency on current userMap
+      setUserMap(prevUserMap => {
+        const newUserMap = { ...prevUserMap };
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+        return newUserMap;
+      });
+    } catch (error) {
+      console.error("Error fetching user details:", error);
+    }
+  }, [currentWorkspaceId]); // Removed userMap from dependency array
+
+  // Load all users for the creator filter - FIXED to avoid repeated API calls
+  const loadAllUsers = useCallback(async () => {
+    if (!currentWorkspaceId) return;
+
+    try {
+      setIsLoadingUsers(true);
+      const usersData = await fetchUsersSummary(currentWorkspaceId);
+      setUsers(usersData);
+
+      // Use functional update to avoid dependency on current userMap
+      setUserMap(prevUserMap => {
+        const newUserMap = { ...prevUserMap };
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+        return newUserMap;
+      });
+    } catch (error) {
+      console.error("Error loading all users:", error);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [currentWorkspaceId]); // Removed userMap from dependency array
+
+  // Load all users when component mounts - use ref to ensure it only runs once
+  useEffect(() => {
+    if (!hasLoadedUsers.current && currentWorkspaceId) {
+      loadAllUsers();
+      hasLoadedUsers.current = true;
+    }
+  }, [loadAllUsers, currentWorkspaceId]);
+
+  const loadSimulations = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      // Only show loading spinner on initial load, not on refreshes
+      if (!isRefreshing) {
+        setIsLoading(true);
+      } else {
+        // For refreshes, we'll just update a specific part of the UI
+        if (tableBodyRef.current) {
+          tableBodyRef.current.style.opacity = '0.6';
+        }
+      }
+
       setError(null);
+
+      const response = await fetchSimulations(user.id, paginationParams);
+
+      setSimulations(response.simulations);
+
+      // Update pagination information from the response
+      if (response.pagination) {
+        setTotalCount(response.pagination.total_count);
+        setTotalPages(response.pagination.total_pages);
+      }
+
+      // If we got fewer results than expected and we're not on page 1,
+      // it might mean we're on a page that no longer exists after filtering
+      if (response.simulations.length === 0 && page > 0) {
+        setPage(0); // Go back to first page
+      }
+
+      // Fetch user details for the simulations
+      await fetchUserDetails(response.simulations);
     } catch (err) {
       setError("Failed to load simulations");
       console.error("Error loading simulations:", err);
     } finally {
       setIsLoading(false);
-    }
-  };
+      setIsRefreshing(false);
 
-  // Load simulations when component mounts or user changes
+      // Restore opacity after refresh
+      if (tableBodyRef.current) {
+        tableBodyRef.current.style.opacity = '1';
+      }
+    }
+  }, [user?.id, paginationParams, page, isRefreshing, fetchUserDetails]);
+
+  // Load simulations when component mounts
   useEffect(() => {
     loadSimulations();
-  }, [user?.id]);
+  }, []);
+
+  // When pagination params change, refresh data without full loading state
+  useEffect(() => {
+    // Skip the initial load which is handled by the mount effect
+    if (isLoading) return;
+
+    setIsRefreshing(true);
+    loadSimulations();
+  }, [paginationParams]);
 
   // Load divisions and departments when component mounts
   useEffect(() => {
@@ -174,6 +407,7 @@ const ManageSimulationsPage = () => {
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
+    setPage(0); // Reset to first page when changing tabs
   };
 
   const handleMenuOpen = (
@@ -193,6 +427,7 @@ const ManageSimulationsPage = () => {
     const isAsc = orderBy === property && order === "asc";
     setOrder(isAsc ? "desc" : "asc");
     setOrderBy(property);
+    setPage(0); // Reset to first page when sorting changes
   };
 
   const handleChangePage = (_: unknown, newPage: number) => {
@@ -206,126 +441,263 @@ const ManageSimulationsPage = () => {
     setPage(0);
   };
 
-  // Filter data based on current tab, search query, department and division
-  const filteredData = useMemo(() => {
-    return simulations.filter((row) => {
-      // First apply tab filter
-      if (
-        currentTab !== "All" &&
-        row.status.toLowerCase() !== currentTab.toLowerCase()
-      ) {
-        return false;
-      }
+  // Handle filter changes
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(0); // Reset to first page when filter changes
+  };
 
-      // Then apply search filter
-      if (searchQuery) {
-        const searchLower = searchQuery.trim().toLowerCase();
-        const nameMatch = row.sim_name.toLowerCase().includes(searchLower);
-        const idMatch = row.id && row.id.toLowerCase().includes(searchLower);
-        if (!nameMatch && !idMatch) {
-          return false;
-        }
-      }
+  const handleTagsChange = (event: any, newValue: string | null) => {
+    setSelectedTags(newValue || "All Tags");
+    setPage(0); // Reset to first page when filter changes
+  };
 
-      // Apply department filter
-      if (
-        selectedDepartment !== "All Departments" &&
-        row.department_id !== selectedDepartment
-      ) {
-        return false;
-      }
+  const handleDepartmentChange = (event: any, newValue: string | null) => {
+    setSelectedDepartment(newValue || "All Departments");
+    setPage(0); // Reset to first page when filter changes
+  };
 
-      // Apply division filter
-      if (
-        selectedDivision !== "All Divisions" &&
-        row.division_id !== selectedDivision
-      ) {
-        return false;
-      }
+  const handleDivisionChange = (event: any, newValue: string | null) => {
+    setSelectedDivision(newValue || "All Divisions");
+    setPage(0); // Reset to first page when filter changes
+  };
 
-      // Apply tag filter
-      if (selectedTags !== "All Tags") {
-        if (!row.tags || !row.tags.includes(selectedTags)) {
-          return false;
-        }
-      }
+  const handleCreatorChange = (event: any, newValue: string | null) => {
+    setSelectedCreator(newValue || "Created By");
+    setPage(0); // Reset to first page when filter changes
+  };
 
-      // Apply creator filter
-      if (
-        selectedCreator !== "Created By" &&
-        row.created_by !== selectedCreator
-      ) {
-        return false;
-      }
+  const handleClearSearch = () => {
+    setSearchQuery("");
+  };
 
-      return true;
+  // New function to reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedTags("All Tags");
+    setSelectedDepartment("All Departments");
+    setSelectedDivision("All Divisions");
+    setSelectedCreator("Created By");
+    setCreatorSearchQuery("");
+    setTagsSearchQuery("");
+    setDepartmentSearchQuery("");
+    setDivisionSearchQuery("");
+    setCurrentTab("All");
+    setPage(0);
+  };
+
+  // Helper function to get user name from ID
+  const getUserName = (userId: string): string => {
+    return userMap[userId] || userId;
+  };
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const fullName = user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      const email = user.email || '';
+
+      return !creatorSearchQuery || 
+        fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(creatorSearchQuery.toLowerCase());
     });
-  }, [
-    currentTab,
-    searchQuery,
-    selectedDepartment,
-    selectedDivision,
-    selectedTags,
-    selectedCreator,
-    simulations,
-  ]);
+  }, [users, creatorSearchQuery]);
 
-  const sortedData = useMemo(() => {
-    if (!filteredData.length) return filteredData;
-
-    return [...filteredData].sort((a, b) => {
-      let aValue, bValue;
-
-      switch (orderBy) {
-        case "sim_name":
-          aValue = a.sim_name || "";
-          bValue = b.sim_name || "";
-          break;
-        case "version":
-          aValue = a.version || "";
-          bValue = b.version || "";
-          break;
-        case "sim_type":
-          aValue = a.sim_type || "";
-          bValue = b.sim_type || "";
-          break;
-        case "status":
-          aValue = a.status || "";
-          bValue = b.status || "";
-          break;
-        case "tags":
-          aValue = a.tags?.join(",") || "";
-          bValue = b.tags?.join(",") || "";
-          break;
-        case "estTime":
-          aValue = a.est_time || "";
-          bValue = b.est_time || "";
-          break;
-        case "last_modified":
-          aValue = new Date(a.last_modified || 0).getTime();
-          bValue = new Date(b.last_modified || 0).getTime();
-          break;
-        case "modified_by":
-          aValue = a.modified_by || "";
-          bValue = b.modified_by || "";
-          break;
-        case "created_on":
-          aValue = new Date(a.created_on || 0).getTime();
-          bValue = new Date(b.created_on || 0).getTime();
-          break;
-        case "created_by":
-          aValue = a.created_by || "";
-          bValue = b.created_by || "";
-          break;
-        default:
-          aValue = a.sim_name || "";
-          bValue = b.sim_name || "";
-      }
-
-      const result = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return order === "asc" ? result : -result;
+  // Filter tags based on search query
+  const filteredTags = useMemo(() => {
+    return tags.filter(tag => {
+      return !tagsSearchQuery || 
+        tag.name.toLowerCase().includes(tagsSearchQuery.toLowerCase());
     });
-  }, [filteredData, order, orderBy]);
+  }, [tags, tagsSearchQuery]);
+
+  // Filter divisions based on search query
+  const filteredDivisions = useMemo(() => {
+    return divisions.filter(division => {
+      return !divisionSearchQuery || 
+        division.toLowerCase().includes(divisionSearchQuery.toLowerCase());
+    });
+  }, [divisions, divisionSearchQuery]);
+
+  // Filter departments based on search query
+  const filteredDepartments = useMemo(() => {
+    return departments.filter(department => {
+      return !departmentSearchQuery || 
+        department.toLowerCase().includes(departmentSearchQuery.toLowerCase());
+    });
+  }, [departments, departmentSearchQuery]);
+
+  // Render the table content based on loading state
+  const renderTableContent = () => {
+    if (isLoading) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <CircularProgress />
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (error) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <Alert severity="error">{error}</Alert>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    if (simulations.length === 0) {
+      return (
+        <TableRow>
+          <TableCell colSpan={12} align="center" sx={{ py: 3 }}>
+            <Typography variant="body1" color="text.secondary">
+              No simulations found matching your criteria.
+            </Typography>
+          </TableCell>
+        </TableRow>
+      );
+    }
+
+    return simulations.map((row, index) => (
+      <TableRow key={index}>
+        <TableCell sx={{ minWidth: 250 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+          >
+            {row.sim_name}
+            {row.islocked && (
+              <LockIcon
+                sx={{ fontSize: 16, color: "text.secondary" }}
+              />
+            )}
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ width: 100 }}>
+          v{row.version}
+        </TableCell>
+        <TableCell>Lvl 02</TableCell>
+        <TableCell sx={{ width: 120 }}>
+          <Chip
+            label={row.sim_type}
+            size="small"
+            sx={{ bgcolor: "#F5F6FF", color: "#444CE7" }}
+          />
+        </TableCell>
+        <TableCell sx={{ width: 120 }}>
+          <Chip
+            label={row.status}
+            size="small"
+            sx={{
+              bgcolor:
+                row.status === "published"
+                  ? "#ECFDF3"
+                  : row.status === "draft"
+                    ? "#F5F6FF"
+                    : "#F9FAFB",
+              color:
+                row.status === "published"
+                  ? "#027A48"
+                  : row.status === "draft"
+                    ? "#444CE7"
+                    : "#344054",
+            }}
+          />
+        </TableCell>
+        <TableCell sx={{ width: 200 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ maxWidth: 180 }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 1,
+              }}
+            >
+              {row.tags &&
+                row.tags.map((tag, i) => (
+                  <Chip
+                    key={i}
+                    label={tag}
+                    size="small"
+                    sx={{
+                      bgcolor: "#F5F6FF",
+                      color: "#444CE7",
+                      maxWidth: "100%",
+                      "& .MuiChip-label": {
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      },
+                    }}
+                  />
+                ))}
+            </Box>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ width: 100 }}>
+          {row.est_time ? `${row.est_time} mins` : ''}
+        </TableCell>
+        <TableCell sx={{ minWidth: 180 }}>
+          <Stack>
+            <Typography variant="body2">
+              {formatDate(row.last_modified)}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
+              {new Date(
+                row.last_modified,
+              ).toLocaleTimeString()}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ minWidth: 150 }}>
+          <Stack>
+            <Typography variant="body2" noWrap>
+              {getUserName(row.modified_by)}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ minWidth: 180 }}>
+          <Stack>
+            <Typography variant="body2">
+              {formatDate(row.created_on)}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
+              {new Date(row.created_on).toLocaleTimeString()}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell sx={{ minWidth: 150 }}>
+          <Stack>
+            <Typography variant="body2" noWrap>
+              {getUserName(row.created_by)}
+            </Typography>
+          </Stack>
+        </TableCell>
+        <TableCell align="right" sx={{ width: 100 }}>
+          <IconButton
+            size="small"
+            onClick={(event) => handleMenuOpen(event, row)}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </TableCell>
+      </TableRow>
+    ));
+  };
 
   return (
     <DashboardContent>
@@ -408,7 +780,7 @@ const ManageSimulationsPage = () => {
               placeholder="Search by Sim Name or ID"
               size="small"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               sx={{
                 width: 300,
                 bgcolor: "#FFFFFF",
@@ -427,7 +799,7 @@ const ManageSimulationsPage = () => {
                   <InputAdornment position="end">
                     <IconButton
                       size="small"
-                      onClick={() => setSearchQuery("")}
+                      onClick={handleClearSearch}
                       edge="end"
                       aria-label="clear search"
                     >
@@ -439,519 +811,428 @@ const ManageSimulationsPage = () => {
             />
 
             <Stack direction="row" spacing={2} sx={{ ml: "auto" }}>
-              <Select
-                value={selectedTags}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedTags(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+              {/* Tags Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedTags === "All Tags" ? null : selectedTags}
+                onChange={handleTagsChange}
+                inputValue={tagsSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setTagsSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Tags">All Tags</MenuItem>
-                {isLoadingTags ? (
-                  <MenuItem disabled>Loading tags...</MenuItem>
-                ) : tags.length === 0 ? (
-                  <MenuItem disabled>No tags available</MenuItem>
-                ) : (
-                  tags.map((tag) => (
-                    <MenuItem key={tag.id} value={tag.name}>
-                      {tag.name}
-                    </MenuItem>
-                  ))
+                options={["All Tags", ...filteredTags.map(tag => tag.name)]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Tags"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingTags ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingTags}
+                loadingText="Loading tags..."
+                noOptionsText="No tags found"
+                sx={{ width: 150 }}
+              />
 
-              {/* Division Filter - Updated */}
-              <Select
-                value={selectedDivision}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedDivision(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 150,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+              {/* Division Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedDivision === "All Divisions" ? null : selectedDivision}
+                onChange={handleDivisionChange}
+                inputValue={divisionSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setDivisionSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Divisions">All Divisions</MenuItem>
-                {isLoadingDivisions ? (
-                  <MenuItem disabled>Loading divisions...</MenuItem>
-                ) : divisions.length === 0 ? (
-                  <MenuItem disabled>No divisions available</MenuItem>
-                ) : (
-                  divisions.map((division) => (
-                    <MenuItem key={division} value={division}>
-                      {division}
-                    </MenuItem>
-                  ))
+                options={["All Divisions", ...filteredDivisions]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Divisions"
+                    size="small"
+                    sx={{
+                      minWidth: 150,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingDivisions ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingDivisions}
+                loadingText="Loading divisions..."
+                noOptionsText="No divisions found"
+                sx={{ width: 180 }}
+              />
 
-              {/* Department Filter - Updated */}
-              <Select
-                value={selectedDepartment}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedDepartment(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 150,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+              {/* Department Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedDepartment === "All Departments" ? null : selectedDepartment}
+                onChange={handleDepartmentChange}
+                inputValue={departmentSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setDepartmentSearchQuery(newInputValue);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: "auto",
-                    },
-                  },
-                }}
-              >
-                <MenuItem value="All Departments">All Departments</MenuItem>
-                {isLoadingDepartments ? (
-                  <MenuItem disabled>Loading departments...</MenuItem>
-                ) : departments.length === 0 ? (
-                  <MenuItem disabled>No departments available</MenuItem>
-                ) : (
-                  departments.map((department) => (
-                    <MenuItem key={department} value={department}>
-                      {department}
-                    </MenuItem>
-                  ))
+                options={["All Departments", ...filteredDepartments]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Departments"
+                    size="small"
+                    sx={{
+                      minWidth: 150,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingDepartments ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
                 )}
-              </Select>
+                loading={isLoadingDepartments}
+                loadingText="Loading departments..."
+                noOptionsText="No departments found"
+                sx={{ width: 180 }}
+              />
 
-              <Select
-                value={selectedCreator}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedCreator(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: "#FFFFFF",
-                  borderRadius: 2,
+              {/* Created By Filter - Without loading indicator */}
+              <Autocomplete
+                value={selectedCreator === "Created By" ? null : selectedCreator}
+                onChange={handleCreatorChange}
+                inputValue={creatorSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setCreatorSearchQuery(newInputValue);
                 }}
-              >
-                <MenuItem value="Created By">Created By</MenuItem>
-                {/* Add more creators based on unique creators in simulations */}
-                {Array.from(new Set(simulations.map((sim) => sim.created_by)))
-                  .filter(Boolean)
-                  .map((creator) => (
-                    <MenuItem key={creator} value={creator}>
-                      {creator}
-                    </MenuItem>
-                  ))}
-              </Select>
+                options={["Created By", ...filteredUsers.map(user => user.user_id)]}
+                getOptionLabel={(option) => {
+                  if (option === "Created By") return "Created By";
+                  const user = users.find(u => u.user_id === option);
+                  if (!user) return option;
+                  return user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || option;
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Created By"
+                    size="small"
+                    sx={{
+                      minWidth: 180,
+                      bgcolor: "#FFFFFF",
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                  />
+                )}
+                loading={false}
+                noOptionsText="No users found"
+                sx={{ width: 200 }}
+              />
+
+              {/* Reset Filters Button */}
+              <Tooltip title="Reset all filters">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ResetIcon />}
+                    onClick={handleResetFilters}
+                    disabled={!hasActiveFilters}
+                    sx={{
+                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
+                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
+                      "&:hover": {
+                        borderColor: "#3538CD",
+                        bgcolor: "#F5F6FF",
+                      },
+                      borderRadius: 2,
+                      height: 40,
+                    }}
+                  >
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Stack>
 
-          {isLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Box sx={{ textAlign: "center", my: 4, color: "error.main" }}>
-              <Typography>{error}</Typography>
-            </Box>
-          ) : (
-            <TableContainer
-              component={Paper}
-              variant="outlined"
+          {/* Table Container - Always visible regardless of loading state */}
+          <TableContainer
+            component={Paper}
+            variant="outlined"
+            sx={{
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
+            <Box
               sx={{
-                borderRadius: 2,
-                overflow: "hidden",
+                overflow: "auto",
+                "&::-webkit-scrollbar": {
+                  height: "8px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  backgroundColor: "#f1f1f1",
+                  borderRadius: "4px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  backgroundColor: "#c1c1c1",
+                  borderRadius: "4px",
+                  "&:hover": {
+                    backgroundColor: "#a8a8a8",
+                  },
+                },
+                scrollbarWidth: "thin",
+                scrollbarColor: "#c1c1c1 #f1f1f1",
               }}
             >
-              <Box
+              <Table
                 sx={{
-                  overflow: "auto",
-                  "&::-webkit-scrollbar": {
-                    height: "8px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    backgroundColor: "#f1f1f1",
-                    borderRadius: "4px",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    backgroundColor: "#c1c1c1",
-                    borderRadius: "4px",
-                    "&:hover": {
-                      backgroundColor: "#a8a8a8",
-                    },
-                  },
-                  scrollbarWidth: "thin",
-                  scrollbarColor: "#c1c1c1 #f1f1f1",
+                  minWidth: 1500,
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  tableLayout: "fixed",
                 }}
               >
-                <Table
-                  sx={{
-                    minWidth: 1500,
-                    borderRadius: 2,
-                    overflow: "hidden",
-                    tableLayout: "fixed",
-                  }}
-                >
-                  <TableHead sx={{ bgcolor: "#F9FAFB" }}>
-                    <TableRow>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 250,
-                        }}
+                {/* Table Header - Always visible */}
+                <TableHead sx={{ bgcolor: "#F9FAFB" }}>
+                  <TableRow>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 250,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "sim_name"}
+                        direction={orderBy === "sim_name" ? order : "asc"}
+                        onClick={() => handleRequestSort("sim_name")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "sim_name"}
-                          direction={orderBy === "sim_name" ? order : "asc"}
-                          onClick={() => handleRequestSort("sim_name")}
-                        >
-                          Sim Name
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 100,
-                        }}
+                        Sim Name
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 100,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "version"}
+                        direction={orderBy === "version" ? order : "asc"}
+                        onClick={() => handleRequestSort("version")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "version"}
-                          direction={orderBy === "version" ? order : "asc"}
-                          onClick={() => handleRequestSort("version")}
-                        >
-                          Version
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 100,
-                        }}
+                        Version
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 100,
+                      }}
+                    >
+                      Level
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 120,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "sim_type"}
+                        direction={orderBy === "sim_type" ? order : "asc"}
+                        onClick={() => handleRequestSort("sim_type")}
                       >
-                        Level
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 120,
-                        }}
+                        Sim Type
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 120,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "status"}
+                        direction={orderBy === "status" ? order : "asc"}
+                        onClick={() => handleRequestSort("status")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "sim_type"}
-                          direction={orderBy === "sim_type" ? order : "asc"}
-                          onClick={() => handleRequestSort("sim_type")}
-                        >
-                          Sim Type
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 120,
-                        }}
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 200,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "tags"}
+                        direction={orderBy === "tags" ? order : "asc"}
+                        onClick={() => handleRequestSort("tags")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "status"}
-                          direction={orderBy === "status" ? order : "asc"}
-                          onClick={() => handleRequestSort("status")}
-                        >
-                          Status
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 200,
-                        }}
+                        Tags
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 100,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "estTime"}
+                        direction={orderBy === "estTime" ? order : "asc"}
+                        onClick={() => handleRequestSort("estTime")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "tags"}
-                          direction={orderBy === "tags" ? order : "asc"}
-                          onClick={() => handleRequestSort("tags")}
-                        >
-                          Tags
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 100,
-                        }}
+                        Est. Time
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 180,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "last_modified"}
+                        direction={
+                          orderBy === "last_modified" ? order : "asc"
+                        }
+                        onClick={() => handleRequestSort("last_modified")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "estTime"}
-                          direction={orderBy === "estTime" ? order : "asc"}
-                          onClick={() => handleRequestSort("estTime")}
-                        >
-                          Est. Time
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 180,
-                        }}
+                        Last Modified
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 150,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "modified_by"}
+                        direction={orderBy === "modified_by" ? order : "asc"}
+                        onClick={() => handleRequestSort("modified_by")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "last_modified"}
-                          direction={
-                            orderBy === "last_modified" ? order : "asc"
-                          }
-                          onClick={() => handleRequestSort("last_modified")}
-                        >
-                          Last Modified
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 150,
-                        }}
+                        Modified by
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 180,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "created_on"}
+                        direction={orderBy === "created_on" ? order : "asc"}
+                        onClick={() => handleRequestSort("created_on")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "modified_by"}
-                          direction={orderBy === "modified_by" ? order : "asc"}
-                          onClick={() => handleRequestSort("modified_by")}
-                        >
-                          Modified by
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 180,
-                        }}
+                        Created On
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 150,
+                      }}
+                    >
+                      <TableSortLabel
+                        active={orderBy === "created_by"}
+                        direction={orderBy === "created_by" ? order : "asc"}
+                        onClick={() => handleRequestSort("created_by")}
                       >
-                        <TableSortLabel
-                          active={orderBy === "created_on"}
-                          direction={orderBy === "created_on" ? order : "asc"}
-                          onClick={() => handleRequestSort("created_on")}
-                        >
-                          Created On
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 150,
-                        }}
-                      >
-                        <TableSortLabel
-                          active={orderBy === "created_by"}
-                          direction={orderBy === "created_by" ? order : "asc"}
-                          onClick={() => handleRequestSort("created_by")}
-                        >
-                          Created by
-                        </TableSortLabel>
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{
-                          color: "#959697",
-                          padding: "6px 16px",
-                          width: 100,
-                        }}
-                      >
-                        Actions
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {sortedData
-                      .slice(
-                        page * rowsPerPage,
-                        page * rowsPerPage + rowsPerPage,
-                      )
-                      .map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell sx={{ minWidth: 250 }}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              alignItems="center"
-                            >
-                              {row.sim_name}
-                              {row.islocked && (
-                                <LockIcon
-                                  sx={{ fontSize: 16, color: "text.secondary" }}
-                                />
-                              )}
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ width: 100 }}>
-                            v{row.version}
-                          </TableCell>
-                          <TableCell>Lvl 02</TableCell>
-                          <TableCell sx={{ width: 120 }}>
-                            <Chip
-                              label={row.sim_type}
-                              size="small"
-                              sx={{ bgcolor: "#F5F6FF", color: "#444CE7" }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ width: 120 }}>
-                            <Chip
-                              label={row.status}
-                              size="small"
-                              sx={{
-                                bgcolor:
-                                  row.status === "Published"
-                                    ? "#ECFDF3"
-                                    : row.status === "Draft"
-                                      ? "#F5F6FF"
-                                      : "#F9FAFB",
-                                color:
-                                  row.status === "Published"
-                                    ? "#027A48"
-                                    : row.status === "Draft"
-                                      ? "#444CE7"
-                                      : "#344054",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell sx={{ width: 200 }}>
-                            <Stack
-                              direction="row"
-                              spacing={1}
-                              sx={{ maxWidth: 180 }}
-                            >
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  flexWrap: "wrap",
-                                  gap: 1,
-                                }}
-                              >
-                                {row.tags &&
-                                  row.tags.map((tag, i) => (
-                                    <Chip
-                                      key={i}
-                                      label={tag}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: "#F5F6FF",
-                                        color: "#444CE7",
-                                        maxWidth: "100%",
-                                        "& .MuiChip-label": {
-                                          overflow: "hidden",
-                                          textOverflow: "ellipsis",
-                                          whiteSpace: "nowrap",
-                                        },
-                                      }}
-                                    />
-                                  ))}
-                              </Box>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ width: 100 }}>
-                            {row.est_time ? `${row.est_time} mins` : ''}
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 180 }}>
-                            <Stack>
-                              <Typography variant="body2">
-                                {formatDate(row.last_modified)}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {new Date(
-                                  row.last_modified,
-                                ).toLocaleTimeString()}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 150 }}>
-                            <Stack>
-                              <Typography variant="body2" noWrap>
-                                {row.modified_by}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 180 }}>
-                            <Stack>
-                              <Typography variant="body2">
-                                {formatDate(row.created_on)}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {new Date(row.created_on).toLocaleTimeString()}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell sx={{ minWidth: 150 }}>
-                            <Stack>
-                              <Typography variant="body2" noWrap>
-                                {row.created_by}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell align="right" sx={{ width: 100 }}>
-                            <IconButton
-                              size="small"
-                              onClick={(event) => handleMenuOpen(event, row)}
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </Box>
-              <Box
-                sx={{
-                  bgcolor: "#F9FAFB",
-                  borderTop: "1px solid rgba(224, 224, 224, 1)",
-                }}
-              >
-                <TablePagination
-                  component="div"
-                  count={filteredData.length}
-                  page={page}
-                  onPageChange={handleChangePage}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[5, 10, 25, 50]}
-                />
-              </Box>
-            </TableContainer>
-          )}
+                        Created by
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color: "#959697",
+                        padding: "6px 16px",
+                        width: 100,
+                      }}
+                    >
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
+
+                {/* Table Body - This is the part that will be updated */}
+                <TableBody ref={tableBodyRef}>
+                  {renderTableContent()}
+                </TableBody>
+              </Table>
+            </Box>
+            <Box
+              sx={{
+                bgcolor: "#F9FAFB",
+                borderTop: "1px solid rgba(224, 224, 224, 1)",
+              }}
+            >
+              <TablePagination
+                component="div"
+                count={totalCount}
+                page={page}
+                onPageChange={handleChangePage}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                rowsPerPageOptions={[5, 10, 25, 50]}
+              />
+            </Box>
+          </TableContainer>
         </Stack>
       </Container>
 

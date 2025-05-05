@@ -1,5 +1,6 @@
 import apiClient from "./api/interceptors";
 
+
 /**
  * Interface for a voice entry
  */
@@ -37,13 +38,14 @@ export interface ListVoicesResponse {
  * @param userId - The ID of the user making the request
  * @returns A promise with the list of available voices
  */
-export const listVoices = async (
-  userId: string,
-): Promise<ListVoicesResponse> => {
+export const listVoices = async (userId: string,): Promise<ListVoicesResponse> => {
   try {
-    const response = await apiClient.post<ListVoicesResponse>("/list-voices", {
+    const response = await apiClient.post<ListVoicesResponse>(
+      "/list-voices", 
+      {
       user_id: userId,
-    });
+      }
+    );
 
     return response.data;
   } catch (error) {

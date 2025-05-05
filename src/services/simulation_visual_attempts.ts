@@ -101,6 +101,7 @@ export interface SimulationScores {
   concentration: number;
 }
 
+
 export interface EndVisualSimulationResponse {
   id: string;
   status: string;

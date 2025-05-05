@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Stack, Box } from '@mui/material';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import Footer from './Footer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -35,13 +34,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           sx={{
             flex: 1,
             overflow: 'auto',
-            p: 3,
+            p: 1,
           }}
         >
           {children}
         </Box>
       </Stack>
-      {/* <Footer /> */}
     </Stack>
   );
 };

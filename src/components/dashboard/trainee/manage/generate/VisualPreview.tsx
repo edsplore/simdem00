@@ -552,15 +552,14 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
         </Stack>
       </Box>
 
-      {/* Main content - Only the visual interface */}
+      {/* Main content - Modified to match the layout of other components */}
       <Box sx={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        {/* Left side - Visual interface (same positioning as in other components) */}
         <Box
           sx={{
             flex: 1,
             p: 2,
             overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
           }}
           ref={imageContainerRef}
         >
@@ -572,37 +571,25 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
               bgcolor: "background.paper",
               borderRadius: 1,
               overflow: "hidden",
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
             }}
           >
-            <Box
-              sx={{
-                position: "relative",
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <Box sx={{ position: "relative" }}>
               {currentSlide && (
                 <img
                   ref={imageRef}
                   src={slides.get(currentSlide.imageId)}
                   alt={currentSlide.imageName}
                   style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    objectFit: "contain", // Maintain aspect ratio without stretching
+                    width: "100%",
+                    height: "auto",
+                    objectFit: "contain",
                     display: "block",
                   }}
                   onLoad={handleImageLoad}
                 />
               )}
 
-              {/* Timeout indicator - show timer when timeout is active */}
+              {/* Timeout indicator (simplified, without text) */}
               {timeoutActive &&
                 currentItem?.type === "hotspot" &&
                 currentItem.settings?.timeoutDuration &&
@@ -621,8 +608,7 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                       gap: 1,
                       zIndex: 100,
                     }}
-                  >
-                  </Box>
+                  ></Box>
                 )}
 
               {/* Render hotspots directly on the image */}
@@ -855,10 +841,13 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                     variant="contained"
                     sx={{
                       height: "100%",
-                      backgroundColor: "#1e293b",
-                      color: "white",
+                      backgroundColor:
+                        currentItem.settings?.buttonColor || "#1e293b",
+                      color: currentItem.settings?.textColor || "#FFFFFF",
                       "&:hover": {
-                        backgroundColor: "#0f172a",
+                        backgroundColor: currentItem.settings?.buttonColor
+                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                          : "#0f172a",
                       },
                       boxShadow: highlightHotspot ? 4 : 0,
                       border: highlightHotspot
@@ -872,29 +861,59 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                   </Button>
                 </Box>
               )}
+
+            {/* Navigation Controls removed as requested */}
+          </Box>
+        </Box>
+
+        {/* Right side - Empty sidebar (to match layout of other components) */}
+        <Box
+          sx={{
+            width: 320,
+            borderLeft: 1,
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Empty sidebar with status header to match other components */}
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: 1,
+              borderColor: "divider",
+              height: "60px",
+              flexShrink: 0,
+            }}
+          >
+            <Typography variant="subtitle2" color="text.secondary">
+              Visual Mode ({simulationStatus})
+            </Typography>
           </Box>
 
-          {/* Navigation Controls - Centered at the bottom */}
-          {currentItem && (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                mt: 2,
-                mb: 1,
-              }}
-            >
-              <Button
-                variant="contained"
-                color="primary"
-                endIcon={<ArrowForward />}
-                onClick={moveToNextItem}
-                sx={{ minWidth: 120 }}
-              >
-                Next
-              </Button>
-            </Box>
-          )}
+          {/* Empty content area */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 3,
+              color: "text.secondary",
+              textAlign: "center",
+            }}
+          >
+            <VisibilityIcon sx={{ fontSize: 40, color: "grey.400", mb: 2 }} />
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Visual Mode
+            </Typography>
+            <Typography variant="caption">
+              Interact with the interface on the left to navigate through the
+              simulation
+            </Typography>
+          </Box>
         </Box>
       </Box>
     </Box>

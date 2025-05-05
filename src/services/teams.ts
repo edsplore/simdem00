@@ -1,4 +1,4 @@
-import apiClient from './api/interceptors';
+import apiClient from "./api/interceptors";
 
 export interface Team {
   team_id: string;
@@ -43,8 +43,6 @@ export interface TeamResponse {
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const TEAMS_URL = `${UAM_API_URL}/uam/api/teams`;
 
-
-
 /**
  * Fetches teams for a specific workspace
  * @param workspaceId The workspace ID
@@ -57,30 +55,32 @@ export const fetchTeams = async (
   workspaceId: string,
   page: number = 0,
   limit: number = 100,
-  search?: string
+  search?: string,
 ): Promise<TeamResponse> => {
   try {
-    console.log(`Fetching teams for workspace: ${workspaceId}, page: ${page}, limit: ${limit}`);
+    console.log(
+      `Fetching teams for workspace: ${workspaceId}, page: ${page}, limit: ${limit}`,
+    );
 
     // Build query parameters
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
-      workspace_id: workspaceId
+      workspace_id: workspaceId,
     });
 
     // Add optional search parameter if provided
     if (search) {
-      params.append('search', search);
+      params.append("search", search);
     }
 
     const response = await apiClient.get(`${TEAMS_URL}?${params.toString()}`);
 
-    console.log('Teams API response:', response.data);
+    console.log("Teams API response:", response.data);
 
     return response.data;
   } catch (error) {
-    console.error('Error fetching teams:', error);
+    console.error("Error fetching teams:", error);
     // Return empty response instead of throwing to prevent UI crashes
     return { teams: [], items: [] };
   }

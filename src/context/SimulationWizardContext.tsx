@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState } from "react";
 
 export interface Message {
   id: string;
-  role: 'Customer' | 'Trainee';
+  role: "Customer" | "Trainee";
   message: string;
   keywords: string[];
 }
@@ -14,7 +14,7 @@ export interface Hotspot {
   width: number;
   height: number;
   name: string;
-  type: 'button' | 'field';
+  type: "button" | "field";
   settings: {
     font: string;
     fontSize: number;
@@ -65,10 +65,10 @@ export interface SimulationSettings {
     voiceId: string;
   };
   scoring: {
-    simulationScore: 'best' | 'last' | 'average';
+    simulationScore: "best" | "last" | "average";
     keywordScore: string;
     clickScore: string;
-    practiceMode: 'unlimited' | 'limited';
+    practiceMode: "unlimited" | "limited";
     repetitionsAllowed: string;
     repetitionsNeeded: string;
   };
@@ -91,61 +91,78 @@ interface SimulationWizardContextType {
 
   // Simulation Response
   simulationResponse: { id: string; status: string; prompt: string } | null;
-  setSimulationResponse: (response: { id: string; status: string; prompt: string } | null) => void;
+  setSimulationResponse: (
+    response: { id: string; status: string; prompt: string } | null,
+  ) => void;
 
   // Published State
   isPublished: boolean;
   setIsPublished: (published: boolean) => void;
+
+  // Track which script message IDs are assigned to visuals
+  assignedScriptMessageIds: Set<string>;
+  setAssignedScriptMessageIds: (ids: Set<string>) => void;
 }
 
-const SimulationWizardContext = createContext<SimulationWizardContextType | undefined>(undefined);
+const SimulationWizardContext = createContext<
+  SimulationWizardContextType | undefined
+>(undefined);
 
-export const SimulationWizardProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const SimulationWizardProvider: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const [scriptData, setScriptData] = useState<Message[]>([]);
   const [isScriptLocked, setIsScriptLocked] = useState(false);
   const [visualImages, setVisualImages] = useState<VisualImage[]>([]);
+  const [assignedScriptMessageIds, setAssignedScriptMessageIds] = useState<
+    Set<string>
+  >(new Set());
 
   // Initialize settings with default values but allow updates
   const [settings, setSettings] = useState<SimulationSettings>({
-    simulationType: 'audio',
+    simulationType: "audio",
     levels: {},
     estimatedTime: {
       enabled: false,
-      value: '10 mins',
+      value: "10 mins",
     },
     objectives: {
       enabled: false,
-      text: '',
+      text: "",
     },
     overviewVideo: {
       enabled: false,
     },
     quickTips: {
       enabled: false,
-      text: '',
+      text: "",
     },
     voice: {
-      language: 'English',
-      accent: 'American',
-      gender: 'Male',
-      ageGroup: 'Middle Age',
-      voiceId: '',
+      language: "English",
+      accent: "American",
+      gender: "Male",
+      ageGroup: "Middle Age",
+      voiceId: "",
     },
     scoring: {
-      simulationScore: 'best',
-      keywordScore: '20%',
-      clickScore: '80%',
-      practiceMode: 'unlimited',
-      repetitionsAllowed: '3',
-      repetitionsNeeded: '2',
+      simulationScore: "best",
+      keywordScore: "20%",
+      clickScore: "80%",
+      practiceMode: "unlimited",
+      repetitionsAllowed: "3",
+      repetitionsNeeded: "2",
     },
   });
-  const [simulationResponse, setSimulationResponse] = useState<{ id: string; status: string; prompt: string } | null>(null);
+  const [simulationResponse, setSimulationResponse] = useState<{
+    id: string;
+    status: string;
+    prompt: string;
+  } | null>(null);
   const [isPublished, setIsPublished] = useState(false);
 
   // Update settings while preserving existing values
   const updateSettings = (newSettings: Partial<SimulationSettings>) => {
-    setSettings(prevSettings => ({
+    setSettings((prevSettings) => ({
       ...prevSettings,
       ...newSettings,
       voice: {
@@ -174,6 +191,8 @@ export const SimulationWizardProvider: React.FC<{ children: React.ReactNode }> =
         setSimulationResponse,
         isPublished,
         setIsPublished,
+        assignedScriptMessageIds,
+        setAssignedScriptMessageIds,
       }}
     >
       {children}
@@ -184,7 +203,9 @@ export const SimulationWizardProvider: React.FC<{ children: React.ReactNode }> =
 export const useSimulationWizard = () => {
   const context = useContext(SimulationWizardContext);
   if (context === undefined) {
-    throw new Error('useSimulationWizard must be used within a SimulationWizardProvider');
+    throw new Error(
+      "useSimulationWizard must be used within a SimulationWizardProvider",
+    );
   }
   return context;
 };

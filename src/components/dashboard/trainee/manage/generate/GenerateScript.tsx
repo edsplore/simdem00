@@ -29,6 +29,7 @@ import {
   fetchCompleteSimulation,
   CompleteSimulationResponse,
 } from "../../../../../services/simulation_operations";
+import { useAuth } from "../../../../../context/AuthContext";
 
 interface TabState {
   script: boolean;
@@ -279,6 +280,7 @@ const GenerateScriptContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user, currentWorkspaceId } = useAuth();
 
   const {
     scriptData,
@@ -291,6 +293,7 @@ const GenerateScriptContent = () => {
     setIsPublished,
     simulationResponse,
     setSimulationResponse,
+    setAssignedScriptMessageIds,
   } = useSimulationWizard();
 
   const [enabledTabs, setEnabledTabs] = useState<TabState>({
@@ -397,7 +400,8 @@ const GenerateScriptContent = () => {
           if (simulation.script && Array.isArray(simulation.script)) {
             const transformedScript = simulation.script.map(
               (scriptItem, index) => ({
-                id: `script-${Date.now()}-${index}`,
+                // Use a more stable ID format that's consistent across sessions
+                id: scriptItem.id || `script-${index}`,
                 role: scriptItem.role === "assistant" ? "Trainee" : "Customer",
                 message: scriptItem.script_sentence || "",
                 keywords: scriptItem.keywords || [],
@@ -416,6 +420,8 @@ const GenerateScriptContent = () => {
 
           // Enhanced processing of visual data (slides, images, sequences)
           const processedImages = [];
+          // Track assigned message IDs
+          const assignedMessageIds = new Set<string>();
 
           // Check if we have slidesData
           if (
@@ -455,17 +461,8 @@ const GenerateScriptContent = () => {
               // Try to get image data from the map
               const imageData = imageDataMap.get(slide.imageId);
 
-              // First check if we have a valid API URL in slide.imageUrl
-              if (
-                slide.imageUrl &&
-                (slide.imageUrl.startsWith("/api/") ||
-                  slide.imageUrl.startsWith("http"))
-              ) {
-                // Use the API URL directly
-                blobUrl = slide.imageUrl;
-              }
-              // If no valid URL but we have image data, process it
-              else if (imageData) {
+              // If we have image data, process it
+              if (imageData) {
                 // Process the binary image data properly - similar to how preview components do it
                 if (typeof imageData === "string") {
                   if (
@@ -521,8 +518,8 @@ const GenerateScriptContent = () => {
                         id: `hotspot-${item.id}`,
                         type: "hotspot",
                         content: {
-                          id: item.id,
-                          name: item.name || "Untitled hotspot",
+                          id: item.id || String(Date.now()),
+                          name: item.name || "Untitled Hotspot",
                           type: "hotspot",
                           hotspotType: item.hotspotType || "button",
                           coordinates: item.coordinates
@@ -542,16 +539,21 @@ const GenerateScriptContent = () => {
                     }
                     // For message type items
                     else if (item.type === "message") {
+                      // Track message IDs that are already assigned to visuals
+                      if (item.id) {
+                        assignedMessageIds.add(item.id);
+                      }
+
                       // Create a proper message sequence item
                       return {
                         id: `message-${item.id}`,
                         type: "message",
                         content: {
-                          id: item.id,
+                          id: item.id || String(Date.now()),
                           role: item.role || "Customer", // Preserve the original role
                           text: item.text || "",
                           visualId: slide.imageId,
-                          order: 0, // Default order
+                          order: item.order || 0,
                         },
                         timestamp: Date.now(),
                       };
@@ -695,6 +697,10 @@ const GenerateScriptContent = () => {
             setVisualImages([]);
           }
 
+          // Set assigned message IDs to context
+          console.log("Setting assigned message IDs:", assignedMessageIds);
+          setAssignedScriptMessageIds(assignedMessageIds);
+
           // If status is published, set isPublished
           if (simulation.status === "published") {
             setIsPublished(true);
@@ -739,7 +745,7 @@ const GenerateScriptContent = () => {
         return {
           script: false, // Disable script tab for visual type
           visuals: true, // Always enabled for visual type
-          settings: true, // Always enable settings tab
+          settings: visualImages.length > 0,
           preview: isPublished,
         };
       }
@@ -872,7 +878,7 @@ const GenerateScriptContent = () => {
 
       // Use updateSimulation from simulation_operations instead of direct axios call
       const response = await updateSimulation(id, {
-        user_id: "user123", // This should come from your auth context
+        user_id: user?.id || "private_user", // This should come from your auth context
         sim_name: loadedSimulation.name, // Changed 'name' to 'sim_name' to match API
         division_id: loadedSimulation.division || "",
         department_id: loadedSimulation.department || "",
@@ -954,7 +960,7 @@ const GenerateScriptContent = () => {
         : [];
 
       // Add script data and other required fields to formData
-      formData.append("user_id", "user123"); // This should come from your auth context
+      formData.append("user_id", user?.id || "private_user"); // This should come from your auth context
       formData.append("sim_name", loadedSimulation.name); // Changed to sim_name
       formData.append("division_id", loadedSimulation.division || "");
       formData.append("department_id", loadedSimulation.department || "");

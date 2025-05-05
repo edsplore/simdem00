@@ -81,7 +81,8 @@ export interface SimulationPreviewRequest {
 }
 
 export interface ChatPreviewRequest extends SimulationPreviewRequest {
-  message: string;
+  message?: string;
+  usersimulationprogress_id?: string;
 }
 
 // Response interfaces
@@ -91,6 +92,8 @@ export interface AudioPreviewResponse {
 }
 
 export interface ChatPreviewResponse {
+  id: string;
+  status: string;
   response: string;
   [key: string]: any;
 }
@@ -132,14 +135,29 @@ export const startAudioPreview = async (
  * @param userId - The ID of the user starting the preview
  * @param simulationId - The ID of the simulation to preview
  * @param message - The user's message (empty string for initial call)
+ * @param progressId - Optional progress ID for continuing a conversation
  * @returns A promise with the chat preview response containing the customer's response
  */
 export const startChatPreview = async (
   userId: string,
   simulationId: string,
   message: string = "",
+  progressId?: string,
 ): Promise<ChatPreviewResponse> => {
   try {
+    const payload: ChatPreviewRequest = {
+      user_id: userId,
+      sim_id: simulationId,
+      message: message,
+    };
+
+    // Add progress ID if provided (for continuing a conversation)
+    if (progressId) {
+      payload.usersimulationprogress_id = progressId;
+    }
+
+    console.log("Chat preview request payload:", payload);
+
     const response = await apiClient.post<ChatPreviewResponse>(
       "/simulations/start-chat-preview",
       {
@@ -149,9 +167,10 @@ export const startChatPreview = async (
       },
     );
 
+    console.log("Chat preview response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Error starting chat preview:", error);
+    console.error("Error with chat preview:", error);
     throw error;
   }
 };

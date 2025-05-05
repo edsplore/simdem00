@@ -267,19 +267,46 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     });
   }, [watch, level1Enabled, level2Enabled, level3Enabled]);
 
-  // Watch for form changes and update settings
+  // Watch for form changes and update settings with proper disabled level handling
   useEffect(() => {
     const subscription = watch((value) => {
+      // Get the current levels enabled status
+      const simulationLevels = value.settings?.simulationLevels || {};
+      const level1Enabled = simulationLevels.lvl1 !== false; // Default to true if undefined
+      const level2Enabled = simulationLevels.lvl2 === true;
+      const level3Enabled = simulationLevels.lvl3 === true;
+
+      // Create a cleaned version of settings where disabled levels always have false values
+      const cleanedSettings = { ...value.settings };
+
+      // For each setting other than simulationLevels
+      Object.keys(cleanedSettings).forEach((key) => {
+        if (key !== "simulationLevels") {
+          // For each level that's disabled, ensure its value is false in the output
+          if (!level1Enabled) {
+            cleanedSettings[key].lvl1 = false;
+          }
+          if (!level2Enabled) {
+            cleanedSettings[key].lvl2 = false;
+          }
+          if (!level3Enabled) {
+            cleanedSettings[key].lvl3 = false;
+          }
+        }
+      });
+
+      // Now update the settings with the cleaned values
       onSettingsChange({
         ...settings,
         simulationType: value.simulationType,
-        levels: value.settings,
+        levels: cleanedSettings,
         estimatedTime: value.estimatedTime,
         objectives: value.objectives,
         quickTips: value.quickTips,
         overviewVideo: value.overviewVideo,
       });
     });
+
     return () => subscription.unsubscribe();
   }, [watch, settings, onSettingsChange]);
 
@@ -465,14 +492,33 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                         </Stack>
                       </TableCell>
                       {["lvl1", "lvl2", "lvl3"].map((level) => {
-                        // Determine if this switch should be disabled based on level enablement
-                        // If the level is disabled and this is not the simulationLevels setting itself,
-                        // then disable the switch
-                        const isLevelDisabled =
-                          key !== "simulationLevels" &&
-                          ((level === "lvl1" && !level1Enabled) ||
-                            (level === "lvl2" && !level2Enabled) ||
-                            (level === "lvl3" && !level3Enabled));
+                        // Determine if this level is enabled overall
+                        const isLevelEnabled =
+                          (level === "lvl1" && level1Enabled) ||
+                          (level === "lvl2" && level2Enabled) ||
+                          (level === "lvl3" && level3Enabled);
+
+                        // If this is the "simulationLevels" key itself, which controls the main level enablement,
+                        // we allow toggling regardless (this is the master switch for each level)
+                        const isLevelSettingRow = key === "simulationLevels";
+
+                        // Determine if this switch should be disabled:
+                        // - If this is not the simulationLevels row AND the level is disabled
+                        const isDisabled =
+                          !isLevelSettingRow && !isLevelEnabled;
+
+                        // For simulationLevels row, use the actual field value
+                        // For other rows, if the level is disabled, force display as OFF (false)
+                        // Otherwise, use the actual field value
+                        const displayValue = (field: any) => {
+                          if (isLevelSettingRow) {
+                            return field.value || false;
+                          } else {
+                            return isLevelEnabled
+                              ? field.value || false
+                              : false;
+                          }
+                        };
 
                         return (
                           <TableCell key={level} align="center">
@@ -481,7 +527,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                               control={control}
                               render={({ field }) => (
                                 <StyledSwitch
-                                  checked={field.value || false}
+                                  // Key change: Use displayValue to show the correct state
+                                  checked={displayValue(field)}
                                   onChange={(e) => {
                                     console.log(
                                       `Switching ${key}.${level} to:`,
@@ -489,7 +536,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                                     );
                                     field.onChange(e.target.checked);
                                   }}
-                                  disabled={isLevelDisabled}
+                                  disabled={isDisabled}
                                 />
                               )}
                             />

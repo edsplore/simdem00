@@ -715,7 +715,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return (
       <Box
         sx={{
-          height: "100vh",
+          height: "calc(100vh - 40px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1068,7 +1068,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box sx={{ height: "calc(100vh - 30px)", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isCallActive}
@@ -1121,7 +1121,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         <Stack
           direction="row"
           sx={{
-            p: 2,
+            p: 1.5,
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "#F9FAFB",
@@ -1193,10 +1193,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "400px",
+            minHeight: "350px",
             width: "50%",
             mx: "auto",
-            my: 10,
+            my: 6,
             border: "1px solid #DEE2FD",
             borderRadius: 4,
           }}
@@ -1217,7 +1217,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: "#666", mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 3 }}>
             Press start to attempt the Visual-Audio Simulation
           </Typography>
           <Button
@@ -1260,7 +1260,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       ) : (
         <Box
           sx={{
-            height: "100vh",
+            height: "calc(100vh - 80px)",
             bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
@@ -1273,11 +1273,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               display: "flex",
               maxWidth: "1200px",
               mx: "auto",
-              mt: 2,
+              mt: 1,
             }}
           >
             {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 2 }} ref={imageContainerRef}>
+            <Box sx={{ flex: 1, p: 1.5 }} ref={imageContainerRef}>
               <Box
                 sx={{
                   width: "100%",
@@ -1316,7 +1316,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
                         maxWidth: "100%",
-                        maxHeight: "calc(100vh - 200px)",
+                        maxHeight: "calc(100vh - 150px)",
                         display: "block",
                         margin: "0 auto",
                       }}
@@ -1571,10 +1571,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 variant="contained"
                                 sx={{
                                   height: "100%",
-                                  backgroundColor: "#1e293b",
-                                  color: "white",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
-                                    backgroundColor: "#0f172a",
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                 }}
@@ -1606,7 +1613,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               {/* Status + top controls */}
               <Box
                 sx={{
-                  p: 2,
+                  p: 1.5,
                   borderBottom: 1,
                   borderColor: "divider",
                   display: "flex",
@@ -1642,9 +1649,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               <Box
                 sx={{
                   flex: 1,
-                  p: 2,
+                  p: 1.5,
                   display: "flex",
                   flexDirection: "column",
+                  maxHeight: "calc(100vh - 180px)",
+                  overflowY: "auto",
                 }}
               >
                 {currentItem?.type === "message" ? (
@@ -1652,7 +1661,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     sx={{
                       display: "flex",
                       flexDirection: "column",
-                      // Removed height: '100%' so everything stays right below the message
                     }}
                   >
                     <Paper
@@ -1669,7 +1677,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             ? "primary.main"
                             : "success.main",
                         borderRadius: 1,
-                        // Removed mb: "auto" so it doesn't push controls to the bottom
                         mb: 2,
                       }}
                     >
@@ -1708,7 +1715,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     </Paper>
 
                     {/* Interaction controls / Next Button */}
-                    {/* Placed directly below message bubble (and separated by small margin). */}
                     <Box>
                       {/* Trainee recording indicator */}
                       {(currentItem.role === "Trainee" ||
@@ -1716,7 +1722,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         isRecording && (
                           <Paper
                             sx={{
-                              p: 2,
+                              p: 1.5,
                               bgcolor: "grey.100",
                               borderRadius: 1,
                               mb: 2,
@@ -1777,7 +1783,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         speaking && (
                           <Paper
                             sx={{
-                              p: 2,
+                              p: 1.5,
                               bgcolor: "grey.100",
                               borderRadius: 1,
                               mb: 2,
@@ -1863,14 +1869,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           </Box>
 
           {/* Call controls */}
+          {/* COMMENTED OUT: Bottom End Call Button
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: "10px auto",
-              p: 2,
+              margin: "5px auto",
+              p: 1.5,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
@@ -1898,6 +1905,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               End Simulation
             </Button>
           </Stack>
+          */}
         </Box>
       )}
     </Box>

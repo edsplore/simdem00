@@ -1,4 +1,4 @@
-import apiClient from './api/interceptors';
+import apiClient from "./api/interceptors";
 
 export interface Tag {
   id: string;
@@ -27,7 +27,7 @@ export const fetchTags = async (userId: string): Promise<Tag[]> => {
 
     return response.data.tags || [];
   } catch (error) {
-    console.error('Error fetching tags:', error);
+    console.error("Error fetching tags:", error);
     return [];
   }
 };
@@ -38,16 +38,19 @@ export const fetchTags = async (userId: string): Promise<Tag[]> => {
  * @param tagName The name of the tag to create
  * @returns Promise with the created tag response
  */
-export const createTag = async (userId: string, tagName: string): Promise<CreateTagResponse> => {
+export const createTag = async (
+  userId: string,
+  tagName: string,
+): Promise<CreateTagResponse> => {
   try {
     const response = await apiClient.post('/tags/create', {
       user_id: userId,
-      name: tagName
+      name: tagName,
     });
 
     return response.data;
   } catch (error) {
-    console.error('Error creating tag:', error);
+    console.error("Error creating tag:", error);
     throw error;
   }
 };

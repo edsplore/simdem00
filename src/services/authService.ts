@@ -7,8 +7,7 @@ import apiClient from "./api/interceptors";
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 
 // Environment-specific URLs
-const REFRESH_TOKEN_URL = `${UAM_API_URL}/uam/auth/tokens/access/refresh`;
-
+const REFRESH_TOKEN_URL = `https://api.dev.everailabs.com/uam/auth/tokens/access/refresh`;
 
 class AuthService {
   private refreshTokenTimeout?: NodeJS.Timeout;
@@ -42,7 +41,9 @@ class AuthService {
   private async doRefreshToken(workspaceId?: string | null): Promise<string> {
     try {
       console.log(
-        `Refresh token attempt ${this.refreshAttempts + 1}/${this.maxRefreshAttempts}`,
+        `Refresh token attempt ${this.refreshAttempts + 1}/${
+          this.maxRefreshAttempts
+        }`
       );
 
       // Use the provided workspace ID or the stored one
@@ -177,7 +178,7 @@ class AuthService {
         (key) =>
           decodedToken[key] &&
           typeof decodedToken[key] === "object" &&
-          decodedToken[key]?.roles,
+          decodedToken[key]?.roles
       );
 
       console.log("Found workspace keys:", workspaceKeys);
@@ -195,7 +196,7 @@ class AuthService {
       // If we have a specific workspace ID to use
       if (this.currentWorkspaceId) {
         console.log(
-          `Looking for specific workspace: ${this.currentWorkspaceId}`,
+          `Looking for specific workspace: ${this.currentWorkspaceId}`
         );
 
         // Try to find the specified workspace
@@ -212,17 +213,17 @@ class AuthService {
           } else {
             // Otherwise use any available role
             const allRoles = Object.values(
-              selectedWorkspace.roles || {},
+              selectedWorkspace.roles || {}
             ).flat();
             selectedRole = allRoles.length > 0 ? allRoles[0] : "Unknown";
           }
 
           console.log(
-            `Using specified workspace: ${selectedWorkspaceKey} with role: ${selectedRole}`,
+            `Using specified workspace: ${selectedWorkspaceKey} with role: ${selectedRole}`
           );
         } else {
           console.warn(
-            `Specified workspace ${this.currentWorkspaceId} not found in token`,
+            `Specified workspace ${this.currentWorkspaceId} not found in token`
           );
         }
       }
@@ -238,7 +239,7 @@ class AuthService {
           if (workspace.roles?.simulator) {
             console.log(
               `Found simulator roles in workspace ${key}:`,
-              workspace.roles.simulator,
+              workspace.roles.simulator
             );
 
             // Check if this workspace has simulator permissions
@@ -268,7 +269,7 @@ class AuthService {
       if (selectedWorkspace.permissions?.simulator) {
         console.log(
           "Processing simulator permissions:",
-          selectedWorkspace.permissions.simulator,
+          selectedWorkspace.permissions.simulator
         );
 
         Object.entries(selectedWorkspace.permissions.simulator).forEach(
@@ -279,42 +280,42 @@ class AuthService {
             const hasAccess =
               (Array.isArray(permValues) &&
                 permValues.some(
-                  (perm) => Array.isArray(perm) && perm.includes("ACCESS"),
+                  (perm) => Array.isArray(perm) && perm.includes("ACCESS")
                 )) ||
               false;
 
             const hasRead =
               (Array.isArray(permValues) &&
                 permValues.some(
-                  (perm) => Array.isArray(perm) && perm.includes("READ"),
+                  (perm) => Array.isArray(perm) && perm.includes("READ")
                 )) ||
               false;
 
             const hasCreate =
               (Array.isArray(permValues) &&
                 permValues.some(
-                  (perm) => Array.isArray(perm) && perm.includes("CREATE"),
+                  (perm) => Array.isArray(perm) && perm.includes("CREATE")
                 )) ||
               false;
 
             const hasUpdate =
               (Array.isArray(permValues) &&
                 permValues.some(
-                  (perm) => Array.isArray(perm) && perm.includes("UPDATE"),
+                  (perm) => Array.isArray(perm) && perm.includes("UPDATE")
                 )) ||
               false;
 
             const hasDelete =
               (Array.isArray(permValues) &&
                 permValues.some(
-                  (perm) => Array.isArray(perm) && perm.includes("DELETE"),
+                  (perm) => Array.isArray(perm) && perm.includes("DELETE")
                 )) ||
               false;
 
             const hasWrite = hasCreate || hasUpdate;
 
             console.log(
-              `Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Create=${hasCreate}, Update=${hasUpdate}, Delete=${hasDelete}, Write=${hasWrite}`,
+              `Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Create=${hasCreate}, Update=${hasUpdate}, Delete=${hasDelete}, Write=${hasWrite}`
             );
 
             // Only add permission if it has both ACCESS and READ
@@ -341,7 +342,7 @@ class AuthService {
             if (hasDelete) {
               permissions[`${permKey}_delete`] = true;
             }
-          },
+          }
         );
       } else {
         console.warn("No simulator permissions found in selected workspace");

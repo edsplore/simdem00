@@ -802,7 +802,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     return (
       <Box
         sx={{
-          height: "100vh",
+          height: "calc(100vh - 40px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1155,7 +1155,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box sx={{ height: "calc(100vh - 30px)", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isStarted}
@@ -1208,7 +1208,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         <Stack
           direction="row"
           sx={{
-            p: 2,
+            p: 1.5,
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "#F9FAFB",
@@ -1280,10 +1280,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "400px",
+            minHeight: "350px",
             width: "50%",
             mx: "auto",
-            my: 10,
+            my: 6,
             border: "1px solid #DEE2FD",
             borderRadius: 4,
           }}
@@ -1304,7 +1304,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: "#666", mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 3 }}>
             Press start to attempt the Visual-Chat Simulation
           </Typography>
           <Button
@@ -1347,7 +1347,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       ) : (
         <Box
           sx={{
-            height: "100vh",
+            height: "calc(100vh - 80px)",
             bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
@@ -1360,11 +1360,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               display: "flex",
               maxWidth: "1200px",
               mx: "auto",
-              mt: 2,
+              mt: 1,
             }}
           >
             {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 2 }} ref={imageContainerRef}>
+            <Box sx={{ flex: 1, p: 1.5 }} ref={imageContainerRef}>
               <Box
                 sx={{
                   width: "100%",
@@ -1403,7 +1403,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
                         maxWidth: "100%",
-                        maxHeight: "calc(100vh - 200px)",
+                        maxHeight: "calc(100vh - 150px)",
                         display: "block",
                         margin: "0 auto",
                       }}
@@ -1671,10 +1671,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                 variant="contained"
                                 sx={{
                                   height: "100%",
-                                  backgroundColor: "#1e293b",
-                                  color: "white",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
-                                    backgroundColor: "#0f172a",
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
@@ -1709,13 +1716,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               {/* Status + top controls */}
               <Box
                 sx={{
-                  p: 2,
+                  p: 1.5,
                   borderBottom: 1,
                   borderColor: "divider",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  height: "60px", // Fixed height for header
+                  height: "50px", // Reduced from 60px
                   flexShrink: 0, // Prevent shrinking
                 }}
               >
@@ -1729,6 +1736,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   >
                     {isPaused ? <PlayArrow /> : <Pause />}
                   </IconButton>
+
+                  <IconButton
+                    onClick={handleEndChat}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      "&:hover": { bgcolor: "error.dark" },
+                    }}
+                  >
+                    <CallEnd />
+                  </IconButton>
                 </Box>
               </Box>
 
@@ -1738,13 +1756,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 sx={{
                   flex: 1,
                   overflowY: "auto",
-                  p: 2,
+                  p: 1.5,
                   bgcolor: "#F5F7FF",
                   display: "flex",
                   flexDirection: "column",
-                  gap: 2,
-                  minHeight: "100px", // Minimum height to prevent collapsing
-                  maxHeight: "calc(100% - 100px)", // Ensure it doesn't push input off-screen
+                  gap: 1.5,
+                  minHeight: "80px", // Reduced from 100px
+                  maxHeight: "calc(100% - 90px)", // Adjusted to prevent input being pushed off-screen
                   "&::-webkit-scrollbar": {
                     width: "8px",
                   },
@@ -1772,10 +1790,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       height: "100%",
                       textAlign: "center",
                       color: "text.secondary",
-                      py: 8,
+                      py: 4, // Reduced from py: 8
                     }}
                   >
-                    <ChatIcon sx={{ fontSize: 40, mb: 2, opacity: 0.5 }} />
+                    <ChatIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
                     <Typography variant="body2">
                       {isLoadingVisuals
                         ? "Loading simulation..."
@@ -1798,8 +1816,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     {message.role === "customer" && (
                       <Avatar
                         sx={{
-                          width: 32,
-                          height: 32,
+                          width: 28, // Reduced from 32
+                          height: 28, // Reduced from 32
                           bgcolor: "primary.light",
                         }}
                       >
@@ -1809,7 +1827,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
                     <Paper
                       sx={{
-                        p: 2,
+                        p: 1.5, // Reduced from p: 2
                         maxWidth: "75%",
                         borderRadius: 2,
                         position: "relative",
@@ -1844,8 +1862,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     {message.role === "trainee" && (
                       <Avatar
                         sx={{
-                          width: 32,
-                          height: 32,
+                          width: 28, // Reduced from 32
+                          height: 28, // Reduced from 32
                           bgcolor: "success.light",
                         }}
                       >
@@ -1868,8 +1886,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       sx={{
                         display: "inline-flex",
                         alignItems: "center",
-                        px: 2,
-                        py: 1,
+                        px: 1.5, // Reduced from px: 2
+                        py: 0.75, // Reduced from py: 1
                         bgcolor: "warning.light",
                         color: "warning.dark",
                         borderRadius: "20px",
@@ -1908,11 +1926,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   handleSubmitMessage();
                 }}
                 sx={{
-                  p: 2,
+                  p: 1.5, // Reduced from p: 2
                   borderTop: 1,
                   borderColor: "divider",
                   bgcolor: "white",
-                  maxHeight: "30%", // Reduced from 40% to take less vertical space
+                  maxHeight: "25%", // Reduced from 30%
                   height: "auto",
                   overflowY: "auto",
                   flexShrink: 0, // Prevent shrinking
@@ -1934,13 +1952,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   },
                 }}
               >
-                <Stack spacing={2}>
+                <Stack spacing={1.5}>
+                  {" "}
+                  {/* Reduced from spacing: 2 */}
                   <Box sx={{ display: "flex", gap: 1 }}>
                     <TextField
                       inputRef={chatInputRef}
                       fullWidth
                       multiline
-                      maxRows={3}
+                      maxRows={2} // Reduced from maxRows: 3
                       placeholder={
                         waitingForUserInput
                           ? "Type your response..."
@@ -1987,12 +2007,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       <SendIcon />
                     </IconButton>
                   </Box>
-
                   {/* Expected response hint */}
                   {waitingForUserInput && expectedTraineeResponse && (
                     <Paper
                       sx={{
-                        p: 2,
+                        p: 1.5, // Reduced from p: 2
                         bgcolor: "warning.50",
                         border: 1,
                         borderColor: "warning.100",
@@ -2010,7 +2029,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                         sx={{
                           fontStyle: "italic",
                           color: "text.secondary",
-                          mb: 1,
+                          mb: 0.5, // Reduced from mb: 1
                         }}
                       >
                         {expectedTraineeResponse}
@@ -2020,7 +2039,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       </Typography>
                     </Paper>
                   )}
-
                   {/* Next button - alternative to typing exact response */}
                   {waitingForUserInput && (
                     <Button
@@ -2045,14 +2063,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           </Box>
 
           {/* Call controls */}
+          {/* COMMENTED OUT: Bottom End Chat Button 
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: "10px auto",
-              p: 2,
+              margin: "5px auto", // Reduced from 10px
+              p: 1.5, // Reduced from p: 2
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
@@ -2080,6 +2099,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               End Simulation
             </Button>
           </Stack>
+          */}
         </Box>
       )}
     </Box>

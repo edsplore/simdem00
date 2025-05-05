@@ -69,17 +69,17 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       title: 'On Time Completion',
       value: `${stats.timely_completion.percentage}%`,
       subtitle: `${stats.timely_completion.completed_simulations} simulations`,
-      backgroundIcon: {completionImage},
+      backgroundIcon: "../../../src/assets/completion.svg",
     },
     {
       title: 'Average Sim Score',
       value: `${stats.average_sim_score}%`,
-      backgroundIcon: {averageImage},
+      backgroundIcon: "../../../src/assets/average.svg",
     },
     {
       title: 'Highest Sim Score',
       value: `${stats.highest_sim_score}%`,
-      backgroundIcon: {highestImage},
+      backgroundIcon: "../../../src/assets/highest.svg",
     },
   ];
 

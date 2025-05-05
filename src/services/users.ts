@@ -81,7 +81,7 @@ export const fetchUsersSummary = async (
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
     const response = await apiClient.get(`${USERS_URL}/platform`, {
       params: {
-        page: 1,
+        page: 0,
         limit: 50,
         workspace_id: encodedWorkspaceId,
         status: "ACTIVE",

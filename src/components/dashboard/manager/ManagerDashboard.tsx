@@ -27,17 +27,29 @@ import {
   Stack,
   Tab,
   Table,
+  styled,
   TableBody,
   TableCell,
   TableContainer,
   TableFooter,
   TableHead,
+  Button,
   TableRow,
   Tabs,
   TextField,
   Tooltip,
   Typography,
+  Popover,
+  Divider,
 } from "@mui/material";
+import { DateRange } from "@mui/x-date-pickers-pro/models";
+import {
+  CalendarMonth as CalendarIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Clear as ClearIcon,
+} from "@mui/icons-material";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs, { Dayjs } from "dayjs";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import {
@@ -47,6 +59,7 @@ import {
   ManagerDashboardTrainingEntityAttemptsStatsResponse,
 } from "../../../services/manager";
 import DashboardContent from "../DashboardContent";
+import DateSelector from "../../common/DateSelector";
 
 // Mock data for the dashboard
 const mockData = {
@@ -1079,6 +1092,7 @@ const ManagerDashboard = () => {
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
   });
+
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
   const filteredTrainingEntities = trainingEntityAttempts.filter((entity) => {
     const query = searchQuery.toLowerCase();
@@ -1220,7 +1234,9 @@ const ManagerDashboard = () => {
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 120 }}>
+                <DateSelector />
+
+                {/* <FormControl size="small" sx={{ minWidth: 120 }}>
                   <Select
                     value={timeframe}
                     onChange={handleTimeframeChange}
@@ -1248,7 +1264,7 @@ const ManagerDashboard = () => {
                       Custom
                     </MenuItem>
                   </Select>
-                </FormControl>
+                </FormControl> */}
                 {/* {timeframe === "Custom" && (
                   <TextField
                     type="date"
@@ -1605,7 +1621,9 @@ const ManagerDashboard = () => {
                   </MenuItem>
                 </Select>
 
-                <Select
+                <DateSelector />
+
+                {/* <Select
                   IconComponent={ExpandMoreIcon}
                   MenuProps={menuSelectProps}
                   sx={menuSelectsx}
@@ -1615,7 +1633,7 @@ const ManagerDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Time">
                     All Time
                   </MenuItem>
-                </Select>
+                </Select> */}
 
                 <Select
                   value="All Creators"

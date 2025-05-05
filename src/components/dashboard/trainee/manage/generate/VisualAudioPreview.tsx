@@ -865,10 +865,13 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                     variant="contained"
                     sx={{
                       height: "100%",
-                      backgroundColor: "#1e293b",
-                      color: "white",
+                      backgroundColor:
+                        currentItem.settings?.buttonColor || "#1e293b",
+                      color: currentItem.settings?.textColor || "#FFFFFF",
                       "&:hover": {
-                        backgroundColor: "#0f172a",
+                        backgroundColor: currentItem.settings?.buttonColor
+                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                          : "#0f172a",
                       },
                       boxShadow: highlightHotspot ? 4 : 0,
                     }}

@@ -145,6 +145,12 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Validate file type - ensure it's a text file
+    if (file.type !== "text/plain" && !file.name.endsWith(".txt")) {
+      setError("Please upload only .txt files.");
+      return;
+    }
+
     // Show loading message
     const loadingScript: Message[] = [
       {
@@ -159,7 +165,14 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
     setError(null);
 
     try {
-      const content = await file.text();
+      // Use FileReader with explicit encoding instead of file.text()
+      const content = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.onerror = (e) => reject(new Error("Error reading file"));
+        // Read as text with UTF-8 encoding
+        reader.readAsText(file, "UTF-8");
+      });
 
       // Parse the dialogue content
       const dialogueLines = content
@@ -167,15 +180,23 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
         .map((line) => line.trim())
         .filter((line) => line.length > 0 && line.includes(":"));
 
-      const messages: Message[] = dialogueLines.map((line, index) => {
-        const [role, message] = line.split(":").map((part) => part.trim());
-        return {
-          id: String(Date.now() + index),
-          role: role === "Customer" ? "Customer" : "Trainee",
-          message: message,
-          keywords: [],
-        };
-      });
+      const messages: Message[] = dialogueLines
+        .map((line, index) => {
+          // Split only on the first colon to preserve any colons in the message content
+          const colonIndex = line.indexOf(":");
+          if (colonIndex === -1) return null;
+
+          const role = line.substring(0, colonIndex).trim();
+          const message = line.substring(colonIndex + 1).trim();
+
+          return {
+            id: String(Date.now() + index),
+            role: role === "Customer" ? "Customer" : "Trainee",
+            message: message,
+            keywords: [],
+          };
+        })
+        .filter(Boolean) as Message[];
 
       if (messages.length === 0) {
         throw new Error(
@@ -206,6 +227,12 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Validate file type - ensure it's an audio file
+    if (!file.type.startsWith("audio/")) {
+      setError("Please upload only audio files (.mp3).");
+      return;
+    }
 
     // Check file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
@@ -538,7 +565,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
             color="text.secondary"
             sx={{ mb: 2, fontSize: "13px" }}
           >
-            Simulation script as text in .doc, .docx
+            Simulation script as text in .txt format
           </Typography>
           <Link
             component="button"
@@ -558,7 +585,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
           </Link>
           <input
             type="file"
-            accept=".txt"
+            accept=".txt,text/plain"
             style={{ display: "none" }}
             id="script-upload"
             onChange={handleScriptUpload}
@@ -617,7 +644,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
           </Typography>
           <input
             type="file"
-            accept=".mp3"
+            accept="audio/mp3,audio/*"
             style={{ display: "none" }}
             id="audio-upload"
             onChange={handleAudioUpload}

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -16,6 +15,7 @@ import {
   MenuItem,
   Select,
   CircularProgress,
+  Chip,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -32,66 +32,14 @@ import {
   SmartToy as SmartToyIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../context/AuthContext";
-
-interface ImageData {
-  image_id: string;
-  image_data: string;
-}
-
-interface SimulationData {
-  id: string;
-  sim_name: string;
-  version: string;
-  lvl1: {
-    isEnabled: boolean;
-    enablePractice: boolean;
-    hideAgentScript: boolean;
-    hideCustomerScript: boolean;
-    hideKeywordScores: boolean;
-    hideSentimentScores: boolean;
-    hideHighlights: boolean;
-    hideCoachingTips: boolean;
-    enablePostSimulationSurvey: boolean;
-    aiPoweredPausesAndFeedback: boolean;
-  };
-  lvl2: {
-    isEnabled: boolean;
-  };
-  lvl3: {
-    isEnabled: boolean;
-  };
-  sim_type: string;
-  status: string;
-  tags: string[];
-  est_time: string;
-  script: Array<{
-    script_sentence: string;
-    role: string;
-    keywords: string[];
-  }>;
-  slidesData: Array<{
-    imageId: string;
-    imageName: string;
-    imageUrl: string;
-    sequence: Array<{
-      type: string;
-      id: string;
-      name?: string;
-      hotspotType?: string;
-      coordinates?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
-      settings?: any;
-      role?: string;
-      text?: string;
-      options?: string[];
-      tipText?: string;
-    }>;
-  }>;
-}
+import {
+  startVisualSimulation,
+  endVisualSimulation,
+  VisualSimulationResponse,
+  EndVisualSimulationResponse,
+  SimulationData,
+  ImageData,
+} from "../../../../services/simulation_visual_attempts";
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -101,29 +49,6 @@ interface VisualSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   assignmentId: string;
-}
-
-interface VisualSimulationResponse {
-  id: string;
-  status: string;
-  simulation: SimulationData;
-  images: ImageData[];
-}
-
-interface EndSimulationResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
 }
 
 // Minimum passing score threshold
@@ -151,9 +76,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     string | null
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndSimulationResponse["scores"] | null>(
-    null,
-  );
+  const [scores, setScores] = useState<
+    EndVisualSimulationResponse["scores"] | null
+  >(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -188,7 +113,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -558,30 +483,27 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       setIsStarted(true);
       setSimulationStatus("Loading visual simulation...");
 
-      // Make API call to start visual simulation
-      const response = await axios.post<VisualSimulationResponse>(
-        "/api/simulations/start-visual-preview",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
+      // Use the startVisualSimulation function from simulation_visual_attempts
+      const response = await startVisualSimulation(
+        userId,
+        simulationId,
+        assignmentId,
       );
 
-      console.log("Start visual simulation response:", response.data);
+      console.log("Start visual simulation response:", response);
 
-      if (response.data.simulation) {
+      if (response.simulation) {
         console.log("Setting simulation data");
-        setSimulationData(response.data.simulation);
-        setSimulationProgressId(response.data.id);
+        setSimulationData(response.simulation);
+        setSimulationProgressId(response.id);
         setSimulationStatus("Active");
       }
 
       // Process image data
-      if (response.data.images && response.data.images.length > 0) {
+      if (response.images && response.images.length > 0) {
         const newSlides = new Map();
-        console.log(`Processing ${response.data.images.length} images`);
-        for (const image of response.data.images) {
+        console.log(`Processing ${response.images.length} images`);
+        for (const image of response.images) {
           // Convert base64 string to Uint8Array
           const binaryString = atob(image.image_data);
           const len = binaryString.length;
@@ -651,25 +573,20 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       return;
     }
 
-    const apiParams = {
-      user_id: userId,
-      simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId,
-    };
-
-    console.log("API Parameters prepared:", apiParams);
-
     try {
       console.log("Executing end-visual API call");
-      const response = await axios.post<EndSimulationResponse>(
-        "/api/simulations/end-visual",
-        apiParams,
+
+      // Use the endVisualSimulation function from simulation_visual_attempts
+      const response = await endVisualSimulation(
+        userId,
+        simulationId,
+        simulationProgressId,
       );
 
-      if (response.data && response.data.scores) {
+      if (response && response.scores) {
         console.log("Setting scores and showing completion screen");
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
         console.warn("No scores received in response");
@@ -884,7 +801,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
+                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -946,9 +863,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Confidence"] >= 80
+                  {scores && scores.confidence >= 80
                     ? "High"
-                    : scores && scores["Confidence"] >= 60
+                    : scores && scores.confidence >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -981,9 +898,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Concentration"] >= 80
+                  {scores && scores.concentration >= 80
                     ? "High"
-                    : scores && scores["Concentration"] >= 60
+                    : scores && scores.concentration >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1016,9 +933,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Energy"] >= 80
+                  {scores && scores.energy >= 80
                     ? "High"
-                    : scores && scores["Energy"] >= 60
+                    : scores && scores.energy >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1067,7 +984,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isStarted}
@@ -1116,11 +1033,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       </Modal>
 
       {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
+      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mt: 1 }}>
         <Stack
           direction="row"
           sx={{
-            p: 2,
+            p: 1.5,
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "#F9FAFB",
@@ -1192,10 +1109,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "400px",
+            minHeight: "360px",
             width: "50%",
             mx: "auto",
-            my: 10,
+            my: 6,
             border: "1px solid #DEE2FD",
             borderRadius: 4,
           }}
@@ -1216,7 +1133,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: "#666", mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 3 }}>
             Press start to attempt the Visual Simulation
           </Typography>
           <Button
@@ -1259,33 +1176,24 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       ) : (
         <Box
           sx={{
-            height: "100vh",
+            height: "calc(100vh - 130px)",
             bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          {/* Main content - Only the visual interface */}
+          {/* Main content - Modified to be more compact vertically */}
           <Box
             sx={{
               flex: 1,
               display: "flex",
-              overflow: "hidden",
               maxWidth: "1200px",
               mx: "auto",
-              mt: 2,
+              mt: 1,
             }}
           >
-            <Box
-              sx={{
-                flex: 1,
-                p: 2,
-                overflow: "hidden",
-                display: "flex",
-                flexDirection: "column",
-              }}
-              ref={imageContainerRef}
-            >
+            {/* Left side - Visual interface */}
+            <Box sx={{ flex: 1, p: 1 }} ref={imageContainerRef}>
               <Box
                 sx={{
                   width: "100%",
@@ -1294,10 +1202,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   bgcolor: "background.paper",
                   borderRadius: 1,
                   overflow: "hidden",
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "center",
                 }}
               >
                 {isLoadingVisuals ? (
@@ -1312,29 +1216,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                     </Typography>
                   </Box>
                 ) : (
-                  <Box
-                    sx={{
-                      position: "relative",
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
+                  <Box sx={{ position: "relative" }}>
                     <img
                       ref={imageRef}
                       src={slides.get(currentSlide.imageId)}
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
-                        maxWidth: "100%",
-                        maxHeight: "calc(100vh - 200px)",
+                        width: "100%",
+                        height: "auto",
+                        objectFit: "contain",
                         display: "block",
-                        margin: "0 auto",
+                        maxHeight: "calc(100vh - 180px)",
                       }}
                       onLoad={handleImageLoad}
                     />
 
-                    {/* Timeout indicator - show timer when timeout is active */}
+                    {/* Timeout indicator (simplified, without text) */}
                     {timeoutActive &&
                       currentItem?.type === "hotspot" &&
                       currentItem.settings?.timeoutDuration &&
@@ -1595,10 +1492,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 variant="contained"
                                 sx={{
                                   height: "100%",
-                                  backgroundColor: "#1e293b",
-                                  color: "white",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
-                                    backgroundColor: "#0f172a",
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
@@ -1617,40 +1521,99 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   </Box>
                 )}
               </Box>
+            </Box>
 
-              {/* Navigation Controls - Centered at the bottom */}
-              {currentItem && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "center",
-                    mt: 2,
-                    mb: 1,
-                  }}
-                >
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    endIcon={<ArrowForward />}
-                    onClick={moveToNextItem}
-                    sx={{ minWidth: 120 }}
+            {/* Right side - Empty sidebar (to match layout of other components) */}
+            <Box
+              sx={{
+                width: 320,
+                borderLeft: 1,
+                borderColor: "divider",
+                bgcolor: "background.paper",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* Empty sidebar with status header to match other components */}
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  height: "50px",
+                  flexShrink: 0,
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Visual Mode ({simulationStatus})
+                </Typography>
+                <Box>
+                  <IconButton
+                    onClick={togglePause}
+                    sx={{ bgcolor: "grey.100", mr: 1 }}
+                    size="small"
                   >
-                    Next
-                  </Button>
+                    {isPaused ? (
+                      <PlayArrow fontSize="small" />
+                    ) : (
+                      <Pause fontSize="small" />
+                    )}
+                  </IconButton>
+
+                  <IconButton
+                    onClick={handleEndSimulation}
+                    sx={{
+                      bgcolor: "error.main",
+                      color: "white",
+                      "&:hover": { bgcolor: "error.dark" },
+                    }}
+                    size="small"
+                  >
+                    <CallEnd fontSize="small" />
+                  </IconButton>
                 </Box>
-              )}
+              </Box>
+
+              {/* Empty content area - made more compact */}
+              <Box
+                sx={{
+                  flex: 1,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  p: 2,
+                  color: "text.secondary",
+                  textAlign: "center",
+                }}
+              >
+                <VisibilityIcon
+                  sx={{ fontSize: 36, color: "grey.400", mb: 1 }}
+                />
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  Visual Mode
+                </Typography>
+                <Typography variant="caption">
+                  Interact with the interface on the left to navigate through
+                  the simulation
+                </Typography>
+              </Box>
             </Box>
           </Box>
 
-          {/* Simulation controls */}
+          {/* Simulation controls - made more compact */}
+          {/* COMMENTED OUT: Bottom End Simulation Button
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: "10px auto",
-              p: 2,
+              margin: "5px auto",
+              p: 1.5,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
@@ -1666,23 +1629,19 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               </span>
             </Typography>
 
-            <IconButton
-              onClick={togglePause}
-              sx={{ bgcolor: "grey.100", mr: 1 }}
-            >
-              {isPaused ? <PlayArrow /> : <Pause />}
-            </IconButton>
-
             <Button
               variant="contained"
               color="error"
               startIcon={<CallEnd />}
               onClick={handleEndSimulation}
               disabled={isEndingSimulation}
+              size="small"
+              sx={{ py: 0.75 }}
             >
               End Simulation
             </Button>
           </Stack>
+          */}
         </Box>
       )}
     </Box>

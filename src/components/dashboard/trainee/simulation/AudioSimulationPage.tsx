@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -27,6 +26,13 @@ import {
 import { RetellWebClient } from "retell-client-js-sdk";
 // Import useAuth hook from your context
 import { useAuth } from "../../../../context/AuthContext"; // Update this path based on your project structure
+// Import audio simulation API functions
+import {
+  startAudioSimulation,
+  endAudioSimulation,
+  StartAudioSimulationResponse,
+  EndAudioSimulationResponse,
+} from "../../../../services/simulation_audio_attempts";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -41,30 +47,6 @@ interface AudioSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   assignmentId: string;
-}
-
-interface AudioResponse {
-  id: string;
-  status: string;
-  access_token: string;
-  response: string | null;
-  call_id: string | null;
-}
-
-interface EndCallResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
 }
 
 const webClient = new RetellWebClient();
@@ -95,7 +77,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   >(null);
   const [callId, setCallId] = useState<string | null>(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndCallResponse["scores"] | null>(null);
+  const [scores, setScores] = useState<
+    EndAudioSimulationResponse["scores"] | null
+  >(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
@@ -103,7 +87,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
   useEffect(() => {
     webClient.on("conversationStarted", (event) => {
@@ -224,22 +208,20 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         },
       ]);
 
-      const response = await axios.post<AudioResponse>(
-        "/api/simulations/start-audio",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
-      );
+      // Use the startAudioSimulation function instead of direct axios call
+      const response = await startAudioSimulation({
+        user_id: userId,
+        sim_id: simulationId,
+        assignment_id: assignmentId,
+      });
 
-      console.log("Start audio response:", response.data);
+      console.log("Start audio response:", response);
 
-      if (response.data.access_token) {
-        setSimulationProgressId(response.data.id);
-        setCallId(response.data.call_id);
+      if (response.access_token) {
+        setSimulationProgressId(response.id);
+        setCallId(response.call_id);
         await webClient.startCall({
-          accessToken: response.data.access_token,
+          accessToken: response.access_token,
         });
       }
     } catch (error) {
@@ -251,51 +233,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     }
   };
 
-  // Create a dedicated function for making the end audio API call
-  const makeEndAudioApiCall = async (params: {
-    user_id: string;
-    simulation_id: string;
-    usersimulationprogress_id: string;
-    call_id: string;
-  }) => {
-    console.log(
-      "ATTEMPTING END AUDIO API CALL with params:",
-      JSON.stringify(params, null, 2),
-    );
-
-    try {
-      // Using explicit URL and setting timeout
-      const endpointUrl = "/api/simulations/end-audio";
-      console.log(`Making POST request to ${endpointUrl}`);
-
-      const response = await axios.post<EndCallResponse>(endpointUrl, params, {
-        timeout: 10000, // 10 second timeout
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log(
-        "END AUDIO API SUCCESS:",
-        JSON.stringify(response.data, null, 2),
-      );
-      return response.data;
-    } catch (error) {
-      // More detailed error logging
-      console.error("END AUDIO API ERROR:", error);
-      if (axios.isAxiosError(error)) {
-        console.error("Response status:", error.response?.status);
-        console.error(
-          "Response data:",
-          JSON.stringify(error.response?.data, null, 2),
-        );
-        console.error("Request config:", JSON.stringify(error.config, null, 2));
-      }
-      throw error;
-    }
-  };
-
-  // Handle end call implementation
   const handleEndCall = async () => {
     console.log("🔴 END CALL BUTTON PRESSED");
 
@@ -350,7 +287,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     }
 
     const apiParams = {
-      user_id: userId, // Use authenticated user ID instead of hardcoded value
+      user_id: userId,
       simulation_id: simulationId,
       usersimulationprogress_id: simulationProgressId,
       call_id: callId,
@@ -362,7 +299,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     setTimeout(async () => {
       try {
         console.log("Executing end-audio API call");
-        const response = await makeEndAudioApiCall(apiParams);
+        // Use the endAudioSimulation function instead of direct axios call
+        const response = await endAudioSimulation(apiParams);
 
         if (response && response.scores) {
           console.log("Setting scores and showing completion screen");
@@ -572,7 +510,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
+                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -634,9 +572,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Confidence"] >= 80
+                  {scores && scores.confidence >= 80
                     ? "High"
-                    : scores && scores["Confidence"] >= 60
+                    : scores && scores.confidence >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -669,9 +607,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Concentration"] >= 80
+                  {scores && scores.concentration >= 80
                     ? "High"
-                    : scores && scores["Concentration"] >= 60
+                    : scores && scores.concentration >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -704,9 +642,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Energy"] >= 80
+                  {scores && scores.energy >= 80
                     ? "High"
-                    : scores && scores["Energy"] >= 60
+                    : scores && scores.energy >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>

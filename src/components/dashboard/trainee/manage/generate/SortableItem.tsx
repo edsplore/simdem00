@@ -102,7 +102,7 @@ export default function SortableItem({
             size="small"
             sx={{ bgcolor: "white" }}
             onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // This stops event propagation, preventing the card's onClick from firing
               onDelete(image.id);
             }}
           >

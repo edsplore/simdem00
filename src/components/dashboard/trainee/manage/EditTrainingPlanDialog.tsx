@@ -10,6 +10,7 @@ import { fetchModules, type Module } from "../../../../services/modules";
 import {
   fetchSimulations,
   type Simulation,
+  type SimulationPaginationParams,
 } from "../../../../services/simulations";
 import {
   Dialog,
@@ -121,15 +122,21 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const [modulesData, simulationsData] = await Promise.all([
+      // Fetch modules and simulations in parallel
+      const [modulesData, simulationsResponse] = await Promise.all([
         fetchModules(user.id),
-        fetchSimulations(user.id),
+        fetchSimulations(user.id, {
+          page: 1,
+          pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
+          status: ["published"], // Only fetch published simulations
+          sortBy: "simName",
+          sortDir: "asc",
+          search: searchQuery // Add search filter if provided
+        })
       ]);
 
-      // Filter simulations to only include published ones
-      const publishedSimulations = simulationsData.filter(
-        (s) => s.status === "published",
-      );
+      // Get simulations from the response
+      const simulationsData = simulationsResponse.simulations;
 
       // Create a map of all available items
       const combinedItems: Item[] = [
@@ -139,7 +146,7 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
           type: "module" as const,
           simCount: m.simulations_id.length,
         })),
-        ...publishedSimulations.map((s) => ({
+        ...simulationsData.map((s) => ({
           id: s.id,
           name: s.sim_name,
           type: "simulation" as const,
@@ -167,6 +174,13 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Reload items when search query changes
+  useEffect(() => {
+    if (open && trainingPlan) {
+      loadItems();
+    }
+  }, [searchQuery, open, trainingPlan]);
 
   const selectedItems = watch("selectedItems");
   const isItemSelected = (item: Item): boolean => {

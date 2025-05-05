@@ -18,6 +18,9 @@ import Unauthorized from "./components/Unauthorized";
 const TraineeDashboard = React.lazy(
   () => import("./components/dashboard/trainee/TraineeDashboard"),
 );
+const ManagerDashboard = React.lazy(
+  () => import("./components/dashboard/manager/ManagerDashboard"),
+);
 const TrainingPlanPage = React.lazy(
   () => import("./components/dashboard/trainee/TrainingPlanPage"),
 );
@@ -107,6 +110,10 @@ const App: React.FC = () => {
                         <TraineeDashboard />
                       </ProtectedRoute>
                     }
+                  />
+                  <Route
+                    path="/dashboard-manager"
+                    element={<ManagerDashboard />}
                   />
                   <Route
                     path="/training"

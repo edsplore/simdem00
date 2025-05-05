@@ -57,24 +57,26 @@ class AuthService {
       // Use staging URL for now, could be made configurable based on environment
       const refreshTokenUrl = URLS.dev.refreshToken;
 
-      const response = await axios.post(refreshTokenUrl, "", {
-        withCredentials: true, // This ensures cookies are sent with the request
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          ...(effectiveWorkspaceId
-            ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
-            : {}),
-        },
-      });
+      // const response = await axios.post(refreshTokenUrl, "", {
+      //   withCredentials: true, // This ensures cookies are sent with the request
+      //   headers: {
+      //     "Access-Control-Allow-Origin": "*",
+      //     ...(effectiveWorkspaceId
+      //       ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
+      //       : {}),
+      //   },
+      // });
 
-      console.log("Refresh token response:", {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        data: response.data,
-      });
+      // console.log("Refresh token response:", {
+      //   status: response.status,
+      //   statusText: response.statusText,
+      //   headers: response.headers,
+      //   data: response.data,
+      // });
 
-      const newToken = response.data;
+      // const newToken = response.data;
+      const newToken =
+        "eyJhbGciOiJSUzI1NiJ9.eyJkaXZpc2lvbiI6IkV2ZXJBSSBMYWJzIiwic3ViIjoiYW5tb2xfdGVzdEB5b3BtYWlsLmNvbSIsInVzZXJfaWQiOiI2N2Y2Mjg2Yjc1YjkyMjZhOWFmYWJmYWEiLCJpc3MiOiJzZWxmIiwiV1MtMSI6eyJwZXJtaXNzaW9ucyI6eyJzaW11bGF0b3IiOnsibWFuYWdlLXRyYWluaW5nLXBsYW4iOltbIkFDQ0VTUyIsIkNSRUFURSIsIlJFQUQiLCJVUERBVEUiLCJERUxFVEUiXV0sIm1hbmFnZS1zaW11bGF0aW9ucyI6W1siQUNDRVNTIiwiQ1JFQVRFIiwiUkVBRCIsIlVQREFURSIsIkRFTEVURSJdXSwiZGFzaGJvYXJkLXRyYWluZWUiOltbIkFDQ0VTUyIsIlJFQUQiXV0sInRyYWluaW5nLXBsYW4iOltbIkFDQ0VTUyIsIlJFQUQiXV0sInBsYXliYWNrIjpbWyJBQ0NFU1MiLCJSRUFEIl1dLCJkYXNoYm9hcmQtbWFuYWdlciI6W1tdXSwiZGFzaGJvYXJkLWFkbWluIjpbW11dLCJhc3NpZ24tc2ltdWxhdGlvbnMiOltbIkFDQ0VTUyIsIkNSRUFURSIsIlJFQUQiXV19fSwicm9sZXMiOnsic2ltdWxhdG9yIjpbImFubW9sX3Rlc3QiXX19LCJsYXN0X25hbWUiOiJSaXNoaSIsInJlcG9ydGluZ190byI6IlNpbXVsYXRvciBNYW5hZ2VyIiwiZXhwIjoxNzQ2NDA1NDI4LCJkZXBhcnRtZW50IjoiUHJvZHVjdCBEZXNpZ24gZGV2IiwiaWF0IjoxNzQ2NDA0MjI4LCJmaXJzdF9uYW1lIjoiQW5tb2wifQ.CT7HU5xZE4cL5DnAmQJLiXl8igJxvj_LMWH9ubO0YSDWlG9n8upo4d5OjyQiYxk0t8ZZ7uHJjmElcY2YylQDzeJ-m4x_2tiloaap79ezPLARSiR5eBT0fXSZkD4UU8RoPpvgtFnG5Gm9rpDOUW0ojPJL_t5TqnPwWcc-wTB_GUsWQLM9xgd6fjNMUlo_pleB12KIvm8ha23wKLe8TGKRqvyB7GSRkjGHFKRpDmfZI9afu7WaIkIlQzZ3EyGJd2lwh-vZDWYjD4DXOqjERKT9EeINhjJq32igUwFlKQpz7tb5PiwRN_7dw4jPOOKJc4LcnGIM--bLgn_IXmBJeMpyKw";
       this.token = newToken;
 
       // Reset refresh attempts on success

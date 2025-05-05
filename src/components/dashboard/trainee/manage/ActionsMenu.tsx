@@ -1,7 +1,7 @@
-import React from 'react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Menu, MenuItem, Divider, CircularProgress } from '@mui/material';
+import React from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Menu, MenuItem, Divider, CircularProgress } from "@mui/material";
 import {
   EditOutlined as EditIcon,
   ContentCopyOutlined as DuplicateIcon,
@@ -10,11 +10,15 @@ import {
   ArchiveOutlined as ArchiveIcon,
   DeleteOutlined as DeleteIcon,
   LockOpenOutlined as UnlockIcon,
-} from '@mui/icons-material';
-import { SimulationData } from './types';
-import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
-import axios from 'axios';
-import { useAuth } from '../../../../context/AuthContext';
+} from "@mui/icons-material";
+import { SimulationData } from "./types";
+import {
+  hasUpdatePermission,
+  hasCreatePermission,
+  hasDeletePermission,
+} from "../../../../utils/permissions";
+import { cloneSimulation } from "../../../../services/simulation_operations";
+import { useAuth } from "../../../../context/AuthContext";
 
 interface ActionsMenuProps {
   anchorEl: HTMLElement | null;
@@ -34,9 +38,9 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   const [isCloning, setIsCloning] = useState(false);
 
   // Check permissions for different actions
-  const canUpdate = hasUpdatePermission('manage-simulations');
-  const canCreate = hasCreatePermission('manage-simulations');
-  const canDelete = hasDeletePermission('manage-simulations');
+  const canUpdate = hasUpdatePermission("manage-simulations");
+  const canCreate = hasCreatePermission("manage-simulations");
+  const canDelete = hasDeletePermission("manage-simulations");
 
   const handleEditClick = () => {
     if (selectedRow) {
@@ -54,22 +58,19 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
     setIsCloning(true);
 
     try {
-      const response = await axios.post('/api/simulations/clone', {
-        user_id: user.id,
-        simulation_id: selectedRow.id
-      });
+      const response = await cloneSimulation(user.id, selectedRow.id);
 
-      if (response.data && response.data.status === 'success') {
-        console.log('Simulation cloned successfully:', response.data);
+      if (response && response.status === "success") {
+        console.log("Simulation cloned successfully:", response);
         // Call the success callback to refresh the simulations list
         if (onCloneSuccess) {
           onCloneSuccess();
         }
       } else {
-        console.error('Failed to clone simulation:', response.data);
+        console.error("Failed to clone simulation:", response);
       }
     } catch (error) {
-      console.error('Error cloning simulation:', error);
+      console.error("Error cloning simulation:", error);
     } finally {
       setIsCloning(false);
       onClose();
@@ -81,19 +82,19 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       open={Boolean(anchorEl)}
       onClose={onClose}
       anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'right',
+        vertical: "bottom",
+        horizontal: "right",
       }}
       transformOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
+        vertical: "top",
+        horizontal: "right",
       }}
       sx={{
-        '& .MuiPaper-root': {
-          backgroundColor: '#FFFFFF', // Background color
-          borderRadius: '8px', // Border radius for curved edges
-          border: '1px solid #E0E0E0', // Light border around menu
-          minWidth: '100px', // Small box size for menu
+        "& .MuiPaper-root": {
+          backgroundColor: "#FFFFFF", // Background color
+          borderRadius: "8px", // Border radius for curved edges
+          border: "1px solid #E0E0E0", // Light border around menu
+          minWidth: "100px", // Small box size for menu
         },
       }}
     >
@@ -101,29 +102,29 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         <MenuItem
           onClick={handleEditClick}
           sx={{
-            color: '#666666', // Text color
-            '& svg': {
-              color: '#EBEBEB', // Icon color updated to #EBEBEB
+            color: "#666666", // Text color
+            "& svg": {
+              color: "#EBEBEB", // Icon color updated to #EBEBEB
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
           <EditIcon sx={{ mr: 1 }} /> Edit
         </MenuItem>
       )}
 
-      {canUpdate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {canUpdate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
       {canCreate && (
         <MenuItem
           onClick={handleDuplicateClick}
           disabled={isCloning}
           sx={{
-            color: '#666666',
-            '& svg': {
-              color: '#EBEBEB',
+            color: "#666666",
+            "& svg": {
+              color: "#EBEBEB",
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
           {isCloning ? (
@@ -131,36 +132,36 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
           ) : (
             <DuplicateIcon sx={{ mr: 1 }} />
           )}
-          {isCloning ? 'Cloning...' : 'Duplicate'}
+          {isCloning ? "Cloning..." : "Duplicate"}
         </MenuItem>
       )}
 
-      {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {canCreate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
       <MenuItem
         onClick={onClose}
         sx={{
-          color: '#666666',
-          '& svg': {
-            color: '#EBEBEB',
+          color: "#666666",
+          "& svg": {
+            color: "#EBEBEB",
           },
-          padding: '1px 8px', // Reduced padding for smaller spacing
+          padding: "1px 8px", // Reduced padding for smaller spacing
         }}
       >
         <DownloadIcon sx={{ mr: 1 }} /> Download Script
       </MenuItem>
 
-      <Divider sx={{ borderColor: '#EBEBEB' }} />
+      <Divider sx={{ borderColor: "#EBEBEB" }} />
 
       {canUpdate && (
         <MenuItem
           onClick={onClose}
           sx={{
-            color: '#666666',
-            '& svg': {
-              color: '#EBEBEB',
+            color: "#666666",
+            "& svg": {
+              color: "#EBEBEB",
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
           {selectedRow?.isLocked ? (
@@ -175,34 +176,34 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         </MenuItem>
       )}
 
-      {canUpdate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {canUpdate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
       {canUpdate && (
         <MenuItem
           onClick={onClose}
           sx={{
-            color: '#666666',
-            '& svg': {
-              color: '#EBEBEB',
+            color: "#666666",
+            "& svg": {
+              color: "#EBEBEB",
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
           <ArchiveIcon sx={{ mr: 1 }} /> Archive
         </MenuItem>
       )}
 
-      {canUpdate && canDelete && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {canUpdate && canDelete && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
       {canDelete && (
         <MenuItem
           onClick={onClose}
           sx={{
-            color: '#666666',
-            '& svg': {
-              color: '#EBEBEB',
+            color: "#666666",
+            "& svg": {
+              color: "#EBEBEB",
             },
-            padding: '1px 8px', // Reduced padding for smaller spacing
+            padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
           <DeleteIcon sx={{ mr: 1 }} /> Delete

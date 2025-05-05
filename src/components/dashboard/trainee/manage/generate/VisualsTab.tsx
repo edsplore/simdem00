@@ -34,6 +34,11 @@ import {
   Tooltip,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import {
   Upload as UploadIcon,
@@ -103,10 +108,11 @@ const DropZone = styled(Box)(({ theme }) => ({
   justifyContent: "center",
   textAlign: "center",
   cursor: "pointer",
-  transition: "border-color 0.2s ease-in-out",
+  transition: "border-color 0.2s ease-in-out, transform 0.2s ease-in-out",
   minHeight: "320px",
   "&:hover": {
     borderColor: theme.palette.primary.main,
+    transform: "scale(1.005)",
   },
 }));
 
@@ -211,6 +217,16 @@ const processImageUrl = (imageData: string): string => {
   }
 };
 
+/**
+ * Strips HTML tags from a string
+ * Returns clean text content
+ */
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+  // This regex removes all HTML tags while preserving the text content
+  return html.replace(/<\/?[^>]+(>|$)/g, "");
+};
+
 export default function VisualsTab({
   images = [],
   onImagesUpdate,
@@ -218,7 +234,8 @@ export default function VisualsTab({
   createSimulation,
   simulationType,
 }: VisualsTabProps) {
-  const { scriptData } = useSimulationWizard();
+  const { scriptData, assignedScriptMessageIds, setAssignedScriptMessageIds } =
+    useSimulationWizard();
 
   // Initialize visualImages with proper initial state
   const [visualImages, setVisualImages] = useState<VisualImage[]>([]);
@@ -227,6 +244,11 @@ export default function VisualsTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Confirm dialog for deleting the last slide
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
+  const [isLastImage, setIsLastImage] = useState(false);
 
   // Use useMemo to stabilize the isSequenceExpanded state and prevent unnecessary re-renders
   const [isSequenceExpanded, setIsSequenceExpanded] = useState(false);
@@ -321,9 +343,14 @@ export default function VisualsTab({
     return () => clearTimeout(debounceTimeout);
   }, [visualImages, onImagesUpdate]);
 
-  // Crucial update: Process images prop into proper visualImages state
+  // Only process images prop on initial mount or when explicitly needed
+  const didInitializeRef = useRef(false);
+
   useEffect(() => {
-    console.log("Images prop changed:", images);
+    // Skip if we've already initialized (only sync from props once)
+    if (didInitializeRef.current) return;
+
+    console.log("Initial images processing:", images);
     if (images && images.length > 0) {
       // Transform the input images to our internal format
       const processedImages = images.map((img) => {
@@ -418,10 +445,22 @@ export default function VisualsTab({
 
       setVisualImages(processedImages);
 
-      // Set selected image if none is selected
+      // Auto-select the first image if there's no current selection
       if (processedImages.length > 0 && !selectedImageId) {
         setSelectedImageId(processedImages[0].id);
       }
+
+      // Mark that we've initialized
+      didInitializeRef.current = true;
+    } else if (images && images.length === 0) {
+      // If we receive an empty images array, clear our state completely
+      setVisualImages([]);
+      setSelectedImageId(null);
+      setEditingHotspot(null);
+      setIsEditing(false);
+
+      // Mark that we've initialized
+      didInitializeRef.current = true;
     }
   }, [images, selectedImageId]);
 
@@ -511,19 +550,10 @@ export default function VisualsTab({
       scriptData.filter((msg) => {
         if (!msg || !msg.id) return false;
 
-        return !visualImages.some((img) => {
-          if (!img || !img.sequence) return false;
-
-          return img.sequence.some((item) => {
-            if (!item || item.type !== "message" || !item.content) return false;
-
-            // Safely access the ID with type checking
-            const messageContent = item.content as Partial<ScriptMessage>;
-            return messageContent.id === msg.id;
-          });
-        });
+        // Use the assignedScriptMessageIds Set to filter out already assigned messages
+        return !assignedScriptMessageIds.has(msg.id);
       }),
-    [scriptData, visualImages],
+    [scriptData, assignedScriptMessageIds],
   );
 
   const handleOpenScriptMenu = useCallback(
@@ -544,7 +574,7 @@ export default function VisualsTab({
       const newMsg: ScriptMessage = {
         id: message.id,
         role: message.role as "Customer" | "Trainee",
-        text: message.message,
+        text: stripHtmlTags(message.message), // Strip HTML tags when adding to sequence
         visualId: selectedImageId,
         order: 0, // We're not using this anymore as we rely on sequence order
       };
@@ -568,9 +598,16 @@ export default function VisualsTab({
         }),
       );
 
+      // Update assignedScriptMessageIds to include this message ID
+      setAssignedScriptMessageIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.add(message.id);
+        return newSet;
+      });
+
       handleCloseScriptMenu();
     },
-    [selectedImageId, handleCloseScriptMenu],
+    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds],
   );
 
   // For draggable thumbnails on the left
@@ -629,16 +666,44 @@ export default function VisualsTab({
     e.preventDefault();
   }, []);
 
-  // Delete a thumbnail
+  // Enhanced delete function with better state management
   const handleDeleteImage = useCallback(
     (imgId: string) => {
-      if (selectedImageId === imgId) {
-        setSelectedImageId(null);
-      }
-      setVisualImages((prev) => prev.filter((img) => img.id !== imgId));
+      // Store the ID of the image to delete
+      setImageToDelete(imgId);
+      // Check if this is the last image - for different dialog message
+      setIsLastImage(visualImages.length === 1);
+      // Always show confirmation dialog
+      setShowDeleteConfirm(true);
     },
-    [selectedImageId],
+    [visualImages.length],
   );
+
+  // Actual deletion function separated for clarity and improved with functional updates
+  const performDeleteImage = useCallback((imgId: string) => {
+    // Use functional updates to ensure we always work with the latest state
+    setVisualImages((prevImages) => {
+      const idx = prevImages.findIndex((img) => img.id === imgId);
+      const nextImages = prevImages.filter((img) => img.id !== imgId);
+
+      // Choose the slide that will be selected afterwards
+      setSelectedImageId((currentSel) => {
+        if (currentSel !== imgId) return currentSel; // Nothing to fix
+        if (nextImages.length === 0) {
+          // If this was the last image, also reset sequence expanded state
+          setIsSequenceExpanded(false);
+          return null; // List became empty
+        }
+        return nextImages[Math.min(idx, nextImages.length - 1)].id;
+      });
+
+      return nextImages;
+    });
+
+    // Clear edit state regardless
+    setEditingHotspot(null);
+    setIsEditing(false);
+  }, []);
 
   // Clicking a thumbnail
   const handleSelectImage = useCallback((imgId: string) => {
@@ -886,6 +951,15 @@ export default function VisualsTab({
     (id: string, type: "hotspot" | "message") => {
       if (!selectedImageId) return;
 
+      // If it's a message being deleted, remove it from assigned IDs
+      if (type === "message") {
+        setAssignedScriptMessageIds((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(id);
+          return newSet;
+        });
+      }
+
       setVisualImages((currentImages) =>
         currentImages.map((img) => {
           if (img.id === selectedImageId) {
@@ -901,7 +975,7 @@ export default function VisualsTab({
         }),
       );
     },
-    [selectedImageId],
+    [selectedImageId, setAssignedScriptMessageIds],
   );
 
   const handleEditItem = useCallback(
@@ -942,6 +1016,20 @@ export default function VisualsTab({
     setIsSequenceExpanded((prev) => !prev);
   }, []);
 
+  // Track if user is actively dragging over the component
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
+
+  // Enhanced handlers to provide visual feedback
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+
   return (
     <Stack spacing={2}>
       {/* Error alert */}
@@ -970,7 +1058,8 @@ export default function VisualsTab({
             disabled={
               !selectedImageId ||
               !Array.isArray(scriptData) ||
-              scriptData.length === 0
+              scriptData.length === 0 ||
+              unassignedMessages.length === 0
             }
             onClick={handleOpenScriptMenu}
             sx={{ bgcolor: "#444CE7", "&:hover": { bgcolor: "#3538CD" } }}
@@ -1049,7 +1138,9 @@ export default function VisualsTab({
                     <Typography variant="caption" color="text.secondary">
                       {msg.role}
                     </Typography>
-                    <Typography variant="body2">{msg.message}</Typography>
+                    <Typography variant="body2">
+                      {stripHtmlTags(msg.message)}
+                    </Typography>
                   </Stack>
                 </MenuItem>
               ))
@@ -1059,7 +1150,19 @@ export default function VisualsTab({
       </Stack>
 
       {visualImages.length === 0 ? (
-        <DropZone onDrop={handleDrop} onDragOver={handleDragOver}>
+        <DropZone
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          sx={{
+            borderColor: isDraggingOver ? "#444CE7" : "#DEE2FC",
+            boxShadow: isDraggingOver
+              ? "0 0 10px rgba(68, 76, 231, 0.3)"
+              : "none",
+            backgroundColor: isDraggingOver ? "#F5F6FF" : "#FCFCFE",
+          }}
+        >
           <DescriptionIcon sx={{ fontSize: 80, color: "#DEE2FC", mb: 2 }} />
           <Typography
             variant="h5"
@@ -1204,9 +1307,9 @@ export default function VisualsTab({
                     p: 4,
                     flex: 1,
                     position: "relative",
-                    // Use padding-right instead of width for better dialog positioning
-                    paddingRight: isSequenceExpanded ? "360px" : "60px",
-                    transition: "padding-right 0.3s ease-out", // Transition padding instead of width
+                    // IMPORTANT: Remove the padding-right that was causing resizing issues
+                    // This ensures the image always has the full width of its container
+                    width: "100%",
                   }}
                 >
                   <ImageHotspot
@@ -1238,7 +1341,7 @@ export default function VisualsTab({
                 </Box>
               )}
 
-              {/* Sequence panel with proper z-index */}
+              {/* Sequence panel with improved overlay design */}
               {selectedImageId && (
                 <Box
                   sx={{
@@ -1247,10 +1350,10 @@ export default function VisualsTab({
                     top: 0,
                     height: "100%",
                     display: "flex",
-                    zIndex: 1, // Proper z-index to prevent overlay issues
+                    zIndex: 10, // Higher z-index to ensure it overlays the image content
                   }}
                 >
-                  {/* Toggle button - fixed position */}
+                  {/* Toggle button - fixed position with higher z-index */}
                   <Box
                     sx={{
                       width: 40,
@@ -1259,7 +1362,11 @@ export default function VisualsTab({
                       alignItems: "center",
                       justifyContent: "center",
                       position: "relative",
-                      zIndex: 2,
+                      zIndex: 12, // Above the sequence panel
+                      backgroundColor: "#F5F6FF", // Add background to make button visible
+                      boxShadow: isSequenceExpanded
+                        ? "-2px 0 5px rgba(0,0,0,0.1)"
+                        : "none",
                     }}
                   >
                     <IconButton
@@ -1277,22 +1384,24 @@ export default function VisualsTab({
                     </IconButton>
                   </Box>
 
-                  {/* Sequence panel with proper transitions */}
+                  {/* Sequence panel with improved overlay styling */}
                   <Box
                     sx={{
                       position: "absolute",
                       right: 0,
                       top: 0,
                       height: "100%",
-                      width: 340,
+                      width: 400, // INCREASED WIDTH
                       transform: isSequenceExpanded
                         ? "translateX(0)"
                         : "translateX(100%)",
                       transition: "transform 0.3s ease-out",
                       borderLeft: "1px solid",
                       borderColor: "divider",
-                      bgcolor: "#F9FAFB",
-                      zIndex: 1,
+                      bgcolor: "rgba(249, 250, 251, 0.97)", // Slightly transparent to show it's an overlay
+                      backdropFilter: "blur(5px)", // Add blur effect for modern look
+                      boxShadow: "-5px 0 15px rgba(0,0,0,0.1)", // Add shadow for depth
+                      zIndex: 11, // Between the toggle button and the image
                       pointerEvents: isSequenceExpanded ? "auto" : "none", // Only capture events when visible
                     }}
                   >
@@ -1309,6 +1418,36 @@ export default function VisualsTab({
           </Box>
         </Stack>
       )}
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+      >
+        <DialogTitle>Delete Slide?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {isLastImage
+              ? "This is the last slide. Deleting it will reset the visuals section."
+              : "Are you sure you want to delete this slide?"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+          <Button
+            onClick={() => {
+              if (imageToDelete) {
+                performDeleteImage(imageToDelete);
+                setImageToDelete(null);
+              }
+              setShowDeleteConfirm(false);
+            }}
+            color="error"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

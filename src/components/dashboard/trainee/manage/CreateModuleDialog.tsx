@@ -3,6 +3,11 @@ import { useForm, Controller } from "react-hook-form";
 import { useAuth } from "../../../../context/AuthContext";
 import { createModule } from "../../../../services/modules";
 import {
+  fetchSimulations,
+  type Simulation,
+  type SimulationPaginationParams,
+} from "../../../../services/simulations";
+import {
   Dialog,
   DialogTitle,
   DialogContent,
@@ -37,10 +42,6 @@ import {
   Delete as DeleteIcon,
   Add as AddIcon,
 } from "@mui/icons-material";
-import {
-  fetchSimulations,
-  type Simulation,
-} from "../../../../services/simulations";
 import { fetchTags, createTag, Tag } from "../../../../services/tags";
 
 interface SimulationItem {
@@ -84,12 +85,25 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchSimulations(user?.id || "user123");
+
+        // Use pagination to fetch published simulations
+        const paginationParams: SimulationPaginationParams = {
+          page: 1,
+          pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
+          status: ["published"], // Only fetch published simulations
+          sortBy: "simName",
+          sortDir: "asc"
+        };
+
+        // Add search filter if provided
+        if (searchQuery) {
+          paginationParams.search = searchQuery;
+        }
+
+        const response = await fetchSimulations(user?.id || "user123", paginationParams);
+
         // Filter to only include published simulations
-        const publishedSimulations = data.filter(
-          (sim) => sim.status === "published",
-        );
-        setSimulations(publishedSimulations);
+        setSimulations(response.simulations);
       } catch (err) {
         setError("Failed to load simulations");
         console.error("Error loading simulations:", err);
@@ -116,7 +130,7 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
       loadSimulations();
       loadTags();
     }
-  }, [open, user?.id]);
+  }, [open, user?.id, searchQuery]);
 
   const {
     control,

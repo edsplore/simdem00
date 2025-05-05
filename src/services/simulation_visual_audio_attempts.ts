@@ -1,0 +1,154 @@
+import apiClient from "./api/interceptors";
+
+export interface ImageData {
+  image_id: string;
+  image_data: string;
+}
+
+export interface SimulationData {
+  id: string;
+  sim_name: string;
+  version: string;
+  lvl1: {
+    isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
+  };
+  lvl2: {
+    isEnabled: boolean;
+  };
+  lvl3: {
+    isEnabled: boolean;
+  };
+  sim_type: string;
+  status: string;
+  tags: string[];
+  est_time: string;
+  script: Array<{
+    script_sentence: string;
+    role: string;
+    keywords: string[];
+  }>;
+  slidesData: Array<{
+    imageId: string;
+    imageName: string;
+    imageUrl: string;
+    sequence: Array<{
+      type: string;
+      id: string;
+      name?: string;
+      hotspotType?: string;
+      coordinates?: {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      };
+      settings?: any;
+      role?: string;
+      text?: string;
+      options?: string[];
+      tipText?: string;
+    }>;
+  }>;
+}
+
+export interface StartVisualAudioRequest {
+  user_id: string;
+  sim_id: string;
+  assignment_id: string;
+}
+
+export interface StartVisualAudioResponse {
+  id: string;
+  status: string;
+  simulation: SimulationData;
+  images: ImageData[];
+}
+
+export interface EndVisualAudioRequest {
+  user_id: string;
+  simulation_id: string;
+  usersimulationprogress_id: string;
+}
+
+export interface EndVisualAudioResponse {
+  id: string;
+  status: string;
+  scores: {
+    sim_accuracy: number;
+    keyword_score: number;
+    click_score: number;
+    confidence: number;
+    energy: number;
+    concentration: number;
+  };
+  duration: number;
+  transcript: string;
+  audio_url: string;
+}
+
+/**
+ * Starts a visual-audio simulation attempt
+ * @param userId - The ID of the user making the attempt
+ * @param simulationId - The ID of the simulation to attempt
+ * @param assignmentId - The ID of the assignment (if applicable)
+ * @returns A promise with the simulation data and images
+ */
+export const startVisualAudioAttempt = async (
+  userId: string,
+  simulationId: string,
+  assignmentId: string,
+): Promise<StartVisualAudioResponse> => {
+  try {
+    const response = await apiClient.post<StartVisualAudioResponse>(
+      "/api/simulations/start-visual-audio-attempt",
+      {
+        user_id: userId,
+        sim_id: simulationId,
+        assignment_id: assignmentId,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error starting visual-audio simulation:", error);
+    throw error;
+  }
+};
+
+/**
+ * Ends a visual-audio simulation attempt
+ * @param userId - The ID of the user making the attempt
+ * @param simulationId - The ID of the simulation attempted
+ * @param progressId - The ID of the simulation progress record
+ * @returns A promise with the simulation results including scores
+ */
+export const endVisualAudioAttempt = async (
+  userId: string,
+  simulationId: string,
+  progressId: string,
+): Promise<EndVisualAudioResponse> => {
+  try {
+    const response = await apiClient.post<EndVisualAudioResponse>(
+      "/api/simulations/end-visual-audio-attempt",
+      {
+        user_id: userId,
+        simulation_id: simulationId,
+        usersimulationprogress_id: progressId,
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error ending visual-audio simulation:", error);
+    throw error;
+  }
+};

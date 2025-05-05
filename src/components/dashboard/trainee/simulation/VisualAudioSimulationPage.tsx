@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from "react";
-import axios from "axios";
 import {
   Box,
   Typography,
@@ -37,70 +36,17 @@ import {
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
 import { useAuth } from "../../../../context/AuthContext";
+import {
+  startVisualAudioAttempt,
+  endVisualAudioAttempt,
+  SimulationData,
+  ImageData,
+  EndVisualAudioResponse,
+} from "../../../../services/simulation_visual_audio_attempts";
 
 interface Message {
   speaker: "customer" | "trainee";
   text: string;
-}
-
-interface ImageData {
-  image_id: string;
-  image_data: string;
-}
-
-interface SimulationData {
-  id: string;
-  sim_name: string;
-  version: string;
-  lvl1: {
-    isEnabled: boolean;
-    enablePractice: boolean;
-    hideAgentScript: boolean;
-    hideCustomerScript: boolean;
-    hideKeywordScores: boolean;
-    hideSentimentScores: boolean;
-    hideHighlights: boolean;
-    hideCoachingTips: boolean;
-    enablePostSimulationSurvey: boolean;
-    aiPoweredPausesAndFeedback: boolean;
-  };
-  lvl2: {
-    isEnabled: boolean;
-  };
-  lvl3: {
-    isEnabled: boolean;
-  };
-  sim_type: string;
-  status: string;
-  tags: string[];
-  est_time: string;
-  script: Array<{
-    script_sentence: string;
-    role: string;
-    keywords: string[];
-  }>;
-  slidesData: Array<{
-    imageId: string;
-    imageName: string;
-    imageUrl: string;
-    sequence: Array<{
-      type: string;
-      id: string;
-      name?: string;
-      hotspotType?: string;
-      coordinates?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
-      settings?: any;
-      role?: string;
-      text?: string;
-      options?: string[];
-      tipText?: string;
-    }>;
-  }>;
 }
 
 interface VisualAudioSimulationPageProps {
@@ -111,29 +57,6 @@ interface VisualAudioSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   assignmentId: string;
-}
-
-interface VisualAudioResponse {
-  id: string;
-  status: string;
-  simulation: SimulationData;
-  images: ImageData[];
-}
-
-interface EndCallResponse {
-  id: string;
-  status: string;
-  scores: {
-    "Sim Accuracy": number;
-    "Keyword Score": number;
-    "Click Score": number;
-    Confidence: number;
-    Energy: number;
-    Concentration: number;
-  };
-  duration: number;
-  transcript: string;
-  audio_url: string;
 }
 
 // Minimum passing score threshold
@@ -161,7 +84,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     string | null
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
-  const [scores, setScores] = useState<EndCallResponse["scores"] | null>(null);
+  const [scores, setScores] = useState<EndVisualAudioResponse["scores"] | null>(
+    null,
+  );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -200,7 +125,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const speechSynthRef = useRef(window.speechSynthesis);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores["Sim Accuracy"] >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -641,30 +566,27 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       setIsCallActive(true);
       setCallStatus("Loading visual-audio simulation...");
 
-      // Make API call to start visual-audio simulation
-      const response = await axios.post<VisualAudioResponse>(
-        "/api/simulations/start-visual-audio-attempt",
-        {
-          user_id: userId,
-          sim_id: simulationId,
-          assignment_id: assignmentId,
-        },
+      // Use the startVisualAudioAttempt function instead of direct axios call
+      const response = await startVisualAudioAttempt(
+        userId,
+        simulationId,
+        assignmentId,
       );
 
-      console.log("Start visual-audio response:", response.data);
+      console.log("Start visual-audio response:", response);
 
-      if (response.data.simulation) {
+      if (response.simulation) {
         console.log("Setting simulation data");
-        setSimulationData(response.data.simulation);
-        setSimulationProgressId(response.data.id);
+        setSimulationData(response.simulation);
+        setSimulationProgressId(response.id);
         setCallStatus("Connected");
       }
 
       // Process image data
-      if (response.data.images && response.data.images.length > 0) {
+      if (response.images && response.images.length > 0) {
         const newSlides = new Map();
-        console.log(`Processing ${response.data.images.length} images`);
-        for (const image of response.data.images) {
+        console.log(`Processing ${response.images.length} images`);
+        for (const image of response.images) {
           // Convert base64 string to Uint8Array
           const binaryString = atob(image.image_data);
           const len = binaryString.length;
@@ -737,25 +659,18 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       return;
     }
 
-    const apiParams = {
-      user_id: userId,
-      simulation_id: simulationId,
-      usersimulationprogress_id: simulationProgressId,
-    };
-
-    console.log("API Parameters prepared:", apiParams);
-
     try {
       console.log("Executing end-visual-audio API call");
-      const response = await axios.post<EndCallResponse>(
-        "/api/simulations/end-visual-audio-attempt",
-        apiParams,
+      const response = await endVisualAudioAttempt(
+        userId,
+        simulationId,
+        simulationProgressId,
       );
 
-      if (response.data && response.data.scores) {
+      if (response && response.scores) {
         console.log("Setting scores and showing completion screen");
-        setScores(response.data.scores);
-        setDuration(response.data.duration || elapsedTime);
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
         setShowCompletionScreen(true);
       } else {
         console.warn("No scores received in response");
@@ -800,7 +715,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return (
       <Box
         sx={{
-          height: "100vh",
+          height: "calc(100vh - 40px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -970,7 +885,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["Sim Accuracy"])}%` : "86%"}
+                  {scores ? `${Math.round(scores.sim_accuracyxs)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -1032,9 +947,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Confidence"] >= 80
+                  {scores && scores.confidence >= 80
                     ? "High"
-                    : scores && scores["Confidence"] >= 60
+                    : scores && scores.confidence >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1067,9 +982,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Concentration"] >= 80
+                  {scores && scores.concentration >= 80
                     ? "High"
-                    : scores && scores["Concentration"] >= 60
+                    : scores && scores.concentration >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1102,9 +1017,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores["Energy"] >= 80
+                  {scores && scores.energy >= 80
                     ? "High"
-                    : scores && scores["Energy"] >= 60
+                    : scores && scores.energy >= 60
                       ? "Medium"
                       : "Low"}
                 </Typography>
@@ -1153,7 +1068,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   }
 
   return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+    <Box sx={{ height: "calc(100vh - 30px)", bgcolor: "white", py: 0, px: 0 }}>
       {/* Pause Overlay */}
       <Modal
         open={isPaused && isCallActive}
@@ -1206,7 +1121,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         <Stack
           direction="row"
           sx={{
-            p: 2,
+            p: 1.5,
             borderBottom: "1px solid",
             borderColor: "divider",
             backgroundColor: "#F9FAFB",
@@ -1278,10 +1193,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            minHeight: "400px",
+            minHeight: "350px",
             width: "50%",
             mx: "auto",
-            my: 10,
+            my: 6,
             border: "1px solid #DEE2FD",
             borderRadius: 4,
           }}
@@ -1302,7 +1217,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           >
             Start Simulation
           </Typography>
-          <Typography sx={{ color: "#666", mb: 4 }}>
+          <Typography sx={{ color: "#666", mb: 3 }}>
             Press start to attempt the Visual-Audio Simulation
           </Typography>
           <Button
@@ -1345,7 +1260,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       ) : (
         <Box
           sx={{
-            height: "100vh",
+            height: "calc(100vh - 80px)",
             bgcolor: "background.default",
             display: "flex",
             flexDirection: "column",
@@ -1358,11 +1273,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               display: "flex",
               maxWidth: "1200px",
               mx: "auto",
-              mt: 2,
+              mt: 1,
             }}
           >
             {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 2 }} ref={imageContainerRef}>
+            <Box sx={{ flex: 1, p: 1.5 }} ref={imageContainerRef}>
               <Box
                 sx={{
                   width: "100%",
@@ -1401,7 +1316,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
                         maxWidth: "100%",
-                        maxHeight: "calc(100vh - 200px)",
+                        maxHeight: "calc(100vh - 150px)",
                         display: "block",
                         margin: "0 auto",
                       }}
@@ -1656,10 +1571,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 variant="contained"
                                 sx={{
                                   height: "100%",
-                                  backgroundColor: "#1e293b",
-                                  color: "white",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
                                   "&:hover": {
-                                    backgroundColor: "#0f172a",
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                 }}
@@ -1691,7 +1613,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               {/* Status + top controls */}
               <Box
                 sx={{
-                  p: 2,
+                  p: 1.5,
                   borderBottom: 1,
                   borderColor: "divider",
                   display: "flex",
@@ -1727,9 +1649,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               <Box
                 sx={{
                   flex: 1,
-                  p: 2,
+                  p: 1.5,
                   display: "flex",
                   flexDirection: "column",
+                  maxHeight: "calc(100vh - 180px)",
+                  overflowY: "auto",
                 }}
               >
                 {currentItem?.type === "message" ? (
@@ -1737,7 +1661,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     sx={{
                       display: "flex",
                       flexDirection: "column",
-                      // Removed height: '100%' so everything stays right below the message
                     }}
                   >
                     <Paper
@@ -1754,7 +1677,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             ? "primary.main"
                             : "success.main",
                         borderRadius: 1,
-                        // Removed mb: "auto" so it doesn't push controls to the bottom
                         mb: 2,
                       }}
                     >
@@ -1793,7 +1715,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     </Paper>
 
                     {/* Interaction controls / Next Button */}
-                    {/* Placed directly below message bubble (and separated by small margin). */}
                     <Box>
                       {/* Trainee recording indicator */}
                       {(currentItem.role === "Trainee" ||
@@ -1801,7 +1722,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         isRecording && (
                           <Paper
                             sx={{
-                              p: 2,
+                              p: 1.5,
                               bgcolor: "grey.100",
                               borderRadius: 1,
                               mb: 2,
@@ -1862,7 +1783,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         speaking && (
                           <Paper
                             sx={{
-                              p: 2,
+                              p: 1.5,
                               bgcolor: "grey.100",
                               borderRadius: 1,
                               mb: 2,
@@ -1948,14 +1869,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           </Box>
 
           {/* Call controls */}
+          {/* COMMENTED OUT: Bottom End Call Button
           <Stack
             direction="row"
             alignItems="center"
             spacing={2}
             sx={{
               maxWidth: 900,
-              margin: "10px auto",
-              p: 2,
+              margin: "5px auto",
+              p: 1.5,
               bgcolor: "#F9FAFB",
               border: "1px solid #E5E7EB",
               borderRadius: 3,
@@ -1983,6 +1905,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               End Simulation
             </Button>
           </Stack>
+          */}
         </Box>
       )}
     </Box>

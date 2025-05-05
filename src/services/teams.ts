@@ -67,6 +67,7 @@ export const fetchTeams = async (
       page: page.toString(),
       limit: limit.toString(),
       workspace_id: workspaceId,
+      status: "ACTIVE"
     });
 
     // Add optional search parameter if provided

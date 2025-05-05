@@ -86,6 +86,7 @@ export const fetchUsersSummary = async (
         workspace_id: encodedWorkspaceId,
         status: "ACTIVE",
         fields: "(user_id,email,first_name,last_name)",
+        // products: "simulator"
       },
       headers: {
         accept: "application/json",

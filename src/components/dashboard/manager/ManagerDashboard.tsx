@@ -36,7 +36,6 @@ import {
   TableContainer,
   TableFooter,
   TableHead,
-  Button,
   TableRow,
   Tabs,
   TextField,
@@ -1219,11 +1218,30 @@ const ManagerDashboard = () => {
       try {
         setIsLoading(true);
         setError(null);
+        const params: any = {
+          dateRange: {
+            startDate: "",
+            endDate: "",
+          },
+        };
+
+        if (dateRange[0] && dateRange[1]) {
+          params["dateRange"]["startDate"] = dateRange[0].format("MMM D, YYYY");
+          params["dateRange"]["endDate"] = dateRange[1].format("MMM D, YYYY");
+        } else if (dateRange[0]) {
+          params["dateRange"]["startDate"] = dateRange[0].format("MMM D, YYYY");
+          params["dateRange"]["endDate"] = null;
+        } else if (dateRange[1]) {
+          params["dateRange"]["startDate"] = null;
+          params["dateRange"]["endDate"] = dateRange[1].format("MMM D, YYYY");
+        }
+
         // In a real implementation, we would fetch data from the API
         const data = await fetchManagerDashboardAggregatedData({
           user_id: user.id,
           reportee_user_ids: filteredReporteeUserIds,
           reportee_team_ids: filteredReporteeTeamIds,
+          params,
         });
         setDashboardData(data);
       } catch (error) {
@@ -1263,11 +1281,30 @@ const ManagerDashboard = () => {
   ) => {
     try {
       setIsTableLoading(true);
+      const params: any = {
+        dateRange: {
+          startDate: "",
+          endDate: "",
+        },
+      };
+
+      if (dateRange[0] && dateRange[1]) {
+        params["dateRange"]["startDate"] = dateRange[0].format("MMM D, YYYY");
+        params["dateRange"]["endDate"] = dateRange[1].format("MMM D, YYYY");
+      } else if (dateRange[0]) {
+        params["dateRange"]["startDate"] = dateRange[0].format("MMM D, YYYY");
+        params["dateRange"]["endDate"] = null;
+      } else if (dateRange[1]) {
+        params["dateRange"]["startDate"] = null;
+        params["dateRange"]["endDate"] = dateRange[1].format("MMM D, YYYY");
+      }
+
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
         type: type,
         reportee_user_ids: filteredReporteeUserIds,
         reportee_team_ids: filteredReporteeTeamIds,
+        params,
       });
       setTrainingEntityAttempts(data);
       setError(null);
@@ -1279,7 +1316,10 @@ const ManagerDashboard = () => {
     }
   };
 
-  const handleDateRangeApplyCallback = () => {};
+  const handleDateRangeApplyCallback = () => {
+    loadDashboardData();
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
 
   if (isLoading) {
     return (

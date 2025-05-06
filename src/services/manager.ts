@@ -9,6 +9,12 @@ export interface ManagerDashboardAggregatedDataPayload {
   user_id: string;
   reportee_user_ids?: string[];
   reportee_team_ids?: string[];
+  params: {
+    dateRange: {
+      startDate: string;
+      endDate: string;
+    };
+  };
 }
 
 export interface ManagerDashboardTrainingEntityCounts {
@@ -92,6 +98,12 @@ export interface ManagerDashboardTrainingEntityAttemptsStatsPayload {
   type: string;
   reportee_user_ids?: string[];
   reportee_team_ids?: string[];
+  params: {
+    dateRange: {
+      startDate: string;
+      endDate: string;
+    };
+  };
 }
 
 export interface ManagerDashboardTrainingEntityAttemptsStatsResponse {
@@ -124,12 +136,12 @@ export interface ManagerDashboardAggregatedDataResponse {
 }
 
 export const fetchManagerDashboardAggregatedData = async (
-  payload: ManagerDashboardAggregatedDataPayload,
+  payload: ManagerDashboardAggregatedDataPayload
 ): Promise<ManagerDashboardAggregatedDataResponse> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/fetch",
-      payload,
+      payload
     );
     return response.data;
   } catch (error) {
@@ -139,12 +151,12 @@ export const fetchManagerDashboardAggregatedData = async (
 };
 
 export const fetchTrainingEntityAttemptsStatsForManagerDashboard = async (
-  payload: ManagerDashboardTrainingEntityAttemptsStatsPayload,
+  payload: ManagerDashboardTrainingEntityAttemptsStatsPayload
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/fetch/training-entity",
-      payload,
+      payload
     );
     return response.data.training_entity;
   } catch (error) {
@@ -154,14 +166,14 @@ export const fetchTrainingEntityAttemptsStatsForManagerDashboard = async (
 };
 
 export const fetchTrainingPlansForManagerDashboard = async (
-  userId: string,
+  userId: string
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/training-plans/fetch",
       {
         user_id: userId,
-      },
+      }
     );
     return response.data.training_plans;
   } catch (error) {
@@ -171,14 +183,14 @@ export const fetchTrainingPlansForManagerDashboard = async (
 };
 
 export const fetchSimulationsForManagerDashboard = async (
-  userId: string,
+  userId: string
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/simulations/fetch",
       {
         user_id: userId,
-      },
+      }
     );
     return response.data.simulations;
   } catch (error) {
@@ -188,14 +200,14 @@ export const fetchSimulationsForManagerDashboard = async (
 };
 
 export const fetchModulesForManagerDashboard = async (
-  userId: string,
+  userId: string
 ): Promise<any> => {
   try {
     const response = await apiClient.post(
       "/manager-dashboard-data/modules/fetch",
       {
         user_id: userId,
-      },
+      }
     );
     return response.data.modules;
   } catch (error) {

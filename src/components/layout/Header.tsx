@@ -1,31 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Stack, 
-  Avatar, 
-  Menu, 
-  MenuItem, 
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Stack,
+  Avatar,
+  Menu,
+  MenuItem,
   Typography,
   IconButton,
   Box,
   Container,
-  Divider
-} from '@mui/material';
-import { styled } from '@mui/material/styles';
-import { useAuth } from '../../context/AuthContext';
-import { fetchUserDetails } from '../../services/users';
-import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import MenuOpenIcon from '@mui/icons-material/MenuOpen';
-import ProfileDetailsDialog from '../profile/ProfileDetailsDialog';
-import logoImage from '../../assets/logo.svg';
+  Divider,
+} from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { useAuth } from "../../context/AuthContext";
+import { createUser, fetchUserDetails } from "../../services/users";
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import MenuOpenIcon from "@mui/icons-material/MenuOpen";
+import ProfileDetailsDialog from "../profile/ProfileDetailsDialog";
+import logoImage from "../../assets/logo.svg";
 
 const StyledMenu = styled(Menu)(({ theme }) => ({
-  '& .MuiPaper-root': {
+  "& .MuiPaper-root": {
     borderRadius: 12,
     marginTop: theme.spacing(1),
     minWidth: 280,
-    boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.15)',
-  }
+    boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.15)",
+  },
 }));
 
 const UserInfo = styled(Stack)(({ theme }) => ({
@@ -35,11 +35,11 @@ const UserInfo = styled(Stack)(({ theme }) => ({
 
 const MenuItem2 = styled(MenuItem)(({ theme }) => ({
   padding: theme.spacing(1.5, 2),
-  '& .MuiSvgIcon-root': {
+  "& .MuiSvgIcon-root": {
     fontSize: 20,
     color: theme.palette.text.secondary,
     marginRight: theme.spacing(2),
-  }
+  },
 }));
 
 interface HeaderProps {
@@ -47,7 +47,10 @@ interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) => {
+const Header: React.FC<HeaderProps> = ({
+  isSidebarCollapsed,
+  onToggleSidebar,
+}) => {
   const { user, logout, currentWorkspaceId } = useAuth();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -59,14 +62,21 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
     const loadUserDetails = async () => {
       if (user?.id && currentWorkspaceId) {
         try {
-          console.log(`Fetching user details for user ${user.id} in workspace ${currentWorkspaceId}`);
-          const userDetails = await fetchUserDetails(user.id, currentWorkspaceId);
+          console.log(
+            `Fetching user details for user ${user.id} in workspace ${currentWorkspaceId}`,
+          );
+          const userDetails = await fetchUserDetails(
+            user.id,
+            currentWorkspaceId,
+          );
 
           if (userDetails.user.profile_img_url) {
             setProfileImageUrl(userDetails.user.profile_img_url);
           }
+
+          createUser({ user_id: user.id });
         } catch (error) {
-          console.error('Error loading user details:', error);
+          console.error("Error loading user details:", error);
         }
       }
     };
@@ -91,12 +101,12 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
     <Stack
       component="header"
       sx={{
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
-        position: 'sticky',
+        borderBottom: "1px solid",
+        borderColor: "divider",
+        bgcolor: "background.paper",
+        position: "sticky",
         top: 0,
-        zIndex: 1100
+        zIndex: 1100,
       }}
     >
       <Container maxWidth={false}>
@@ -108,11 +118,11 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
         >
           <Stack direction="row" spacing={2} alignItems="center">
             <IconButton onClick={onToggleSidebar}>
-              <MenuOpenIcon 
-                sx={{ 
-                  transform: isSidebarCollapsed ? 'rotate(180deg)' : 'none',
-                  transition: 'transform 0.2s'
-                }} 
+              <MenuOpenIcon
+                sx={{
+                  transform: isSidebarCollapsed ? "rotate(180deg)" : "none",
+                  transition: "transform 0.2s",
+                }}
               />
             </IconButton>
             <Box
@@ -121,37 +131,37 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
               alt="Logo"
               sx={{
                 height: 32,
-                width: 'auto'
+                width: "auto",
               }}
             />
           </Stack>
 
           <Stack direction="row" spacing={2} alignItems="center">
-            <Stack 
-              alignItems="flex-end" 
+            <Stack
+              alignItems="flex-end"
               sx={{
-                bgcolor: 'rgba(0, 30, 238, 0.04)',
+                bgcolor: "rgba(0, 30, 238, 0.04)",
                 px: 2,
                 py: 1,
                 borderRadius: 3,
-                fontFamily: 'Inter'
+                fontFamily: "Inter",
               }}
             >
-              <Typography 
-                variant="body1" 
-                sx={{ 
+              <Typography
+                variant="body1"
+                sx={{
                   fontWeight: 400,
-                  fontFamily: 'Inter'
+                  fontFamily: "Inter",
                 }}
               >
                 {user?.name}
               </Typography>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ 
-                  textTransform: 'capitalize',
-                  fontFamily: 'Inter'
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  textTransform: "capitalize",
+                  fontFamily: "Inter",
                 }}
               >
                 {user?.role}
@@ -160,20 +170,33 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
             <IconButton
               onClick={handleClick}
               size="small"
-              aria-controls={open ? 'account-menu' : undefined}
+              aria-controls={open ? "account-menu" : undefined}
               aria-haspopup="true"
-              aria-expanded={open ? 'true' : undefined}
+              aria-expanded={open ? "true" : undefined}
             >
-              <Box sx={{ position: 'relative' }}>
+              <Box sx={{ position: "relative" }}>
                 {profileImageUrl ? (
-                  <Avatar 
-                    src={profileImageUrl} 
+                  <Avatar
+                    src={profileImageUrl}
                     sx={{ width: 32, height: 32 }}
-                    alt={user?.name || 'User'}
+                    alt={user?.name || "User"}
                   />
                 ) : (
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: '#F2F4F7', color: '#475467' }}>
-                    {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                  <Avatar
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      bgcolor: "#F2F4F7",
+                      color: "#475467",
+                    }}
+                  >
+                    {user?.name
+                      ? user.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "?"}
                   </Avatar>
                 )}
               </Box>
@@ -185,21 +208,34 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
             anchorEl={anchorEl}
             open={open}
             onClose={handleClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            transformOrigin={{ horizontal: "right", vertical: "top" }}
+            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
           >
             <UserInfo spacing={0.5}>
               <Stack direction="row" spacing={2} alignItems="center">
-                <Box sx={{ position: 'relative' }}>
+                <Box sx={{ position: "relative" }}>
                   {profileImageUrl ? (
-                    <Avatar 
-                      src={profileImageUrl} 
+                    <Avatar
+                      src={profileImageUrl}
                       sx={{ width: 40, height: 40 }}
-                      alt={user?.name || 'User'}
+                      alt={user?.name || "User"}
                     />
                   ) : (
-                    <Avatar sx={{ width: 40, height: 40, bgcolor: '#F2F4F7', color: '#475467' }}>
-                      {user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
+                    <Avatar
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        bgcolor: "#F2F4F7",
+                        color: "#475467",
+                      }}
+                    >
+                      {user?.name
+                        ? user.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()
+                        : "?"}
                     </Avatar>
                   )}
                 </Box>
@@ -207,24 +243,24 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
                   <Typography variant="subtitle1" fontWeight={600}>
                     {user?.name}
                   </Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: 'primary.main',
-                      bgcolor: '#F5F6FF',
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "primary.main",
+                      bgcolor: "#F5F6FF",
                       py: 0.5,
                       px: 1,
                       borderRadius: 1,
-                      display: 'inline-block',
-                      width: 'fit-content'
+                      display: "inline-block",
+                      width: "fit-content",
                     }}
                   >
                     {user?.email}
                   </Typography>
-                  <Typography 
-                    variant="body2" 
+                  <Typography
+                    variant="body2"
                     color="text.secondary"
-                    sx={{ textTransform: 'capitalize' }}
+                    sx={{ textTransform: "capitalize" }}
                   >
                     {user?.role}
                   </Typography>
@@ -238,11 +274,10 @@ const Header: React.FC<HeaderProps> = ({ isSidebarCollapsed, onToggleSidebar }) 
               <AccountCircleOutlinedIcon />
               <Typography>My Profile</Typography>
             </MenuItem2>
-
           </StyledMenu>
 
-          <ProfileDetailsDialog 
-            open={isProfileOpen} 
+          <ProfileDetailsDialog
+            open={isProfileOpen}
             onClose={() => setIsProfileOpen(false)}
             profileImageUrl={profileImageUrl}
             user={user}

@@ -51,6 +51,14 @@ export interface UserDetails {
   workspace_roles_details: Record<string, any>;
 }
 
+export interface createUserPaylod {
+  user_id: string;
+}
+
+export interface createUserResponse {
+  user_id: string;
+}
+
 // Get the UAM API URL from environment variables
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const USERS_URL = `${UAM_API_URL}/uam/api/users`;
@@ -158,6 +166,20 @@ export const fetchUserDetails = async (
         "X-WORKSPACE-ID": workspaceId,
       },
     });
+    console.log("User details response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    throw error;
+  }
+};
+
+export const createUser = async (
+  payload: createUserPaylod,
+): Promise<createUserResponse> => {
+  try {
+    console.log(`Add Users to DB`);
+    const response = await apiClient.post(`/users/create`, payload);
     console.log("User details response:", response.data);
     return response.data;
   } catch (error) {

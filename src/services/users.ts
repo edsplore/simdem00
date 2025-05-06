@@ -104,17 +104,12 @@ export const fetchUsersSummary = async (
   workspaceId: string,
 ): Promise<User[]> => {
   try {
-    // Encode the workspaceId to ensure proper handling of special characters
+    // Directly encode the workspaceId since Axios handles its own URL encoding
+    console.log(`Fetching users summary for workspace: ${workspaceId}`)
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
-    const response = await apiClient.get(`${USERS_URL}/platform`, {
-      params: {
-        page: 0,
-        limit: 50,
-        workspace_id: encodedWorkspaceId,
-        status: "ACTIVE",
-        fields: "(user_id,email,first_name,last_name)",
-        // products: "simulator"
-      },
+    console.log(`Encoded workspace: ${encodedWorkspaceId}`)
+
+    const response = await apiClient.get(`${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE`, {
       headers: {
         accept: "application/json",
       },

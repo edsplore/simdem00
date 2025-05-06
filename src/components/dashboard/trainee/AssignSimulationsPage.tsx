@@ -553,7 +553,7 @@ const AssignSimulationsPage = () => {
             }}
           >
             <TextField
-              placeholder="Search by Assignment Name or ID"
+              placeholder="Search by Assignment Name"
               size="small"
               value={searchQuery}
               onChange={handleSearchChange}

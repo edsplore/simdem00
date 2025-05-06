@@ -137,7 +137,7 @@ export const fetchUsersByIds = async (
     const response = await apiClient.post(
       `${USERS_URL}/summary?workspace_id=${encodedWorkspaceId}`,
       {
-        userIds: userIds,
+        user_ids: userIds,
         status: "ACTIVE",
       },
     );

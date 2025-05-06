@@ -50,26 +50,24 @@ class AuthService {
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
       console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
-      // const response = await axios.post(REFRESH_TOKEN_URL, "", {
-      //   withCredentials: true, // This ensures cookies are sent with the request
-      //   headers: {
-      //     "Access-Control-Allow-Origin": "*",
-      //     ...(effectiveWorkspaceId
-      //       ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
-      //       : {}),
-      //   },
-      // });
+      const response = await axios.post(REFRESH_TOKEN_URL, "", {
+        withCredentials: true, // This ensures cookies are sent with the request
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          ...(effectiveWorkspaceId
+            ? { "X-WORKSPACE-ID": effectiveWorkspaceId }
+            : {}),
+        },
+      });
 
-      // console.log("Refresh token response:", {
-      //   status: response.status,
-      //   statusText: response.statusText,
-      //   headers: response.headers,
-      //   data: response.data,
-      // });
+      console.log("Refresh token response:", {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data,
+      });
 
-      // const newToken = response.data;
-      const newToken =
-        "eyJhbGciOiJSUzI1NiJ9.eyJkaXZpc2lvbiI6IkV2ZXJBSSBMYWJzIiwic3ViIjoiYW5tb2xfdGVzdEB5b3BtYWlsLmNvbSIsInVzZXJfaWQiOiI2N2Y2Mjg2Yjc1YjkyMjZhOWFmYWJmYWEiLCJpc3MiOiJzZWxmIiwiV1MtMSI6eyJyb2xlcyI6eyJzaW11bGF0b3IiOlsiYW5tb2xfdGVzdCJdfSwicGVybWlzc2lvbnMiOnsic2ltdWxhdG9yIjp7Im1hbmFnZS10cmFpbmluZy1wbGFuIjpbWyJBQ0NFU1MiLCJDUkVBVEUiLCJSRUFEIiwiVVBEQVRFIiwiREVMRVRFIl1dLCJtYW5hZ2Utc2ltdWxhdGlvbnMiOltbIkFDQ0VTUyIsIkNSRUFURSIsIlJFQUQiLCJVUERBVEUiLCJERUxFVEUiXV0sImRhc2hib2FyZC10cmFpbmVlIjpbWyJBQ0NFU1MiLCJSRUFEIl1dLCJ0cmFpbmluZy1wbGFuIjpbWyJBQ0NFU1MiLCJSRUFEIl1dLCJwbGF5YmFjayI6W1siQUNDRVNTIiwiUkVBRCJdXSwiZGFzaGJvYXJkLW1hbmFnZXIiOltbXV0sImRhc2hib2FyZC1hZG1pbiI6W1tdXSwiYXNzaWduLXNpbXVsYXRpb25zIjpbWyJBQ0NFU1MiLCJDUkVBVEUiLCJSRUFEIl1dfX19LCJsYXN0X25hbWUiOiJSaXNoaSIsInJlcG9ydGluZ190byI6IlNpbXVsYXRvciBNYW5hZ2VyIiwiZXhwIjoxNzQ2NDI2MzQzLCJkZXBhcnRtZW50IjoiUHJvZHVjdCBEZXNpZ24gZGV2IiwiaWF0IjoxNzQ2NDI1MTQzLCJmaXJzdF9uYW1lIjoiQW5tb2wifQ.SOcei4UewtAYlWS-bsuRAzuwo6U-GZaem20HN8TQ3W_hr8qFUfWuJfrkSY49FfEB5ZltRFwxJ9-ovgPd7jVobOPUU0XD_ihWYO0aLeUJvrecgyY7qjigdt_Cgbx5R35UK3nu5H_lqWOxYdBRicY2P7ZJGDizCZjxJGi33w-OVqbaiAoZ-UOiDeHUNRlNWPCwl86AQ8pBj8gWmvjUTGNXwnGVk53ckmjSqcWshRkRpK_uwRTG6PqslOjavdu1b81TyMfQjR5GHPy5W9qkT8AMSNaLsLHBE6xn-S2IZIIsdAhdXjzX6JhntgLIYxr81-wyrSK7YVc69eGEDeULQCL1Og";
+      const newToken = response.data;
       this.token = newToken;
 
       // Reset refresh attempts on success

@@ -4,6 +4,7 @@ import { useForm, Controller } from "react-hook-form";
 import {
   fetchTrainingPlans,
   type TrainingPlan,
+  type TrainingPlanPaginationParams,
 } from "../../../services/trainingPlans";
 import { fetchUsersSummary, type User } from "../../../services/users";
 import { fetchTeams, type Team } from "../../../services/teams";
@@ -78,6 +79,9 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
   const [showAssigneesList, setShowAssigneesList] = useState(false);
   const [isLoadingAssignees, setIsLoadingAssignees] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMorePlans, setHasMorePlans] = useState(true);
+  const [totalPlans, setTotalPlans] = useState(0);
 
   const {
     control,
@@ -101,8 +105,37 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchTrainingPlans(user?.id || "user123");
-        setTrainingPlans(data);
+
+        // Create pagination params
+        const paginationParams: TrainingPlanPaginationParams = {
+          page: page,
+          pagesize: 20, // Fetch a larger number to avoid pagination in the dialog
+          sortBy: "name",
+          sortDir: "asc"
+        };
+
+        // Add search filter if provided
+        if (searchQuery) {
+          paginationParams.search = searchQuery;
+        }
+
+        const response = await fetchTrainingPlans(user?.id || "user123", paginationParams);
+
+        // If this is the first page, replace the data
+        if (page === 1) {
+          setTrainingPlans(response.training_plans);
+        } else {
+          // Otherwise append to existing data
+          setTrainingPlans(prev => [...prev, ...response.training_plans]);
+        }
+
+        // Update pagination state
+        if (response.pagination) {
+          setTotalPlans(response.pagination.total_count);
+          setHasMorePlans(page < response.pagination.total_pages);
+        } else {
+          setHasMorePlans(false);
+        }
       } catch (err) {
         setError("Failed to load training plans");
         console.error("Error loading training plans:", err);
@@ -114,7 +147,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
     if (open) {
       loadTrainingPlans();
     }
-  }, [open, user?.id]);
+  }, [open, user?.id, searchQuery, page]);
 
   useEffect(() => {
     const loadAssignees = async () => {
@@ -135,12 +168,16 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
         console.log("Teams response:", teamsResponse);
 
         // Process users
-        const userAssignees: Assignee[] = usersResponse.map((user) => ({
-          id: user.user_id,
-          name: user.fullName,
-          email: user.email,
-          type: "trainee",
-        }));
+        const userAssignees: Assignee[] = Array.isArray(usersResponse)
+          ? usersResponse.map((user) => ({
+              id: user.user_id,
+              name:
+                user.fullName ||
+                `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+              email: user.email,
+              type: "trainee",
+            }))
+          : [];
 
         // Process teams - handle both response formats
         let teamsList: Team[] = [];
@@ -177,10 +214,13 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   }, [open, currentWorkspaceId]);
 
   const selectedAssignees = watch("assignTo");
+
+  // Filter training plans based on search query
   const filteredPlans = trainingPlans.filter((plan) =>
     plan.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
+  // Filter assignees based on search query
   const filteredAssignees = assignees.filter(
     (assignee) =>
       assignee.name.toLowerCase().includes(assigneeSearchQuery.toLowerCase()) ||
@@ -189,6 +229,22 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
           .toLowerCase()
           .includes(assigneeSearchQuery.toLowerCase())),
   );
+
+  // Load more training plans when scrolling
+  const handleLoadMore = () => {
+    if (!isLoading && hasMorePlans) {
+      setPage(prevPage => prevPage + 1);
+    }
+  };
+
+  // Reset search and pagination when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSearchQuery("");
+      setPage(1);
+      setTrainingPlans([]);
+    }
+  }, [open]);
 
   const onSubmit = async (data: CreateTrainingPlanFormData) => {
     try {
@@ -242,6 +298,13 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   // New handler to prevent event propagation for search input
   const handleSearchInputKeyDown = (e) => {
     e.stopPropagation();
+  };
+
+  // Handler for training plan search input change
+  const handleTrainingPlanSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setPage(1); // Reset to first page when search changes
+    setTrainingPlans([]); // Clear existing results
   };
 
   return (
@@ -374,10 +437,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                             fullWidth
                             placeholder="Search training plans..."
                             value={searchQuery}
-                            onChange={(e) => {
-                              setSearchQuery(e.target.value);
-                              setShowTrainingPlansList(true);
-                            }}
+                            onChange={handleTrainingPlanSearchChange}
                             onClick={() => setShowTrainingPlansList(true)}
                             InputProps={{
                               startAdornment: (
@@ -417,7 +477,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                                 overflow: "auto",
                               }}
                             >
-                              {isLoading ? (
+                              {isLoading && page === 1 ? (
                                 <Box
                                   sx={{
                                     p: 2,
@@ -442,53 +502,82 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                                   No matches found
                                 </Typography>
                               ) : (
-                                filteredPlans.map((plan) => (
-                                  <Box
-                                    key={plan.id}
-                                    onClick={() => {
-                                      field.onChange(plan.id);
-                                      setSelectedPlan(plan);
-                                      setShowTrainingPlansList(false);
-                                      setSearchQuery("");
-                                    }}
-                                    sx={{
-                                      p: 1.5,
-                                      cursor: "pointer",
-                                      "&:hover": { bgcolor: "#F5F6FF" },
-                                    }}
-                                  >
-                                    <Stack spacing={0.5}>
-                                      <Stack
-                                        direction="row"
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                      >
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
+                                <>
+                                  {filteredPlans.map((plan) => (
+                                    <Box
+                                      key={plan.id}
+                                      onClick={() => {
+                                        field.onChange(plan.id);
+                                        setSelectedPlan(plan);
+                                        setShowTrainingPlansList(false);
+                                        setSearchQuery("");
+                                      }}
+                                      sx={{
+                                        p: 1.5,
+                                        cursor: "pointer",
+                                        "&:hover": { bgcolor: "#F5F6FF" },
+                                      }}
+                                    >
+                                      <Stack spacing={0.5}>
+                                        <Stack
+                                          direction="row"
+                                          justifyContent="space-between"
+                                          alignItems="center"
                                         >
-                                          {plan.id.slice(-6)}
+                                          <Typography
+                                            variant="body2"
+                                            color="text.secondary"
+                                          >
+                                            {plan.id.slice(-6)}
+                                          </Typography>
+                                          <Chip
+                                            label={`Training plan | ${plan.added_object.length} Items`}
+                                            size="small"
+                                            sx={{
+                                              bgcolor: "#F5F6FF",
+                                              color: "#444CE7",
+                                              height: 24,
+                                              "& .MuiChip-label": {
+                                                px: 1,
+                                                fontSize: "12px",
+                                              },
+                                            }}
+                                          />
+                                        </Stack>
+                                        <Typography variant="body1">
+                                          {plan.name}
                                         </Typography>
-                                        <Chip
-                                          label={`Training plan | ${plan.added_object.length} Items`}
-                                          size="small"
-                                          sx={{
-                                            bgcolor: "#F5F6FF",
-                                            color: "#444CE7",
-                                            height: 24,
-                                            "& .MuiChip-label": {
-                                              px: 1,
-                                              fontSize: "12px",
-                                            },
-                                          }}
-                                        />
                                       </Stack>
-                                      <Typography variant="body1">
-                                        {plan.name}
-                                      </Typography>
-                                    </Stack>
-                                  </Box>
-                                ))
+                                    </Box>
+                                  ))}
+
+                                  {/* Load more button */}
+                                  {hasMorePlans && (
+                                    <Box
+                                      sx={{
+                                        p: 1.5,
+                                        display: "flex",
+                                        justifyContent: "center",
+                                      }}
+                                    >
+                                      <Button
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleLoadMore();
+                                        }}
+                                        disabled={isLoading}
+                                        size="small"
+                                      >
+                                        {isLoading ? (
+                                          <CircularProgress size={20} />
+                                        ) : (
+                                          "Load More"
+                                        )}
+                                      </Button>
+                                    </Box>
+                                  )}
+                                </>
                               )}
                             </Box>
                           )}
@@ -760,6 +849,12 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
             >
               Assign Training Plan
             </Button>
+
+            {submitError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {submitError}
+              </Alert>
+            )}
           </Stack>
         </form>
       </DialogContent>

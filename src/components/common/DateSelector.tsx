@@ -1,4 +1,3 @@
-"use client";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import {
   CalendarMonth as CalendarIcon,

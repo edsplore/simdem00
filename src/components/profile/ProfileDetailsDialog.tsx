@@ -23,6 +23,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
 import { User } from '../../types/auth';
 import { fetchUserDetails, UserDetails } from '../../services/users';
+import { useAuth } from '../../context/AuthContext';
 
 // List of all standard time zones
 const TIMEZONES = [
@@ -107,12 +108,18 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
   profileImageUrl,
   user,
 }) => {
+  const { currentWorkspaceId, currentTimeZone } = useAuth();
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timezone, setTimezone] = useState<string | null>(null);
-  const [isUpdatingTimezone, setIsUpdatingTimezone] = useState(false);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  // Get the time zone label from the value
+  const getTimeZoneLabel = (value: string | null): string => {
+    if (!value) return '';
+    const timezone = TIMEZONES.find(tz => tz.value === value);
+    return timezone ? timezone.label : value;
+  };
 
   // Fetch user details when dialog opens
   useEffect(() => {
@@ -124,11 +131,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
         setError(null);
         const details = await fetchUserDetails(user.id, user.workspaceId);
         setUserDetails(details);
-
-        // Set initial timezone from user details if available
-        if (details.user?.timezone) {
-          setTimezone(details.user.timezone);
-        }
       } catch (err) {
         console.error('Error loading user details:', err);
         setError('Failed to load user details');
@@ -139,37 +141,6 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
 
     loadUserDetails();
   }, [open, user?.id, user?.workspaceId]);
-
-  const handleTimezoneChange = (newTimezone: string | null) => {
-    setTimezone(newTimezone);
-
-    // For UI demonstration purposes only
-    if (newTimezone) {
-      setIsUpdatingTimezone(true);
-
-      // Simulate API call with timeout
-      setTimeout(() => {
-        setIsUpdatingTimezone(false);
-        setUpdateSuccess(true);
-
-        // Update local user details for UI
-        if (userDetails) {
-          setUserDetails({
-            ...userDetails,
-            user: {
-              ...userDetails.user,
-              timezone: newTimezone
-            }
-          });
-        }
-
-        // Hide success message after 3 seconds
-        setTimeout(() => {
-          setUpdateSuccess(false);
-        }, 3000);
-      }, 1000);
-    }
-  };
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth="md">
@@ -267,41 +238,13 @@ const ProfileDetailsDialog: React.FC<ProfileDetailsDialogProps> = ({
                 />
               </Stack>
 
-              {/* Timezone Selector - Editable Field */}
-              <Autocomplete
-                value={timezone}
-                onChange={(event, newValue) => handleTimezoneChange(newValue)}
-                options={TIMEZONES.map(tz => tz.value)}
-                getOptionLabel={(option) => {
-                  const timezone = TIMEZONES.find(tz => tz.value === option);
-                  return timezone ? timezone.label : option;
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Select Time Zone"
-                    variant="outlined"
-                    fullWidth
-                    InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {isUpdatingTimezone ? <CircularProgress size={20} /> : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-                freeSolo
-                autoHighlight
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: '#FFFFFF',
-                    fontFamily: 'Inter',
-                  }
-                }}
+              {/* Time Zone Field - Now Read-Only */}
+              <ReadOnlyField
+                fullWidth
+                label="Time Zone"
+                value={getTimeZoneLabel(currentTimeZone)}
+                disabled
+                InputLabelProps={{ sx: { fontFamily: 'Inter' } }}
               />
 
               {updateSuccess && (

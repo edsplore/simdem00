@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Stack,
   Container,
@@ -12,24 +12,23 @@ import {
   TableRow,
   Paper,
   TextField,
-  Select,
-  MenuItem,
   IconButton,
   Box,
   Chip,
   Tabs,
   Tab,
-  SelectChangeEvent,
   TablePagination,
   CircularProgress,
   TableSortLabel,
   InputAdornment,
+  Autocomplete,
+  Alert,
 } from '@mui/material';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import SortIcon from '@mui/icons-material/Sort';
-import SearchIcon from '@mui/icons-material/Search';
-import ClearIcon from '@mui/icons-material/Clear';
+import {
+  MoreVert as MoreVertIcon,
+  Search as SearchIcon,
+  Clear as ClearIcon,
+} from '@mui/icons-material';
 import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
@@ -38,13 +37,33 @@ import EditTrainingPlanDialog from './EditTrainingPlanDialog';
 import EditModuleDialog from './EditModuleDialog';
 import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
 import { useAuth } from '../../../../context/AuthContext';
-import { fetchTrainingPlans, type TrainingPlan } from '../../../../services/trainingPlans';
-import { fetchModules, type Module } from '../../../../services/modules';
+import { 
+  fetchTrainingPlans, 
+  type TrainingPlan, 
+  type TrainingPlanPaginationParams,
+} from '../../../../services/trainingPlans';
+import { 
+  fetchModules, 
+  type Module,
+  type ModulePaginationParams,
+} from '../../../../services/modules';
 import { fetchTags, type Tag } from '../../../../services/tags';
+import { fetchUsersSummary, type User } from '../../../../services/users';
 import { hasCreatePermission } from '../../../../utils/permissions';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
+
+// Map frontend OrderBy to backend sortBy
+const orderByToSortBy: Record<OrderBy, string> = {
+  name: "name",
+  tags: "tags",
+  estimated_time: "estimatedTime",
+  created_at: "createdAt",
+  created_by: "createdBy",
+  last_modified_at: "lastModifiedAt",
+  last_modified_by: "lastModifiedBy"
+};
 
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
@@ -56,21 +75,22 @@ const formatDate = (dateString: string) => {
 };
 
 const ManageTrainingPlanPage = () => {
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState('All Tags');
-  const [selectedStatus, setSelectedStatus] = useState('All Status');
+  const [tagsSearchQuery, setTagsSearchQuery] = useState('');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState('5');
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [trainingPlans, setTrainingPlans] = useState<TrainingPlan[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [order, setOrder] = useState<Order>('asc');
-  const [orderBy, setOrderBy] = useState<OrderBy>('name');
+  const [order, setOrder] = useState<Order>('desc');
+  const [orderBy, setOrderBy] = useState<OrderBy>('last_modified_at');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan' } | null>(null);
   const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
@@ -81,9 +101,133 @@ const ManageTrainingPlanPage = () => {
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
+
+  // Create a memoized pagination params object for training plans
+  const trainingPlanPaginationParams = useMemo<TrainingPlanPaginationParams>(() => {
+    const params: TrainingPlanPaginationParams = {
+      page: page + 1, // API uses 1-based indexing
+      pagesize: rowsPerPage,
+      sortBy: orderByToSortBy[orderBy],
+      sortDir: order
+    };
+
+    // Add filters if they're not set to "All"
+    if (searchQuery) {
+      params.search = searchQuery;
+    }
+
+    if (selectedTags !== "All Tags") {
+      params.tags = [selectedTags];
+    }
+
+    if (selectedCreator !== "Created By") {
+      params.createdBy = selectedCreator;
+    }
+
+    return params;
+  }, [
+    page,
+    rowsPerPage,
+    orderBy,
+    order,
+    searchQuery,
+    selectedTags,
+    selectedCreator
+  ]);
+
+  // Create a memoized pagination params object for modules
+  const modulePaginationParams = useMemo<ModulePaginationParams>(() => {
+    const params: ModulePaginationParams = {
+      page: page + 1, // API uses 1-based indexing
+      pagesize: rowsPerPage,
+      sortBy: orderByToSortBy[orderBy],
+      sortDir: order
+    };
+
+    // Add filters if they're not set to "All"
+    if (searchQuery) {
+      params.search = searchQuery;
+    }
+
+    if (selectedTags !== "All Tags") {
+      params.tags = [selectedTags];
+    }
+
+    if (selectedCreator !== "Created By") {
+      params.createdBy = selectedCreator;
+    }
+
+    return params;
+  }, [
+    page,
+    rowsPerPage,
+    orderBy,
+    order,
+    searchQuery,
+    selectedTags,
+    selectedCreator
+  ]);
+
+  // Load all users once when component mounts
+  useEffect(() => {
+    const loadAllUsers = async () => {
+      if (!currentWorkspaceId) return;
+
+      try {
+        setIsLoadingUsers(true);
+        const usersData = await fetchUsersSummary(currentWorkspaceId);
+        setUsers(usersData);
+
+        // Also update the user map with these users
+        const newUserMap: Record<string, string> = {};
+        usersData.forEach(userData => {
+          if (userData.user_id) {
+            // Use fullName if available, otherwise construct from first and last name
+            const fullName = userData.fullName || 
+              `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+
+            newUserMap[userData.user_id] = fullName || userData.user_id;
+          }
+        });
+
+        setUserMap(newUserMap);
+      } catch (error) {
+        console.error("Error loading all users:", error);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+
+    loadAllUsers();
+  }, [currentWorkspaceId]); // Only run once when component mounts or workspace changes
+
+  // Load tags
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!user?.id) return;
+
+      try {
+        setIsLoadingTags(true);
+        const tagsData = await fetchTags(user.id);
+        setTags(tagsData);
+      } catch (error) {
+        console.error('Error loading tags:', error);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    loadTags();
+  }, [user?.id]);
 
   const loadData = async () => {
     try {
@@ -91,42 +235,58 @@ const ManageTrainingPlanPage = () => {
       setError(null);
 
       if (currentTab === 'Training Plans') {
-        const plans = await fetchTrainingPlans(user?.id || 'user123');
-        setTrainingPlans(plans);
+        const response = await fetchTrainingPlans(user?.id || 'user123', trainingPlanPaginationParams);
+        setTrainingPlans(response.training_plans);
+
+        // Update pagination information from the response
+        if (response.pagination) {
+          setTotalCount(response.pagination.total_count);
+          setTotalPages(response.pagination.total_pages);
+        }
+
+        // If we got fewer results than expected and we're not on page 1,
+        // it might mean we're on a page that no longer exists after filtering
+        if (response.training_plans.length === 0 && page > 0) {
+          setPage(0); // Go back to first page
+        }
       } else {
-        const moduleData = await fetchModules(user?.id || 'user123');
-        setModules(moduleData);
+        const response = await fetchModules(user?.id || 'user123', modulePaginationParams);
+        setModules(response.modules);
+
+        // Update pagination information from the response
+        if (response.pagination) {
+          setTotalCount(response.pagination.total_count);
+          setTotalPages(response.pagination.total_pages);
+        }
+
+        // If we got fewer results than expected and we're not on page 1,
+        // it might mean we're on a page that no longer exists after filtering
+        if (response.modules.length === 0 && page > 0) {
+          setPage(0); // Go back to first page
+        }
       }
     } catch (err) {
       setError(`Failed to load ${currentTab.toLowerCase()}`);
       console.error(`Error loading ${currentTab.toLowerCase()}:`, err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  // Load tags
-  const loadTags = async () => {
-    if (!user?.id) return;
-
-    try {
-      setIsLoadingTags(true);
-      const tagsData = await fetchTags(user.id);
-      setTags(tagsData);
-    } catch (error) {
-      console.error('Error loading tags:', error);
-    } finally {
-      setIsLoadingTags(false);
-    }
-  };
-
+  // Initial data load
   useEffect(() => {
     loadData();
   }, [currentTab, user?.id]);
 
+  // When pagination params change, refresh data without full loading state
   useEffect(() => {
-    loadTags();
-  }, [user?.id]);
+    // Skip the initial load which is handled by the mount effect
+    if (isLoading) return;
+
+    setIsRefreshing(true);
+    loadData();
+  }, [currentTab === 'Training Plans' ? trainingPlanPaginationParams : modulePaginationParams]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
@@ -156,7 +316,7 @@ const ManageTrainingPlanPage = () => {
   const handleChangeRowsPerPage = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    setRowsPerPage(event.target.value);
+    setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
@@ -164,6 +324,7 @@ const ManageTrainingPlanPage = () => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
     setOrderBy(property);
+    setPage(0);
   };
 
   const handleRowClick = (item: TrainingPlan | Module) => {
@@ -197,38 +358,37 @@ const ManageTrainingPlanPage = () => {
     loadData();
   };
 
-  const filteredData = currentTab === 'Training Plans'
-    ? trainingPlans.filter(plan => {
-        // Apply search filter
-        if (searchQuery && !plan.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
-          return false;
-        }
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      const fullName = user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim();
+      const email = user.email || '';
 
-        // Apply tag filter
-        if (selectedTags !== 'All Tags' && (!plan.tags || !plan.tags.includes(selectedTags))) {
-          return false;
-        }
+      return !creatorSearchQuery || 
+        fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase()) ||
+        email.toLowerCase().includes(creatorSearchQuery.toLowerCase());
+    });
+  }, [users, creatorSearchQuery]);
 
-        return true;
-      })
-    : modules.filter(module => {
-        // Apply search filter
-        if (searchQuery && !module.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) {
-          return false;
-        }
+  // Filter tags based on search query
+  const filteredTags = useMemo(() => {
+    return tags.filter(tag => {
+      return !tagsSearchQuery || 
+        tag.name.toLowerCase().includes(tagsSearchQuery.toLowerCase());
+    });
+  }, [tags, tagsSearchQuery]);
 
-        // Apply tag filter
-        if (selectedTags !== 'All Tags' && (!module.tags || !module.tags.includes(selectedTags))) {
-          return false;
-        }
+  // Helper function to get user name from ID
+  const getUserName = (userId: string): string => {
+    return userMap[userId] || userId;
+  };
 
-        return true;
-      });
+  const currentData = currentTab === 'Training Plans' ? trainingPlans : modules;
 
   const sortedData = React.useMemo(() => {
-    if (!filteredData.length) return filteredData;
+    if (!currentData.length) return currentData;
 
-    return [...filteredData].sort((a, b) => {
+    return [...currentData].sort((a, b) => {
       let aValue, bValue;
 
       switch (orderBy) {
@@ -268,7 +428,7 @@ const ManageTrainingPlanPage = () => {
       const result = (aValue < bValue) ? -1 : (aValue > bValue) ? 1 : 0;
       return order === 'asc' ? result : -result;
     });
-  }, [filteredData, order, orderBy]);
+  }, [currentData, order, orderBy]);
 
   return (
     <DashboardContent>
@@ -379,67 +539,76 @@ const ManageTrainingPlanPage = () => {
             />
 
             <Stack direction="row" spacing={2} sx={{ ml: 'auto' }}>
-              <Select
-                value={selectedTags}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedTags(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
+              {/* Tags Filter - Updated with Autocomplete */}
+              <Autocomplete
+                value={selectedTags === "All Tags" ? null : selectedTags}
+                onChange={(event, newValue) => {
+                  setSelectedTags(newValue || "All Tags");
+                  setPage(0);
                 }}
-                MenuProps={{
-                  PaperProps: {
-                    style: {
-                      maxHeight: 300,
-                      overflow: 'auto'
-                    }
-                  }
+                inputValue={tagsSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setTagsSearchQuery(newInputValue);
                 }}
-              >
-                <MenuItem value="All Tags">All Tags</MenuItem>
-                {isLoadingTags ? (
-                  <MenuItem disabled>Loading tags...</MenuItem>
-                ) : tags.length === 0 ? (
-                  <MenuItem disabled>No tags available</MenuItem>
-                ) : (
-                  tags.map((tag) => (
-                    <MenuItem key={tag.id} value={tag.name}>
-                      {tag.name}
-                    </MenuItem>
-                  ))
+                options={["All Tags", ...filteredTags.map(tag => tag.name)]}
+                getOptionLabel={(option) => option}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="All Tags"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      bgcolor: '#FFFFFF',
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                  />
                 )}
-              </Select>
-              <Select
-                value={selectedStatus}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedStatus(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
+                noOptionsText="No tags found"
+                sx={{ width: 150 }}
+              />
+
+              {/* Created By Filter - Updated to use Autocomplete with search */}
+              <Autocomplete
+                value={selectedCreator === "Created By" ? null : selectedCreator}
+                onChange={(event, newValue) => {
+                  setSelectedCreator(newValue || "Created By");
+                  setPage(0);
                 }}
-              >
-                <MenuItem value="All Status">All Status</MenuItem>
-              </Select>
-              <Select
-                value={selectedCreator}
-                onChange={(e: SelectChangeEvent) =>
-                  setSelectedCreator(e.target.value)
-                }
-                size="small"
-                sx={{
-                  minWidth: 120,
-                  bgcolor: '#FFFFFF',
-                  borderRadius: 2,
+                inputValue={creatorSearchQuery}
+                onInputChange={(event, newInputValue) => {
+                  setCreatorSearchQuery(newInputValue);
                 }}
-              >
-                <MenuItem value="Created By">Created By</MenuItem>
-              </Select>
+                options={["Created By", ...filteredUsers.map(user => user.user_id)]}
+                getOptionLabel={(option) => {
+                  if (option === "Created By") return "Created By";
+                  const user = users.find(u => u.user_id === option);
+                  if (!user) return option;
+                  return user.fullName || `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email || option;
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Created By"
+                    size="small"
+                    sx={{
+                      minWidth: 180,
+                      bgcolor: '#FFFFFF',
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                  />
+                )}
+                noOptionsText="No users found"
+                sx={{ width: 200 }}
+              />
             </Stack>
           </Stack>
 
@@ -449,7 +618,7 @@ const ManageTrainingPlanPage = () => {
             </Box>
           ) : error ? (
             <Box sx={{ textAlign: 'center', my: 4, color: 'error.main' }}>
-              <Typography>{error}</Typography>
+              <Alert severity="error">{error}</Alert>
             </Box>
           ) : (
             <TableContainer
@@ -549,92 +718,102 @@ const ManageTrainingPlanPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {sortedData.slice(page * parseInt(rowsPerPage), page * parseInt(rowsPerPage) + parseInt(rowsPerPage)).map((item) => (
-                    <TableRow 
-                      key={item.id} 
-                      onClick={() => handleRowClick(item)}
-                      sx={{
-                        cursor: currentTab === 'Training Plans' ? 'pointer' : 'default',
-                        '&:hover': {
-                          bgcolor: currentTab === 'Training Plans' ? 'action.hover' : 'inherit',
-                        },
-                      }}
-                    >
-                      <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
-                      <TableCell sx={{ width: 200 }}>
-                        <Stack direction="row" spacing={1}>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
-                            {item.tags.map((tag, i) => (
-                              <Chip
-                                key={i}
-                                label={tag}
-                                size="small"
-                                sx={{ 
-                                  bgcolor: '#F5F6FF', 
-                                  color: '#444CE7',
-                                  maxWidth: '100%',
-                                  '& .MuiChip-label': {
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
-                                  }
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
-                      <TableCell>
-                        <Stack sx={{ minWidth: 180 }}>
-                          <Typography variant="body2">{formatDate(item.created_at)}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(item.created_at).toLocaleTimeString()}
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Stack sx={{ minWidth: 150 }}>
-                          <Typography variant="body2" noWrap>{item.created_by}</Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Stack sx={{ minWidth: 180 }}>
-                          <Typography variant="body2">{formatDate(item.last_modified_at)}</Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {new Date(item.last_modified_at).toLocaleTimeString()}
-                          </Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>
-                        <Stack sx={{ minWidth: 150 }}>
-                          <Typography variant="body2" noWrap>{item.last_modified_by}</Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right" sx={{ width: 100 }}>
-                        <IconButton 
-                          size="small" 
-                          onClick={(event) => handleMenuOpen(
-                            event, 
-                            item.id, 
-                            currentTab === 'Training Plans' ? 'training-plan' : 'module'
-                          )}
-                        >
-                          <MoreVertIcon />
-                        </IconButton>
+                  {sortedData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                        <Typography variant="body1" color="text.secondary">
+                          No {currentTab.toLowerCase()} found matching your criteria.
+                        </Typography>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    sortedData.map((item) => (
+                      <TableRow 
+                        key={item.id} 
+                        onClick={() => handleRowClick(item)}
+                        sx={{
+                          cursor: currentTab === 'Training Plans' ? 'pointer' : 'default',
+                          '&:hover': {
+                            bgcolor: currentTab === 'Training Plans' ? 'action.hover' : 'inherit',
+                          },
+                        }}
+                      >
+                        <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
+                        <TableCell sx={{ width: 200 }}>
+                          <Stack direction="row" spacing={1}>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
+                              {item.tags.map((tag, i) => (
+                                <Chip
+                                  key={i}
+                                  label={tag}
+                                  size="small"
+                                  sx={{ 
+                                    bgcolor: '#F5F6FF', 
+                                    color: '#444CE7',
+                                    maxWidth: '100%',
+                                    '& .MuiChip-label': {
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      whiteSpace: 'nowrap'
+                                    }
+                                  }}
+                                />
+                              ))}
+                            </Box>
+                          </Stack>
+                        </TableCell>
+                        <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
+                        <TableCell>
+                          <Stack sx={{ minWidth: 180 }}>
+                            <Typography variant="body2">{formatDate(item.created_at)}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(item.created_at).toLocaleTimeString()}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack sx={{ minWidth: 150 }}>
+                            <Typography variant="body2" noWrap>{getUserName(item.created_by)}</Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack sx={{ minWidth: 180 }}>
+                            <Typography variant="body2">{formatDate(item.last_modified_at)}</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {new Date(item.last_modified_at).toLocaleTimeString()}
+                            </Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Stack sx={{ minWidth: 150 }}>
+                            <Typography variant="body2" noWrap>{getUserName(item.last_modified_by)}</Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell align="right" sx={{ width: 100 }}>
+                          <IconButton 
+                            size="small" 
+                            onClick={(event) => handleMenuOpen(
+                              event, 
+                              item.id, 
+                              currentTab === 'Training Plans' ? 'training-plan' : 'module'
+                            )}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </Box>
             <Box sx={{ bgcolor: '#F9FAFB', borderTop: '1px solid rgba(224, 224, 224, 1)' }}>
               <TablePagination
                 component="div"
-                count={filteredData.length}
+                count={totalCount}
                 page={page}
                 onPageChange={handleChangePage}
-                rowsPerPage={parseInt(rowsPerPage, 10)}
+                rowsPerPage={rowsPerPage}
                 onRowsPerPageChange={handleChangeRowsPerPage}
                 rowsPerPageOptions={[5, 10, 25, 50]}
               />

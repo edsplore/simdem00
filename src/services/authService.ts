@@ -7,7 +7,7 @@ import apiClient from "./api/interceptors";
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 
 // Environment-specific URLs
-const REFRESH_TOKEN_URL = `https://api.dev.everailabs.com/uam/auth/tokens/access/refresh`;
+const REFRESH_TOKEN_URL = `${UAM_API_URL}/uam/auth/tokens/access/refresh`;
 
 class AuthService {
   private refreshTokenTimeout?: NodeJS.Timeout;

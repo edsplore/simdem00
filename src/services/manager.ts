@@ -8,6 +8,7 @@ export interface CreateModuleResponse {
 export interface ManagerDashboardAggregatedDataPayload {
   user_id: string;
   reportee_user_ids?: string[];
+  reportee_team_ids?: string[];
 }
 
 export interface ManagerDashboardTrainingEntityCounts {
@@ -90,6 +91,7 @@ export interface ManagerDashboardTrainingEntityAttemptsStatsPayload {
   user_id: string;
   type: string;
   reportee_user_ids?: string[];
+  reportee_team_ids?: string[];
 }
 
 export interface ManagerDashboardTrainingEntityAttemptsStatsResponse {

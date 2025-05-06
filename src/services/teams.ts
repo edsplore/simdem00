@@ -56,6 +56,7 @@ export const fetchTeams = async (
   page: number = 0,
   limit: number = 100,
   search?: string,
+  leaderUserId: string|null = null
 ): Promise<TeamResponse> => {
   try {
     console.log(
@@ -69,6 +70,10 @@ export const fetchTeams = async (
       workspace_id: workspaceId,
       status: "ACTIVE"
     });
+
+    if(leaderUserId) {
+      params.append("leader_user_ids", leaderUserId)
+    }
 
     // Add optional search parameter if provided
     if (search) {

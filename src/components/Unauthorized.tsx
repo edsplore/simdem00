@@ -22,19 +22,29 @@ const Unauthorized = () => {
       setIsRetryingAuth(true);
 
       try {
-        // Get workspace ID from URL
+        // Get workspace ID and timeZone from URL
         const params = new URLSearchParams(location.search);
         const workspaceId = params.get('workspace_id');
+        const timeZone = params.get('timeZone');
 
         console.log(`Unauthorized page: Attempting token refresh (attempt ${retryCount + 1}/${maxRetries})`);
 
         // Try to refresh the token
         await authService.refreshToken(workspaceId || null);
 
-        // If successful, redirect to dashboard
+        // If successful, redirect to dashboard with both workspace_id and timeZone
         console.log('Token refresh successful, redirecting to dashboard');
-        const workspaceParam = workspaceId ? `?workspace_id=${encodeURIComponent(workspaceId)}` : '';
-        navigate(`/dashboard${workspaceParam}`);
+
+        const redirectParams = new URLSearchParams();
+        if (workspaceId) {
+          redirectParams.set('workspace_id', workspaceId);
+        }
+        if (timeZone) {
+          redirectParams.set('timeZone', timeZone);
+        }
+
+        const queryString = redirectParams.toString();
+        navigate(`/dashboard${queryString ? `?${queryString}` : ''}`);
       } catch (error) {
         console.error('Token refresh failed from Unauthorized page:', error);
         setRetryCount(prev => prev + 1);
@@ -54,16 +64,29 @@ const Unauthorized = () => {
   }, [retryCount, location.search, navigate]);
 
   const handleGoToLogin = () => {
-    // Preserve workspace_id when redirecting to login
+    // Preserve workspace_id and timeZone when redirecting to login
     const params = new URLSearchParams(location.search);
     const workspaceId = params.get('workspace_id');
+    const timeZone = params.get('timeZone');
     const baseUrl = UAM_API_URL;
 
+    // Build the URL with both parameters if available
+    let redirectUrl = baseUrl;
+    const redirectParams = new URLSearchParams();
+
     if (workspaceId) {
-      window.location.href = `${baseUrl}?workspace_id=${encodeURIComponent(workspaceId)}`;
-    } else {
-      window.location.href = baseUrl;
+      redirectParams.set('workspace_id', workspaceId);
     }
+    if (timeZone) {
+      redirectParams.set('timeZone', timeZone);
+    }
+
+    const queryString = redirectParams.toString();
+    if (queryString) {
+      redirectUrl += `?${queryString}`;
+    }
+
+    window.location.href = redirectUrl;
   };
 
   const handleRetry = () => {

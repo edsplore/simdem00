@@ -44,18 +44,26 @@ const NavLink = styled(Link)(({ theme }) => ({
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const location = useLocation();
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
-  // Append workspace_id to links if available
+  // Append both workspace_id and timeZone to links if available
   const getNavLinkUrl = (path: string) => {
+    const params = new URLSearchParams();
+
     if (currentWorkspaceId) {
-      return `${path}?workspace_id=${encodeURIComponent(currentWorkspaceId)}`;
+      params.set('workspace_id', currentWorkspaceId);
     }
-    return path;
+
+    if (currentTimeZone) {
+      params.set('timeZone', currentTimeZone);
+    }
+
+    const queryString = params.toString();
+    return queryString ? `${path}?${queryString}` : path;
   };
 
   // Define all possible nav items

@@ -51,7 +51,8 @@ import {
 } from "../../../services/manager";
 import DashboardContent from "../DashboardContent";
 import { fetchReporteeUsers, User } from "../../../services/users";
-import {fetchTeams, TeamResponse, Team} from "../../../services/teams"
+import { fetchTeams, TeamResponse, Team } from "../../../services/teams";
+import DateSelector from "../../common/DateSelector";
 
 // Mock data for the dashboard
 const mockData = {
@@ -1066,12 +1067,22 @@ const ManagerDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] =
     useState<ManagerDashboardAggregatedDataResponse | null>(null);
-  const [reporteeUser, setReporteeUser] = useState<null | User[]>(null);
-  const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
-  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
+  const [reporteeUser, setReporteeUser] = useState<[] | User[]>([]);
+  const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<
+    [] | string[]
+  >([]);
+  const [allUserIds, setAllUserIds] = useState<[] | string[]>([]);
+  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<
+    Map<string, string>
+  >(new Map());
   const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
-  const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<[] | string[]>([]);
-  const [reporteeTeamIdsMapToName, setReporteeTeamIdsMapToName] = useState<Map<string, string>>(new Map());
+  const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<
+    [] | string[]
+  >([]);
+  const [allTeamIds, setAllTeamIds] = useState<[] | string[]>([]);
+  const [reporteeTeamIdsMapToName, setReporteeTeamIdsMapToName] = useState<
+    Map<string, string>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("TrainingPlan");
@@ -1090,7 +1101,7 @@ const ManagerDashboard = () => {
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
   });
-  
+
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
   const handleTeamframeChange = (event) => {
     const {
@@ -1098,17 +1109,27 @@ const ManagerDashboard = () => {
     } = event;
     //debugger;
     //const selectedUserIds = value.split(",")
-    const selectedUserNames = value.map((id: string) => reporteeUserIdsMapToName.get(id));
+    const selectedUserNames = value.map((id: string) =>
+      reporteeUserIdsMapToName.get(id),
+    );
     // setTeamframe(selectedUserNames)
     setTeamframe(typeof value === "string" ? value.split(",") : value);
-    setTeamframeNames(selectedUserNames)
+    setTeamframeNames(selectedUserNames);
   };
 
   const handleApplyClick = () => {
     // Handle the selected users/teams here
     console.log("teamframe", teamframe, dropdownSearchQuery);
+    const selectedUserIds = teamframe.filter((id: string) =>
+      allUserIds.includes(id),
+    );
+    const selectedTeamIds = teamframe.filter((id: string) =>
+      allTeamIds.includes(id),
+    );
+    setFilteredReporteeUserIds(selectedUserIds);
+    setFilteredReporteeTeamIds(selectedTeamIds);
   };
-  
+
   const filteredTrainingEntities = trainingEntityAttempts.filter((entity) => {
     const query = searchQuery.toLowerCase();
     return entity.name.toLowerCase().includes(query);
@@ -1124,10 +1145,13 @@ const ManagerDashboard = () => {
         const workspaceId = params.get("workspace_id");
         const data = await fetchReporteeUsers(workspaceId || "");
         console.log("repoertee users --------", data);
-        const userData = data?.map((user: User) => user.user_id) || []
+        const userData = data?.map((user: User) => user.user_id) || [];
         setReporteeUser(data);
-        setFilteredReporteeUserIds(userData)
-        const userMap = new Map(data?.map(user => [user.user_id, user.fullName]));
+        setFilteredReporteeUserIds(userData);
+        setAllUserIds(userData);
+        const userMap = new Map(
+          data?.map((user) => [user.user_id, user.fullName]),
+        );
         setReporteeUserIdsMapToName(userMap);
       } catch (error) {
         console.error("Error loading reportee users:", error);
@@ -1146,16 +1170,19 @@ const ManagerDashboard = () => {
         // In a real implementation, we would fetch data from the API
         const params = new URLSearchParams(location.search);
         const workspaceId = params.get("workspace_id");
-        const data = await fetchTeams(workspaceId || "");
+        const data = await fetchTeams(workspaceId || "", undefined, undefined, undefined, user.id);
         console.log("repoertee users --------", data);
-        const teamsData = data?.items?.map((team: Team) => team.team_id)
+        const teamsData = data?.items?.map((team: Team) => team.team_id);
         setReporteeTeam(data);
-        if(teamsData) {
-          setFilteredReporteeTeamIds(teamsData)
+        if (teamsData) {
+          setFilteredReporteeTeamIds(teamsData);
+          setAllTeamIds(teamsData);
         }
-        
-        const teamMap = new Map(data?.items?.map(team => [team.team_id, team.name]));
-        if(teamMap) {
+
+        const teamMap = new Map(
+          data?.items?.map((team) => [team.team_id, team.name]),
+        );
+        if (teamMap) {
           setReporteeTeamIdsMapToName(teamMap);
         }
       } catch (error) {
@@ -1176,6 +1203,7 @@ const ManagerDashboard = () => {
         const data = await fetchManagerDashboardAggregatedData({
           user_id: user.id,
           reportee_user_ids: filteredReporteeUserIds,
+          reportee_team_ids: filteredReporteeTeamIds,
         });
         setDashboardData(data);
       } catch (error) {
@@ -1197,7 +1225,7 @@ const ManagerDashboard = () => {
       loadDashboardData();
       loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     }
-  }, [filteredReporteeUserIds]);
+  }, [filteredReporteeUserIds, filteredReporteeTeamIds]);
 
   // const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
   //   setTeamframe(event.target.value);
@@ -1219,6 +1247,7 @@ const ManagerDashboard = () => {
         user_id: user?.id || "user123",
         type: type,
         reportee_user_ids: filteredReporteeUserIds,
+        reportee_team_ids: filteredReporteeTeamIds,
       });
       setTrainingEntityAttempts(data);
       setError(null);
@@ -1337,7 +1366,7 @@ const ManagerDashboard = () => {
                         size="small"
                       />
                     </Stack>
-                    
+
                     <ListSubheader
                       sx={{
                         fontSize: 12,
@@ -1352,22 +1381,16 @@ const ManagerDashboard = () => {
                     >
                       Users
                     </ListSubheader>
-                    {filteredReporteeUserIds
-                      .filter((user) =>
-                        user
-                          .toLowerCase()
-                          .includes(dropdownSearchQuery.toLowerCase())
-                      )
-                      .map((userId) => (
-                        <MenuItem key={userId} sx={menuItemSx} value={userId}>
-                          {reporteeUserIdsMapToName.get(userId)}
-                          {teamframe.includes(userId) && (
-                            <ListItemIcon>
-                              <Check fontSize="small" color="primary" />
-                            </ListItemIcon>
-                          )}
-                        </MenuItem>
-                      ))}
+                    {allUserIds.map((userId) => (
+                      <MenuItem key={userId} sx={menuItemSx} value={userId}>
+                        {reporteeUserIdsMapToName.get(userId)}
+                        {teamframe.includes(userId) && (
+                          <ListItemIcon>
+                            <Check fontSize="small" color="primary" />
+                          </ListItemIcon>
+                        )}
+                      </MenuItem>
+                    ))}
 
                     <ListSubheader
                       sx={{
@@ -1383,16 +1406,15 @@ const ManagerDashboard = () => {
                     >
                       Teams
                     </ListSubheader>
-                    {filteredReporteeTeamIds
-                      .filter((team) =>
-                        team
-                          .toLowerCase()
-                          .includes(dropdownSearchQuery.toLowerCase())
-                      )
-                      .map((teamId) => (
-                        <MenuItem key={teamId} sx={menuItemSx} value={teamId}>
-                          {reporteeTeamIdsMapToName.get(teamId)}
-                          {teamframe.includes(teamId) && (
+                    {reporteeTeam?.items &&
+                      reporteeTeam?.items.map((team) => (
+                        <MenuItem
+                          key={team.team_id}
+                          sx={menuItemSx}
+                          value={team.team_id}
+                        >
+                          {reporteeTeamIdsMapToName.get(team.team_id)}
+                          {teamframe.includes(team.team_id) && (
                             <ListItemIcon>
                               <Check fontSize="small" color="primary" />
                             </ListItemIcon>
@@ -1410,7 +1432,9 @@ const ManagerDashboard = () => {
                   </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 120 }}>
+                <DateSelector />
+
+                {/* <FormControl size="small" sx={{ minWidth: 120 }}>
                   <Select
                     value={timeframe}
                     onChange={handleTimeframeChange}
@@ -1438,7 +1462,7 @@ const ManagerDashboard = () => {
                       Custom
                     </MenuItem>
                   </Select>
-                </FormControl>
+                </FormControl> */}
                 {/* {timeframe === "Custom" && (
                   <TextField
                     type="date"
@@ -1794,10 +1818,15 @@ const ManagerDashboard = () => {
                     .filter((team) =>
                       team
                         .toLowerCase()
-                        .includes(dropdownSearchQuery.toLowerCase())
+                        .includes(dropdownSearchQuery.toLowerCase()),
                     )
                     .map((teamId, idx) => (
-                      <MenuItem key={teamId} sx={menuItemSx} value={teamId} selected={idx === 0}>
+                      <MenuItem
+                        key={teamId}
+                        sx={menuItemSx}
+                        value={teamId}
+                        selected={idx === 0}
+                      >
                         {reporteeTeamIdsMapToName.get(teamId)}
                         {teamframe.includes(teamId) && (
                           <ListItemIcon>
@@ -1808,7 +1837,9 @@ const ManagerDashboard = () => {
                     ))}
                 </Select>
 
-                <Select
+                <DateSelector />
+
+                {/* <Select
                   IconComponent={ExpandMoreIcon}
                   MenuProps={menuSelectProps}
                   sx={menuSelectsx}
@@ -1818,7 +1849,7 @@ const ManagerDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Time">
                     All Time
                   </MenuItem>
-                </Select>
+                </Select> */}
 
                 <Select
                   value="All Creators"

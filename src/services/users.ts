@@ -109,7 +109,7 @@ export const fetchUsersSummary = async (
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
     console.log(`Encoded workspace: ${encodedWorkspaceId}`)
 
-    const response = await apiClient.get(`${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE`, {
+    const response = await apiClient.get(`${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE&fields=(user_id,email,first_name,last_name)`, {
       headers: {
         accept: "application/json",
       },

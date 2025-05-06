@@ -1107,6 +1107,8 @@ const ManagerDashboard = () => {
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [userActivityData, setUserActivityData] = useState({
@@ -1276,6 +1278,8 @@ const ManagerDashboard = () => {
       setIsTableLoading(false);
     }
   };
+
+  const handleDateRangeApplyCallback = () => {};
 
   if (isLoading) {
     return (
@@ -1450,7 +1454,11 @@ const ManagerDashboard = () => {
                   </Select>
                 </FormControl>
 
-                <DateSelector />
+                <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                />
 
                 {/* <FormControl size="small" sx={{ minWidth: 120 }}>
                   <Select
@@ -1855,7 +1863,11 @@ const ManagerDashboard = () => {
                     ))}
                 </Select>
 
-                <DateSelector />
+                <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                />
 
                 {/* <Select
                   IconComponent={ExpandMoreIcon}

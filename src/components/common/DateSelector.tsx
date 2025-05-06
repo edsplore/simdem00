@@ -48,9 +48,19 @@ const DateSelectionChip = styled(Button)(({ theme }) => ({
   marginBottom: "8px",
 }));
 
-const DateSelector = () => {
+interface DateSelectorProps {
+  dateRange: DateRange<Dayjs>;
+  setDateRange: any;
+  handleDateRangeApplyCallback: any;
+}
+
+const DateSelector = ({
+  dateRange,
+  setDateRange,
+  handleDateRangeApplyCallback,
+}: DateSelectorProps) => {
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+  // const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
   const [selectionState, setSelectionState] = useState<"start" | "end">(
     "start"
   );
@@ -79,6 +89,7 @@ const DateSelector = () => {
 
   const handleDateRangeApply = () => {
     handleDateFilterClose();
+    handleDateRangeApplyCallback();
   };
 
   // Function to handle date selections

@@ -22,8 +22,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   publishSimulation,
   updateSimulation,
+  publishSimulationWithFormData,
+  updateSimulationWithFormData,
 } from "../../../../../../services/simulation_operations";
 import { useAuth } from "../../../../../../context/AuthContext";
+import { useSimulationWizard } from "../../../../../../context/SimulationWizardContext";
+
 const NavItem = styled(ListItem)(({ theme }) => ({
   cursor: "pointer",
   "&:hover": {
@@ -160,6 +164,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
   onPublish,
   script,
 }) => {
+  // Get context data to ensure we have latest changes
+  const { scriptData, visualImages, setIsScriptLocked } = useSimulationWizard();
+
   // Use ID from URL params if available, fallback to prop
   const { id: urlId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -524,10 +531,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
   // Helper function to create the simulation payload
   const createSimulationPayload = (status: "published" | "draft") => {
+    // Get the latest script data directly from context instead of props
+    // This ensures we capture changes even if user didn't click "Save Simulation" previously
+    const latestScriptData = scriptData;
+
     // Transform script to required format by removing 'id' field - but only if there's a script
     const transformedScript =
-      hasScript && script
-        ? script.map(({ id, ...rest }) => ({
+      hasScript && latestScriptData && latestScriptData.length > 0
+        ? latestScriptData.map(({ id, ...rest }) => ({
             ...rest,
             script_sentence: rest.message,
             role:
@@ -572,21 +583,59 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const lvl2PracticeEnabled = levelSettings.enablePractice?.lvl2 === true;
     const lvl3PracticeEnabled = levelSettings.enablePractice?.lvl3 === true;
 
-    // Use settings in the payload with proper access to nested properties
-    return {
+    // Create slidesData array from visualImages context
+    const slidesData =
+      isAnyVisualType && visualImages.length > 0
+        ? visualImages.map((img) => {
+            // Extract sequence properly for API format
+            const sequence = Array.isArray(img.sequence)
+              ? img.sequence.map((item) => {
+                  if (item.type === "hotspot" && item.content) {
+                    const hotspot = item.content;
+                    return {
+                      type: "hotspot",
+                      id: hotspot.id,
+                      name: hotspot.name,
+                      hotspotType: hotspot.hotspotType,
+                      coordinates: hotspot.coordinates,
+                      settings: hotspot.settings || {},
+                      options: hotspot.options || [],
+                    };
+                  } else if (item.type === "message" && item.content) {
+                    const message = item.content;
+                    return {
+                      type: "message",
+                      id: message.id,
+                      role: message.role,
+                      text: message.text,
+                    };
+                  }
+                  return item;
+                })
+              : [];
+
+            // Return formatted slide data
+            return {
+              imageId: img.id,
+              imageName: img.name,
+              imageUrl: img.url.startsWith("blob:") ? "" : img.url,
+              sequence,
+            };
+          })
+        : [];
+
+    // Create the payload with all the data
+    const payload = {
       user_id: user?.id || "private_user",
-      sim_name: simulationData?.name, // Changed from 'name' to 'sim_name'
+      sim_name: simulationData?.name,
       division_id: simulationData?.division,
       department_id: simulationData?.department,
-      sim_type: simulationData?.simulationType.toLowerCase(), // Changed from 'type' to 'sim_type'
+      sim_type: simulationData?.simulationType.toLowerCase(),
       tags: simulationData?.tags,
-      status: status, // Use the passed status parameter
+      status: status,
       lvl1: {
-        // Use the value from simulationLevels setting for is_enabled
         is_enabled: lvl1Enabled,
-        // Use the value from enablePractice setting
         enable_practice: lvl1PracticeEnabled,
-        // Use the actual values from settings
         hide_agent_script: levelSettings.hideAgentScript?.lvl1 === true,
         hide_customer_script: levelSettings.hideCustomerScript?.lvl1 === true,
         hide_keyword_scores: levelSettings.hideKeywordScores?.lvl1 === true,
@@ -599,11 +648,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
           levelSettings.aiPoweredPauses?.lvl1 === true,
       },
       lvl2: {
-        // Use the value from simulationLevels setting for is_enabled
         is_enabled: lvl2Enabled,
-        // Use the value from enablePractice setting
         enable_practice: lvl2PracticeEnabled,
-        // Use level 2 settings where relevant
         hide_agent_script: levelSettings.hideAgentScript?.lvl2 === true,
         hide_customer_script: levelSettings.hideCustomerScript?.lvl2 === true,
         hide_keyword_scores: levelSettings.hideKeywordScores?.lvl2 === true,
@@ -616,11 +662,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
           levelSettings.aiPoweredPauses?.lvl2 === true,
       },
       lvl3: {
-        // Use the value from simulationLevels setting for is_enabled
         is_enabled: lvl3Enabled,
-        // Use the value from enablePractice setting
         enable_practice: lvl3PracticeEnabled,
-        // Use level 3 settings where relevant
         hide_agent_script: levelSettings.hideAgentScript?.lvl3 === true,
         hide_customer_script: levelSettings.hideCustomerScript?.lvl3 === true,
         hide_keyword_scores: levelSettings.hideKeywordScores?.lvl3 === true,
@@ -646,23 +689,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
             "Be polite and empathetic",
             "Provide accurate information",
           ],
-      // Use the actual voice ID from settings, only if voice settings should be shown
       voice_id: showVoiceSettings
         ? voiceConfig.voiceId || DEFAULT_VOICE_ID
         : "",
       language: voiceConfig.language || "English",
       mood: "Neutral",
       voice_speed: "Normal",
-      // Use the edited prompt instead of the original one
       prompt: showPromptSettings ? editedPrompt : "",
-      // IMPORTANT: Explicitly convert simulation settings to correct format
       simulation_completion_repetition: parseInt(
         scoringConfig.repetitionsNeeded || "3",
       ),
       simulation_max_repetition: parseInt(
         scoringConfig.repetitionsAllowed || "5",
       ),
-      // Map simulation score setting to expected string values
       final_simulation_score_criteria:
         scoringConfig.simulationScore === "best"
           ? "Best of three"
@@ -691,9 +730,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
       is_locked: false,
       version: 1,
       script: transformedScript,
+      slidesData: isAnyVisualType ? slidesData : undefined,
     };
+
+    console.log("Created payload with latest script and visual data:", payload);
+    return payload;
   };
 
+  // Now the handlePublish needs to be updated to handle visual data differently
   const handlePublish = async () => {
     if (!simulationId || !simulationData) {
       setError("Missing simulation ID or data");
@@ -710,26 +754,50 @@ const SettingTab: React.FC<SettingTabProps> = ({
     setValidationError(null);
 
     try {
+      // Get the base payload
       const payload = createSimulationPayload("published");
       console.log("Publishing with settings:", payload);
 
-      // Use the publishSimulation function
-      const response = await publishSimulation(simulationId, payload);
+      // Check if we have visual data that requires FormData submission
+      if (
+        isAnyVisualType &&
+        visualImages.length > 0 &&
+        visualImages.some((img) => img.file)
+      ) {
+        // We have files to upload, need to use FormData
+        const formData = new FormData();
 
-      console.log("Publish response:", response);
+        // Add the slides data as JSON
+        formData.append("slidesData", JSON.stringify(payload.slidesData));
 
-      // Updated handling to properly extract data
-      if (response) {
-        // Get simulation object if exists
-        if (response.status === "success" || response.status === "published") {
-          setPublishedSimId(simulationId);
-          setShowPreview(true);
-          if (onPublish) {
-            onPublish();
+        // Add all the other payload properties
+        Object.entries(payload).forEach(([key, value]) => {
+          if (key !== "slidesData" && value !== undefined) {
+            if (typeof value === "object") {
+              formData.append(key, JSON.stringify(value));
+            } else {
+              formData.append(key, String(value));
+            }
           }
-        } else {
-          setError("Failed to publish simulation. Please try again.");
-        }
+        });
+
+        // Add file objects to FormData
+        visualImages.forEach((image) => {
+          if (image.file) {
+            formData.append(`slide_${image.id}`, image.file, image.name);
+          }
+        });
+
+        // Use a different function for form data submission
+        const response = await publishSimulationWithFormData(
+          simulationId,
+          formData,
+        );
+        handlePublishResponse(response);
+      } else {
+        // Regular JSON submission without files
+        const response = await publishSimulation(simulationId, payload);
+        handlePublishResponse(response);
       }
     } catch (error: any) {
       console.error("Error publishing simulation:", error);
@@ -741,6 +809,23 @@ const SettingTab: React.FC<SettingTabProps> = ({
     }
   };
 
+  // Helper function to handle the publish response
+  const handlePublishResponse = (response: any) => {
+    console.log("Publish response:", response);
+    if (response) {
+      if (response.status === "success" || response.status === "published") {
+        setPublishedSimId(simulationId);
+        setShowPreview(true);
+        if (onPublish) {
+          onPublish();
+        }
+      } else {
+        setError("Failed to publish simulation. Please try again.");
+      }
+    }
+  };
+
+  // Similarly update the handleSaveAsDraft function
   const handleSaveAsDraft = async () => {
     if (!simulationId || !simulationData) {
       setError("Missing simulation ID or data");
@@ -751,27 +836,69 @@ const SettingTab: React.FC<SettingTabProps> = ({
     setError(null);
 
     try {
+      // Get the base payload
       const payload = createSimulationPayload("draft");
       console.log("Saving as draft with settings:", payload);
 
-      // Use updateSimulation instead of publishSimulation
-      const response = await updateSimulation(simulationId, payload);
+      // Check if we have visual data that requires FormData submission
+      if (
+        isAnyVisualType &&
+        visualImages.length > 0 &&
+        visualImages.some((img) => img.file)
+      ) {
+        // We have files to upload, need to use FormData
+        const formData = new FormData();
 
-      console.log("Save as draft response:", response);
+        // Add the slides data as JSON
+        formData.append("slidesData", JSON.stringify(payload.slidesData));
 
-      if (response) {
-        if (response.status === "success" || response.status === "draft") {
-          // Navigate to manage-simulations instead of showing preview
-          navigate("/manage-simulations");
-        } else {
-          setError("Failed to save simulation as draft. Please try again.");
-        }
+        // Add all the other payload properties
+        Object.entries(payload).forEach(([key, value]) => {
+          if (key !== "slidesData" && value !== undefined) {
+            if (typeof value === "object") {
+              formData.append(key, JSON.stringify(value));
+            } else {
+              formData.append(key, String(value));
+            }
+          }
+        });
+
+        // Add file objects to FormData
+        visualImages.forEach((image) => {
+          if (image.file) {
+            formData.append(`slide_${image.id}`, image.file, image.name);
+          }
+        });
+
+        // Use updateSimulationWithFormData for form data submission
+        const response = await updateSimulationWithFormData(
+          simulationId,
+          formData,
+        );
+        handleSaveAsDraftResponse(response);
+      } else {
+        // Regular JSON submission without files
+        const response = await updateSimulation(simulationId, payload);
+        handleSaveAsDraftResponse(response);
       }
     } catch (error: any) {
       console.error("Error saving simulation as draft:", error);
       setError(`Error saving as draft: ${error.message || "Unknown error"}`);
     } finally {
       setIsSavingDraft(false);
+    }
+  };
+
+  // Helper function to handle the save as draft response
+  const handleSaveAsDraftResponse = (response: any) => {
+    console.log("Save as draft response:", response);
+    if (response) {
+      if (response.status === "success" || response.status === "draft") {
+        // Navigate to manage-simulations instead of showing preview
+        navigate("/manage-simulations");
+      } else {
+        setError("Failed to save simulation as draft. Please try again.");
+      }
     }
   };
 

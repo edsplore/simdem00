@@ -327,6 +327,39 @@ export const publishSimulation = async (
 };
 
 /**
+ * Publishes a simulation with FormData (for handling file uploads)
+ * @param simulationId - The ID of the simulation to publish
+ * @param formData - The FormData containing the publish data and files
+ * @returns A promise with the simulation update response
+ */
+export const publishSimulationWithFormData = async (
+  simulationId: string,
+  formData: FormData,
+): Promise<UpdateSimulationResponse> => {
+  try {
+    // Make sure the status is set to "published" in the FormData
+    if (!formData.has("status")) {
+      formData.append("status", "published");
+    }
+
+    const response = await apiClient.put<UpdateSimulationResponse>(
+      `/simulations/${simulationId}/update`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error publishing simulation with form data:", error);
+    throw error;
+  }
+};
+
+/**
  * Fetches a complete simulation with all associated data
  * @param simulationId - The ID of the simulation to fetch
  * @returns A promise with the complete simulation data response

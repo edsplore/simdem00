@@ -680,30 +680,57 @@ export default function VisualsTab({
   );
 
   // Actual deletion function separated for clarity and improved with functional updates
-  const performDeleteImage = useCallback((imgId: string) => {
-    // Use functional updates to ensure we always work with the latest state
-    setVisualImages((prevImages) => {
-      const idx = prevImages.findIndex((img) => img.id === imgId);
-      const nextImages = prevImages.filter((img) => img.id !== imgId);
+  const performDeleteImage = useCallback(
+    (imgId: string) => {
+      // Find the image that will be deleted to extract its message IDs
+      const imageToDelete = visualImages.find((img) => img.id === imgId);
 
-      // Choose the slide that will be selected afterwards
-      setSelectedImageId((currentSel) => {
-        if (currentSel !== imgId) return currentSel; // Nothing to fix
-        if (nextImages.length === 0) {
-          // If this was the last image, also reset sequence expanded state
-          setIsSequenceExpanded(false);
-          return null; // List became empty
+      // If we found the image, collect message IDs that need to be unassigned
+      if (imageToDelete) {
+        // Find all message IDs in this image's sequence
+        const messageIds = imageToDelete.sequence
+          .filter((item) => item.type === "message")
+          .map((item) => (item.content as ScriptMessage).id);
+
+        // Remove these IDs from the assigned messages set so they become available again
+        if (messageIds.length > 0) {
+          console.log(
+            "Releasing message IDs back to unassigned pool:",
+            messageIds,
+          );
+          setAssignedScriptMessageIds((prev) => {
+            const newSet = new Set(prev);
+            messageIds.forEach((id) => newSet.delete(id));
+            return newSet;
+          });
         }
-        return nextImages[Math.min(idx, nextImages.length - 1)].id;
+      }
+
+      // Use functional updates to ensure we always work with the latest state
+      setVisualImages((prevImages) => {
+        const idx = prevImages.findIndex((img) => img.id === imgId);
+        const nextImages = prevImages.filter((img) => img.id !== imgId);
+
+        // Choose the slide that will be selected afterwards
+        setSelectedImageId((currentSel) => {
+          if (currentSel !== imgId) return currentSel; // Nothing to fix
+          if (nextImages.length === 0) {
+            // If this was the last image, also reset sequence expanded state
+            setIsSequenceExpanded(false);
+            return null; // List became empty
+          }
+          return nextImages[Math.min(idx, nextImages.length - 1)].id;
+        });
+
+        return nextImages;
       });
 
-      return nextImages;
-    });
-
-    // Clear edit state regardless
-    setEditingHotspot(null);
-    setIsEditing(false);
-  }, []);
+      // Clear edit state regardless
+      setEditingHotspot(null);
+      setIsEditing(false);
+    },
+    [visualImages, setAssignedScriptMessageIds],
+  );
 
   // Clicking a thumbnail
   const handleSelectImage = useCallback((imgId: string) => {

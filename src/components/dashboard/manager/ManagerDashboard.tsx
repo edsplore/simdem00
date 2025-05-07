@@ -384,9 +384,6 @@ const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
               ".MuiChartsAxis-tick": {
                 display: "none",
               },
-              ".MuiChartsAxis-tickLabel tspan": {
-                color: "#919EAB",
-              },
             }}
             {...chartSetting}
           />
@@ -572,7 +569,14 @@ const CircularProgressCards = ({ value, title, popupText }) => {
 };
 
 // TrainingPlanTable component
-const TrainingPlanTable = ({ trainingPlans }) => {
+const TrainingPlanTable = ({
+  trainingPlans,
+  totalCount,
+  page ,
+  rowsPerPage,
+  onChangePage,
+  onChangeRowsPerPage,
+}) => {
   const [expandedRows, setExpandedRows] = useState({});
 
   const toggleRow = (id) => {
@@ -927,22 +931,24 @@ const TrainingPlanTable = ({ trainingPlans }) => {
         </TableBody>
         
       </Table>
-      {/* <Box
-              sx={{
-                bgcolor: '#F9FAFB',
-                borderTop: '1px solid rgba(224, 224, 224, 1)',
-              }}
-            > */}
-              <TablePagination
-                component="div"
-                count={10}
-                page={1}
-                onPageChange={()=>{}}
-                rowsPerPage={5}
-                onRowsPerPageChange={()=>{}}
-                rowsPerPageOptions={[5, 10, 25, 50]}
-              />
-            {/* </Box> */}
+      <Box
+        sx={{
+          bgcolor: "#F9FAFB",
+          display: "flex",
+          justifyContent: "flex-start",
+          width: "100%",
+        }}
+      >
+        <TablePagination
+          component="div"
+          count={totalCount} // Total number of items
+          page={page}
+          onPageChange={onChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={onChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
+      </Box>
     </TableContainer>
   );
 };
@@ -1036,6 +1042,9 @@ const ManagerDashboard = () => {
   const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
+  const [trainingEntityPagination, setTrainingEntityPagination] = useState<any>(
+    {}
+  );
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
   const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
@@ -1047,7 +1056,7 @@ const ManagerDashboard = () => {
   const [creatorName, setCreatorName] = useState<[] | string[]>([]);
   const [selectedCreators, setSelectedCreators] = useState([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [userActivityData, setUserActivityData] = useState({
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
@@ -1221,7 +1230,6 @@ const ManagerDashboard = () => {
           params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
         }
 
-        
         // In a real implementation, we would fetch data from the API
         const data = await fetchManagerDashboardAggregatedData({
           user_id: user.id,
@@ -1283,6 +1291,7 @@ const ManagerDashboard = () => {
   const handleTabChange = (event: any, newValue: any) => {
     setActiveTab(newValue);
     loadTrainingEntityAttemptsForManagerDashboard(newValue);
+    setPage(0); // Reset to the first page when changing tabs
   };
 
   const loadTrainingEntityAttemptsForManagerDashboard = async (
@@ -1324,6 +1333,10 @@ const ManagerDashboard = () => {
         params.trainingEntityDateRange.endDate =
           trainingEntityDateRange[1].format("YYYY-MM-DD");
       }
+      const pagination = {
+        page: page,
+        pagesize: rowsPerPage,
+      };
 
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
@@ -1331,8 +1344,11 @@ const ManagerDashboard = () => {
         reportee_user_ids: filteredReporteeUserIds,
         reportee_team_ids: filteredReporteeTeamIds,
         params,
+        pagination,
       });
-      setTrainingEntityAttempts(data);
+      
+      setTrainingEntityPagination(data.pagination);
+      setTrainingEntityAttempts(data.training_entity);
       setError(null);
     } catch (err) {
       setError("Failed to load training entity attempts");
@@ -1353,6 +1369,20 @@ const ManagerDashboard = () => {
   const handleTrainingEntitySelectedApply = () => {
     loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  // Handle rows per page change
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to the first page
+    // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+  useEffect(() => {
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  }, [rowsPerPage, page]);
 
   if (isLoading) {
     return (
@@ -2006,6 +2036,11 @@ const ManagerDashboard = () => {
                   ? filteredTrainingEntities
                   : trainingEntityAttempts
               }
+              totalCount={trainingEntityPagination.total_count} // Pass total count for pagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onChangePage={handleChangePage}
+              onChangeRowsPerPage={handleChangeRowsPerPage}
             />
           </Stack>
         </Stack>

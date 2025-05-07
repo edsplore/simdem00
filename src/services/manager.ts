@@ -104,6 +104,10 @@ export interface ManagerDashboardTrainingEntityAttemptsStatsPayload {
       endDate: string;
     };
   };
+  pagination: {
+    page: number;
+    pagesize: number;
+  };
 }
 
 export interface ManagerDashboardTrainingEntityAttemptsStatsResponse {
@@ -158,7 +162,7 @@ export const fetchTrainingEntityAttemptsStatsForManagerDashboard = async (
       "/manager-dashboard-data/fetch/training-entity",
       payload
     );
-    return response.data.training_entity;
+    return response.data;
   } catch (error) {
     console.error("Error fetching training entity attempts stats:", error);
     throw error;

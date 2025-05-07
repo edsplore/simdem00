@@ -45,6 +45,9 @@ import {
   fetchAdminDashboardStats,
   fetchAdminDashboardUserActivity,
 } from "../../../services/admin";
+import DateSelector from "../../common/DateSelector";
+import { DateRange } from "@mui/x-date-pickers-pro";
+import { Dayjs } from "dayjs";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
 
@@ -587,6 +590,8 @@ const AdminDashboard = () => {
   const [timeframe, setTimeframe] = useState("All Time");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+
   const [userActivityData, setUserActivityData] = useState({
     users: adminDashboardData.userActivity,
     total: adminDashboardData.totalUsers,
@@ -699,6 +704,10 @@ const AdminDashboard = () => {
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
+  const handleDateRangeApplyCallback = () => {
+    // loadUserActivity();
+    // loadAdminDashboardStats();
+  };
 
   if (isLoading) {
     return (
@@ -743,35 +752,11 @@ const AdminDashboard = () => {
               Simulator Platform Stats
             </Typography>
 
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <Select
-                value={timeframe}
-                onChange={handleTimeframeChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-              >
-                <MenuItem sx={menuItemSx} value="All Time">
-                  All Time
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Today">
-                  Today
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Yesterday">
-                  Yesterday
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Last 7 days">
-                  Last 7 days
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Last 30 days">
-                  Last 30 days
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Custom">
-                  Custom
-                </MenuItem>
-              </Select>
-            </FormControl>
+            <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                />
           </Stack>
 
           {/* First row of stats */}
@@ -1002,31 +987,11 @@ const AdminDashboard = () => {
                   </MenuItem>
                 </Select>
 
-                <Select
-                  value={timeframe}
-                  onChange={handleTimeframeChange}
-                  displayEmpty
-                  IconComponent={ExpandMore}
-                  MenuProps={menuSelectProps}
-                  sx={menuSelectsx}
-                  size="small"
-                >
-                  <MenuItem sx={menuItemSx} value="All Time">
-                    All Time
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Today">
-                    Today
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="This Week">
-                    This Week
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="This Month">
-                    This Month
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="This Year">
-                    This Year
-                  </MenuItem>
-                </Select>
+                {/* <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                /> */}
               </Stack>
             </Stack>
 

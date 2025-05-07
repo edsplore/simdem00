@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Stack,
@@ -89,10 +89,22 @@ const PlaybackTable = () => {
     FetchPlaybackRowDataResponse[] | null
   >(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const handleRowClick = (id: string) => {
     navigate(`/playback/${id}`);
   };
+  const filteredData = useMemo(() => {
+    if (!playbackData) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return playbackData;
+
+
+    return playbackData.filter((row) =>
+      row.trainingPlan.toLowerCase().includes(q)
+    );
+  }, [playbackData, searchQuery]);
+
 
   useEffect(() => {
     const loadPlaybackData = async () => {
@@ -119,7 +131,14 @@ const PlaybackTable = () => {
   return (
     <Stack spacing={2}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <TextField placeholder="Search" size="small" sx={{ maxWidth: 300 }} />
+        <TextField
+          placeholder="Search"
+          size="small"
+          sx={{ maxWidth: 300 }}
+          value={searchQuery}
+          onKeyDown={(e) => e.stopPropagation()}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
         <Stack direction="row" spacing={1}>
           <IconButton>
             <FilterListIcon sx={{ fontSize: 20 }} />
@@ -177,7 +196,7 @@ const PlaybackTable = () => {
           <></>
         )}
 
-        {playbackData?.map((playback: FetchPlaybackRowDataResponse) => (
+        {filteredData?.map((playback: FetchPlaybackRowDataResponse) => (
           <Grid
             key={playback.id}
             container

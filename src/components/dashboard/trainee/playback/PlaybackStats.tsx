@@ -1,9 +1,14 @@
-import React from 'react';
-import { Stack, Grid, Typography, Card, CardContent, Box } from '@mui/material';
-import InfoIcon from '@mui/icons-material/Info';
-import completionImage from '../../../../assets/completion.svg';
-import averageImage from '../../../../assets/average.svg';
-import highestImage from '../../../../assets/highest.svg';
+import React, { useEffect, useState } from "react";
+import { Stack, Grid, Typography, Card, CardContent, Box } from "@mui/material";
+import InfoIcon from "@mui/icons-material/Info";
+import completionImage from "../../../../assets/completion.svg";
+import averageImage from "../../../../assets/average.svg";
+import highestImage from "../../../../assets/highest.svg";
+import { useAuth } from "../../../../context/AuthContext";
+import {
+  fetchPlaybackStats,
+  FetchPlaybackStatsResponse,
+} from "../../../../services/playback";
 
 interface StatData {
   title: string;
@@ -18,34 +23,38 @@ interface StatData {
   backgroundIcon?: string;
 }
 
+interface PlaybackStatsProps {
+  setGlobalLoading: any;
+}
+
 const stats: StatData[] = [
   {
-    title: 'Simulations Completed',
-    value: '18/32',
-    subtitle: 'Total 7 Modules',
+    title: "Simulations Completed",
+    value: "18/32",
+    subtitle: "Total 7 Modules",
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
     progress: 56,
   },
   {
-    title: 'On Time Completion',
-    value: '74%',
-    subtitle: '16 simulations',
+    title: "On Time Completion",
+    value: "74%",
+    subtitle: "16 simulations",
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: '/src/assets/completion.svg',
+    backgroundIcon: "/src/assets/completion.svg",
   },
   {
-    title: 'Average Sim Score',
-    value: '89%',
-    trend: { value: -4, label: 'vs last week' },
+    title: "Average Sim Score",
+    value: "89%",
+    trend: { value: -4, label: "vs last week" },
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: '/src/assets/average.svg',
+    backgroundIcon: "/src/assets/average.svg",
   },
   {
-    title: 'Highest Sim Score',
-    value: '94%',
-    trend: { value: 2, label: 'vs last week' },
+    title: "Highest Sim Score",
+    value: "94%",
+    trend: { value: 2, label: "vs last week" },
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: '/src/assets/highest.svg',
+    backgroundIcon: "/src/assets/highest.svg",
   },
 ];
 
@@ -57,7 +66,7 @@ const CircularProgress = ({ value }: { value: number }) => {
   const offset = circumference - (value / 100) * circumference;
 
   return (
-    <Box sx={{ position: 'relative', width: size, height: size }}>
+    <Box sx={{ position: "relative", width: size, height: size }}>
       <svg width={size} height={size}>
         <circle
           cx={size / 2}
@@ -83,10 +92,10 @@ const CircularProgress = ({ value }: { value: number }) => {
       <Typography
         variant="h6"
         sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
           fontWeight: 600,
         }}
       >
@@ -96,7 +105,37 @@ const CircularProgress = ({ value }: { value: number }) => {
   );
 };
 
-const PlaybackStats = () => {
+const PlaybackStats = ({ setGlobalLoading }: PlaybackStatsProps) => {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [playbackStatsData, setPlaybackStatsData] =
+    useState<FetchPlaybackStatsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadPlaybackStats = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setGlobalLoading(true);
+        // In a real implementation, we would fetch data from the API
+        const data = await fetchPlaybackStats({
+          user_id: user.id,
+        });
+        setPlaybackStatsData(data);
+      } catch (error) {
+        console.error("Error loading playback data:", error);
+        setError("Failed to load playback data");
+      } finally {
+        setIsLoading(false);
+        setGlobalLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadPlaybackStats();
+  }, [user]);
   return (
     <Stack spacing={2}>
       <Typography variant="h5" fontWeight="medium">
@@ -108,16 +147,16 @@ const PlaybackStats = () => {
             <Card
               variant="outlined"
               sx={{
-                height: '100%',
+                height: "100%",
                 minHeight: 180, // Set minimum height for all cards
               }}
             >
               <CardContent
                 sx={{
-                  position: 'relative',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
+                  position: "relative",
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
                 <Stack spacing={2} sx={{ flex: 1 }}>
@@ -125,8 +164,8 @@ const PlaybackStats = () => {
                     variant="subtitle2"
                     color="text.secondary"
                     sx={{
-                      display: 'flex',
-                      alignItems: 'center',
+                      display: "flex",
+                      alignItems: "center",
                       gap: 1,
                     }}
                   >
@@ -135,23 +174,47 @@ const PlaybackStats = () => {
                   </Typography>
 
                   {index === 0 ? (
-                    <Stack direction="row" sx={{ width: '100%' }}>
-                      <Box sx={{ width: '67%' }}>
+                    <Stack direction="row" sx={{ width: "100%" }}>
+                      <Box sx={{ width: "67%" }}>
                         <Stack spacing={1}>
                           <Typography
                             variant="h4"
-                            sx={{ display: 'flex', alignItems: 'baseline' }}
+                            sx={{ display: "flex", alignItems: "baseline" }}
                           >
-                            18
+                            {playbackStatsData ? (
+                              <>
+                                {
+                                  playbackStatsData.simultion_completion
+                                    .completed
+                                }
+                                /{playbackStatsData.simultion_completion.total}
+                              </>
+                            ) : (
+                              <></>
+                            )}
+                            {/* {playbackStatsData ? (
+                              playbackStatsData[
+                                Object.keys(playbackStatsData)[
+                                  index
+                                ] as keyof typeof playbackStatsData
+                              ]
+                            ) : (
+                              <></>
+                            )} */}
                             <Typography
                               component="span"
                               sx={{
-                                fontSize: '1rem',
-                                color: 'text.secondary',
+                                fontSize: "1rem",
+                                color: "text.secondary",
                                 ml: 0.5,
                               }}
                             >
-                              /32
+                              /
+                              {playbackStatsData ? (
+                                playbackStatsData.simultion_completion.total
+                              ) : (
+                                <></>
+                              )}
                             </Typography>
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
@@ -161,9 +224,9 @@ const PlaybackStats = () => {
                       </Box>
                       <Box
                         sx={{
-                          width: '33%',
-                          display: 'flex',
-                          justifyContent: 'center',
+                          width: "33%",
+                          display: "flex",
+                          justifyContent: "center",
                         }}
                       >
                         <CircularProgress value={stat.progress || 0} />
@@ -181,15 +244,15 @@ const PlaybackStats = () => {
                         <Typography
                           variant="body2"
                           color={
-                            stat.trend.value > 0 ? 'success.main' : 'error.main'
+                            stat.trend.value > 0 ? "success.main" : "error.main"
                           }
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
+                            display: "flex",
+                            alignItems: "center",
                             gap: 0.5,
                           }}
                         >
-                          {stat.trend.value > 0 ? '↑' : '↓'}{' '}
+                          {stat.trend.value > 0 ? "↑" : "↓"}{" "}
                           {Math.abs(stat.trend.value)}%
                           <Typography
                             component="span"
@@ -210,7 +273,7 @@ const PlaybackStats = () => {
                     src={stat.backgroundIcon}
                     alt=""
                     sx={{
-                      position: 'absolute',
+                      position: "absolute",
                       bottom: 0,
                       right: 0,
                       width: 80,

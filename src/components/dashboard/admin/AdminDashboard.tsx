@@ -39,9 +39,19 @@ import {
 } from "@mui/icons-material";
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
+import {
+  AdminDashboardUserActivityPayload,
+  AdminDashboardUserActivityPayloadParams,
+  AdminDashboardUserActivityResponse,
+  AdminDashboardUserStatsResponse,
+  fetchAdminDashboardStats,
+  fetchAdminDashboardUserActivity,
+} from "../../../services/admin";
+import { DateRange } from "@mui/x-date-pickers-pro";
+import { Dayjs } from "dayjs";
+import DateSelector from "../../common/DateSelector";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
-
 
 const adminDashboardData = {
   platformStats: {
@@ -113,7 +123,7 @@ const adminDashboardData = {
       assignedSimulations: 24,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
+      avgScore: "86%",
       activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
@@ -132,7 +142,7 @@ const adminDashboardData = {
       assignedSimulations: 24,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
+      avgScore: "86%",
       activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
@@ -151,8 +161,8 @@ const adminDashboardData = {
       assignedSimulations: 24,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
-       activatedOn: "25 Dec 2024",
+      avgScore: "86%",
+      activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
       lastLoginDate: "25 Dec 2024",
@@ -170,8 +180,8 @@ const adminDashboardData = {
       assignedSimulations: 24,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
-       activatedOn: "25 Dec 2024",
+      avgScore: "86%",
+      activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
       lastLoginDate: "25 Dec 2024",
@@ -189,8 +199,8 @@ const adminDashboardData = {
       assignedSimulations: 12,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
-       activatedOn: "25 Dec 2024",
+      avgScore: "86%",
+      activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
       lastLoginDate: "25 Dec 2024",
@@ -208,8 +218,8 @@ const adminDashboardData = {
       assignedSimulations: 8,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
-       activatedOn: "25 Dec 2024",
+      avgScore: "86%",
+      activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
       lastLoginDate: "25 Dec 2024",
@@ -227,8 +237,8 @@ const adminDashboardData = {
       assignedSimulations: 0,
       completionRate: "86%",
       adherenceRate: "56%",
-      avgScore: '86%',
-       activatedOn: "25 Dec 2024",
+      avgScore: "86%",
+      activatedOn: "25 Dec 2024",
       deactivatedOn: "25 Dec 2024",
       loginCount: 24,
       lastLoginDate: "25 Dec 2024",
@@ -237,7 +247,6 @@ const adminDashboardData = {
   ],
   totalUsers: 110,
 };
-
 
 const InfoIconPopup = ({ title }) => {
   return (
@@ -275,7 +284,6 @@ const InfoIconPopup = ({ title }) => {
   );
 };
 
-
 // UserStatsCard component
 const UserStatsCard = ({
   title,
@@ -307,7 +315,6 @@ const UserStatsCard = ({
         <InfoIconPopup title={popupText} />
       </Stack>
 
-
       <Grid container alignItems="center" spacing={1.5}>
         <Grid item xs={12} md={6}>
           <Box
@@ -318,14 +325,14 @@ const UserStatsCard = ({
           >
             <CircularProgress
               variant="determinate"
-              value={100}
+              value={breakdown.trainees}
               size={size}
               thickness={thickness}
               sx={{ color: "#E3E8FB" }}
             />
             <CircularProgress
               variant="determinate"
-              value={70}
+              value={breakdown.designer}
               size={size}
               thickness={thickness}
               sx={() => ({
@@ -339,7 +346,7 @@ const UserStatsCard = ({
             />
             <CircularProgress
               variant="determinate"
-              value={45}
+              value={breakdown.manager}
               size={size}
               thickness={thickness}
               sx={() => ({
@@ -353,7 +360,7 @@ const UserStatsCard = ({
             />
             <CircularProgress
               variant="determinate"
-              value={20}
+              value={breakdown.admin}
               size={size}
               thickness={thickness}
               sx={() => ({
@@ -567,10 +574,18 @@ const menuItemSx = {
   },
 };
 
-
 const AdminDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(adminDashboardData);
+  const [dashboardStats, setDashboardStats] =
+    useState<AdminDashboardUserStatsResponse | null>(null);
+  const [userActivity, setUserActivity] = useState<
+    AdminDashboardUserActivityResponse[]
+  >([]);
+
+  const [userActivityParams, setUserActivityParams] =
+    useState<AdminDashboardUserActivityPayloadParams | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -581,74 +596,109 @@ const AdminDashboard = () => {
   const [timeframe, setTimeframe] = useState("All Time");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+
   const [userActivityData, setUserActivityData] = useState({
     users: adminDashboardData.userActivity,
     total: adminDashboardData.totalUsers,
   });
 
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+
+  const handleDateRangeApplyCallback = () => {};
+
+  const loadUserActivity = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // In a real implementation, we would fetch data from the API
+        const payload: AdminDashboardUserActivityPayload = {
+          user_id: user.id,
+        };
+
+        if (userActivityParams) {
+          payload["pagination"] = userActivityParams;
+        }
+        const data = await fetchAdminDashboardUserActivity(payload);
+        setUserActivity(data);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        setError("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const loadAdminDashboardStats = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        // In a real implementation, we would fetch data from the API
+        const data = await fetchAdminDashboardStats({
+          user_id: user.id,
+        });
+        setDashboardStats(data);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        setError("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      if (user?.id) {
-        try {
-          setIsLoading(true);
-          setError(null);
-          // In a real implementation, we would fetch data from the API
-          // const data = await fetchAdminDashboardData(user.id);
-          // setDashboardData(data);
-
-
-          // For now, we'll use mock data
-          setDashboardData(adminDashboardData);
-        } catch (error) {
-          console.error("Error loading dashboard data:", error);
-          setError("Failed to load dashboard data");
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-
-    loadDashboardData();
+    loadUserActivity();
+    loadAdminDashboardStats();
   }, [user?.id]);
 
+  // useEffect(() => {
+  //   const loadUserActivity = async () => {
+  //     try {
+  //       // In a real implementation, we would fetch data from the API with filters
+  //       const data = await fetchUserActivityLog({
+  //         department: department !== "All Department" ? department : undefined,
+  //         division: division !== "All Divisions" ? division : undefined,
+  //         role: role !== "All Roles" ? role : undefined,
+  //         status: status !== "All Status" ? status : undefined,
+  //         timeframe: timeframe !== "All Time" ? timeframe : undefined,
+  //         search: searchQuery,
+  //         page,
+  //         limit: rowsPerPage,
+  //       });
+
+  //       setUserActivityData(data);
+  //     } catch (error) {
+  //       console.error("Error loading user activity:", error);
+  //     }
+  //   };
+
+  //   loadUserActivity();
+  // }, [
+  //   searchQuery,
+  //   department,
+  //   division,
+  //   role,
+  //   status,
+  //   timeframe,
+  //   page,
+  //   rowsPerPage,
+  // ]);
 
   useEffect(() => {
-    const loadUserActivity = async () => {
-      try {
-        // In a real implementation, we would fetch data from the API with filters
-        const data = await fetchUserActivityLog({
-          department: department !== "All Department" ? department : undefined,
-          division: division !== "All Divisions" ? division : undefined,
-          role: role !== "All Roles" ? role : undefined,
-          status: status !== "All Status" ? status : undefined,
-          timeframe: timeframe !== "All Time" ? timeframe : undefined,
-          search: searchQuery,
-          page,
-          limit: rowsPerPage,
-        });
-
-
-        setUserActivityData(data);
-      } catch (error) {
-        console.error("Error loading user activity:", error);
-      }
-    };
-
-
-    loadUserActivity();
-  }, [
-    searchQuery,
-    department,
-    division,
-    role,
-    status,
-    timeframe,
-    page,
-    rowsPerPage,
-  ]);
-
+    if (
+      userActivityParams?.department ||
+      userActivityParams?.dateRange ||
+      userActivityParams?.division ||
+      userActivityParams?.role ||
+      userActivityParams?.status
+    ) {
+      loadUserActivity();
+    }
+  }, [userActivityParams]);
 
   const handleChangePage = (
     event: React.ChangeEvent<unknown>,
@@ -657,37 +707,46 @@ const AdminDashboard = () => {
     setPage(newPage - 1);
   };
 
-
   const handleChangeRowsPerPage = (event: SelectChangeEvent<string>) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-
   const handleDepartmentChange = (event: SelectChangeEvent<string>) => {
-    setDepartment(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      department: event.target.value,
+    });
   };
-
 
   const handleDivisionChange = (event: SelectChangeEvent<string>) => {
-    setDivision(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      division: event.target.value,
+    });
   };
-
 
   const handleRoleChange = (event: SelectChangeEvent<string>) => {
-    setRole(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      role: event.target.value,
+    });
   };
-
 
   const handleStatusChange = (event: SelectChangeEvent<string>) => {
-    setStatus(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      status: event.target.value,
+    });
   };
-
 
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
-
+  const handleDateRangeApplyCallback = () => {
+    // loadUserActivity();
+    // loadAdminDashboardStats();
+  };
 
   if (isLoading) {
     return (
@@ -701,7 +760,6 @@ const AdminDashboard = () => {
     );
   }
 
-
   if (error) {
     return (
       <DashboardContent>
@@ -713,7 +771,6 @@ const AdminDashboard = () => {
       </DashboardContent>
     );
   }
-
 
   return (
     <DashboardContent>
@@ -734,113 +791,88 @@ const AdminDashboard = () => {
               Simulator Platform Stats
             </Typography>
 
-
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <Select
-                value={timeframe}
-                onChange={handleTimeframeChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-              >
-                <MenuItem sx={menuItemSx} value="All Time">
-                  All Time
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Today">
-                  Today
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Yesterday">
-                  Yesterday
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Last 7 days">
-                  Last 7 days
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Last 30 days">
-                  Last 30 days
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Custom">
-                  Custom
-                </MenuItem>
-              </Select>
-            </FormControl>
+            <DateSelector
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+            />
           </Stack>
-
 
           {/* First row of stats */}
-          <Stack>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="New Users Onboarded"
-                  total={dashboardData.platformStats.newUsers.total}
-                  breakdown={dashboardData.platformStats.newUsers.breakdown}
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="Active Users"
-                  total={dashboardData.platformStats.activeUsers.total}
-                  breakdown={dashboardData.platformStats.activeUsers.breakdown}
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="Deactivated Users"
-                  total={dashboardData.platformStats.deactivatedUsers.total}
-                  breakdown={
-                    dashboardData.platformStats.deactivatedUsers.breakdown
-                  }
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
-              </Grid>
-            </Grid>
-          </Stack>
 
+          {dashboardStats ? (
+            <Stack>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="New Users Onboarded"
+                    total={dashboardStats?.new_users.total_users}
+                    breakdown={dashboardStats?.new_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="Active Users"
+                    total={dashboardStats?.active_users.total_users}
+                    breakdown={dashboardStats?.active_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="Deactivated Users"
+                    total={dashboardStats?.deactivated_users.total_users}
+                    breakdown={dashboardStats?.deactivated_users.total_users}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+              </Grid>
+            </Stack>
+          ) : (
+            <></>
+          )}
 
           {/* Second row of stats */}
-          <Stack>
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="Daily Active Users (DAU)"
-                  total={dashboardData.platformStats.dailyActiveUsers.total}
-                  breakdown={
-                    dashboardData.platformStats.dailyActiveUsers.breakdown
-                  }
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
+          {dashboardStats ? (
+            <Stack>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="Daily Active Users (DAU)"
+                    total={dashboardStats?.daily_active_users.total_users}
+                    breakdown={dashboardStats?.daily_active_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="Weekly Active Users (WAU)"
+                    total={dashboardStats?.weekly_active_users.total_users}
+                    breakdown={dashboardStats?.weekly_active_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <UserStatsCard
+                    title="Monthly Active Users (MAU)"
+                    total={dashboardStats?.monthly_active_users.total_users}
+                    breakdown={dashboardStats?.monthly_active_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
               </Grid>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="Weekly Active Users (WAU)"
-                  total={dashboardData.platformStats.weeklyActiveUsers.total}
-                  breakdown={
-                    dashboardData.platformStats.weeklyActiveUsers.breakdown
-                  }
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
-              </Grid>
-              <Grid item xs={12} md={4}>
-                <UserStatsCard
-                  title="Monthly Active Users (MAU)"
-                  total={dashboardData.platformStats.monthlyActiveUsers.total}
-                  breakdown={
-                    dashboardData.platformStats.monthlyActiveUsers.breakdown
-                  }
-                  icon={<InfoIcon />}
-                  popupText="On time completed test Sim / Total no. of test sims completed"
-                />
-              </Grid>
-            </Grid>
-          </Stack>
+            </Stack>
+          ) : (
+            <></>
+          )}
+
           {/* User Status and Activity Log */}
           <Typography
             sx={{ fontSize: 18 }}
@@ -851,434 +883,537 @@ const AdminDashboard = () => {
             User Status and Activity Log
           </Typography>
 
-<Stack>
-          {/* Search and Filters */}
-          <Stack
-           direction={{
-            sm: 'column',
-            md: 'row',
-          }} gap={2}
-            bgcolor="#F9FAFB"
-            borderRadius={1.5}
-            p={1.5}
-            justifyContent="space-between"
-          >
-            <TextField
-              placeholder="Search by Assignment Name or ID"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
+          <Stack>
+            {/* Search and Filters */}
+            <Stack
+              direction={{
+                sm: "column",
+                md: "row",
               }}
-              sx={{
-                bgcolor: "white",
-                boxShadow: "0px 1px 2px 0px #1018280D",
-                "& .MuiOutlinedInput-root": {
-                  "& fieldset": {
-                    border: "1px solid #00000014",
-                    borderRadius: 1,
-                    borderColor: "#E0E0E0",
+              gap={2}
+              bgcolor="#F9FAFB"
+              borderRadius={1.5}
+              p={1.5}
+              justifyContent="space-between"
+            >
+              <TextField
+                placeholder="Search by Assignment Name or ID"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  bgcolor: "white",
+                  boxShadow: "0px 1px 2px 0px #1018280D",
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": {
+                      border: "1px solid #00000014",
+                      borderRadius: 1,
+                      borderColor: "#E0E0E0",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#C0C0C0",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#E0E0E0",
+                    },
                   },
-                  "&:hover fieldset": {
-                    borderColor: "#C0C0C0",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#E0E0E0",
-                  },
-                },
-              }}
-              size="small"
-            />
-
-
-            <Stack direction={{
-                sm: 'column',
-                md: 'row',
-              }} gap={2}>
-              <Select
-                value={department}
-                onChange={handleDepartmentChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
+                }}
                 size="small"
+              />
+
+              <Stack
+                direction={{
+                  sm: "column",
+                  md: "row",
+                }}
+                gap={2}
               >
-                <MenuItem sx={menuItemSx} value="All Department">
-                  All Department
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Engineering">
-                  Engineering
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Product">
-                  Product
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Design">
-                  Design
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Operations">
-                  Operations
-                </MenuItem>
-              </Select>
+                <Select
+                  value={department}
+                  onChange={handleDepartmentChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="All Department">
+                    All Department
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Engineering">
+                    Engineering
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Product">
+                    Product
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Design">
+                    Design
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Operations">
+                    Operations
+                  </MenuItem>
+                </Select>
 
+                <Select
+                  value={division}
+                  onChange={handleDivisionChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="All Divisions">
+                    All Divisions
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="EverAI Labs">
+                    EverAI Labs
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Product Development">
+                    Product Development
+                  </MenuItem>
+                </Select>
 
-              <Select
-                value={division}
-                onChange={handleDivisionChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-                size="small"
-              >
-                <MenuItem sx={menuItemSx} value="All Divisions">
-                  All Divisions
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="EverAI Labs">
-                  EverAI Labs
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Product Development">
-                  Product Development
-                </MenuItem>
-              </Select>
+                <Select
+                  value={role}
+                  onChange={handleRoleChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="All Roles">
+                    All Roles
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Admin">
+                    Admin
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Manager">
+                    Manager
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Designer">
+                    Designer
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Trainee">
+                    Trainee
+                  </MenuItem>
+                </Select>
 
+                <Select
+                  value={status}
+                  onChange={handleStatusChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="All Status">
+                    All Status
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Active">
+                    Active
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Inactive">
+                    Inactive
+                  </MenuItem>
+                </Select>
 
-              <Select
-                value={role}
-                onChange={handleRoleChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-                size="small"
-              >
-                <MenuItem sx={menuItemSx} value="All Roles">
-                  All Roles
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Admin">
-                  Admin
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Manager">
-                  Manager
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Designer">
-                  Designer
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Trainee">
-                  Trainee
-                </MenuItem>
-              </Select>
-
-
-              <Select
-                value={status}
-                onChange={handleStatusChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-                size="small"
-              >
-                <MenuItem sx={menuItemSx} value="All Status">
-                  All Status
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Active">
-                  Active
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Inactive">
-                  Inactive
-                </MenuItem>
-              </Select>
-
-
-              <Select
-                value={timeframe}
-                onChange={handleTimeframeChange}
-                displayEmpty
-                IconComponent={ExpandMore}
-                MenuProps={menuSelectProps}
-                sx={menuSelectsx}
-                size="small"
-              >
-                <MenuItem sx={menuItemSx} value="All Time">
-                  All Time
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="Today">
-                  Today
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="This Week">
-                  This Week
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="This Month">
-                  This Month
-                </MenuItem>
-                <MenuItem sx={menuItemSx} value="This Year">
-                  This Year
-                </MenuItem>
-              </Select>
+                <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                />
+              </Stack>
             </Stack>
-          </Stack>
 
+            {/* User Activity Table */}
+            <Stack sx={{ borderRadius: 2 }}>
+              <TableContainer
+                component={Paper}
+                sx={{
+                  border: "1px solid #0000001A",
+                  borderTopLeftRadius: "16px",
+                  borderTopRightRadius: "16px",
+                  mt: 2,
+                }}
+                style={{ overflowX: "auto" }}
+              >
+                <Table style={{ minWidth: 6 * 550 }}>
+                  <TableHead sx={{ bgcolor: "#F9FAFB" }}>
+                    <TableRow>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          fontSize: 14,
+                          width: "150px",
+                        }}
+                      >
+                        Name & Email
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Role
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Division & Department
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Added On
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Status
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Assigned Simulations
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Completetion Rate
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Adherence Rate
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Average Score
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Activated On
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Deactivated On
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Login Count
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Last Login Date
+                      </TableCell>
+                      <TableCell
+                        sx={{
+                          py: 1,
+                          px: 2,
+                          color: "#00000066",
+                          width: "250px",
+                        }}
+                      >
+                        Last Session Duration
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {userActivity.map(
+                      (user: AdminDashboardUserActivityResponse) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <Stack>
+                              <Typography
+                                variant="body2"
+                                color="#000000CC"
+                                fontWeight="medium"
+                              >
+                                {user.name}
+                              </Typography>
+                              <Typography variant="caption" color="#00000099">
+                                {user.email}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={user.role}
+                              size="small"
+                              sx={{
+                                bgcolor: "#F2F4F7",
+                                color: "#344054",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Stack>
+                              <Typography variant="body2">
+                                {user.division}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {user.department}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>{user.addedOn}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={user.status}
+                              size="small"
+                              sx={{
+                                bgcolor:
+                                  user.status === "ACTIVE"
+                                    ? "#F2F4F7"
+                                    : "#FEF3F2",
+                                color:
+                                  user.status === "ACTIVE"
+                                    ? "#344054"
+                                    : "#B42318",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell> {user.assignedSimulations}</TableCell>
+                          <TableCell>
+                            {" "}
+                            <Chip
+                              label={user.completionRate}
+                              size="small"
+                              sx={{
+                                bgcolor: "#F2F4F7",
+                                color: "#344054",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {" "}
+                            <Chip
+                              label={user.adherenceRate}
+                              size="small"
+                              sx={{
+                                bgcolor: "#F2F4F7",
+                                color: "#344054",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {" "}
+                            <Chip
+                              label={user.averageScore}
+                              size="small"
+                              sx={{
+                                bgcolor: "#F2F4F7",
+                                color: "#344054",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>{user.activatedOn}</TableCell>
+                          <TableCell>{user.deActivatedOn}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={user.loginCount}
+                              size="small"
+                              sx={{
+                                bgcolor: "#F2F4F7",
+                                color: "#344054",
+                                fontWeight: "medium",
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>{user.lastLoginOn}</TableCell>
+                          <TableCell>{user.lastSessionDuration}</TableCell>
+                        </TableRow>
+                      )
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TableContainer
+                sx={{
+                  border: "1px solid #0000001A",
+                  borderBottomLeftRadius: "16px",
+                  borderTop: "0px",
+                  borderBottomRightRadius: "16px",
+                }}
+              >
+                <Table>
+                  <TableRow sx={{ bgcolor: "#F9FAFB" }}>
+                    <TableCell
+                      sx={{ py: 1, px: 2, color: "#00000099", fontWeight: 500 }}
+                      colSpan={3}
+                    >
+                      Rows per page:
+                      <Select
+                        value={rowsPerPage.toString()}
+                        onChange={handleChangeRowsPerPage}
+                        displayEmpty
+                        IconComponent={ExpandMore}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              mt: 1,
+                              border: "1px solid #0000001A",
+                              borderRadius: 2,
+                              boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
+                              bgcolor: "white",
+                              width: 50,
+                            },
+                          },
+                          MenuListProps: {
+                            sx: {
+                              padding: 0,
+                            },
+                          },
+                        }}
+                        sx={{
+                          height: "22px",
+                          color: "#00000099",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          outline: "none",
+                          outlineColor: "transparent",
+                          boxShadow: "none",
+                          "& fieldset": { border: "none" },
+                          "& .MuiSelect-iconOpen": {
+                            transform: "none",
+                          },
+                          "& .MuiSelect-icon": { color: "#00000066" },
+                        }}
+                        size="small"
+                      >
+                        <MenuItem value="10">10</MenuItem>
+                        <MenuItem value="25">25</MenuItem>
+                        <MenuItem value="50">50</MenuItem>
+                        <MenuItem value="100">100</MenuItem>
+                      </Select>
+                    </TableCell>
 
-          {/* User Activity Table */}
-          <Stack sx={{borderRadius:2}} >
-          <TableContainer
-            component={Paper}
-            sx={{ border: "1px solid #0000001A", borderTopLeftRadius: "16px", borderTopRightRadius: "16px", mt: 2 }}
-            style={{ overflowX: 'auto' }}
-          >
-            <Table style={{ minWidth: 6 * 550 }}>
-              <TableHead sx={{ bgcolor: "#F9FAFB" }}>
-                <TableRow>
-                  <TableCell
-                    sx={{ py: 1, px: 2, color: "#00000066", fontSize: 14 , width: '150px' }}
-                  >
-                    Name & Email
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                    Role
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                    Division & Department
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                    Added On
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                    Status
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                    Assigned Simulations
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Completetion Rate
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Adherence Rate
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Average Score
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Activated On
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Deactivated On
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Login Count
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Last Login Date
-                  </TableCell>
-                  <TableCell sx={{ py: 1, px: 2, color: "#00000066", width: '250px' }}>
-                   Last Session Duration
-                  </TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {userActivityData.users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <Stack>
+                    <TableCell colSpan={3} sx={{ py: 1, px: 2 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "flex-end",
+                          height: "22px",
+                        }}
+                      >
                         <Typography
                           variant="body2"
-                          color="#000000CC"
-                          fontWeight="medium"
+                          color="#00000099"
+                          fontWeight={500}
+                          sx={{ mr: 2 }}
                         >
-                          {user.name}
+                          {`${page * rowsPerPage + 1}-${Math.min(
+                            (page + 1) * rowsPerPage,
+                            userActivityData.total
+                          )} of ${userActivityData.total}`}
                         </Typography>
-                        <Typography variant="caption" color="#00000099">
-                          {user.email}
-                        </Typography>
-                      </Stack>
+
+                        <IconButton disabled={page === 0}>
+                          <ChevronLeftIcon />
+                        </IconButton>
+
+                        <IconButton
+                          disabled={
+                            page >=
+                            Math.ceil(userActivityData.total / rowsPerPage) - 1
+                          }
+                        >
+                          <ChevronRightIcon />
+                        </IconButton>
+                      </Box>
                     </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={user.role}
-                        size="small"
-                        sx={{
-                          bgcolor: "#F2F4F7",
-                          color: "#344054",
-                          fontWeight: "medium",
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Stack>
-                        <Typography variant="body2">{user.division}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {user.department}
-                        </Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>{user.addedOn}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={user.status}
-                        size="small"
-                        sx={{
-                          bgcolor:
-                            user.status === "Active" ? "#F2F4F7" : "#FEF3F2",
-                          color:
-                            user.status === "Active" ? "#344054" : "#B42318",
-                          fontWeight: "medium",
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell> {user.assignedSimulations}</TableCell>
-                    <TableCell> <Chip
-                        label={user.completionRate}
-                        size="small"
-                        sx={{
-                          bgcolor: "#F2F4F7",
-                          color: "#344054",
-                          fontWeight: "medium",
-                        }}
-                      /></TableCell>
-                    <TableCell> <Chip
-                        label={user.adherenceRate}
-                        size="small"
-                        sx={{
-                          bgcolor: "#F2F4F7",
-                          color: "#344054",
-                          fontWeight: "medium",
-                        }}
-                      /></TableCell>
-                    <TableCell> <Chip
-                        label={user.avgScore}
-                        size="small"
-                        sx={{
-                          bgcolor: "#F2F4F7",
-                          color: "#344054",
-                          fontWeight: "medium",
-                        }}
-                      /></TableCell>
-                    <TableCell>{user.activatedOn}</TableCell>
-                    <TableCell>{user.deactivatedOn}</TableCell>
-                    <TableCell><Chip
-                        label={user.loginCount}
-                        size="small"
-                        sx={{
-                          bgcolor: "#F2F4F7",
-                          color: "#344054",
-                          fontWeight: "medium",
-                        }}
-                      /></TableCell>
-                    <TableCell>{user.lastLoginDate}</TableCell>
-                    <TableCell>{user.lastSessionDuration}</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          <TableContainer sx={{border: "1px solid #0000001A", borderBottomLeftRadius: "16px", borderTop:'0px', borderBottomRightRadius: "16px"}} >
-          <Table  >
-              <TableRow sx={{ bgcolor: "#F9FAFB"  }}>
-               
-                  <TableCell
-                    sx={{ py: 1, px: 2, color: "#00000099", fontWeight: 500 }}
-                    colSpan={3}
-                  >
-                    Rows per page:
-                    <Select
-                      value={rowsPerPage.toString()}
-                      onChange={handleChangeRowsPerPage}
-                      displayEmpty
-                      IconComponent={ExpandMore}
-                      MenuProps={{
-                        PaperProps: {
-                          sx: {
-                            mt: 1,
-                            border: "1px solid #0000001A",
-                            borderRadius: 2,
-                            boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
-                            bgcolor: "white",
-                            width: 50,
-                          },
-                        },
-                        MenuListProps: {
-                          sx: {
-                            padding: 0,
-                          },
-                        },
-                      }}
-                      sx={{
-                        height: "22px",
-                        color: "#00000099",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        outline: "none",
-                        outlineColor: "transparent",
-                        boxShadow: "none",
-                        "& fieldset": { border: "none" },
-                        "& .MuiSelect-iconOpen": {
-                          transform: "none",
-                        },
-                        "& .MuiSelect-icon": { color: "#00000066" },
-                      }}
-                      size="small"
-                    >
-                      <MenuItem value="10">10</MenuItem>
-                      <MenuItem value="25">25</MenuItem>
-                      <MenuItem value="50">50</MenuItem>
-                      <MenuItem value="100">100</MenuItem>
-                    </Select>
-                  </TableCell>
-                  
-                  <TableCell   colSpan={3}  sx={{ py: 1, px: 2 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                        height: "22px",
-                      }}
-                    >
-                      <Typography
-                        variant="body2"
-                        color="#00000099"
-                        fontWeight={500}
-                        sx={{ mr: 2 }}
-                      >
-                        {`${page * rowsPerPage + 1}-${Math.min(
-                          (page + 1) * rowsPerPage,
-                          userActivityData.total
-                        )} of ${userActivityData.total}`}
-                      </Typography>
-
-
-                      <IconButton disabled={page === 0}>
-                        <ChevronLeftIcon />
-                      </IconButton>
-
-
-                      <IconButton
-                        disabled={
-                          page >=
-                          Math.ceil(userActivityData.total / rowsPerPage) - 1
-                        }
-                      >
-                        <ChevronRightIcon />
-                      </IconButton>
-                    </Box>
-                  </TableCell>
-               
-              </TableRow></Table></TableContainer>
-              </Stack>
-              </Stack>
+                </Table>
+              </TableContainer>
+            </Stack>
+          </Stack>
         </Stack>
       </Container>
     </DashboardContent>
   );
 };
 
-
 export default AdminDashboard;
-
-
-

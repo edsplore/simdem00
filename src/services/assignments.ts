@@ -1,4 +1,4 @@
-import apiClient from './api/interceptors';
+import apiClient from "./api/interceptors";
 
 export interface Assignment {
   id: string;
@@ -18,7 +18,7 @@ export interface Assignment {
 export interface CreateAssignmentPayload {
   user_id: string;
   name: string;
-  type: 'TrainingPlan' | 'Module' | 'Simulation';
+  type: "TrainingPlan" | "Module" | "Simulation";
   id: string;
   start_date: string;
   end_date: string;
@@ -35,7 +35,7 @@ export interface AssignmentPaginationParams {
   page: number;
   pagesize: number;
   sortBy?: string;
-  sortDir?: 'asc' | 'desc';
+  sortDir?: "asc" | "desc";
   createdFrom?: string;
   createdTo?: string;
   createdBy?: string;
@@ -71,7 +71,7 @@ export const fetchAssignments = async (
     if (pagination) {
       payload.pagination = {
         page: pagination.page,
-        pagesize: pagination.pagesize
+        pagesize: pagination.pagesize,
       };
 
       // Add optional sorting
@@ -117,9 +117,9 @@ export const fetchAssignments = async (
       }
     }
 
-    console.log('Fetching assignments with payload:', payload);
-    const response = await apiClient.post('/fetch-assignments', payload);
-    console.log('Assignments API response:', response.data);
+    console.log("Fetching assignments with payload:", payload);
+    const response = await apiClient.post("/fetch-assignments", payload);
+    console.log("Assignments API response:", response.data);
 
     // Return the response with the correct structure
     return {
@@ -128,11 +128,14 @@ export const fetchAssignments = async (
         total_count: response.data.assignments?.length || 0,
         page: pagination?.page || 1,
         pagesize: pagination?.pagesize || 10,
-        total_pages: Math.ceil((response.data.assignments?.length || 0) / (pagination?.pagesize || 10))
-      }
+        total_pages: Math.ceil(
+          (response.data.assignments?.length || 0) /
+            (pagination?.pagesize || 10)
+        ),
+      },
     };
   } catch (error) {
-    console.error('Error fetching assignments:', error);
+    console.error("Error fetching assignments:", error);
     throw error;
   }
 };
@@ -142,12 +145,14 @@ export const fetchAssignments = async (
  * @param payload Assignment data
  * @returns Promise with assignment creation response
  */
-export const createAssignment = async (payload: CreateAssignmentPayload): Promise<CreateAssignmentResponse> => {
+export const createAssignment = async (
+  payload: CreateAssignmentPayload
+): Promise<CreateAssignmentResponse> => {
   try {
-    const response = await apiClient.post('/create-assignment', payload);
+    const response = await apiClient.post("/create-assignment", payload);
     return response.data;
   } catch (error) {
-    console.error('Error creating assignment:', error);
+    console.error("Error creating assignment:", error);
     throw error;
   }
 };

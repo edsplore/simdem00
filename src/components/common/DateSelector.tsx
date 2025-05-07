@@ -48,18 +48,28 @@ const DateSelectionChip = styled(Button)(({ theme }) => ({
   marginBottom: "8px",
 }));
 
-const DateSelector = () => {
+interface DateSelectorProps {
+  dateRange: DateRange<Dayjs>;
+  setDateRange: any;
+  handleDateRangeApplyCallback: any;
+}
+
+const DateSelector = ({
+  dateRange,
+  setDateRange,
+  handleDateRangeApplyCallback,
+}: DateSelectorProps) => {
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
-  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+  // const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
   const [selectionState, setSelectionState] = useState<"start" | "end">(
-    "start",
+    "start"
   );
 
   // Format date range for display
   const getDateRangeText = () => {
     if (dateRange[0] && dateRange[1]) {
       return `${dateRange[0].format("MMM D, YYYY")} - ${dateRange[1].format(
-        "MMM D, YYYY",
+        "MMM D, YYYY"
       )}`;
     } else if (dateRange[0]) {
       return `From ${dateRange[0].format("MMM D, YYYY")}`;
@@ -79,6 +89,7 @@ const DateSelector = () => {
 
   const handleDateRangeApply = () => {
     handleDateFilterClose();
+    handleDateRangeApplyCallback();
   };
 
   // Function to handle date selections
@@ -188,7 +199,7 @@ const DateSelector = () => {
           <Typography variant="h5" sx={{ mb: 3, fontWeight: "medium" }}>
             {dateRange[0] && dateRange[1]
               ? `${dateRange[0].format("MMM D")} – ${dateRange[1].format(
-                  "MMM D",
+                  "MMM D"
                 )}`
               : "Select dates"}
           </Typography>
@@ -347,27 +358,27 @@ const DateSelector = () => {
                                   isStartDate || isEndDate
                                     ? "50%"
                                     : isInRange
-                                      ? "0"
-                                      : "50%",
+                                    ? "0"
+                                    : "50%",
                                 backgroundColor:
                                   isStartDate || isEndDate
                                     ? "#1976d2"
                                     : isInRange
-                                      ? "rgba(25, 118, 210, 0.2)"
-                                      : "transparent",
+                                    ? "rgba(25, 118, 210, 0.2)"
+                                    : "transparent",
                                 color:
                                   isStartDate || isEndDate
                                     ? "white"
                                     : isInRange
-                                      ? "#1976d2"
-                                      : "text.primary",
+                                    ? "#1976d2"
+                                    : "text.primary",
                                 "&:hover": {
                                   backgroundColor:
                                     isStartDate || isEndDate
                                       ? "#1565c0"
                                       : isInRange
-                                        ? "rgba(25, 118, 210, 0.3)"
-                                        : "action.hover",
+                                      ? "rgba(25, 118, 210, 0.3)"
+                                      : "action.hover",
                                 },
                               }}
                               onClick={() => handleDateSelect(date)}
@@ -501,27 +512,27 @@ const DateSelector = () => {
                                   isStartDate || isEndDate
                                     ? "50%"
                                     : isInRange
-                                      ? "0"
-                                      : "50%",
+                                    ? "0"
+                                    : "50%",
                                 backgroundColor:
                                   isStartDate || isEndDate
                                     ? "#1976d2"
                                     : isInRange
-                                      ? "rgba(25, 118, 210, 0.2)"
-                                      : "transparent",
+                                    ? "rgba(25, 118, 210, 0.2)"
+                                    : "transparent",
                                 color:
                                   isStartDate || isEndDate
                                     ? "white"
                                     : isInRange
-                                      ? "#1976d2"
-                                      : "text.primary",
+                                    ? "#1976d2"
+                                    : "text.primary",
                                 "&:hover": {
                                   backgroundColor:
                                     isStartDate || isEndDate
                                       ? "#1565c0"
                                       : isInRange
-                                        ? "rgba(25, 118, 210, 0.3)"
-                                        : "action.hover",
+                                      ? "rgba(25, 118, 210, 0.3)"
+                                      : "action.hover",
                                 },
                               }}
                               onClick={() => handleDateSelect(date)}

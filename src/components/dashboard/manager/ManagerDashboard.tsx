@@ -30,6 +30,7 @@ import {
   Stack,
   Tab,
   Table,
+  styled,
   TableBody,
   TableCell,
   TableContainer,
@@ -40,7 +41,18 @@ import {
   TextField,
   Tooltip,
   Typography,
+  Popover,
+  Divider,
+  TablePagination,
 } from "@mui/material";
+import { DateRange } from "@mui/x-date-pickers-pro/models";
+import {
+  CalendarMonth as CalendarIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  Clear as ClearIcon,
+} from "@mui/icons-material";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import dayjs, { Dayjs } from "dayjs";
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
 import {
@@ -53,6 +65,7 @@ import DashboardContent from "../DashboardContent";
 import { fetchReporteeUsers, User } from "../../../services/users";
 import { fetchTeams, TeamResponse, Team } from "../../../services/teams";
 import DateSelector from "../../common/DateSelector";
+import { BarChart } from "@mui/x-charts";
 
 // Mock data for the dashboard
 const mockData = {
@@ -189,6 +202,16 @@ const mockData = {
       trainees: [],
     },
   ],
+  creators: [
+    {
+      id: "4578933",
+      name: "Creator 1",
+    },
+    {
+      id: "4578922",
+      name: "Creator 2",
+    },
+  ],
 };
 
 // CircularProgressWithLabel component
@@ -259,6 +282,43 @@ const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
     </Box>
   );
 };
+const dataset = [
+  {
+    score: 95,
+    label: "Team 01",
+  },
+  {
+    score: 85,
+    label: "Team 02",
+  },
+  {
+    score: 80,
+    label: "Team 03",
+  },
+  {
+    score: 60,
+    label: "Team 04",
+  },
+  {
+    score: 37,
+    label: "Team 05",
+  },
+];
+
+function valueFormatter(value: number | null) {
+  return `${value}%`;
+}
+const chartSetting = {
+  width: 350,
+  height: 200,
+  xAxis: [
+    {
+      min: 0,
+      max: 100,
+      tickMinStep: 20,
+    },
+  ],
+};
 
 // LeaderBoard component
 const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
@@ -274,7 +334,7 @@ const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
         height: "fit-content",
       }}
     >
-      <Stack spacing={2} justifyContent="space-between" height="100%">
+      <Stack justifyContent="space-between" height="100%">
         <Stack
           direction="column"
           justifyContent="space-between"
@@ -299,86 +359,35 @@ const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
           </Box>
         </Stack>
         <Stack sx={{ px: 1.5, pt: 2 }} gap={1}>
-          {data.map((item, index) => (
-            <Stack direction="row" alignItems="start" width="100%">
-              <Typography
-                fontSize={12}
-                color="#919EAB"
-                variant="body2"
-                width="30%"
-                sx={{ mb: 0.5 }}
-              >
-                {item.team}
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  width: "100%",
-                  borderBottom: "1px dashed #919EAB3D",
-                }}
-              >
-                <Box
-                  sx={{
-                    height: 20,
-                    borderRadius: 1,
-                    width: `${item.score}%`,
-                    bgcolor: "#001EEE1A",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "end",
-                    px: 1,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      ml: 1,
-                      fontWeight: "semibold",
-                      fontSize: 12,
-                      color: "#001EEE",
-                    }}
-                  >
-                    {item.score}%
-                  </Typography>
-                </Box>
-              </Box>
-            </Stack>
-          ))}
+          <BarChart
+            dataset={data}
+            yAxis={[{ scaleType: "band", dataKey: "team" }]}
+            series={[
+              {
+                dataKey: "score",
+                valueFormatter,
+                color: "#E8EDFF",
+              },
+            ]}
+            barLabel="value"
+            borderRadius={6}
+            layout="horizontal"
+            sx={{
+              ".MuiChartsAxisTickLabel-root": {
+                fill: "#637381",
+                fontSize: 14,
+                fontWeight: "medium",
+              },
+              ".MuiChartsAxis-line": {
+                stroke: "transparent",
+              },
+              ".MuiChartsAxis-tick": {
+                display: "none",
+              },
+            }}
+            {...chartSetting}
+          />
         </Stack>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            px: 2,
-            pb: 1.5,
-            mt: 0,
-          }}
-        >
-          <Typography
-            width="20%"
-            variant="caption"
-            color="#919EAB"
-          ></Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            0
-          </Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            20%
-          </Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            40%
-          </Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            60%
-          </Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            80%
-          </Typography>
-          <Typography fontSize={12} variant="caption" color="#919EAB">
-            100%
-          </Typography>
-        </Box>
       </Stack>
     </Card>
   );
@@ -560,7 +569,14 @@ const CircularProgressCards = ({ value, title, popupText }) => {
 };
 
 // TrainingPlanTable component
-const TrainingPlanTable = ({ trainingPlans }) => {
+const TrainingPlanTable = ({
+  trainingPlans,
+  totalCount,
+  page ,
+  rowsPerPage,
+  onChangePage,
+  onChangeRowsPerPage,
+}) => {
   const [expandedRows, setExpandedRows] = useState({});
 
   const toggleRow = (id) => {
@@ -913,102 +929,33 @@ const TrainingPlanTable = ({ trainingPlans }) => {
             </React.Fragment>
           ))}
         </TableBody>
-        <TableFooter sx={{ bgcolor: "#F9FAFB" }}>
-          <TableRow>
-            <TableCell
-              sx={{ py: 1, px: 2, color: "#00000099", fontWeight: 500 }}
-              colSpan={4}
-            >
-              Rows per page:
-              <Select
-                // value={rowsPerPage.toString()}
-                // onChange={handleChangeRowsPerPage}
-                displayEmpty
-                IconComponent={ExpandMoreIcon}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      mt: 1,
-                      border: "1px solid #0000001A",
-                      borderRadius: 2,
-                      boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
-                      bgcolor: "white",
-                      width: 50,
-                    },
-                  },
-                  MenuListProps: {
-                    sx: {
-                      padding: 0,
-                    },
-                  },
-                }}
-                sx={{
-                  height: "22px",
-                  color: "#00000099",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  outline: "none",
-                  outlineColor: "transparent",
-                  boxShadow: "none",
-                  "& fieldset": { border: "none" },
-                  "& .MuiSelect-iconOpen": {
-                    transform: "none",
-                  },
-                  "& .MuiSelect-icon": { color: "#00000066" },
-                }}
-                size="small"
-              >
-                <MenuItem value="10">10</MenuItem>
-                <MenuItem value="25">25</MenuItem>
-                <MenuItem value="50">50</MenuItem>
-                <MenuItem value="100">100</MenuItem>
-              </Select>
-            </TableCell>
-            <TableCell colSpan={4} sx={{ py: 1, px: 2 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  height: "22px",
-                }}
-              >
-                <Typography
-                  variant="body2"
-                  color="#00000099"
-                  fontWeight={500}
-                  sx={{ mr: 2 }}
-                >
-                  {/* {`${page * rowsPerPage + 1}-${Math.min(
-                    (page + 1) * rowsPerPage,
-                    userActivityData.total
-                  )} of ${userActivityData.total}`} */}
-                  1 - 10 of 10
-                </Typography>
-
-                {/* <IconButton disabled={page === 0}> */}
-                <IconButton>
-                  <ChevronLeftIcon />
-                </IconButton>
-
-                <IconButton
-                // disabled={
-                //   page >= Math.ceil(userActivityData.total / rowsPerPage) - 1
-                // }
-                >
-                  <ChevronRightIcon />
-                </IconButton>
-              </Box>
-            </TableCell>
-          </TableRow>
-        </TableFooter>
+        
       </Table>
+      <Box
+        sx={{
+          bgcolor: "#F9FAFB",
+          display: "flex",
+          justifyContent: "flex-start",
+          width: "100%",
+        }}
+      >
+        <TablePagination
+          component="div"
+          count={totalCount} // Total number of items
+          page={page}
+          onPageChange={onChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={onChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
+      </Box>
     </TableContainer>
   );
 };
 
 const menuSelectsx = {
   border: "1px solid #00000014",
+  backgroundColor: "#ffffff",
   borderRadius: 1,
   color: "#00000099",
   fontWeight: 600,
@@ -1030,7 +977,7 @@ const menuSelectProps = {
       borderRadius: 2,
       boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
       bgcolor: "white",
-      width: 200,
+      width: 230,
     },
   },
   MenuListProps: {
@@ -1039,6 +986,7 @@ const menuSelectProps = {
     },
   },
 };
+
 const menuItemSx = {
   display: "flex",
   flexDirection: "row",
@@ -1094,9 +1042,21 @@ const ManagerDashboard = () => {
   const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
+  const [trainingEntityPagination, setTrainingEntityPagination] = useState<any>(
+    {}
+  );
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
+  const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
+  const [teamSearchQuery, setTeamSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+  const [trainingEntityDateRange, setTrainingEntityDateRange] = useState<
+    DateRange<Dayjs>
+  >([null, null]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [creatorName, setCreatorName] = useState<[] | string[]>([]);
+  const [selectedCreators, setSelectedCreators] = useState([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
   const [userActivityData, setUserActivityData] = useState({
     users: mockData.trainingPlans,
     total: mockData.trainingPlans,
@@ -1104,16 +1064,61 @@ const ManagerDashboard = () => {
 
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
   const handleTeamframeChange = (event) => {
-    const {
-      target: { value },
-    } = event;
-    //debugger;
-    //const selectedUserIds = value.split(",")
-    const selectedUserNames = value.map((id: string) =>
-      reporteeUserIdsMapToName.get(id),
+    const { value } = event.target;
+
+    const selectedIds = typeof value === "string" ? value.split(",") : value;
+    const selectedUserNames = selectedIds.map((id) => {
+      const userName = reporteeUserIdsMapToName.get(id);
+      const teamName = reporteeTeamIdsMapToName.get(id);
+      return userName || teamName || "";
+    });
+
+    setTeamframe(selectedIds);
+    setTeamframeNames(selectedUserNames);
+
+    // Update the individual selectors
+    const newSelectedTeams = selectedIds.filter((id) =>
+      reporteeTeamIdsMapToName.has(id)
     );
-    // setTeamframe(selectedUserNames)
-    setTeamframe(typeof value === "string" ? value.split(",") : value);
+
+    setSelectedTeams(newSelectedTeams);
+  };
+  // Handle changes from the team selector
+  const handleTeamsChange = (event) => {
+    const { value } = event.target;
+    const newSelectedTeams =
+      typeof value === "string" ? value.split(",") : value;
+    setSelectedTeams(newSelectedTeams);
+
+    // Update the combined state
+    const updatedTeamframe = [...newSelectedTeams];
+    updateCombinedState(updatedTeamframe);
+  };
+
+  const handleCreatorChange = (event) => {
+    const { value } = event.target;
+    const newSelectedCreators =
+      typeof value === "string" ? value.split(",") : value;
+
+    const selectedCreatorName = mockData.creators
+      .filter((creator) => newSelectedCreators.includes(creator.id))
+      .map((creator) => creator.name);
+
+    setCreatorName(selectedCreatorName);
+    setSelectedCreators(newSelectedCreators);
+
+    // Update the combined state
+  };
+
+  // Helper to update the combined state
+  const updateCombinedState = (ids) => {
+    const selectedUserNames = ids.map((id) => {
+      const userName = reporteeUserIdsMapToName.get(id);
+      const teamName = reporteeTeamIdsMapToName.get(id);
+      return userName || teamName || "";
+    });
+
+    setTeamframe(ids);
     setTeamframeNames(selectedUserNames);
   };
 
@@ -1121,10 +1126,10 @@ const ManagerDashboard = () => {
     // Handle the selected users/teams here
     console.log("teamframe", teamframe, dropdownSearchQuery);
     const selectedUserIds = teamframe.filter((id: string) =>
-      allUserIds.includes(id),
+      allUserIds.includes(id)
     );
     const selectedTeamIds = teamframe.filter((id: string) =>
-      allTeamIds.includes(id),
+      allTeamIds.includes(id)
     );
     setFilteredReporteeUserIds(selectedUserIds);
     setFilteredReporteeTeamIds(selectedTeamIds);
@@ -1150,7 +1155,7 @@ const ManagerDashboard = () => {
         setFilteredReporteeUserIds(userData);
         setAllUserIds(userData);
         const userMap = new Map(
-          data?.map((user) => [user.user_id, user.fullName]),
+          data?.map((user) => [user.user_id, user.fullName])
         );
         setReporteeUserIdsMapToName(userMap);
       } catch (error) {
@@ -1170,7 +1175,13 @@ const ManagerDashboard = () => {
         // In a real implementation, we would fetch data from the API
         const params = new URLSearchParams(location.search);
         const workspaceId = params.get("workspace_id");
-        const data = await fetchTeams(workspaceId || "", undefined, undefined, undefined, user.id);
+        const data = await fetchTeams(
+          workspaceId || "",
+          undefined,
+          undefined,
+          undefined,
+          user.id
+        );
         console.log("repoertee users --------", data);
         const teamsData = data?.items?.map((team: Team) => team.team_id);
         setReporteeTeam(data);
@@ -1180,7 +1191,7 @@ const ManagerDashboard = () => {
         }
 
         const teamMap = new Map(
-          data?.items?.map((team) => [team.team_id, team.name]),
+          data?.items?.map((team) => [team.team_id, team.name])
         );
         if (teamMap) {
           setReporteeTeamIdsMapToName(teamMap);
@@ -1199,11 +1210,32 @@ const ManagerDashboard = () => {
       try {
         setIsLoading(true);
         setError(null);
+        const params: any = {
+          assignedDateRange: { startDate: "", endDate: "" },
+          trainingEntityDateRange: { startDate: "", endDate: "" },
+          trainingEntityCreatedBy: selectedCreators,
+          trainingEntityTeams: selectedTeams,
+        };
+
+        if (dateRange[0] && dateRange[1]) {
+          params.assignedDateRange.startDate =
+            dateRange[0].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+        } else if (dateRange[0]) {
+          params.assignedDateRange.startDate =
+            dateRange[0].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate = null;
+        } else if (dateRange[1]) {
+          params.assignedDateRange.startDate = null;
+          params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+        }
+
         // In a real implementation, we would fetch data from the API
         const data = await fetchManagerDashboardAggregatedData({
           user_id: user.id,
           reportee_user_ids: filteredReporteeUserIds,
           reportee_team_ids: filteredReporteeTeamIds,
+          params,
         });
         setDashboardData(data);
       } catch (error) {
@@ -1214,6 +1246,29 @@ const ManagerDashboard = () => {
       }
     }
   };
+  const filteredUserIds = allUserIds.filter((userId) =>
+    (reporteeUserIdsMapToName.get(userId) || "")
+      .toLowerCase()
+      .includes(dropdownSearchQuery.toLowerCase())
+  );
+
+  const filteredTeams =
+    reporteeTeam?.items?.filter((team) =>
+      (reporteeTeamIdsMapToName.get(team.team_id) || "")
+        .toLowerCase()
+        .includes(dropdownSearchQuery.toLowerCase())
+    ) || [];
+
+  const filteredCreators = mockData.creators.filter((creator) =>
+    creator.name.toLowerCase().includes(creatorSearchQuery.toLowerCase())
+  );
+
+  const filteredTeamEntity = filteredTeams?.filter((team) =>
+    reporteeTeamIdsMapToName
+      .get(team.team_id)
+      ?.toLowerCase()
+      .includes(teamSearchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     loadReporteeUser();
@@ -1236,20 +1291,64 @@ const ManagerDashboard = () => {
   const handleTabChange = (event: any, newValue: any) => {
     setActiveTab(newValue);
     loadTrainingEntityAttemptsForManagerDashboard(newValue);
+    setPage(0); // Reset to the first page when changing tabs
   };
 
   const loadTrainingEntityAttemptsForManagerDashboard = async (
-    type: string,
+    type: string
   ) => {
     try {
       setIsTableLoading(true);
+      const params: any = {
+        assignedDateRange: { startDate: "", endDate: "" },
+        trainingEntityDateRange: { startDate: "", endDate: "" },
+        trainingEntityCreatedBy: selectedCreators,
+        trainingEntityTeams: selectedTeams,
+      };
+
+      if (dateRange[0] && dateRange[1]) {
+        params.assignedDateRange.startDate =
+          dateRange[0].format("YYYY-MM-DD");
+        params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+      } else if (dateRange[0]) {
+        params.assignedDateRange.startDate =
+          dateRange[0].format("YYYY-MM-DD");
+        params.assignedDateRange.endDate = null;
+      } else if (dateRange[1]) {
+        params.assignedDateRange.startDate = null;
+        params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+      }
+
+      if (trainingEntityDateRange[0] && trainingEntityDateRange[1]) {
+        params.trainingEntityDateRange.startDate =
+          trainingEntityDateRange[0].format("YYYY-MM-DD");
+        params.trainingEntityDateRange.endDate =
+          trainingEntityDateRange[1].format("YYYY-MM-DD");
+      } else if (trainingEntityDateRange[0]) {
+        params.trainingEntityDateRange.startDate =
+          trainingEntityDateRange[0].format("YYYY-MM-DD");
+        params.trainingEntityDateRange.endDate = null;
+      } else if (trainingEntityDateRange[1]) {
+        params.trainingEntityDateRange.startDate = null;
+        params.trainingEntityDateRange.endDate =
+          trainingEntityDateRange[1].format("YYYY-MM-DD");
+      }
+      const pagination = {
+        page: page,
+        pagesize: rowsPerPage,
+      };
+
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
         type: type,
         reportee_user_ids: filteredReporteeUserIds,
         reportee_team_ids: filteredReporteeTeamIds,
+        params,
+        pagination,
       });
-      setTrainingEntityAttempts(data);
+      
+      setTrainingEntityPagination(data.pagination);
+      setTrainingEntityAttempts(data.training_entity);
       setError(null);
     } catch (err) {
       setError("Failed to load training entity attempts");
@@ -1258,6 +1357,32 @@ const ManagerDashboard = () => {
       setIsTableLoading(false);
     }
   };
+
+  const handleDateRangeApplyCallback = () => {
+    loadDashboardData();
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+  const handleTrainingEntityDateRangeApplyCallback = () => {
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+
+  const handleTrainingEntitySelectedApply = () => {
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  // Handle rows per page change
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); // Reset to the first page
+    // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+  useEffect(() => {
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  }, [rowsPerPage, page]);
 
   if (isLoading) {
     return (
@@ -1322,8 +1447,11 @@ const ManagerDashboard = () => {
                     renderValue={(selected) =>
                       selected.length === 0 ? (
                         <>Select Users or Teams</>
+                      ) : teamframeNames.length > 0 ? (
+                        teamframeNames[0] +
+                        (teamframeNames[1] ? `, ${teamframeNames[1]}` : "")
                       ) : (
-                        selected.join(", ") + "..."
+                        "Select Users or Teams"
                       )
                     }
                     MenuProps={{
@@ -1349,6 +1477,7 @@ const ManagerDashboard = () => {
                       <TextField
                         placeholder="Search User or Team"
                         value={dropdownSearchQuery}
+                        onKeyDown={(e) => e.stopPropagation()}
                         onChange={(e) => setDropdownSearchQuery(e.target.value)}
                         InputProps={{
                           startAdornment: (
@@ -1381,7 +1510,7 @@ const ManagerDashboard = () => {
                     >
                       Users
                     </ListSubheader>
-                    {allUserIds.map((userId) => (
+                    {filteredUserIds.map((userId) => (
                       <MenuItem key={userId} sx={menuItemSx} value={userId}>
                         {reporteeUserIdsMapToName.get(userId)}
                         {teamframe.includes(userId) && (
@@ -1406,8 +1535,8 @@ const ManagerDashboard = () => {
                     >
                       Teams
                     </ListSubheader>
-                    {reporteeTeam?.items &&
-                      reporteeTeam?.items.map((team) => (
+                    {filteredTeams &&
+                      filteredTeams.map((team) => (
                         <MenuItem
                           key={team.team_id}
                           sx={menuItemSx}
@@ -1432,55 +1561,11 @@ const ManagerDashboard = () => {
                   </Select>
                 </FormControl>
 
-                <DateSelector />
-
-                {/* <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <Select
-                    value={timeframe}
-                    onChange={handleTimeframeChange}
-                    displayEmpty
-                    IconComponent={ExpandMoreIcon}
-                    MenuProps={menuSelectProps}
-                    sx={menuSelectsx}
-                  >
-                    <MenuItem sx={menuItemSx} value="All Time">
-                      All Time
-                    </MenuItem>
-                    <MenuItem sx={menuItemSx} value="Today">
-                      Today
-                    </MenuItem>
-                    <MenuItem sx={menuItemSx} value="Yesterday">
-                      Yesterday
-                    </MenuItem>
-                    <MenuItem sx={menuItemSx} value="Last 7 days">
-                      Last 7 days
-                    </MenuItem>
-                    <MenuItem sx={menuItemSx} value="Last 30 days">
-                      Last 30 days
-                    </MenuItem>
-                    <MenuItem sx={menuItemSx} value="Custom">
-                      Custom
-                    </MenuItem>
-                  </Select>
-                </FormControl> */}
-                {/* {timeframe === "Custom" && (
-                  <TextField
-                    type="date"
-                    label="Select Date"
-                    value={customDate}
-                    onChange={(e) => setCustomDate(e.target.value)}
-                    required
-                    fullWidth
-                    InputLabelProps={{ shrink: true }}
-                    sx={{
-                      mt: 1.5,
-                      width: 230,
-                      "& .MuiInputBase-root": {
-                        fontSize: 14,
-                      },
-                    }}
-                  />
-                )} */}
+                <DateSelector
+                  dateRange={dateRange}
+                  setDateRange={setDateRange}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                />
               </Stack>
             </Stack>
             <Grid container spacing={2}>
@@ -1807,61 +1892,141 @@ const ManagerDashboard = () => {
                 }}
                 gap={2}
               >
-                <Select
-                  IconComponent={ExpandMoreIcon}
-                  MenuProps={menuSelectProps}
-                  sx={menuSelectsx}
-                  value="All Teams"
-                  size="small"
-                >
-                  {filteredReporteeTeamIds
-                    .filter((team) =>
-                      team
-                        .toLowerCase()
-                        .includes(dropdownSearchQuery.toLowerCase()),
-                    )
-                    .map((teamId, idx) => (
+                <FormControl size="small" sx={{ minWidth: 120, maxWidth: 120 }}>
+                  <Select
+                    multiple
+                    value={selectedTeams}
+                    onChange={handleTeamsChange}
+                    displayEmpty
+                    IconComponent={ExpandMoreIcon}
+                    renderValue={(selected) =>
+                      selected.length === 0 ? (
+                        <>All Teams</>
+                      ) : (
+                        selected
+                          .map((id) => reporteeTeamIdsMapToName.get(id))
+                          .join(", ")
+                      )
+                    }
+                    MenuProps={menuSelectProps}
+                    sx={menuSelectsx}
+                  >
+                    <Stack sx={{ padding: 0.5 }}>
+                      <TextField
+                        placeholder="Search Team"
+                        onKeyDown={(e) => e.stopPropagation()}
+                        value={teamSearchQuery}
+                        onChange={(e) => setTeamSearchQuery(e.target.value)}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment sx={{ p: 0 }} position="start">
+                              <SearchIcon />
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          bgcolor: "white",
+                          fontSize: 14,
+                          borderRadius: "8px",
+                          boxShadow: "0px 1px 2px 0px #1018280D",
+                        }}
+                        size="small"
+                      />
+                    </Stack>
+                    {filteredTeamEntity?.map((team) => (
                       <MenuItem
-                        key={teamId}
+                        key={team.team_id}
                         sx={menuItemSx}
-                        value={teamId}
-                        selected={idx === 0}
+                        value={team.team_id}
                       >
-                        {reporteeTeamIdsMapToName.get(teamId)}
-                        {teamframe.includes(teamId) && (
+                        {reporteeTeamIdsMapToName.get(team.team_id)}
+                        {selectedTeams.includes(team.team_id) && (
                           <ListItemIcon>
                             <Check fontSize="small" color="primary" />
                           </ListItemIcon>
                         )}
                       </MenuItem>
                     ))}
-                </Select>
-
-                <DateSelector />
-
-                {/* <Select
-                  IconComponent={ExpandMoreIcon}
-                  MenuProps={menuSelectProps}
-                  sx={menuSelectsx}
-                  value="All Time"
-                  size="small"
-                >
-                  <MenuItem sx={menuItemSx} value="All Time">
-                    All Time
-                  </MenuItem>
-                </Select> */}
-
-                <Select
-                  value="All Creators"
-                  size="small"
-                  MenuProps={menuSelectProps}
-                  sx={menuSelectsx}
-                  IconComponent={ExpandMoreIcon}
-                >
-                  <MenuItem sx={menuItemSx} value="All Creators">
-                    All Creators
-                  </MenuItem>
-                </Select>
+                    {selectedTeams.length > 0 && (
+                      <Stack p={0.5}>
+                        <Button
+                          variant="contained"
+                          onClick={handleTrainingEntitySelectedApply}
+                        >
+                          Apply
+                        </Button>
+                      </Stack>
+                    )}
+                  </Select>
+                </FormControl>
+                <DateSelector
+                  dateRange={trainingEntityDateRange}
+                  setDateRange={setTrainingEntityDateRange}
+                  handleDateRangeApplyCallback={
+                    handleTrainingEntityDateRangeApplyCallback
+                  }
+                />
+                <FormControl size="small" sx={{ minWidth: 150, maxWidth: 150 }}>
+                  <Select
+                    multiple
+                    value={selectedCreators}
+                    onChange={handleCreatorChange}
+                    displayEmpty
+                    IconComponent={ExpandMoreIcon}
+                    renderValue={(selected) =>
+                      selected.length === 0 ? <>All Creators</> : creatorName
+                    }
+                    MenuProps={menuSelectProps}
+                    sx={menuSelectsx}
+                  >
+                    <Stack sx={{ padding: 0.5 }}>
+                      <TextField
+                        placeholder="Search Cretors"
+                        value={creatorSearchQuery}
+                        onChange={(e) => setCreatorSearchQuery(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        InputProps={{
+                          startAdornment: (
+                            <InputAdornment sx={{ p: 0 }} position="start">
+                              <SearchIcon />
+                            </InputAdornment>
+                          ),
+                        }}
+                        sx={{
+                          bgcolor: "white",
+                          fontSize: 14,
+                          borderRadius: "8px",
+                          boxShadow: "0px 1px 2px 0px #1018280D",
+                        }}
+                        size="small"
+                      />
+                    </Stack>
+                    {filteredCreators.map((creator) => (
+                      <MenuItem
+                        key={creator.id}
+                        sx={menuItemSx}
+                        value={creator.id}
+                      >
+                        {creator.name}
+                        {selectedCreators.includes(creator.id) && (
+                          <ListItemIcon>
+                            <Check fontSize="small" color="primary" />
+                          </ListItemIcon>
+                        )}
+                      </MenuItem>
+                    ))}
+                    {selectedCreators.length > 0 && (
+                      <Stack p={0.5}>
+                        <Button
+                          variant="contained"
+                          onClick={handleTrainingEntitySelectedApply}
+                        >
+                          Apply
+                        </Button>
+                      </Stack>
+                    )}
+                  </Select>
+                </FormControl>
               </Stack>
             </Stack>
             {/* Training Plans Table */}
@@ -1871,6 +2036,11 @@ const ManagerDashboard = () => {
                   ? filteredTrainingEntities
                   : trainingEntityAttempts
               }
+              totalCount={trainingEntityPagination.total_count} // Pass total count for pagination
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onChangePage={handleChangePage}
+              onChangeRowsPerPage={handleChangeRowsPerPage}
             />
           </Stack>
         </Stack>
@@ -1880,3 +2050,5 @@ const ManagerDashboard = () => {
 };
 
 export default ManagerDashboard;
+
+

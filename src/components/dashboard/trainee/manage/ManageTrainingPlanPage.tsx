@@ -505,7 +505,7 @@ const ManageTrainingPlanPage = () => {
             }}
           >
             <TextField
-              placeholder={`Search by ${currentTab === 'Training Plans' ? 'Training Plan' : 'Module'} Name or ID`}
+              placeholder={`Search by ${currentTab === 'Training Plans' ? 'Training Plan' : 'Module'} Name`}
               size="small"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

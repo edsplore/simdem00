@@ -40,14 +40,16 @@ import {
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
 import {
+  AdminDashboardUserActivityPayload,
+  AdminDashboardUserActivityPayloadParams,
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
   fetchAdminDashboardStats,
   fetchAdminDashboardUserActivity,
 } from "../../../services/admin";
-import DateSelector from "../../common/DateSelector";
 import { DateRange } from "@mui/x-date-pickers-pro";
 import { Dayjs } from "dayjs";
+import DateSelector from "../../common/DateSelector";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
 
@@ -580,6 +582,10 @@ const AdminDashboard = () => {
   const [userActivity, setUserActivity] = useState<
     AdminDashboardUserActivityResponse[]
   >([]);
+
+  const [userActivityParams, setUserActivityParams] =
+    useState<AdminDashboardUserActivityPayloadParams | null>(null);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -597,15 +603,24 @@ const AdminDashboard = () => {
     total: adminDashboardData.totalUsers,
   });
 
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+
+  const handleDateRangeApplyCallback = () => {};
+
   const loadUserActivity = async () => {
     if (user?.id) {
       try {
         setIsLoading(true);
         setError(null);
         // In a real implementation, we would fetch data from the API
-        const data = await fetchAdminDashboardUserActivity({
+        const payload: AdminDashboardUserActivityPayload = {
           user_id: user.id,
-        });
+        };
+
+        if (userActivityParams) {
+          payload["pagination"] = userActivityParams;
+        }
+        const data = await fetchAdminDashboardUserActivity(payload);
         setUserActivity(data);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -673,6 +688,18 @@ const AdminDashboard = () => {
   //   rowsPerPage,
   // ]);
 
+  useEffect(() => {
+    if (
+      userActivityParams?.department ||
+      userActivityParams?.dateRange ||
+      userActivityParams?.division ||
+      userActivityParams?.role ||
+      userActivityParams?.status
+    ) {
+      loadUserActivity();
+    }
+  }, [userActivityParams]);
+
   const handleChangePage = (
     event: React.ChangeEvent<unknown>,
     newPage: number
@@ -686,19 +713,31 @@ const AdminDashboard = () => {
   };
 
   const handleDepartmentChange = (event: SelectChangeEvent<string>) => {
-    setDepartment(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      department: event.target.value,
+    });
   };
 
   const handleDivisionChange = (event: SelectChangeEvent<string>) => {
-    setDivision(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      division: event.target.value,
+    });
   };
 
   const handleRoleChange = (event: SelectChangeEvent<string>) => {
-    setRole(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      role: event.target.value,
+    });
   };
 
   const handleStatusChange = (event: SelectChangeEvent<string>) => {
-    setStatus(event.target.value);
+    setUserActivityParams({
+      ...userActivityParams,
+      status: event.target.value,
+    });
   };
 
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
@@ -753,10 +792,10 @@ const AdminDashboard = () => {
             </Typography>
 
             <DateSelector
-                  dateRange={dateRange}
-                  setDateRange={setDateRange}
-                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
-                />
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+            />
           </Stack>
 
           {/* First row of stats */}
@@ -987,11 +1026,11 @@ const AdminDashboard = () => {
                   </MenuItem>
                 </Select>
 
-                {/* <DateSelector
+                <DateSelector
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   handleDateRangeApplyCallback={handleDateRangeApplyCallback}
-                /> */}
+                />
               </Stack>
             </Stack>
 

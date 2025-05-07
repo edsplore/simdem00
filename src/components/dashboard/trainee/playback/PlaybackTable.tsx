@@ -13,13 +13,17 @@ import {
   Pagination,
   Box,
   CircularProgress,
+  TablePagination,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SortIcon from "@mui/icons-material/Sort";
 import { useAuth } from "../../../../context/AuthContext";
 import {
+  AttemptsResponse,
   fetchPlaybackRowData,
+  FetchPlaybackRowDataPayload,
   FetchPlaybackRowDataResponse,
+  PlaybackRowPaginationParams,
 } from "../../../../services/playback";
 
 interface SimulationRecord {
@@ -34,60 +38,17 @@ interface SimulationRecord {
   status: string;
 }
 
-const simulationData: SimulationRecord[] = [
-  {
-    id: "1",
-    trainingPlan: "New Training Plan 01",
-    module: "Module_name_01",
-    simId: "82840",
-    simName: "Humana_MS_PCP Change",
-    simType: "Visual-Audio",
-    level: "Lvl 02",
-    score: "56%",
-    status: "Finished",
-  },
-  {
-    id: "2",
-    trainingPlan: "New Training Plan 01",
-    module: "Module_name_01",
-    simId: "82841",
-    simName: "Humana_MS_PCP Change",
-    simType: "Visual-Audio",
-    level: "Lvl 02",
-    score: "56%",
-    status: "Finished",
-  },
-  {
-    id: "3",
-    trainingPlan: "New Training Plan 01",
-    module: "Module_name_01",
-    simId: "82842",
-    simName: "Humana_MS_PCP Change",
-    simType: "Visual-Audio",
-    level: "Lvl 02",
-    score: "56%",
-    status: "Finished",
-  },
-  {
-    id: "4",
-    trainingPlan: "New Training Plan 01",
-    module: "Module_name_01",
-    simId: "82843",
-    simName: "Humana_MS_PCP Change",
-    simType: "Visual-Audio",
-    level: "Lvl 02",
-    score: "56%",
-    status: "Finished",
-  },
-];
-
 const PlaybackTable = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [rowsPerPage, setRowsPerPage] = useState("50");
-  const [playbackData, setPlaybackData] = useState<
-    FetchPlaybackRowDataResponse[] | null
-  >(null);
+
+  const [paginationParams, setPaginationParams] =
+    useState<PlaybackRowPaginationParams>({
+      page: 1,
+      pagesize: 5,
+    });
+  const [playbackData, setPlaybackData] =
+    useState<FetchPlaybackRowDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -99,34 +60,38 @@ const PlaybackTable = () => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return playbackData;
 
-
     return playbackData.filter((row) =>
       row.trainingPlan.toLowerCase().includes(q)
     );
   }, [playbackData, searchQuery]);
 
+  const loadPlaybackData = async () => {
+    if (user?.id) {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const payload: FetchPlaybackRowDataPayload = { user_id: user.id };
+
+        if (paginationParams) {
+          payload["pagination"] = paginationParams;
+        }
+
+        // In a real implementation, we would fetch data from the API
+        const data = await fetchPlaybackRowData(payload);
+        setPlaybackData(data);
+      } catch (error) {
+        console.error("Error loading playback data:", error);
+        setError("Failed to load playback data");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
-    const loadPlaybackData = async () => {
-      if (user?.id) {
-        try {
-          setIsLoading(true);
-          setError(null);
-          // In a real implementation, we would fetch data from the API
-          const data = await fetchPlaybackRowData({
-            user_id: user.id,
-          });
-          setPlaybackData(data);
-        } catch (error) {
-          console.error("Error loading playback data:", error);
-          setError("Failed to load playback data");
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
     loadPlaybackData();
-  }, []);
+  }, [user?.id, paginationParams]);
 
   return (
     <Stack spacing={2}>
@@ -137,7 +102,12 @@ const PlaybackTable = () => {
           sx={{ maxWidth: 300 }}
           value={searchQuery}
           onKeyDown={(e) => e.stopPropagation()}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) =>
+            setPaginationParams((prevState) => ({
+              ...prevState,
+              search: e.target.value,
+            }))
+          }
         />
         <Stack direction="row" spacing={1}>
           <IconButton>
@@ -196,7 +166,7 @@ const PlaybackTable = () => {
           <></>
         )}
 
-        {filteredData?.map((playback: FetchPlaybackRowDataResponse) => (
+        {playbackData?.attempts?.map((playback: AttemptsResponse) => (
           <Grid
             key={playback.id}
             container
@@ -271,30 +241,25 @@ const PlaybackTable = () => {
         ))}
       </Paper>
 
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mt: 2 }}
-      >
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Rows per page:
-          </Typography>
-          <Select
-            value={rowsPerPage}
-            onChange={(e) => setRowsPerPage(e.target.value)}
-            size="small"
-            sx={{ minWidth: 80 }}
-          >
-            <MenuItem value="10">10</MenuItem>
-            <MenuItem value="20">20</MenuItem>
-            <MenuItem value="50">50</MenuItem>
-            <MenuItem value="100">100</MenuItem>
-          </Select>
-        </Stack>
-        <Pagination count={10} shape="rounded" size="small" />
-      </Stack>
+      <TablePagination
+        component="div"
+        count={playbackData?.total_attempts || 1000}
+        page={paginationParams.page - 1}
+        onPageChange={(_: unknown, newPage: number) =>
+          setPaginationParams((prevState) => ({
+            ...prevState,
+            page: newPage + 1,
+          }))
+        }
+        rowsPerPage={paginationParams.pagesize}
+        onRowsPerPageChange={(e) =>
+          setPaginationParams((prevState) => ({
+            ...prevState,
+            pagesize: Number(e.target.value),
+          }))
+        }
+        rowsPerPageOptions={[5, 10, 25, 50]}
+      />
     </Stack>
   );
 };

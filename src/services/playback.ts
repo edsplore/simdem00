@@ -2,9 +2,10 @@ import apiClient from "./api/interceptors";
 
 export interface FetchPlaybackRowDataPayload {
   user_id: string;
+  pagination?: PlaybackRowPaginationParams;
 }
 
-export interface FetchPlaybackRowDataResponse {
+export interface AttemptsResponse {
   id: string;
   trainingPlan: string;
   moduleName: string;
@@ -19,6 +20,10 @@ export interface FetchPlaybackRowDataResponse {
   attemptType: string;
   estTime: number;
   attemptCount: number;
+}
+export interface FetchPlaybackRowDataResponse {
+  attempts: AttemptsResponse[];
+  total_attempts: number;
 }
 
 export interface FetchPlaybackByIdRowDataPayload {
@@ -47,12 +52,43 @@ export interface FetchPlaybackByIdRowDataResponse {
   simLevel: string;
 }
 
+export interface FetchPlaybackStatsPayload {
+  user_id: string;
+}
+
+export interface FetchPlaybackStatsResponse {
+  simultion_completion: {
+    completed: number;
+    total: number;
+    total_modules: number;
+  };
+  ontime_completion: {
+    completed: number;
+    total: number;
+  };
+  average_sim_score: {
+    percentage: number;
+    difference_from_last_week: number;
+  };
+  highest_sim_score: {
+    percentage: number;
+    difference_from_last_week: number;
+  };
+}
+
+export interface PlaybackRowPaginationParams {
+  page: number;
+  pagesize: number;
+  sortDir?: "asc" | "desc";
+  search?: string;
+}
+
 export const fetchPlaybackRowData = async (
   payload: FetchPlaybackRowDataPayload
-): Promise<FetchPlaybackRowDataResponse[]> => {
+): Promise<FetchPlaybackRowDataResponse> => {
   try {
     const response = await apiClient.post("/attempts/fetch", payload);
-    return response.data.attempts;
+    return response.data;
   } catch (error) {
     console.error("Error fetching manager dashboard aggregated data:", error);
     throw error;
@@ -67,6 +103,18 @@ export const fetchPlaybackByIdRowData = async (
     return response.data.attempt;
   } catch (error) {
     console.error("Error fetching playback by id row data:", error);
+    throw error;
+  }
+};
+
+export const fetchPlaybackStats = async (
+  payload: FetchPlaybackStatsPayload
+): Promise<FetchPlaybackStatsResponse> => {
+  try {
+    const response = await apiClient.post("/attempts/fetch/stats", payload);
+    return response.data.attempts;
+  } catch (error) {
+    console.error("Error fetching manager dashboard aggregated data:", error);
     throw error;
   }
 };

@@ -1,7 +1,19 @@
 import apiClient from "./api/interceptors";
 
+export interface AdminDashboardUserActivityPayloadParams {
+  department?: string;
+  division?: string;
+  role?: string;
+  status?: string;
+  dateRange?: {
+    startDate?: string;
+    endDate?: string;
+  };
+}
+
 export interface AdminDashboardUserActivityPayload {
   user_id: string;
+  pagination?: AdminDashboardUserActivityPayloadParams;
 }
 
 export interface AdminDashboardUserStatsPayload {

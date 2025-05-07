@@ -360,8 +360,8 @@ const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
         </Stack>
         <Stack sx={{ px: 1.5, pt: 2 }} gap={1}>
           <BarChart
-            dataset={dataset}
-            yAxis={[{ scaleType: "band", dataKey: "label" }]}
+            dataset={data}
+            yAxis={[{ scaleType: "band", dataKey: "team" }]}
             series={[
               {
                 dataKey: "score",

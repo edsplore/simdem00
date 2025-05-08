@@ -603,8 +603,6 @@ const AdminDashboard = () => {
     total: adminDashboardData.totalUsers,
   });
 
-  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
-
   const handleDateRangeApplyCallback = () => {};
 
   const loadUserActivity = async () => {
@@ -743,10 +741,7 @@ const AdminDashboard = () => {
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
     setTimeframe(event.target.value);
   };
-  const handleDateRangeApplyCallback = () => {
-    // loadUserActivity();
-    // loadAdminDashboardStats();
-  };
+
 
   if (isLoading) {
     return (

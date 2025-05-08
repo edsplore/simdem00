@@ -572,10 +572,11 @@ const CircularProgressCards = ({ value, title, popupText }) => {
 const TrainingPlanTable = ({
   trainingPlans,
   totalCount,
-  page ,
+  page,
   rowsPerPage,
   onChangePage,
   onChangeRowsPerPage,
+  reporteeUserIdsMapToName,
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
 
@@ -859,7 +860,8 @@ const TrainingPlanTable = ({
                                     p: 2,
                                   }}
                                 >
-                                  {trainee.name}
+                                  {reporteeUserIdsMapToName.get(trainee.name) ||
+                                    trainee.name}
                                 </TableCell>
                                 <TableCell
                                   sx={{
@@ -929,7 +931,6 @@ const TrainingPlanTable = ({
             </React.Fragment>
           ))}
         </TableBody>
-        
       </Table>
       <Box
         sx={{
@@ -1346,7 +1347,7 @@ const ManagerDashboard = () => {
         params,
         pagination,
       });
-      
+
       setTrainingEntityPagination(data.pagination);
       setTrainingEntityAttempts(data.training_entity);
       setError(null);
@@ -2041,6 +2042,7 @@ const ManagerDashboard = () => {
               rowsPerPage={rowsPerPage}
               onChangePage={handleChangePage}
               onChangeRowsPerPage={handleChangeRowsPerPage}
+              reporteeUserIdsMapToName={reporteeUserIdsMapToName}
             />
           </Stack>
         </Stack>

@@ -617,7 +617,7 @@ const TrainingPlanTable = ({
               ID No.
             </TableCell>
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
-              TRP Name
+              Name
             </TableCell>
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
               Assigned Trainees
@@ -1090,10 +1090,6 @@ const ManagerDashboard = () => {
     const newSelectedTeams =
       typeof value === "string" ? value.split(",") : value;
     setSelectedTeams(newSelectedTeams);
-
-    // Update the combined state
-    const updatedTeamframe = [...newSelectedTeams];
-    updateCombinedState(updatedTeamframe);
   };
 
   const handleCreatorChange = (event) => {
@@ -1101,26 +1097,12 @@ const ManagerDashboard = () => {
     const newSelectedCreators =
       typeof value === "string" ? value.split(",") : value;
 
-    const selectedCreatorName = mockData.creators
-      .filter((creator) => newSelectedCreators.includes(creator.id))
-      .map((creator) => creator.name);
+    const selectedCreatorName = reporteeUser
+      .filter((creator) => newSelectedCreators.includes(creator.user_id))
+      .map((creator) => creator.fullName);
 
     setCreatorName(selectedCreatorName);
     setSelectedCreators(newSelectedCreators);
-
-    // Update the combined state
-  };
-
-  // Helper to update the combined state
-  const updateCombinedState = (ids) => {
-    const selectedUserNames = ids.map((id) => {
-      const userName = reporteeUserIdsMapToName.get(id);
-      const teamName = reporteeTeamIdsMapToName.get(id);
-      return userName || teamName || "";
-    });
-
-    setTeamframe(ids);
-    setTeamframeNames(selectedUserNames);
   };
 
   const handleApplyClick = () => {
@@ -1260,8 +1242,8 @@ const ManagerDashboard = () => {
         .includes(dropdownSearchQuery.toLowerCase())
     ) || [];
 
-  const filteredCreators = mockData.creators.filter((creator) =>
-    creator.name.toLowerCase().includes(creatorSearchQuery.toLowerCase())
+  const filteredCreators = reporteeUser.filter((creator) =>
+    creator.fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase())
   );
 
   const filteredTeamEntity = filteredTeams?.filter((team) =>
@@ -1855,7 +1837,7 @@ const ManagerDashboard = () => {
               justifyContent="space-between"
             >
               <TextField
-                placeholder="Search by Training Plan Name or ID"
+                placeholder="Search by Name"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 InputProps={{
@@ -2004,12 +1986,12 @@ const ManagerDashboard = () => {
                     </Stack>
                     {filteredCreators.map((creator) => (
                       <MenuItem
-                        key={creator.id}
+                        key={creator.user_id}
                         sx={menuItemSx}
-                        value={creator.id}
+                        value={creator.user_id}
                       >
-                        {creator.name}
-                        {selectedCreators.includes(creator.id) && (
+                        {creator.fullName}
+                        {selectedCreators.includes(creator.user_id) && (
                           <ListItemIcon>
                             <Check fontSize="small" color="primary" />
                           </ListItemIcon>

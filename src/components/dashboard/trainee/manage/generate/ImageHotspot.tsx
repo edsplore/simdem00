@@ -36,6 +36,7 @@ import {
   TextFields as TextFieldsIcon,
   Lightbulb as LightbulbIcon,
 } from "@mui/icons-material";
+import { Masking } from "./MaskingPhi";
 
 interface Hotspot {
   id: string;
@@ -80,6 +81,7 @@ interface ColorOption {
 interface ImageHotspotProps {
   imageUrl: string;
   onHotspotsChange?: (hotspots: Hotspot[]) => void;
+  maskings?: Masking[];
   hotspots?: Hotspot[];
   onEditHotspot?: (hotspot: Hotspot) => void;
   editingHotspot?: Hotspot | null;
@@ -172,6 +174,7 @@ const getHotspotTypeName = (hotspotType: string) => {
 const ImageHotspot: React.FC<ImageHotspotProps> = ({
   imageUrl,
   onHotspotsChange,
+  maskings = [],
   hotspots = [],
   onEditHotspot,
   editingHotspot,
@@ -1436,7 +1439,62 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       </Tooltip>
     );
   };
+  const renderMasking = (masking: Masking) => {
+    if (!masking.coordinates || !imageElementRef.current) return null;
 
+    // Convert coordinates from original image coordinates to rendered coordinates
+    const scaledCoords = {
+      left: masking.coordinates.x * imageScale.width,
+      top: masking.coordinates.y * imageScale.height,
+      width: masking.coordinates.width * imageScale.width,
+      height: masking.coordinates.height * imageScale.height,
+    };
+
+    // Determine states for visual styling
+    // const isMoving = movingMasking === masking.id;
+    // const isResizing = resizingMasking === masking.id;
+    // const isEditing = editingId === masking.id;
+    // const isHovered = hoveredMasking === masking.id;
+
+    // Get tooltip text for masking
+    // const tooltipText = `${getMaskingTypeName(masking.type)}: masking`;
+
+    // // Get the icon for the masking type
+    // const maskingIcon = getMaskingTypeIcon(masking.type);
+
+    return (
+      <Tooltip
+        key={masking.id}
+        title={'Masking'}
+        arrow
+        placement="top"
+        PopperProps={{
+          sx: { zIndex: 1400 },
+        }}
+      >
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        
+          sx={{
+            position: "absolute",
+            left: `${scaledCoords.left}px`,
+            top: `${scaledCoords.top}px`,
+            width: `${scaledCoords.width}px`,
+            height: `${scaledCoords.height}px`,
+            border: "2px solid #00AB55 ",
+            backgroundColor: masking.settings?.color,
+            cursor: "pointer",
+            transition: "background-color 0.2s ease",
+          }}
+        > {/* Add resize handles when masking is being edited */}
+          {renderResizeHandles(masking)}
+        </Box>
+      </Tooltip>
+    );
+  };
+  
   return (
     <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
       {imageError && (
@@ -1551,6 +1609,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
         {/* Existing hotspots */}
         {Array.isArray(hotspots) && hotspots.map(renderHotspot)}
+        {Array.isArray(maskings) && maskings.map(renderMasking)}
 
         {/* Currently drawing hotspot */}
         {currentHotspot && currentHotspot.coordinates && !showSettings && (

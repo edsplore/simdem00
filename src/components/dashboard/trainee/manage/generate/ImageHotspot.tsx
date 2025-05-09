@@ -1450,18 +1450,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       height: masking.coordinates.height * imageScale.height,
     };
 
-    // Determine states for visual styling
-    // const isMoving = movingMasking === masking.id;
-    // const isResizing = resizingMasking === masking.id;
-    // const isEditing = editingId === masking.id;
-    // const isHovered = hoveredMasking === masking.id;
-
-    // Get tooltip text for masking
-    // const tooltipText = `${getMaskingTypeName(masking.type)}: masking`;
-
-    // // Get the icon for the masking type
-    // const maskingIcon = getMaskingTypeIcon(masking.type);
-
     return (
       <Tooltip
         key={masking.id}

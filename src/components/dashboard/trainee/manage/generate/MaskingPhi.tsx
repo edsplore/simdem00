@@ -895,29 +895,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   }, [showSettings, currentMasking]);
 
 
-  const isBlurEnabled = true;
-  const generateFilterStyle = () => {
-    let filterStyles = [];
-    
-    if (isBlurEnabled) {
-      filterStyles.push(`blur(${10}px)`);
-    }
-    
-    return filterStyles.length > 0 ? filterStyles.join(' ') : 'none';
-  };
-  const handleBlurChange = (event, newValue) => {
-    setCurrentMasking((prev) => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        settings: {
-          ...prev.settings,
-          blur_intensity: newValue,
-        },
-      };
-    });
-  };
-
   const handleSettingsSave = (settings: Partial<Masking>) => {
     // Ensure currentMasking and coordinates exist
     if (!currentMasking || !currentMasking.coordinates) {
@@ -1403,14 +1380,14 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                   color: value === "Solid" ? '#001EEE' : '#00000099',
                   fontWeight:500,
                    borderRadius: '8px', 
-                }} label="Solid" value="Solid" />
+                }} label="Solid Masking" value="Solid" />
                 <Tab  sx={{
                   width: '50%',
                   bgcolor: value === "Blur" ?  '#001EEE0A' : 'white',
                   color: value === "Blur" ? '#001EEE' : '#00000099',
                   fontWeight:500,
                    borderRadius: '8px', 
-                }} label="Blur" value="Blur" />
+                }} label="Blur Masking" value="Blur" />
               </Tabs>
               {/* Highlight color setting for all masking types */}
               {value === "Solid" &&(
@@ -1617,9 +1594,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                           borderRadius: 0.5,
                           border: "1px solid ",
                           borderColor: currentMasking?.settings?.color,
-                          // filter: isBlurEnabled ? `blur(${10}px)` : "none",
-                          // opacity: isBlurEnabled ? 0.5 : 1,
-                          filter: generateFilterStyle(),
+                          filter:  `blur(${10}px)`,
                         }}
                       />
                     </InputAdornment>

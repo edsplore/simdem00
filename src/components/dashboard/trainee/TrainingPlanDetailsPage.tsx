@@ -56,10 +56,24 @@ const TrainingPlanDetailsPage = () => {
     }));
   };
 
-  const handleSimulationClick = (simulationId: string) => {
+  const handleSimulationClick_old = (simulationId: string) => {
     // Include workspace ID in the URL if available
     const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
     navigate(`/simulation/${simulationId}/attempt${workspaceParam}`);
+  };
+  // Updated to include assignment_id in navigation
+  const handleSimulationClick = (
+    simulationId: string,
+    assignmentId: string,
+    event: React.MouseEvent,
+  ) => {
+    event.stopPropagation();
+    const workspaceParam = currentWorkspaceId
+      ? `?workspace_id=${currentWorkspaceId}`
+      : "";
+    navigate(
+      `/simulation/${simulationId}/${assignmentId}/attempt${workspaceParam}`,
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -246,7 +260,13 @@ const TrainingPlanDetailsPage = () => {
                           cursor: 'pointer',
                         },
                       }}
-                      onClick={() => handleSimulationClick(sim.simulation_id)}
+                      onClick={(e) =>
+                        handleSimulationClick(
+                          sim.simulation_id,
+                          sim.assignment_id,
+                          e,
+                        )
+                      }
                     >
                       <Grid item xs={4}>
                         <Typography>{sim.name}</Typography>
@@ -310,10 +330,10 @@ const TrainingPlanDetailsPage = () => {
                   size="small"
                   sx={{ minWidth: 80 }}
                 >
+                  <MenuItem value="5">5</MenuItem>
                   <MenuItem value="10">10</MenuItem>
-                  <MenuItem value="20">20</MenuItem>
+                  <MenuItem value="25">25</MenuItem>
                   <MenuItem value="50">50</MenuItem>
-                  <MenuItem value="100">100</MenuItem>
                 </Select>
               </Stack>
               <Pagination

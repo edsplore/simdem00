@@ -94,8 +94,11 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
         setError(null);
 
         // Fetch modules and simulations in parallel
-        const [modulesData, simulationsResponse] = await Promise.all([
-          fetchModules(user?.id || "user123"),
+        const [modulesResponse, simulationsResponse] = await Promise.all([
+          fetchModules(user?.id || "user123", {
+                        page: 1,
+                        pagesize: 10
+                      }),
           fetchSimulations(user?.id || "user123", {
             page: 1,
             pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
@@ -107,9 +110,8 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
         // Get simulations from the response
         const simulationsData = simulationsResponse.simulations;
-
-        // Filter simulations to only include published ones
-        const publishedSimulations = simulationsData;
+        const modulesData = modulesResponse.modules;
+        
 
         const combinedItems: Item[] = [
           ...modulesData.map((m) => ({
@@ -118,7 +120,7 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
             type: "module" as const,
             simCount: m.simulations_id.length,
           })),
-          ...publishedSimulations.map((s) => ({
+          ...simulationsData.map((s) => ({
             id: s.id,
             name: s.sim_name,
             type: "simulation" as const,

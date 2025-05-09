@@ -123,8 +123,12 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
       setError(null);
 
       // Fetch modules and simulations in parallel
-      const [modulesData, simulationsResponse] = await Promise.all([
-        fetchModules(user.id),
+      const [modulesResponse, simulationsResponse] = await Promise.all([
+        fetchModules(user.id, {
+                      page: 1,
+                      pagesize: 10,
+                      search: searchQuery // Add search filter if provided
+                    }),
         fetchSimulations(user.id, {
           page: 1,
           pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
@@ -137,6 +141,7 @@ const EditTrainingPlanDialog: React.FC<EditTrainingPlanDialogProps> = ({
 
       // Get simulations from the response
       const simulationsData = simulationsResponse.simulations;
+      const modulesData = modulesResponse.modules;
 
       // Create a map of all available items
       const combinedItems: Item[] = [

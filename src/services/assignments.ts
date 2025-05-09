@@ -22,7 +22,7 @@ export interface CreateAssignmentPayload {
   id: string;
   start_date: string;
   end_date: string;
-  team_id: string[];
+  team_id?: string[];
   trainee_id: string[];
 }
 

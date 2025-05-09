@@ -183,56 +183,6 @@ const TrainingPlanDetailsDialog: React.FC<TrainingPlanDetailsDialogProps> = ({
 
       <DialogContent sx={{ p: 3 }}>
         <Stack spacing={3}>
-          {/* Training Plan Info */}
-          <Box sx={{ bgcolor: '#F9FAFB', p: 2, borderRadius: 2 }}>
-            <Stack spacing={1}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Training Plan Information
-              </Typography>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2">ID:</Typography>
-                <Typography variant="body2" fontWeight="medium">
-                  {trainingPlan.id}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2">Created By:</Typography>
-                <Typography variant="body2" fontWeight="medium">
-                  {trainingPlan.created_by}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2">Created On:</Typography>
-                <Typography variant="body2" fontWeight="medium">
-                  {new Date(trainingPlan.created_at).toLocaleString()}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2">Last Modified:</Typography>
-                <Typography variant="body2" fontWeight="medium">
-                  {new Date(trainingPlan.last_modified_at).toLocaleString()}
-                </Typography>
-              </Stack>
-              <Stack direction="row" justifyContent="space-between">
-                <Typography variant="body2">Tags:</Typography>
-                <Box>
-                  {trainingPlan.tags.map((tag, index) => (
-                    <Chip
-                      key={index}
-                      label={tag}
-                      size="small"
-                      sx={{
-                        ml: 0.5,
-                        bgcolor: '#F5F6FF',
-                        color: '#444CE7',
-                      }}
-                    />
-                  ))}
-                </Box>
-              </Stack>
-            </Stack>
-          </Box>
-
           {/* Modules Section */}
           {modules.length > 0 && (
             <>

@@ -10,7 +10,21 @@ export interface Team {
   leader?: {
     id: string;
     name: string;
+    user_id?: string;
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    phone_no?: string;
+    fullName?: string;
   };
+  team_members?: Array<{
+    user_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_no: string;
+    fullName: string;
+  }>;
   team_members_count?: number;
   created_by?: string;
   created_at?: string;
@@ -89,5 +103,33 @@ export const fetchTeams = async (
     console.error("Error fetching teams:", error);
     // Return empty response instead of throwing to prevent UI crashes
     return { teams: [], items: [] };
+  }
+};
+
+/**
+ * Fetches detailed information for a specific team
+ * @param workspaceId The workspace ID
+ * @param teamId The team ID
+ * @returns Promise with detailed team information
+ */
+export const fetchTeamDetails = async (
+  workspaceId: string,
+  teamId: string
+): Promise<Team> => {
+  try {
+    console.log(`Fetching details for team ${teamId} in workspace ${workspaceId}`);
+
+    const response = await apiClient.get(`${TEAMS_URL}/${teamId}`, {
+      headers: {
+        'X-WORKSPACE-ID': workspaceId
+      }
+    });
+
+    console.log('Team details response:', response.data);
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error fetching details for team ${teamId}:`, error);
+    throw error;
   }
 };

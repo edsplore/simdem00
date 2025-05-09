@@ -24,7 +24,6 @@ import {
   Close as CloseIcon,
   Person as PersonIcon,
   Group as GroupIcon,
-  Info as InfoIcon,
 } from '@mui/icons-material';
 import { Assignment } from '../../../services/assignments';
 import { fetchUsersByIds, type User } from '../../../services/users';
@@ -197,18 +196,13 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
           variant="fullWidth"
         >
           <Tab 
-            icon={<InfoIcon />} 
-            label="Information" 
-            {...a11yProps(0)} 
-          />
-          <Tab 
             icon={
               <Badge badgeContent={teams.length} color="primary" showZero>
                 <GroupIcon />
               </Badge>
             } 
             label="Teams" 
-            {...a11yProps(1)} 
+            {...a11yProps(0)} 
           />
           <Tab 
             icon={
@@ -217,7 +211,7 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
               </Badge>
             } 
             label="Trainees" 
-            {...a11yProps(2)} 
+            {...a11yProps(1)} 
           />
         </Tabs>
       </Box>
@@ -231,92 +225,6 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
         ) : (
           <>
             <TabPanel value={tabValue} index={0}>
-              <Box sx={{ bgcolor: '#F9FAFB', p: 2, borderRadius: 2 }}>
-                <Stack spacing={1.5}>
-                  <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                    Assignment Information
-                  </Typography>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Name:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {assignment.name || 'Untitled Assignment'}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Type:</Typography>
-                    <Chip
-                      label={assignment.type}
-                      size="small"
-                      sx={{
-                        bgcolor: '#F5F6FF',
-                        color: '#444CE7',
-                      }}
-                    />
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Start Date:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {formatDate(assignment.start_date)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Due Date:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {formatDate(assignment.end_date)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Created By:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {assignment.created_by}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Created On:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {formatDate(assignment.created_at)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Last Modified:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {formatDate(assignment.last_modified_at)}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Modified By:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {assignment.last_modified_by}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Status:</Typography>
-                    <Chip
-                      label={assignment.status}
-                      size="small"
-                      sx={{
-                        bgcolor: '#F5F6FF',
-                        color: '#444CE7',
-                      }}
-                    />
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Teams:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {assignment.team_id?.length || 0}
-                    </Typography>
-                  </Stack>
-                  <Stack direction="row" justifyContent="space-between">
-                    <Typography variant="body2">Trainees:</Typography>
-                    <Typography variant="body2" fontWeight="medium">
-                      {assignment.trainee_id?.length || 0}
-                    </Typography>
-                  </Stack>
-                </Stack>
-              </Box>
-            </TabPanel>
-
-            <TabPanel value={tabValue} index={1}>
               {teams.length > 0 ? (
                 <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                   {teams.map((team, index) => (
@@ -372,15 +280,12 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
                   </Avatar>
                   <Typography variant="body1" sx={{ mb: 1, fontWeight: 'medium' }}>
                     No Teams Assigned
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    This assignment doesn't have any teams assigned to it.
-                  </Typography>
+                  </Typography>                  
                 </Box>
               )}
             </TabPanel>
 
-            <TabPanel value={tabValue} index={2}>
+            <TabPanel value={tabValue} index={1}>
               {users.length > 0 ? (
                 <List sx={{ bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                   {users.map((user, index) => (
@@ -415,10 +320,7 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
                   </Avatar>
                   <Typography variant="body1" sx={{ mb: 1, fontWeight: 'medium' }}>
                     No Trainees Assigned
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    This assignment doesn't have any trainees assigned to it.
-                  </Typography>
+                  </Typography>                  
                 </Box>
               )}
             </TabPanel>

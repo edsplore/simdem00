@@ -7,8 +7,12 @@ import {
   type TrainingPlanPaginationParams,
 } from "../../../services/trainingPlans";
 import { fetchUsersSummary, type User } from "../../../services/users";
-import { fetchTeams, type Team } from "../../../services/teams";
-import { createAssignment } from "../../../services/assignments";
+import { fetchTeamDetails, fetchTeams, type Team } from "../../../services/teams";
+import { 
+  createAssignment, 
+  type Team as DetailedTeam,
+  type TeamMember
+} from "../../../services/assignments";
 import {
   Dialog,
   DialogTitle,
@@ -251,14 +255,30 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
       setIsSubmitting(true);
       setSubmitError(null);
 
+      if (!currentWorkspaceId) {
+        setSubmitError("Workspace ID is required");
+        return;
+      }
+
       // Split assignees into teams and trainees
-      const teams = data.assignTo.filter(
+      const teamIds = data.assignTo.filter(
         (id) => assignees.find((a) => a.id === id)?.type === "team",
       );
-      const trainees = data.assignTo.filter(
+      const traineeIds = data.assignTo.filter(
         (id) => assignees.find((a) => a.id === id)?.type === "trainee",
       );
 
+      // Fetch detailed team information for each team
+      const teamDetailsPromises = teamIds.map(teamId => 
+        fetchTeamDetails(currentWorkspaceId, teamId)
+      );
+
+      // Wait for all team details to be fetched
+      const teamsWithDetails = await Promise.all(teamDetailsPromises);
+
+      console.log("Teams with details:", teamsWithDetails);
+
+      // Create the assignment with detailed team information
       const response = await createAssignment({
         user_id: user?.id || "user123",
         name: data.name,
@@ -266,8 +286,8 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
         id: data.trainingPlan,
         start_date: data.startDate,
         end_date: data.dueDate,
-        team_id: teams,
-        trainee_id: trainees,
+        team_id: teamsWithDetails, // Use the detailed team objects
+        trainee_id: traineeIds,
       });
 
       if (response.status === "success") {

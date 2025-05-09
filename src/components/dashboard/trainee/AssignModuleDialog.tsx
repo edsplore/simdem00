@@ -178,24 +178,27 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
             }))
           : [];
 
-        // Process teams
-        const teamAssignees: Assignee[] =
-          teamsResponse && teamsResponse.teams
-            ? teamsResponse.teams.map((team) => ({
-                id: team.team_id,
-                name: team.team_name,
-                type: "team",
-              }))
-            : [];
+        // Process teams - handle both response formats
+        let teamsList: Team[] = [];
+        if (teamsResponse.teams && Array.isArray(teamsResponse.teams)) {
+          teamsList = teamsResponse.teams;
+        } else if (teamsResponse.items && Array.isArray(teamsResponse.items)) {
+          teamsList = teamsResponse.items;
+        }
+
+        const teamAssignees: Assignee[] = teamsList.map((team) => ({
+          id: team.team_id,
+          name: team.team_name || team.name || `Team ${team.team_id.slice(-4)}`,
+          type: "team",
+        }));
 
         // Combine users and teams
-        const allAssignees = [...teamAssignees, ...userAssignees];
-        setAssignees(allAssignees);
+        setAssignees([...teamAssignees, ...userAssignees]);
 
         console.log("Loaded assignees:", {
           teams: teamAssignees.length,
           users: userAssignees.length,
-          total: allAssignees.length,
+          total: teamAssignees.length + userAssignees.length,
         });
       } catch (error) {
         console.error("Error loading assignees:", error);

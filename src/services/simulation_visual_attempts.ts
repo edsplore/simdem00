@@ -1,3 +1,4 @@
+import { AttemptInterface } from "../types/attempts";
 import apiClient from "./api/interceptors";
 
 // Interfaces for simulation data structures
@@ -101,7 +102,6 @@ export interface SimulationScores {
   concentration: number;
 }
 
-
 export interface EndVisualSimulationResponse {
   id: string;
   status: string;
@@ -121,7 +121,7 @@ export interface EndVisualSimulationResponse {
 export const startVisualSimulation = async (
   userId: string,
   simulationId: string,
-  assignmentId: string,
+  assignmentId: string
 ): Promise<VisualSimulationResponse> => {
   try {
     const response = await apiClient.post<VisualSimulationResponse>(
@@ -130,7 +130,7 @@ export const startVisualSimulation = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      },
+      }
     );
 
     return response.data;
@@ -151,6 +151,7 @@ export const endVisualSimulation = async (
   userId: string,
   simulationId: string,
   simulationProgressId: string,
+  userAttemptSequence: AttemptInterface[]
 ): Promise<EndVisualSimulationResponse> => {
   try {
     const response = await apiClient.post<EndVisualSimulationResponse>(
@@ -159,7 +160,8 @@ export const endVisualSimulation = async (
         user_id: userId,
         simulation_id: simulationId,
         usersimulationprogress_id: simulationProgressId,
-      },
+        userAttemptSequence: userAttemptSequence,
+      }
     );
 
     return response.data;

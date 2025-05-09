@@ -1,3 +1,4 @@
+import { AttemptInterface } from "../types/attempts";
 import apiClient from "./api/interceptors";
 
 export interface ImageData {
@@ -105,7 +106,7 @@ export interface EndVisualAudioResponse {
 export const startVisualAudioAttempt = async (
   userId: string,
   simulationId: string,
-  assignmentId: string,
+  assignmentId: string
 ): Promise<StartVisualAudioResponse> => {
   try {
     const response = await apiClient.post<StartVisualAudioResponse>(
@@ -114,7 +115,7 @@ export const startVisualAudioAttempt = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      },
+      }
     );
 
     return response.data;
@@ -135,6 +136,7 @@ export const endVisualAudioAttempt = async (
   userId: string,
   simulationId: string,
   progressId: string,
+  userAttemptSequence: AttemptInterface[]
 ): Promise<EndVisualAudioResponse> => {
   try {
     const response = await apiClient.post<EndVisualAudioResponse>(
@@ -143,7 +145,8 @@ export const endVisualAudioAttempt = async (
         user_id: userId,
         simulation_id: simulationId,
         usersimulationprogress_id: progressId,
-      },
+        userAttemptSequence: userAttemptSequence,
+      }
     );
 
     return response.data;

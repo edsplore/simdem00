@@ -46,6 +46,7 @@ import {
   StartVisualChatResponse,
   EndVisualChatResponse,
 } from "../../../../services/simulation_visual_chat_attempts";
+import { AttemptInterface } from "../../../../types/attempts";
 
 interface ChatMessage {
   id: string;
@@ -150,7 +151,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
-    null,
+    null
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -159,7 +160,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Visual-chat specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -202,6 +203,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  // user attempt sequence data
+  const [attemptSequenceData, setAttemptSequenceData] = useState<
+    AttemptInterface[]
+  >([]);
+
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
@@ -237,6 +243,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       }
     };
   }, [isPaused, isStarted]);
+
+  useEffect(() => {
+    console.log("simulation Data ---- ", simulationData);
+    console.log("Attempt simulation Data ---- ", attemptSequenceData);
+    console.log("Chat Messages Data ---- ", chatMessages);
+  }, [simulationData, attemptSequenceData, chatMessages]);
 
   // Reset states when moving to a new item
   useEffect(() => {
@@ -296,7 +308,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           };
 
           setChatMessages((prev) => [...prev, newMessage]);
-
+          setAttemptSequenceData((prevState) => [
+            ...prevState,
+            {
+              ...currentItem,
+              userMessageId: newMessage.id,
+              userText: newMessage.text,
+              timestamp: newMessage.timestamp,
+            },
+          ]);
           // Auto-advance after a short delay
           setTimeout(() => {
             moveToNextItem();
@@ -449,7 +469,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -478,7 +498,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -517,9 +537,30 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+          },
+        ];
+      }
+    });
 
     switch (hotspotType) {
       case "button":
+
       case "highlight":
         // For button and highlight, simply advance
         setHighlightHotspot(false);
@@ -555,7 +596,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -581,6 +622,30 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        }
+      });
       moveToNextItem();
     }
   };
@@ -600,6 +665,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     };
 
     setChatMessages((prev) => [...prev, newMessage]);
+    setAttemptSequenceData((prevState) => [
+      ...prevState,
+      {
+        ...currentItem,
+        userMessageId: newMessage.id,
+        userText: newMessage.text,
+        timestamp: newMessage.timestamp,
+      },
+    ]);
 
     // Clear input and waiting state
     setUserInput("");
@@ -659,7 +733,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const response = await startVisualChatAttempt(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual-chat response:", response);
@@ -751,6 +825,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -787,6 +862,70 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
+
+  // to  check if user is clicking outside the hubspot
+  useEffect(() => {
+    if (currentItem?.type !== "hotspot") return;
+
+    const handleClick = (event: MouseEvent) => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to the container
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const {
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+
+      // Check if the click is outside the currentItem box
+      const isOutside =
+        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+
+      if (isOutside) {
+        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
+        setAttemptSequenceData((prevData) => {
+          const existingItem = prevData.find(
+            (item) => item.id === currentItem.id
+          );
+          if (existingItem) {
+            return [
+              ...prevData.filter((item) => item.id !== currentItem.id),
+              {
+                ...existingItem,
+                wrong_clicks: [
+                  ...(existingItem.wrong_clicks || []),
+                  { x_cordinates: x, y_cordinates: y },
+                ],
+              },
+            ];
+          } else {
+            return [
+              ...prevData,
+              {
+                ...currentItem,
+                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              },
+            ];
+          }
+        });
+        // Your custom logic for outside click
+      } else {
+        console.log("Clicked inside currentItem box — ignoring");
+      }
+    };
+
+    const container = imageContainerRef.current;
+    container?.addEventListener("click", handleClick);
+
+    return () => {
+      container?.removeEventListener("click", handleClick);
+    };
+  }, [currentItem]);
 
   // Cleanup object URLs when component unmounts
   useEffect(() => {
@@ -1037,8 +1176,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1072,8 +1211,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1107,8 +1246,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1445,10 +1584,21 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1484,9 +1634,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1498,7 +1656,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                   open={dropdownOpen}
                                   onClose={() => setDropdownOpen(false)}
                                   sx={{
-                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
                                       ? `2px solid ${getHighlightColor()}`
@@ -1538,8 +1699,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               onClick={handleHotspotClick}
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1580,9 +1746,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1634,10 +1808,21 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 border: "4px solid",
                                 borderColor: getHighlightColor(),
                                 boxShadow: highlightHotspot
@@ -1659,10 +1844,21 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 50,
                               }}
                             >

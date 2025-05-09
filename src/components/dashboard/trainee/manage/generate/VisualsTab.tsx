@@ -98,6 +98,7 @@ interface ScriptMessage {
   text: string;
   role: "Customer" | "Trainee";
   visualId: string;
+  keywords: string[];
   order: number;
 }
 interface MaskingItem {
@@ -196,7 +197,7 @@ const processImageUrl = (imageData: string): string => {
         ) {
           console.log(
             "Decoded blob URL from base64:",
-            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : ""),
+            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : "")
           );
           return decoded; // Return the decoded URL
         }
@@ -274,7 +275,12 @@ const MaskPhiDialog = ({
     >
       <DialogTitle sx={{ p: 0, width: "100%", mb: "32px" }}>
         <Stack alignItems={"center"} gap="20px">
-          <Stack direction="row" justifyContent="center" alignItems={"center"} width={"100%"}>
+          <Stack
+            direction="row"
+            justifyContent="center"
+            alignItems={"center"}
+            width={"100%"}
+          >
             <Stack
               sx={{
                 display: "flex",
@@ -300,11 +306,19 @@ const MaskPhiDialog = ({
                 <VisibilityOffIcon sx={{ color: "#143FDA", fontSize: 18 }} />
               </Stack>
             </Stack>
-            
-              <IconButton sx={{ position: 'absolute', right: '24px', top: '24px', height: '30px', width: '30px'}} onClick={closeMaskPhiDialog}>
-                <CloseIcon sx={{ color: "#00000099" }} />
-              </IconButton>
-            
+
+            <IconButton
+              sx={{
+                position: "absolute",
+                right: "24px",
+                top: "24px",
+                height: "30px",
+                width: "30px",
+              }}
+              onClick={closeMaskPhiDialog}
+            >
+              <CloseIcon sx={{ color: "#00000099" }} />
+            </IconButton>
           </Stack>
           <Stack alignItems={"center"} gap={1}>
             <Typography
@@ -321,8 +335,8 @@ const MaskPhiDialog = ({
               textAlign={"center"}
               fontWeight={500}
             >
-              <span> 12 PHI Identified </span> , Do you want to mask them? You can
-              edit them later.
+              <span> 12 PHI Identified </span> , Do you want to mask them? You
+              can edit them later.
             </Typography>
           </Stack>
         </Stack>
@@ -376,6 +390,8 @@ export default function VisualsTab({
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  console.log("visual Images ", visualImages);
+
   // Confirm dialog for deleting the last slide
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageToDelete, setImageToDelete] = useState<string | null>(null);
@@ -392,7 +408,7 @@ export default function VisualsTab({
 
   // For the "Add Script Message" menu
   const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
-    null,
+    null
   );
   const [maskingPhi, setMaskingPhi] = useState<boolean>(false);
 
@@ -405,12 +421,12 @@ export default function VisualsTab({
   // Memoize the current sequence to prevent unnecessary recalculations
   const selectedImage = useMemo(
     () => visualImages.find((img) => img.id === selectedImageId),
-    [visualImages, selectedImageId],
+    [visualImages, selectedImageId]
   );
 
   const currentSequence: SequenceItem[] = useMemo(
     () => selectedImage?.sequence || [],
-    [selectedImage],
+    [selectedImage]
   );
 
   // Throttled container width update to prevent too frequent state changes
@@ -557,6 +573,7 @@ export default function VisualsTab({
                 text: item.text || "",
                 visualId: img.id,
                 order: item.order || 0,
+                keyword: item.keywords || [],
               },
               timestamp: Date.now(),
             };
@@ -643,10 +660,10 @@ export default function VisualsTab({
             };
           }
           return img;
-        }),
+        })
       );
     },
-    [],
+    []
   );
 
   // Handle reordering of the sequence
@@ -663,10 +680,10 @@ export default function VisualsTab({
             };
           }
           return img;
-        }),
+        })
       );
     },
-    [selectedImageId],
+    [selectedImageId]
   );
 
   // Extract hotspots from the selected image for the ImageHotspot component
@@ -740,14 +757,14 @@ export default function VisualsTab({
         // Use the assignedScriptMessageIds Set to filter out already assigned messages
         return !assignedScriptMessageIds.has(msg.id);
       }),
-    [scriptData, assignedScriptMessageIds],
+    [scriptData, assignedScriptMessageIds]
   );
 
   const handleOpenScriptMenu = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       setScriptMenuAnchor(event.currentTarget);
     },
-    [],
+    []
   );
 
   const handleCloseScriptMenu = useCallback(() => {
@@ -755,7 +772,12 @@ export default function VisualsTab({
   }, []);
 
   const handleAddMessage = useCallback(
-    (message: { id: string; role: string; message: string }) => {
+    (message: {
+      id: string;
+      role: string;
+      message: string;
+      keywords: string[];
+    }) => {
       if (!selectedImageId) return;
 
       const newMsg: ScriptMessage = {
@@ -763,6 +785,7 @@ export default function VisualsTab({
         role: message.role as "Customer" | "Trainee",
         text: stripHtmlTags(message.message), // Strip HTML tags when adding to sequence
         visualId: selectedImageId,
+        keywords: message.keywords,
         order: 0, // We're not using this anymore as we rely on sequence order
       };
 
@@ -782,7 +805,7 @@ export default function VisualsTab({
             };
           }
           return img;
-        }),
+        })
       );
 
       // Update assignedScriptMessageIds to include this message ID
@@ -794,7 +817,7 @@ export default function VisualsTab({
 
       handleCloseScriptMenu();
     },
-    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds],
+    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds]
   );
 
   // For draggable thumbnails on the left
@@ -802,7 +825,7 @@ export default function VisualsTab({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    }),
+    })
   );
 
   const handleThumbnailsDragEnd = useCallback(
@@ -817,7 +840,7 @@ export default function VisualsTab({
       const newArr = arrayMove(visualImages, oldIndex, newIndex);
       setVisualImages(newArr);
     },
-    [visualImages],
+    [visualImages]
   );
 
   // Image Upload
@@ -839,7 +862,7 @@ export default function VisualsTab({
       if (!e.target.files) return;
       handleFiles(Array.from(e.target.files));
     },
-    [handleFiles],
+    [handleFiles]
   );
 
   const handleDrop = useCallback(
@@ -847,7 +870,7 @@ export default function VisualsTab({
       e.preventDefault();
       handleFiles(Array.from(e.dataTransfer.files));
     },
-    [handleFiles],
+    [handleFiles]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -864,7 +887,7 @@ export default function VisualsTab({
       // Always show confirmation dialog
       setShowDeleteConfirm(true);
     },
-    [visualImages.length],
+    [visualImages.length]
   );
 
   // Actual deletion function separated for clarity and improved with functional updates
@@ -884,7 +907,7 @@ export default function VisualsTab({
         if (messageIds.length > 0) {
           console.log(
             "Releasing message IDs back to unassigned pool:",
-            messageIds,
+            messageIds
           );
           setAssignedScriptMessageIds((prev) => {
             const newSet = new Set(prev);
@@ -918,7 +941,7 @@ export default function VisualsTab({
       setEditingMasking(null);
       setIsEditing(false);
     },
-    [visualImages, setAssignedScriptMessageIds],
+    [visualImages, setAssignedScriptMessageIds]
   );
 
   // Clicking a thumbnail
@@ -979,6 +1002,7 @@ export default function VisualsTab({
               id: message.id,
               role: message.role,
               text: message.text,
+              keywords: message.keywords,
             };
           }
         });
@@ -1024,7 +1048,7 @@ export default function VisualsTab({
       // Call create/update simulation for all visual-related types
       if (createSimulation) {
         console.log(
-          `Updating simulation with slides for ${simulationType} type`,
+          `Updating simulation with slides for ${simulationType} type`
         );
 
         // Call the update function
@@ -1052,7 +1076,9 @@ export default function VisualsTab({
           } else {
             console.error("API returned non-success status:", status);
             setError(
-              `Failed to update simulation. Server returned: ${status || "unknown status"}`,
+              `Failed to update simulation. Server returned: ${
+                status || "unknown status"
+              }`
             );
           }
         } else {
@@ -1085,7 +1111,7 @@ export default function VisualsTab({
       setVisualImages((currentImages) => {
         // Find the current image
         const currentImageIndex = currentImages.findIndex(
-          (img) => img.id === imageId,
+          (img) => img.id === imageId
         );
         if (currentImageIndex === -1) return currentImages;
 
@@ -1093,25 +1119,23 @@ export default function VisualsTab({
 
         // Find all sequence items that are hotspots
         const currentHotspotItems = currentImage.sequence.filter(
-          (item) => item.type === "hotspot",
+          (item) => item.type === "hotspot"
         );
         const currentHotspots = currentHotspotItems.map(
-          (item) => item.content as Hotspot,
+          (item) => item.content as Hotspot
         );
 
         // Identify deleted hotspots
         const deletedHotspotIds = currentHotspots
           .filter(
             (oldHotspot) =>
-              !newHotspots.some(
-                (newHotspot) => newHotspot.id === oldHotspot.id,
-              ),
+              !newHotspots.some((newHotspot) => newHotspot.id === oldHotspot.id)
           )
           .map((hotspot) => hotspot.id);
 
         // Updated/added hotspots map for quick lookup
         const updatedHotspotsMap = new Map(
-          newHotspots.map((hotspot) => [hotspot.id, hotspot]),
+          newHotspots.map((hotspot) => [hotspot.id, hotspot])
         );
 
         // Process sequence in a single pass
@@ -1121,7 +1145,7 @@ export default function VisualsTab({
               !(
                 item.type === "hotspot" &&
                 deletedHotspotIds.includes((item.content as Hotspot).id)
-              ),
+              )
           )
           .map((item) => {
             if (item.type === "hotspot") {
@@ -1266,15 +1290,15 @@ export default function VisualsTab({
               ...img,
               sequence: img.sequence.filter(
                 (item) =>
-                  !(item.type === type && (item.content as any).id === id),
+                  !(item.type === type && (item.content as any).id === id)
               ),
             };
           }
           return img;
-        }),
+        })
       );
     },
-    [selectedImageId, setAssignedScriptMessageIds],
+    [selectedImageId, setAssignedScriptMessageIds]
   );
 
   const handleEditItem = useCallback(
@@ -1284,13 +1308,13 @@ export default function VisualsTab({
       if (type === "hotspot") {
         // Find the hotspot in the sequence
         const selectedImage = visualImages.find(
-          (img) => img.id === selectedImageId,
+          (img) => img.id === selectedImageId
         );
         if (!selectedImage) return;
 
         const hotspotItem = selectedImage.sequence.find(
           (item) =>
-            item.type === "hotspot" && (item.content as Hotspot).id === id,
+            item.type === "hotspot" && (item.content as Hotspot).id === id
         );
 
         if (hotspotItem) {
@@ -1317,7 +1341,7 @@ export default function VisualsTab({
         alert(`Editing message #${id} not implemented`);
       }
     },
-    [selectedImageId, visualImages],
+    [selectedImageId, visualImages]
   );
 
   const handleToggleEditMode = useCallback(() => {
@@ -1515,6 +1539,7 @@ export default function VisualsTab({
                       id: msg.id,
                       role: msg.role,
                       message: msg.message,
+                      keywords: msg.keywords,
                     })
                   }
                   sx={{

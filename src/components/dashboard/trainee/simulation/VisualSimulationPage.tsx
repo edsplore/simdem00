@@ -40,6 +40,7 @@ import {
   SimulationData,
   ImageData,
 } from "../../../../services/simulation_visual_attempts";
+import { AttemptInterface } from "../../../../types/attempts";
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -86,7 +87,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Visual-specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -120,6 +121,15 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const currentSlide = slidesData[currentSlideIndex] || {};
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
+
+  // user attempt sequence data
+  const [attemptSequenceData, setAttemptSequenceData] = useState<
+    AttemptInterface[]
+  >([]);
+
+  useEffect(() => {
+    console.log("attempt Simulation page ------- ", attemptSequenceData);
+  }, [attemptSequenceData]);
 
   // Debug current slide and sequence
   useEffect(() => {
@@ -312,7 +322,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -341,7 +351,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -359,6 +369,70 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       handleEndSimulation();
     }
   };
+
+  // to  check if user is clicking outside the hubspot
+  useEffect(() => {
+    if (currentItem?.type !== "hotspot") return;
+
+    const handleClick = (event: MouseEvent) => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to the container
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const {
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+
+      // Check if the click is outside the currentItem box
+      const isOutside =
+        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+
+      if (isOutside) {
+        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
+        setAttemptSequenceData((prevData) => {
+          const existingItem = prevData.find(
+            (item) => item.id === currentItem.id
+          );
+          if (existingItem) {
+            return [
+              ...prevData.filter((item) => item.id !== currentItem.id),
+              {
+                ...existingItem,
+                wrong_clicks: [
+                  ...(existingItem.wrong_clicks || []),
+                  { x_cordinates: x, y_cordinates: y },
+                ],
+              },
+            ];
+          } else {
+            return [
+              ...prevData,
+              {
+                ...currentItem,
+                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              },
+            ];
+          }
+        });
+        // Your custom logic for outside click
+      } else {
+        console.log("Clicked inside currentItem box — ignoring");
+      }
+    };
+
+    const container = imageContainerRef.current;
+    container?.addEventListener("click", handleClick);
+
+    return () => {
+      container?.removeEventListener("click", handleClick);
+    };
+  }, [currentItem]);
 
   // Handle hotspot click based on type
   const handleHotspotClick = () => {
@@ -380,6 +454,27 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
+
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+          },
+        ];
+      }
+    });
 
     switch (hotspotType) {
       case "button":
@@ -418,7 +513,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -487,7 +582,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const response = await startVisualSimulation(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual simulation response:", response);
@@ -581,6 +676,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -866,8 +962,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -901,8 +997,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -936,8 +1032,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1266,10 +1362,21 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1305,9 +1412,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1319,7 +1434,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   open={dropdownOpen}
                                   onClose={() => setDropdownOpen(false)}
                                   sx={{
-                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
                                       ? `2px solid ${getHighlightColor()}`
@@ -1359,8 +1477,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               onClick={handleHotspotClick}
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1401,9 +1524,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1455,10 +1586,21 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 border: "4px solid",
                                 borderColor: getHighlightColor(),
                                 boxShadow: highlightHotspot
@@ -1480,10 +1622,21 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 50,
                               }}
                             >

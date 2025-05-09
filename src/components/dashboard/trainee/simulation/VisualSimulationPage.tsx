@@ -530,6 +530,29 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setDropdownValue(option);
     setDropdownOpen(false);
 
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      }
+    });
+
     if (currentItem?.settings?.advanceOnSelect) {
       setTimeout(() => moveToNextItem(), 500);
     }
@@ -539,6 +562,30 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        }
+      });
       moveToNextItem();
     }
   };

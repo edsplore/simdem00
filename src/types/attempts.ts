@@ -19,7 +19,7 @@ export interface AttemptInterface {
   type: string;
   name?: string | null;
   role?: string | null;
-  hotspotType?: "button" | null;
+  hotspotType?: string | null;
   coordinates?: CoordinatesInterface | null;
   text?: string | null;
   x_coordinates?: number;

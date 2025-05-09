@@ -1128,6 +1128,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             settings.settings?.advanceOnSelect !== undefined
               ? settings.settings.advanceOnSelect
               : true,
+          expectedValue: settings.settings?.expectedValue || "",
         };
         break;
       case "checkbox":
@@ -2333,6 +2334,35 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       Add
                     </Button>
                   </Stack>
+                  <TextField
+                    size="medium"
+                    label="Expected Value"
+                    value={currentHotspot?.settings?.expectedValue || ""}
+                    placeholder="Enter text..."
+                    onChange={(e) =>
+                      setCurrentHotspot((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev?.settings,
+                          expectedValue: e.target.value,
+                        },
+                      }))
+                    }
+                    onClick={(e) => {
+                      if (!currentHotspot?.settings?.placeholder) {
+                        setCurrentHotspot((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev?.settings,
+                            expectedValue: "",
+                          },
+                        }));
+                      }
+                    }}
+                    InputProps={{
+                      style: { height: "48px" },
+                    }}
+                  />
                 </Stack>
               )}
 

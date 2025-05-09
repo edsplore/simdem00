@@ -612,6 +612,28 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
     setDropdownOpen(false);
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      }
+    });
 
     if (currentItem?.settings?.advanceOnSelect) {
       setTimeout(() => moveToNextItem(), 500);

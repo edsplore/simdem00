@@ -103,6 +103,9 @@ const AssignSimulationsPage = () => {
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<AssignmentPaginationParams>(() => {
+    
+    
+    
     const params: AssignmentPaginationParams = {
       page: page + 1, // API uses 1-based indexing
       pagesize: rowsPerPage,

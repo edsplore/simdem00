@@ -7,8 +7,12 @@ import {
   type ModulePaginationParams 
 } from "../../../services/modules";
 import { fetchUsersSummary, type User } from "../../../services/users";
-import { fetchTeams, type Team } from "../../../services/teams";
-import { createAssignment } from "../../../services/assignments";
+import { fetchTeams, type Team, fetchTeamDetails } from "../../../services/teams";
+import { 
+  createAssignment, 
+  type Team as DetailedTeam,
+  type TeamMember
+} from "../../../services/assignments";
 import {
   Dialog,
   DialogTitle,
@@ -88,6 +92,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     formState: { isValid },
     watch,
     setValue,
+    reset
   } = useForm<CreateModuleFormData>({
     mode: "onChange",
     defaultValues: {
@@ -257,13 +262,28 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
       setIsSubmitting(true);
       setSubmitError(null);
 
+      if (!currentWorkspaceId) {
+        setSubmitError("Workspace ID is required");
+        return;
+      }
+
       // Split assignees into teams and trainees
-      const teams = data.assignTo.filter(
+      const teamIds = data.assignTo.filter(
         (id) => assignees.find((a) => a.id === id)?.type === "team",
       );
       const trainees = data.assignTo.filter(
         (id) => assignees.find((a) => a.id === id)?.type === "trainee",
       );
+
+      // Fetch detailed team information for each team
+      const teamDetailsPromises = teamIds.map(teamId => 
+        fetchTeamDetails(currentWorkspaceId, teamId)
+      );
+
+      // Wait for all team details to be fetched
+      const teamsWithDetails = await Promise.all(teamDetailsPromises);
+
+      console.log("Teams with details:", teamsWithDetails);
 
       const response = await createAssignment({
         user_id: user?.id || "user123",
@@ -272,11 +292,22 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
         id: data.moduleId,
         start_date: data.startDate,
         end_date: data.dueDate,
-        team_id: teams,
+        team_id: teamsWithDetails, // Use the detailed team objects
         trainee_id: trainees,
       });
 
       if (response.status === "success") {
+        // Reset form
+        reset({
+          name: "",
+          moduleId: "",
+          startDate: "",
+          dueDate: "",
+          assignTo: [],
+        });
+        setSelectedModule(null);
+
+        // Call success callback and close dialog
         onAssignmentCreated?.();
         onClose();
       }
@@ -371,7 +402,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 3, pt: "24px !important" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
             <Stack spacing={2}>

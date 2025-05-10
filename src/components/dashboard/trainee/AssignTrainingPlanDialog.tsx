@@ -93,6 +93,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
     formState: { isValid },
     watch,
     setValue,
+    reset
   } = useForm<CreateTrainingPlanFormData>({
     mode: "onChange",
     defaultValues: {
@@ -291,6 +292,17 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
       });
 
       if (response.status === "success") {
+        // Reset form
+        reset({
+          name: "",
+          trainingPlan: "",
+          startDate: "",
+          dueDate: "",
+          assignTo: [],
+        });
+        setSelectedPlan(null);
+
+        // Call success callback and close dialog
         onAssignmentCreated?.();
         onClose();
       }
@@ -392,7 +404,7 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
+      <DialogContent sx={{ p: 3, pt: "24px !important" }}>
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={3}>
             <Stack spacing={2}>

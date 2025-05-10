@@ -385,8 +385,9 @@ export default function VisualsTab({
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [editingHotspot, setEditingHotspot] = useState<Hotspot | null>(null);
   const [editingMasking, setEditingMasking] = useState<Masking | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isFileUploaded, setIsFileUploaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -442,13 +443,13 @@ export default function VisualsTab({
     }
   }, []);
 
-  useEffect(() => {
-    setIsSubmitting(true);
-    setIsUploading(true);
-    setTimeout(() => {
-      setIsUploading(false);
-    }, 3000);
-  }, []);
+  // useEffect(() => {
+  //   setIsSubmitting(true);
+  //   setIsUploading(true);
+  //   setTimeout(() => {
+  //     setIsUploading(false);
+  //   }, 3000);
+  // }, []);
 
   // Update container width when ref is available, but with more stable behavior
   useEffect(() => {
@@ -844,26 +845,64 @@ export default function VisualsTab({
   );
 
   // Image Upload
-  const handleFiles = useCallback((files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-    const newImages = imageFiles.map((file) => ({
-      id: Math.random().toString(36).substr(2, 9),
-      url: URL.createObjectURL(file),
-      name: file.name,
-      file: file, // Store the actual File reference
-      sequence: [], // Initialize with empty sequence
-      masking: [],
-    }));
-    setVisualImages((prev) => [...prev, ...newImages]);
+  // const handleFiles = useCallback((files: File[]) => {
+  //   const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+  //   const newImages = imageFiles.map((file) => ({
+  //     id: Math.random().toString(36).substr(2, 9),
+  //     url: URL.createObjectURL(file),
+  //     name: file.name,
+  //     file: file, // Store the actual File reference
+  //     sequence: [], // Initialize with empty sequence
+  //     masking: [],
+  //   }));
+  //   setVisualImages((prev) => [...prev, ...newImages]);
+  // }, []);
+  const handleFiles = useCallback(async (files: File[]) => {
+    return new Promise<void>((resolve) => {
+      const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+      const newImages = imageFiles.map((file) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        url: URL.createObjectURL(file),
+        name: file.name,
+        file, // Store the actual File reference
+        sequence: [], // Initialize with empty sequence
+        masking: [],
+      }));
+
+      setVisualImages((prev) => [...prev, ...newImages]);
+      resolve();
+    });
   }, []);
 
   const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      debugger;
       if (!e.target.files) return;
-      handleFiles(Array.from(e.target.files));
+
+      // setIsSubmitting(true);
+      setIsUploading(true);
+
+      try {
+        await handleFiles(Array.from(e.target.files));
+      } catch (err) {
+        console.error("Error processing files:", err);
+      } finally {
+        setIsUploading(false);
+        setIsFileUploaded(true);
+      }
     },
     [handleFiles]
   );
+  // const handleFileSelect = useCallback(
+  //   (e: React.ChangeEvent<HTMLInputElement>) => {
+  //     if (!e.target.files) return;
+  //     setIsSubmitting(true);
+  //     handleFiles(Array.from(e.target.files));
+  //     setIsSubmitting(false);
+  //   },
+  //   [handleFiles]
+  // );
+
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -959,7 +998,7 @@ export default function VisualsTab({
 
     setIsSubmitting(true);
     setError(null);
-
+    
     try {
       // Create FormData for multipart/form-data submission with files
       const formData = new FormData();
@@ -1300,6 +1339,34 @@ export default function VisualsTab({
     },
     [selectedImageId, setAssignedScriptMessageIds]
   );
+  const handleMaskingDelete = useCallback(
+    (maskingId: string) => {
+      if (!selectedImageId) return;
+      // Find the masking in the sequence
+      // const maskingItem = selectedImage.masking.find(
+      //   (item) => item.type === "masking" && (item.content as Masking).id === maskingId
+      // );
+      // if (!maskingItem) return;
+      setVisualImages((currentImages) =>
+        currentImages.map((img) => {
+          if (img.id === selectedImageId) {
+            return {
+              ...img,
+              masking: img.masking.filter(
+                (item) =>
+                  !(
+                    item.type === "masking" &&
+                    (item.content as Masking).id === maskingId
+                  )
+              ),
+            };
+          }
+          return img;
+        })
+      );
+    },
+    [selectedImageId, visualImages]
+  );
 
   const handleEditItem = useCallback(
     (id: string, type: "hotspot" | "masking" | "message") => {
@@ -1369,14 +1436,14 @@ export default function VisualsTab({
   };
 
   const closeMaskPhiDialog = () => {
-    setIsSubmitting(false);
+    setIsFileUploaded(false);
   };
   const handleClickMaskPhi = () => {
     // Process PHI masking
-    setIsSubmitting(false);
+    setIsFileUploaded(false);
   };
   const cancelMaskPhi = () => {
-    setIsSubmitting(false);
+    setIsFileUploaded(false);
   };
 
   const handleApplyMaskingPhi = () => {
@@ -1392,7 +1459,7 @@ export default function VisualsTab({
           {error}
         </Alert>
       )}
-      {isSubmitting && (
+      {isUploading && (
         <Stack
           sx={{
             position: "fixed",
@@ -1409,26 +1476,42 @@ export default function VisualsTab({
             alignItems: "center",
           }}
         >
-          {isUploading ? (
-            <Stack>
-              <CircularProgress
-                thickness={5}
-                size={100}
-                sx={{ color: "white" }}
-              />
-              <Typography
-                sx={{ color: "white", mt: 1, fontSize: 16, fontWeight: 600 }}
-              >
-                Processing Visuals...
-              </Typography>
-            </Stack>
-          ) : (
-            <MaskPhiDialog
-              handleClickMaskPhi={handleClickMaskPhi}
-              cancelMaskPhi={cancelMaskPhi}
-              closeMaskPhiDialog={closeMaskPhiDialog}
+          <Stack>
+            <CircularProgress
+              thickness={5}
+              size={100}
+              sx={{ color: "white" }}
             />
-          )}
+            <Typography
+              sx={{ color: "white", mt: 1, fontSize: 16, fontWeight: 600 }}
+            >
+              Processing Visuals...
+            </Typography>
+          </Stack>
+        </Stack>
+      )}
+      {isFileUploaded && (
+        <Stack
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 1400, // higher than typical material components
+            backgroundColor: "#00000099",
+            backdropFilter: "blur(16px)", // applies the blur effect behind
+            WebkitBackdropFilter: "blur(16px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <MaskPhiDialog
+            handleClickMaskPhi={handleClickMaskPhi}
+            cancelMaskPhi={cancelMaskPhi}
+            closeMaskPhiDialog={closeMaskPhiDialog}
+          />
         </Stack>
       )}
 
@@ -1737,6 +1820,7 @@ export default function VisualsTab({
                         setEditingMasking(null);
                       }}
                       onEditMasking={(msk) => setEditingMasking(msk)}
+                      onDeleteMasking={handleMaskingDelete}
                       containerWidth={containerWidth}
                     />
                   ) : (

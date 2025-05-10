@@ -3,12 +3,15 @@ import {
   ChatBubble as ChatBubbleIcon,
   CheckBox as CheckBoxIcon,
   Close as CloseIcon,
+  Delete,
+  Edit,
   Edit as EditIcon,
   Highlight as HighlightIcon,
   Lightbulb as LightbulbIcon,
   List as ListIcon,
   TextFields as TextFieldsIcon,
-  VisibilityOff
+  Visibility,
+  VisibilityOff,
 } from "@mui/icons-material";
 import {
   Alert,
@@ -25,8 +28,8 @@ import {
   Tabs,
   TextField,
   Tooltip,
-  Typography
-} from "@mui/material"; 
+  Typography,
+} from "@mui/material";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 export interface Masking {
@@ -56,6 +59,7 @@ interface MaskingPhiProps {
   maskings?: Masking[];
   onEditMasking?: (msk: Masking) => void;
   editingMasking?: Masking | null;
+  onDeleteMasking?: (id: string, type: "masking") => void | undefined;
   containerWidth: number;
 }
 
@@ -148,12 +152,13 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   maskings = [],
   onEditMasking,
   editingMasking,
+  onDeleteMasking,
   containerWidth,
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentMasking, setCurrentMasking] = useState<Partial<Masking> | null>(
-    null,
+    null
   );
   const [showSettings, setShowSettings] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -176,7 +181,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   );
   const [value, setValue] = React.useState('Solid');
 
-  
+
   // Add state for moving maskings
   const [movingMasking, setMovingMasking] = useState<string | null>(null);
   const [moveStart, setMoveStart] = useState({ x: 0, y: 0 });
@@ -910,7 +915,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
 
     // Common settings for all masking types
     const commonSettings = {
-      color:settings.settings?.color, // Default highlight color
+      color: settings.settings?.color || "#ffc107", // Default highlight color
     };
 
     // Initialize type-specific settings based on maskingType
@@ -1043,7 +1048,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
 
     // Get the icon for the masking type
     const maskingIcon = getMaskingTypeIcon(masking.type);
-    
+
     return (
       <Tooltip
         key={masking.id}
@@ -1055,16 +1060,15 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
         }}
       >
         <Box
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!isEditing && !isMoving && !isResizing) {
-              onEditMasking?.(masking);
-            }
-          }}
           onMouseEnter={() => setHoveredMasking(masking.id)}
           onMouseLeave={() => setHoveredMasking(null)}
           sx={{
             position: "absolute",
+            display: "flex",
+            alignItems: "flex-start",
+            p: 0.5,
+            flexWrap: "wrap",
+            justifyContent: "space-between",
             left: `${scaledCoords.left}px`,
             top: `${scaledCoords.top}px`,
             width: `${scaledCoords.width}px`,
@@ -1073,8 +1077,8 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             borderColor: isEditing
               ? "#00AB55"
               : isMoving || isResizing
-                ? "#FF4785"
-                : "#444CE7",
+              ? "#FF4785"
+              : "#444CE7",
             backgroundColor: isHovered
               ? masking.settings?.color
               : masking.settings?.color,
@@ -1112,8 +1116,8 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               backgroundColor: isEditing
                 ? "#00AB55"
                 : isMoving || isResizing
-                  ? "#FF4785"
-                  : "#444CE7",
+                ? "#FF4785"
+                : "#444CE7",
               cursor: "move",
               zIndex: 2,
               boxShadow: "0 0 4px rgba(0,0,0,0.3)",
@@ -1133,10 +1137,13 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
           {/* Type icon indicator in top left */}
           {isHovered && (
             <Box
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isEditing && !isResizing && !isMoving) {
+                  onEditMasking?.(masking);
+                }
+              }}
               sx={{
-                position: "absolute",
-                top: "4px",
-                left: "4px",
                 color: "#444CE7",
                 backgroundColor: "rgba(255, 255, 255, 0.9)",
                 borderRadius: "50%",
@@ -1147,10 +1154,33 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 boxShadow: "0 0 4px rgba(0,0,0,0.2)",
               }}
             >
-              {maskingIcon}
+              <Edit sx={{ fontSize: 16 }} />
             </Box>
           )}
 
+          {isHovered && (
+            <Box
+              sx={{
+                // position: "absolute",
+                // top: "4px",
+                // right: "4px",
+                color: "#444CE7",
+                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                borderRadius: "50%",
+                padding: "2px",
+                display: "flex",
+                width: "fit-content",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+              }}
+            >
+              <Delete
+                onClick={() => onDeleteMasking?.(masking.id, masking.type)}
+                sx={{ fontSize: 16 }}
+              />
+            </Box>
+          )}
           {/* Add resize handles when masking is being edited */}
           {renderResizeHandles(masking)}
         </Box>
@@ -1271,7 +1301,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
 
         {/* Existing maskings */}
         {Array.isArray(maskings) && maskings.map(renderMasking)}
-        
+
         {/* Currently drawing masking */}
         {currentMasking && currentMasking.coordinates && !showSettings && (
           <Box
@@ -1361,8 +1391,8 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
 
             {/* Form Fields */}
             <Stack spacing={2} width="100%">
-              <Tabs 
-               sx={{
+              <Tabs
+                sx={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
@@ -1372,7 +1402,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 p:'4px',"& .MuiTabs-indicator": {
                     backgroundColor: "transparent",
                     height: 3,
-                  },  
+                  },
               }}value={value} onChange={handleChange}>
                 <Tab sx={{
                   width: '50%',
@@ -1392,279 +1422,278 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               {/* Highlight color setting for all masking types */}
               {value === "Solid" &&(
                 <TextField
-                size="medium"
-                fullWidth
-                label="Solid Color"
-                value={
-                  // Show hex value to user
-                  (() => {
+                  size="medium"
+                  fullWidth
+                  label="Solid Color"
+                  value={
+                    // Show hex value to user
+                    (() => {
                     const rgba =
                       currentMasking?.settings?.color;
-                    const match = rgba?.match(
+                      const match = rgba?.match(
                       /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
-                    );
-                    if (match) {
-                      const r = parseInt(match[1])
-                        .toString(16)
-                        .padStart(2, "0");
-                      const g = parseInt(match[2])
-                        .toString(16)
-                        .padStart(2, "0");
-                      const b = parseInt(match[3])
-                        .toString(16)
-                        .padStart(2, "0");
-                      return `#${r}${g}${b}`;
-                    }
-                    return "#ffc107"; // Default amber color
-                  })()
-                }
-                onChange={(e) => {
-                  // Convert hex to rgba
-                  const colorValue = e.target.value;
-                  if (colorValue.startsWith("#")) {
-                    // Convert hex to rgba
-                    const r = parseInt(colorValue.slice(1, 3), 16);
-                    const g = parseInt(colorValue.slice(3, 5), 16);
-                    const b = parseInt(colorValue.slice(5, 7), 16);
-                    const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
-
-                    setCurrentMasking((prev) => {
-                      if (!prev) return null;
-                      return {
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          color: rgba,
-                          solid_mask: prev.settings?.solid_mask ?? false,
-                          blur_mask: prev.settings?.blur_mask ?? false,
-                        },
-                      };
-                    });
+                      );
+                      if (match) {
+                        const r = parseInt(match[1])
+                          .toString(16)
+                          .padStart(2, "0");
+                        const g = parseInt(match[2])
+                          .toString(16)
+                          .padStart(2, "0");
+                        const b = parseInt(match[3])
+                          .toString(16)
+                          .padStart(2, "0");
+                        return `#${r}${g}${b}`;
+                      }
+                      return "#ffc107"; // Default amber color
+                    })()
                   }
-                }}
-                InputProps={{
-                  style: { height: "48px" },
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Box
-                        sx={{
-                          width: 24,
-                          height: 24,
-                          bgcolor:
-                            currentMasking?.settings?.color ||
-                            "rgba(255, 193, 7, 0.8)",
-                          borderRadius: 0.5,
-                          border: "1px solid #E5E7EB",
-                        }}
-                      />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <input
-                        type="color"
-                        value={
-                          // Convert RGBA to hex for the color input
-                          (() => {
-                            const rgba =
+                  onChange={(e) => {
+                    // Convert hex to rgba
+                    const colorValue = e.target.value;
+                    if (colorValue.startsWith("#")) {
+                      // Convert hex to rgba
+                      const r = parseInt(colorValue.slice(1, 3), 16);
+                      const g = parseInt(colorValue.slice(3, 5), 16);
+                      const b = parseInt(colorValue.slice(5, 7), 16);
+                      const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
+
+                      setCurrentMasking((prev) => {
+                        if (!prev) return null;
+                        return {
+                          ...prev,
+                          settings: {
+                            ...prev.settings,
+                            color: rgba,
+                            solid_mask: prev.settings?.solid_mask ?? false,
+                            blur_mask: prev.settings?.blur_mask ?? false,
+                          },
+                        };
+                      });
+                    }
+                  }}
+                  InputProps={{
+                    style: { height: "48px" },
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            bgcolor:
+                              currentMasking?.settings?.color || "#ffc107",
+                            borderRadius: 0.5,
+                            border: "1px solid #E5E7EB",
+                          }}
+                        />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <input
+                          type="color"
+                          value={
+                            // Convert RGBA to hex for the color input
+                            (() => {
+                              const rgba =
                               currentMasking?.settings?.color ||
                               "rgba(255, 193, 7, 0.8)";
-                            const match = rgba.match(
+                              const match = rgba.match(
                               /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
-                            );
-                            if (match) {
-                              const r = parseInt(match[1])
-                                .toString(16)
-                                .padStart(2, "0");
-                              const g = parseInt(match[2])
-                                .toString(16)
-                                .padStart(2, "0");
-                              const b = parseInt(match[3])
-                                .toString(16)
-                                .padStart(2, "0");
-                              return `#${r}${g}${b}`;
-                            }
-                            return "#ffc107"; // Default amber color
-                          })()
-                        }
-                        onChange={(e) => {
-                          const hexColor = e.target.value;
-                          // Convert hex to rgba
-                          const r = parseInt(hexColor.slice(1, 3), 16);
-                          const g = parseInt(hexColor.slice(3, 5), 16);
-                          const b = parseInt(hexColor.slice(5, 7), 16);
-                          // Keep the existing alpha or default to 1
-                          const currentAlpha = (() => {
-                            const rgba =
-                              currentMasking?.settings?.color || "";
-                            const match = rgba.match(
+                              );
+                              if (match) {
+                                const r = parseInt(match[1])
+                                  .toString(16)
+                                  .padStart(2, "0");
+                                const g = parseInt(match[2])
+                                  .toString(16)
+                                  .padStart(2, "0");
+                                const b = parseInt(match[3])
+                                  .toString(16)
+                                  .padStart(2, "0");
+                                return `#${r}${g}${b}`;
+                              }
+                              return "#ffc107"; // Default amber color
+                            })()
+                          }
+                          onChange={(e) => {
+                            const hexColor = e.target.value;
+                            // Convert hex to rgba
+                            const r = parseInt(hexColor.slice(1, 3), 16);
+                            const g = parseInt(hexColor.slice(3, 5), 16);
+                            const b = parseInt(hexColor.slice(5, 7), 16);
+                            // Keep the existing alpha or default to 1
+                            const currentAlpha = (() => {
+                              const rgba =
+                                currentMasking?.settings?.color || "";
+                              const match = rgba.match(
                               /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
-                            );
-                            return match ? parseFloat(match[1]) : 1;
-                          })();
+                              );
+                              return match ? parseFloat(match[1]) : 1;
+                            })();
 
-                          const rgba = `rgba(${r}, ${g}, ${b}, ${currentAlpha})`;
+                            const rgba = `rgba(${r}, ${g}, ${b}, ${currentAlpha})`;
 
-                          setCurrentMasking((prev) => ({
-                            ...prev,
-                            settings: {
-                              ...prev?.settings,
-                              color: rgba,
-                              solid_mask: prev?.settings?.solid_mask ?? false,
-                              blur_mask: prev?.settings?.blur_mask ?? false,
-                            },
-                          }));
-                        }}
-                        style={{
-                          width: 24,
-                          height: 24,
-                          border: "none",
-                          padding: 0,
-                          background: "none",
-                        }}
-                      />
-                    </InputAdornment>
-                  ),
-                }}
-              />
+                            setCurrentMasking((prev) => ({
+                              ...prev,
+                              settings: {
+                                ...prev?.settings,
+                                color: rgba,
+                                solid_mask: prev?.settings?.solid_mask ?? false,
+                                blur_mask: prev?.settings?.blur_mask ?? false,
+                              },
+                            }));
+                          }}
+                          style={{
+                            width: 24,
+                            height: 24,
+                            border: "none",
+                            padding: 0,
+                            background: "none",
+                          }}
+                        />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
               ) }
               {value === "Blur" &&(
                 <>
-                <TextField
-                size="medium"
-                fullWidth
-                label="Blur Effect"
-                value={
-                  // Show hex value to user
-                  (() => {
+                  <TextField
+                    size="medium"
+                    fullWidth
+                    label="Blur Effect"
+                    value={
+                      // Show hex value to user
+                      (() => {
                     const rgba =
                       currentMasking?.settings?.color;
-                    const match = rgba?.match(
+                        const match = rgba?.match(
                       /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
-                    );
-                    if (match) {
-                      const r = parseInt(match[1])
-                        .toString(16)
-                        .padStart(2, "0");
-                      const g = parseInt(match[2])
-                        .toString(16)
-                        .padStart(2, "0");
-                      const b = parseInt(match[3])
-                        .toString(16)
-                        .padStart(2, "0");
-                      return `#${r}${g}${b}`;
-                    }
-                    return "#ffc107"; // Default amber color
-                  })()
-                }
-                onChange={(e) => {
-                  // Convert hex to rgba
-                  const colorValue = e.target.value;
-                  if (colorValue.startsWith("#")) {
-                    // Convert hex to rgba
-                    const r = parseInt(colorValue.slice(1, 3), 16);
-                    const g = parseInt(colorValue.slice(3, 5), 16);
-                    const b = parseInt(colorValue.slice(5, 7), 16);
-                    const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
-
-                    setCurrentMasking((prev) => {
-                      if (!prev) return null;
-                      return {
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          color: rgba,
-                          solid_mask: true,
-                          blur_mask:false,
-                        },
-                      };
-                    });
-                  }
-                }}
-                InputProps={{
-                  style: { height: "48px" },
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Box
-                        sx={{
-                          width: 24,
-                          height: 24,
-                          bgcolor:
-                            currentMasking?.settings?.color,
-                          borderRadius: 0.5,
-                          border: "1px solid ",
-                          borderColor: currentMasking?.settings?.color,
-                          filter:  `blur(${10}px)`,
-                        }}
-                      />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <input
-                        type="color"
-                        value={
-                          // Convert RGBA to hex for the color input
-                          (() => {
-                            const rgba =
-                              currentMasking?.settings?.color;
-                            const match = rgba?.match(
-                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
-                            );
-                            if (match) {
-                              const r = parseInt(match[1])
-                                .toString(16)
-                                .padStart(2, "0");
-                              const g = parseInt(match[2])
-                                .toString(16)
-                                .padStart(2, "0");
-                              const b = parseInt(match[3])
-                                .toString(16)
-                                .padStart(2, "0");
-                              return `#${r}${g}${b}`;
-                            }
-                            return "#ffc107"; // Default amber color
-                          })()
+                        );
+                        if (match) {
+                          const r = parseInt(match[1])
+                            .toString(16)
+                            .padStart(2, "0");
+                          const g = parseInt(match[2])
+                            .toString(16)
+                            .padStart(2, "0");
+                          const b = parseInt(match[3])
+                            .toString(16)
+                            .padStart(2, "0");
+                          return `#${r}${g}${b}`;
                         }
-                        onChange={(e) => {
-                          const hexColor = e.target.value;
-                          // Convert hex to rgba
-                          const r = parseInt(hexColor.slice(1, 3), 16);
-                          const g = parseInt(hexColor.slice(3, 5), 16);
-                          const b = parseInt(hexColor.slice(5, 7), 16);
-                          // Keep the existing alpha or default to 1
-                          const currentAlpha = (() => {
-                            const rgba =
-                              currentMasking?.settings?.color || "";
-                            const match = rgba.match(
-                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
-                            );
-                            return match ? parseFloat(match[1]) : 1;
-                          })();
+                        return "#ffc107"; // Default amber color
+                      })()
+                    }
+                    onChange={(e) => {
+                      // Convert hex to rgba
+                      const colorValue = e.target.value;
+                      if (colorValue.startsWith("#")) {
+                        // Convert hex to rgba
+                        const r = parseInt(colorValue.slice(1, 3), 16);
+                        const g = parseInt(colorValue.slice(3, 5), 16);
+                        const b = parseInt(colorValue.slice(5, 7), 16);
+                        const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
 
-                          const rgba = `rgba(${r}, ${g}, ${b}, ${currentAlpha})`;
-
-                          setCurrentMasking((prev) => ({
+                        setCurrentMasking((prev) => {
+                          if (!prev) return null;
+                          return {
                             ...prev,
                             settings: {
-                              ...prev?.settings,
+                              ...prev.settings,
                               color: rgba,
                               solid_mask: true,
-                              blur_mask: false,
+                          blur_mask:false,
                             },
-                          }));
-                        }}
-                        style={{
-                          width: 24,
-                          height: 24,
-                          border: "none",
-                          padding: 0,
-                          background: "none",
-                        }}
-                      />
-                    </InputAdornment>
-                  ),
-                }}
+                          };
+                        });
+                      }
+                    }}
+                    InputProps={{
+                      style: { height: "48px" },
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Box
+                            sx={{
+                              width: 24,
+                              height: 24,
+                          bgcolor:
+                            currentMasking?.settings?.color,
+                              borderRadius: 0.5,
+                              border: "1px solid ",
+                              borderColor: currentMasking?.settings?.color,
+                          filter:  `blur(${10}px)`,
+                            }}
+                          />
+                        </InputAdornment>
+                      ),
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <input
+                            type="color"
+                            value={
+                              // Convert RGBA to hex for the color input
+                              (() => {
+                            const rgba =
+                              currentMasking?.settings?.color;
+                                const match = rgba?.match(
+                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                                );
+                                if (match) {
+                                  const r = parseInt(match[1])
+                                    .toString(16)
+                                    .padStart(2, "0");
+                                  const g = parseInt(match[2])
+                                    .toString(16)
+                                    .padStart(2, "0");
+                                  const b = parseInt(match[3])
+                                    .toString(16)
+                                    .padStart(2, "0");
+                                  return `#${r}${g}${b}`;
+                                }
+                                return "#ffc107"; // Default amber color
+                              })()
+                            }
+                            onChange={(e) => {
+                              const hexColor = e.target.value;
+                              // Convert hex to rgba
+                              const r = parseInt(hexColor.slice(1, 3), 16);
+                              const g = parseInt(hexColor.slice(3, 5), 16);
+                              const b = parseInt(hexColor.slice(5, 7), 16);
+                              // Keep the existing alpha or default to 1
+                              const currentAlpha = (() => {
+                                const rgba =
+                                  currentMasking?.settings?.color || "";
+                                const match = rgba.match(
+                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
+                                );
+                                return match ? parseFloat(match[1]) : 1;
+                              })();
+
+                              const rgba = `rgba(${r}, ${g}, ${b}, ${currentAlpha})`;
+
+                              setCurrentMasking((prev) => ({
+                                ...prev,
+                                settings: {
+                                  ...prev?.settings,
+                                  color: rgba,
+                                  solid_mask: true,
+                                  blur_mask: false,
+                                },
+                              }));
+                            }}
+                            style={{
+                              width: 24,
+                              height: 24,
+                              border: "none",
+                              padding: 0,
+                              background: "none",
+                            }}
+                          />
+                        </InputAdornment>
+                      ),
+                    }}
               /></>
               ) }
 

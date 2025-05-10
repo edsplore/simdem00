@@ -154,7 +154,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
     // Show loading message
     const loadingScript: Message[] = [
       {
-        id: String(Date.now()),
+        id: "loading-1", // FIXED: Use stable, predictable ID
         role: "Trainee",
         message: "Processing file... Please wait.",
         keywords: [],
@@ -190,7 +190,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
           const message = line.substring(colonIndex + 1).trim();
 
           return {
-            id: String(Date.now() + index),
+            id: `script-${index}`, // FIXED: Use stable, predictable ID
             role: role === "Customer" ? "Customer" : "Trainee",
             message: message,
             keywords: [],
@@ -209,7 +209,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       console.error("Error processing file:", error);
       const errorScript: Message[] = [
         {
-          id: String(Date.now()),
+          id: "error-1", // FIXED: Use stable ID
           role: "Trainee",
           message: `Error: ${error.message || "Failed to process file. Please check the format and try again."}`,
           keywords: [],
@@ -248,7 +248,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       // Show loading message
       const loadingScript: Message[] = [
         {
-          id: String(Date.now()),
+          id: "loading-1", // FIXED: Use stable ID
           role: "Trainee",
           message: "Processing audio file... This may take a few minutes.",
           keywords: [],
@@ -273,7 +273,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       if (response && Array.isArray(response.script)) {
         const transformedScript: Message[] = response.script.map(
           (item: any, index: number) => ({
-            id: String(Date.now() + index),
+            id: `script-${index}`, // FIXED: Use stable, predictable ID
             role: item.role || "Trainee",
             message: item.message || "",
             keywords: item.keywords || [],
@@ -302,7 +302,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       setError(errorMessage);
       const errorScript: Message[] = [
         {
-          id: String(Date.now()),
+          id: "error-1", // FIXED: Use stable ID
           role: "Trainee",
           message: `Error: ${errorMessage}`,
           keywords: [],
@@ -319,7 +319,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
   const handleTextInput = () => {
     if (inputMessage.trim()) {
       const newMessage: Message = {
-        id: Date.now().toString(),
+        id: `script-${scriptData.length}`, // FIXED: Use stable, predictable ID
         role: currentRole,
         message: inputMessage.trim(),
         keywords: [],

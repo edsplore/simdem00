@@ -49,9 +49,27 @@ export interface SimulationData {
   };
   lvl2: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   lvl3: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   sim_type: string;
   status: string;

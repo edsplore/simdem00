@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -51,9 +51,27 @@ interface SimulationData {
   };
   lvl2: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   lvl3: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   sim_type: string;
   status: string;
@@ -149,6 +167,36 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  // For preview, always use level 1 settings
+  const levelSettings = simulationData?.lvl1 || {
+    hideHighlights: false,
+    hideCoachingTips: false,
+  };
+
+  // Function to check if a hotspot should be skipped based on settings
+  const shouldSkipHotspot = () => {
+    if (!currentItem || currentItem.type !== "hotspot") return false;
+
+    // Skip highlight hotspots if hideHighlights is enabled
+    if (
+      currentItem.hotspotType === "highlight" &&
+      levelSettings.hideHighlights
+    ) {
+      return true;
+    }
+
+    // Skip coaching tip hotspots if hideCoachingTips is enabled
+    if (
+      (currentItem.hotspotType === "coaching" ||
+        currentItem.hotspotType === "coachingtip") &&
+      levelSettings.hideCoachingTips
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Initialize timer for simulation
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -189,15 +237,16 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     setTextInputValue("");
     setShowCoachingTip(false);
 
-    // Show coaching tip immediately if it's that type
+    // Show coaching tip immediately if it's that type and not hidden by settings
     if (
       currentItem?.type === "hotspot" &&
       (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip")
+        currentItem?.hotspotType === "coachingtip") &&
+      !levelSettings.hideCoachingTips
     ) {
       setShowCoachingTip(true);
     }
-  }, [currentSequenceIndex, currentSlideIndex]);
+  }, [currentSequenceIndex, currentSlideIndex, levelSettings.hideCoachingTips]);
 
   // Process current sequence item
   useEffect(() => {
@@ -205,6 +254,17 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
 
     const processItem = async () => {
       setIsProcessing(true);
+
+      // Check if current hotspot should be skipped based on settings
+      if (shouldSkipHotspot()) {
+        console.log(
+          "Skipping hotspot due to level settings:",
+          currentItem.hotspotType,
+        );
+        moveToNextItem(); // Skip to the next item
+        setIsProcessing(false);
+        return;
+      }
 
       if (currentItem.type === "message") {
         // For customer messages, automatically add to chat
@@ -283,31 +343,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages]);
-
-  // Handle user input submission
-  const handleSubmitMessage = (e?: React.FormEvent) => {
-    e?.preventDefault();
-
-    if (!userInput.trim() || !waitingForUserInput) return;
-
-    // Add the trainee message to chat
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      role: "trainee",
-      text: userInput,
-      timestamp: new Date().toISOString(),
-    };
-
-    setChatMessages((prev) => [...prev, newMessage]);
-
-    // Clear input and waiting state
-    setUserInput("");
-    setWaitingForUserInput(false);
-    setExpectedTraineeResponse("");
-
-    // Move to next sequence item
-    moveToNextItem();
-  };
 
   // Format time for messages
   const formatMessageTime = (timestamp: string) => {
@@ -474,6 +509,31 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     }
   };
 
+  // Handle user input submission
+  const handleSubmitMessage = (e?: React.FormEvent) => {
+    e?.preventDefault();
+
+    if (!userInput.trim() || !waitingForUserInput) return;
+
+    // Add the trainee message to chat
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: "trainee",
+      text: userInput,
+      timestamp: new Date().toISOString(),
+    };
+
+    setChatMessages((prev) => [...prev, newMessage]);
+
+    // Clear input and waiting state
+    setUserInput("");
+    setWaitingForUserInput(false);
+    setExpectedTraineeResponse("");
+
+    // Move to next sequence item
+    moveToNextItem();
+  };
+
   // Handle key press in chat input
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -503,21 +563,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         }, timeout * 1000);
       }
     }
-  };
-
-  // End call - updated to use the onEndSimulation prop
-  const endCall = () => {
-    // Clear any active timeout
-    if (hotspotTimeoutRef.current) {
-      clearTimeout(hotspotTimeoutRef.current);
-      hotspotTimeoutRef.current = null;
-    }
-    setTimeoutActive(false);
-
-    setCallStatus("Chat Ended");
-
-    // Call the parent's end simulation handler
-    onEndSimulation();
   };
 
   // Show loading state if no data
@@ -633,7 +678,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
           <IconButton onClick={togglePause} sx={{ ml: 1 }}>
             {isPaused ? <PlayArrow /> : <Pause />}
           </IconButton>
-          <IconButton onClick={endCall} color="error">
+          <IconButton onClick={onEndSimulation} color="error">
             <CallEnd />
           </IconButton>
         </Stack>
@@ -694,7 +739,8 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
-                currentItem.coordinates && (
+                currentItem.coordinates &&
+                !shouldSkipHotspot() && (
                   <>
                     {/* Button hotspot */}
                     {(currentItem.hotspotType === "button" ||
@@ -872,75 +918,76 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                       </Box>
                     )}
 
-                    {/* Highlight hotspot */}
-                    {currentItem.hotspotType === "highlight" && (
-                      <Box
-                        onClick={handleHotspotClick}
-                        sx={{
-                          position: "absolute",
-                          cursor: "pointer",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                          height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                          border: "4px solid",
-                          borderColor: getHighlightColor(),
-                          boxShadow: highlightHotspot
-                            ? `0 0 12px 3px ${getHighlightColor()}`
-                            : "none",
-                          borderRadius: "4px",
-                          backgroundColor: "transparent",
-                          transition: "box-shadow 0.3s",
-                        }}
-                      />
-                    )}
+                    {/* Highlight hotspot - only render if not hidden by settings */}
+                    {currentItem.hotspotType === "highlight" &&
+                      !levelSettings.hideHighlights && (
+                        <Box
+                          onClick={handleHotspotClick}
+                          sx={{
+                            position: "absolute",
+                            cursor: "pointer",
+                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            border: "4px solid",
+                            borderColor: getHighlightColor(),
+                            boxShadow: highlightHotspot
+                              ? `0 0 12px 3px ${getHighlightColor()}`
+                              : "none",
+                            borderRadius: "4px",
+                            backgroundColor: "transparent",
+                            transition: "box-shadow 0.3s",
+                          }}
+                        />
+                      )}
+
+                    {/* Coaching tip button - only render if not hidden by settings */}
+                    {(currentItem.hotspotType === "coaching" ||
+                      currentItem.hotspotType === "coachingtip") &&
+                      !levelSettings.hideCoachingTips && (
+                        <Box
+                          onClick={handleHotspotClick}
+                          sx={{
+                            position: "absolute",
+                            cursor: "pointer",
+                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            zIndex: 50,
+                          }}
+                        >
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            sx={{
+                              height: "100%",
+                              backgroundColor:
+                                currentItem.settings?.buttonColor || "#1e293b",
+                              color:
+                                currentItem.settings?.textColor || "#FFFFFF",
+                              "&:hover": {
+                                backgroundColor: currentItem.settings
+                                  ?.buttonColor
+                                  ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                  : "#0f172a",
+                              },
+                              boxShadow: highlightHotspot ? 4 : 0,
+                              border: highlightHotspot
+                                ? `2px solid ${getHighlightColor()}`
+                                : "none",
+                            }}
+                          >
+                            {currentItem.settings?.tipText ||
+                              currentItem.name ||
+                              "Coaching Tip"}
+                          </Button>
+                        </Box>
+                      )}
                   </>
                 )}
             </Box>
-
-            {/* Coaching tip button */}
-            {imageLoaded &&
-              currentItem?.type === "hotspot" &&
-              (currentItem.hotspotType === "coaching" ||
-                currentItem.hotspotType === "coachingtip") &&
-              currentItem.coordinates && (
-                <Box
-                  onClick={handleHotspotClick}
-                  sx={{
-                    position: "absolute",
-                    cursor: "pointer",
-                    left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                    top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                    width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                    zIndex: 50,
-                  }}
-                >
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    sx={{
-                      height: "100%",
-                      backgroundColor:
-                        currentItem.settings?.buttonColor || "#1e293b",
-                      color: currentItem.settings?.textColor || "#FFFFFF",
-                      "&:hover": {
-                        backgroundColor: currentItem.settings?.buttonColor
-                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                          : "#0f172a",
-                      },
-                      boxShadow: highlightHotspot ? 4 : 0,
-                      border: highlightHotspot
-                        ? `2px solid ${getHighlightColor()}`
-                        : "none",
-                    }}
-                  >
-                    {currentItem.settings?.tipText ||
-                      currentItem.name ||
-                      "Coaching Tip"}
-                  </Button>
-                </Box>
-              )}
           </Box>
         </Box>
 

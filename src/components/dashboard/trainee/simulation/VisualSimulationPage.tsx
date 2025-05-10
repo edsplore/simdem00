@@ -121,6 +121,46 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  // Get level settings based on the selected level
+  const getLevelSettings = () => {
+    if (!simulationData) return {};
+
+    if (level === "Level 01") {
+      return simulationData.lvl1 || {};
+    } else if (level === "Level 02") {
+      return simulationData.lvl2 || {};
+    } else if (level === "Level 03") {
+      return simulationData.lvl3 || {};
+    }
+    return {};
+  };
+
+  const levelSettings = getLevelSettings();
+
+  // Check if the current hotspot should be skipped based on settings
+  const shouldSkipHotspot = () => {
+    if (!currentItem || currentItem.type !== "hotspot") return false;
+
+    // Skip highlight hotspots if hideHighlights is enabled
+    if (
+      currentItem.hotspotType === "highlight" &&
+      levelSettings.hideHighlights
+    ) {
+      return true;
+    }
+
+    // Skip coaching tip hotspots if hideCoachingTips is enabled
+    if (
+      (currentItem.hotspotType === "coaching" ||
+        currentItem.hotspotType === "coachingtip") &&
+      levelSettings.hideCoachingTips
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
@@ -173,20 +213,32 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setShowCoachingTip(false);
     setHighlightHotspot(false);
 
-    // Show coaching tip immediately if it's that type
+    // Show coaching tip immediately if it's that type and not skipped by settings
     if (
       currentItem?.type === "hotspot" &&
       (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip")
+        currentItem?.hotspotType === "coachingtip") &&
+      !levelSettings.hideCoachingTips
     ) {
       setShowCoachingTip(true);
     }
-  }, [currentSequenceIndex, currentSlideIndex]);
+  }, [currentSequenceIndex, currentSlideIndex, levelSettings.hideCoachingTips]);
 
   // Process current sequence item
   useEffect(() => {
     if (!currentItem || isProcessing || !imageLoaded || isPaused || !isStarted)
       return;
+
+    // Check if this hotspot should be skipped based on settings
+    if (shouldSkipHotspot()) {
+      console.log(
+        "Skipping hotspot due to level settings:",
+        currentItem.hotspotType,
+      );
+      // Skip to the next item
+      moveToNextItem();
+      return;
+    }
 
     console.log("Processing current item:", {
       type: currentItem.type,
@@ -383,8 +435,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     switch (hotspotType) {
       case "button":
-      case "highlight":
-        // For button and highlight, simply advance
+        // For button, simply advance
         setHighlightHotspot(false);
         moveToNextItem();
         break;
@@ -402,6 +453,12 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           moveToNextItem();
           setCheckboxChecked(false);
         }, 800);
+        break;
+
+      case "highlight":
+        // For highlight, clicking also dismisses it
+        setHighlightHotspot(false);
+        moveToNextItem();
         break;
 
       case "coaching":
@@ -1256,7 +1313,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                     {/* Render hotspots directly on the image */}
                     {imageLoaded &&
                       currentItem?.type === "hotspot" &&
-                      currentItem.coordinates && (
+                      currentItem.coordinates &&
+                      !shouldSkipHotspot() && (
                         <>
                           {/* Button hotspot */}
                           {(currentItem.hotspotType === "button" ||
@@ -1445,77 +1503,33 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             </Box>
                           )}
 
-                          {/* Highlight hotspot */}
-                          {currentItem.hotspotType === "highlight" && (
-                            <Box
-                              onClick={() => {
-                                console.log("Highlight hotspot clicked");
-                                handleHotspotClick();
-                              }}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                                border: "4px solid",
-                                borderColor: getHighlightColor(),
-                                boxShadow: highlightHotspot
-                                  ? `0 0 12px 3px ${getHighlightColor()}`
-                                  : "none",
-                                borderRadius: "4px",
-                                backgroundColor: "transparent",
-                                transition: "box-shadow 0.3s",
-                                zIndex: 10,
-                              }}
-                            />
-                          )}
-
-                          {/* Coaching tip button */}
-                          {(currentItem.hotspotType === "coaching" ||
-                            currentItem.hotspotType === "coachingtip") && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                                zIndex: 50,
-                              }}
-                            >
-                              <Button
-                                fullWidth
-                                variant="contained"
-                                sx={{
-                                  height: "100%",
-                                  backgroundColor:
-                                    currentItem.settings?.buttonColor ||
-                                    "#1e293b",
-                                  color:
-                                    currentItem.settings?.textColor ||
-                                    "#FFFFFF",
-                                  "&:hover": {
-                                    backgroundColor: currentItem.settings
-                                      ?.buttonColor
-                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                                      : "#0f172a",
-                                  },
-                                  boxShadow: highlightHotspot ? 4 : 0,
-                                  border: highlightHotspot
-                                    ? `2px solid ${getHighlightColor()}`
-                                    : "none",
+                          {/* Highlight hotspot - Only render if hideHighlights is false */}
+                          {currentItem.hotspotType === "highlight" &&
+                            !levelSettings.hideHighlights && (
+                              <Box
+                                onClick={() => {
+                                  console.log("Highlight hotspot clicked");
+                                  handleHotspotClick();
                                 }}
-                              >
-                                {currentItem.settings?.tipText ||
-                                  currentItem.name ||
-                                  "Coaching Tip"}
-                              </Button>
-                            </Box>
-                          )}
+                                sx={{
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                                  top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                  width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                  height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                  border: "4px solid",
+                                  borderColor: getHighlightColor(),
+                                  boxShadow: highlightHotspot
+                                    ? `0 0 12px 3px ${getHighlightColor()}`
+                                    : "none",
+                                  borderRadius: "4px",
+                                  backgroundColor: "transparent",
+                                  transition: "box-shadow 0.3s",
+                                  zIndex: 10,
+                                }}
+                              />
+                            )}
                         </>
                       )}
                   </Box>
@@ -1603,45 +1617,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               </Box>
             </Box>
           </Box>
-
-          {/* Simulation controls - made more compact */}
-          {/* COMMENTED OUT: Bottom End Simulation Button
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              maxWidth: 900,
-              margin: "5px auto",
-              p: 1.5,
-              bgcolor: "#F9FAFB",
-              border: "1px solid #E5E7EB",
-              borderRadius: 3,
-            }}
-          >
-            <Typography
-              variant="subtitle1"
-              sx={{ color: "black", flexGrow: 1 }}
-            >
-              <span style={{ fontWeight: "normal" }}>Visual Simulation - </span>
-              <span style={{ fontWeight: "bold" }}>
-                {formatTime(elapsedTime)}
-              </span>
-            </Typography>
-
-            <Button
-              variant="contained"
-              color="error"
-              startIcon={<CallEnd />}
-              onClick={handleEndSimulation}
-              disabled={isEndingSimulation}
-              size="small"
-              sx={{ py: 0.75 }}
-            >
-              End Simulation
-            </Button>
-          </Stack>
-          */}
         </Box>
       )}
     </Box>

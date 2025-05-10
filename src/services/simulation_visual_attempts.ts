@@ -52,12 +52,8 @@ export interface SimulationData {
   sim_name: string;
   version: string;
   lvl1: SimulationLevelSettings;
-  lvl2: {
-    isEnabled: boolean;
-  };
-  lvl3: {
-    isEnabled: boolean;
-  };
+  lvl2: SimulationLevelSettings;
+  lvl3: SimulationLevelSettings;
   sim_type: string;
   status: string;
   tags: string[];
@@ -100,7 +96,6 @@ export interface SimulationScores {
   energy: number;
   concentration: number;
 }
-
 
 export interface EndVisualSimulationResponse {
   id: string;

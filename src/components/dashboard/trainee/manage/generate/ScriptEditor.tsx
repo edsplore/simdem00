@@ -81,13 +81,13 @@ interface Message {
 
 const initialMessages: Message[] = [
   {
-    id: "1",
+    id: "script-0",
     role: "Customer",
     message: "Hello! I want to refill my medications please.",
     keywords: [],
   },
   {
-    id: "2",
+    id: "script-1",
     role: "Trainee",
     message:
       "Thank you for calling <strong>Centerwell Pharmacy</strong>. My name is [Your Name]. Are you ready to take advantage of your <u>Mail Order Benefits</u> today?",
@@ -134,7 +134,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [messages, setMessages] = useState<Message[]>(script);
   const [inputText, setInputText] = useState("");
   const [currentRole, setCurrentRole] = useState<"Customer" | "Trainee">(
-    "Customer"
+    "Customer",
   );
 
   // Drag‐and‐drop
@@ -147,14 +147,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState(""); // we store the Quill HTML here
   const [draftRole, setDraftRole] = useState<"Customer" | "Trainee">(
-    "Customer"
+    "Customer",
   ); // NEW: track edited role
   const [editingMinWidth, setEditingMinWidth] = useState<number>(0);
 
   // Add Message Dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addMessageRole, setAddMessageRole] = useState<"Customer" | "Trainee">(
-    "Customer"
+    "Customer",
   );
   const [newMessageText, setNewMessageText] = useState("");
   const [addMessageIndex, setAddMessageIndex] = useState<number | null>(null);
@@ -181,7 +181,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     () => ({
       toolbar: false, // Hide the default toolbar
     }),
-    []
+    [],
   );
 
   // We define which Quill formats are allowed
@@ -194,7 +194,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       "keyword",
       "keyword-highlight",
     ],
-    []
+    [],
   );
 
   // ----------------------------
@@ -203,7 +203,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const handleSendMessage = () => {
     if (!inputText.trim()) return;
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: `msg-${messages.length}`, // FIXED: Use stable, predictable IDs
       role: currentRole,
       message: inputText,
       keywords: [],
@@ -261,7 +261,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     }
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: `msg-add-${messages.length}`, // FIXED: Use stable, predictable IDs
       role: addMessageRole,
       message: newMessageText,
       keywords: [],
@@ -285,7 +285,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const handleDragStart = (
     e: React.DragEvent<HTMLButtonElement>,
     msgId: string,
-    index: number
+    index: number,
   ) => {
     setDraggedMessage(msgId);
     setIsDragging(true);
@@ -350,7 +350,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     newArr.splice(
       dragOverIndex > draggedIndex ? dragOverIndex - 1 : dragOverIndex,
       0,
-      removed
+      removed,
     );
 
     setMessages(newArr);
@@ -410,7 +410,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
             keywords: editingKeywords,
             role: draftRole,
           }
-        : m
+        : m,
     );
     console.log("handle svae edit ", draftText);
     setMessages(updatedMessages);
@@ -448,7 +448,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const handleQuillChangeSelection = (
     range: { index: number; length: number } | null,
     source: string,
-    editor: any
+    editor: any,
   ) => {
     if (!range || range.length === 0) {
       // no selection
@@ -788,7 +788,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             value={draftRole}
                             onChange={(e) =>
                               setDraftRole(
-                                e.target.value as "Customer" | "Trainee"
+                                e.target.value as "Customer" | "Trainee",
                               )
                             }
                             size="small"

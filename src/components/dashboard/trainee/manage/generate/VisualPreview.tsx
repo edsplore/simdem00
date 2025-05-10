@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -125,6 +125,33 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  // Always use level 1 settings for preview
+  const levelSettings = simulationData?.lvl1 || {};
+
+  // Check if the current hotspot should be skipped based on settings
+  const shouldSkipHotspot = () => {
+    if (!currentItem || currentItem.type !== "hotspot") return false;
+
+    // Skip highlight hotspots if hideHighlights is enabled
+    if (
+      currentItem.hotspotType === "highlight" &&
+      levelSettings.hideHighlights
+    ) {
+      return true;
+    }
+
+    // Skip coaching tip hotspots if hideCoachingTips is enabled
+    if (
+      (currentItem.hotspotType === "coaching" ||
+        currentItem.hotspotType === "coachingtip") &&
+      levelSettings.hideCoachingTips
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Initialize timer for simulation
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -155,19 +182,31 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     setTextInputValue("");
     setShowCoachingTip(false);
 
-    // Show coaching tip immediately if it's that type
+    // Show coaching tip immediately if it's that type and not skipped by settings
     if (
       currentItem?.type === "hotspot" &&
       (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip")
+        currentItem?.hotspotType === "coachingtip") &&
+      !levelSettings.hideCoachingTips
     ) {
       setShowCoachingTip(true);
     }
-  }, [currentSequenceIndex, currentSlideIndex]);
+  }, [currentSequenceIndex, currentSlideIndex, levelSettings.hideCoachingTips]);
 
   // Process current sequence item
   useEffect(() => {
     if (!currentItem || isProcessing || !imageLoaded || isPaused) return;
+
+    // Check if this hotspot should be skipped based on settings
+    if (shouldSkipHotspot()) {
+      console.log(
+        "Skipping hotspot due to level settings:",
+        currentItem.hotspotType,
+      );
+      // Skip to the next item
+      moveToNextItem();
+      return;
+    }
 
     const processItem = async () => {
       setIsProcessing(true);
@@ -290,6 +329,7 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
       setImageLoaded(false);
     } else {
       // End of slideshow
+      setHighlightHotspot(false);
       console.log("Simulation complete");
       setSimulationStatus("Completed");
       // Call the onEndSimulation prop
@@ -614,7 +654,8 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
-                currentItem.coordinates && (
+                currentItem.coordinates &&
+                !shouldSkipHotspot() && (
                   <>
                     {/* Button hotspot */}
                     {(currentItem.hotspotType === "button" ||
@@ -792,38 +833,40 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
                       </Box>
                     )}
 
-                    {/* Highlight hotspot */}
-                    {currentItem.hotspotType === "highlight" && (
-                      <Box
-                        onClick={handleHotspotClick}
-                        sx={{
-                          position: "absolute",
-                          cursor: "pointer",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                          height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                          border: "4px solid",
-                          borderColor: getHighlightColor(),
-                          boxShadow: highlightHotspot
-                            ? `0 0 12px 3px ${getHighlightColor()}`
-                            : "none",
-                          borderRadius: "4px",
-                          backgroundColor: "transparent",
-                          transition: "box-shadow 0.3s",
-                        }}
-                      />
-                    )}
+                    {/* Highlight hotspot - Only render if hideHighlights is false */}
+                    {currentItem.hotspotType === "highlight" &&
+                      !levelSettings.hideHighlights && (
+                        <Box
+                          onClick={handleHotspotClick}
+                          sx={{
+                            position: "absolute",
+                            cursor: "pointer",
+                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            border: "4px solid",
+                            borderColor: getHighlightColor(),
+                            boxShadow: highlightHotspot
+                              ? `0 0 12px 3px ${getHighlightColor()}`
+                              : "none",
+                            borderRadius: "4px",
+                            backgroundColor: "transparent",
+                            transition: "box-shadow 0.3s",
+                          }}
+                        />
+                      )}
                   </>
                 )}
             </Box>
 
-            {/* Coaching tip button */}
+            {/* Coaching tip button - Only render if hideCoachingTips is false */}
             {imageLoaded &&
               currentItem?.type === "hotspot" &&
               (currentItem.hotspotType === "coaching" ||
                 currentItem.hotspotType === "coachingtip") &&
-              currentItem.coordinates && (
+              currentItem.coordinates &&
+              !levelSettings.hideCoachingTips && (
                 <Box
                   onClick={handleHotspotClick}
                   sx={{

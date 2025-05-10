@@ -85,6 +85,15 @@ export interface PublishSimulationRequest {
     is_enabled?: boolean;
     keyword_score?: number;
     click_score?: number;
+    points_per_keyword?: number;
+    points_per_click?: number;
+  };
+  metric_weightage?: {
+    click_accuracy?: number;
+    keyword_accuracy?: number;
+    data_entry_accuracy?: number;
+    contextual_accuracy?: number;
+    sentiment_measures?: number;
   };
   sim_practice?: {
     is_unlimited?: boolean;
@@ -158,6 +167,15 @@ export interface FetchSimulationResponse {
     is_enabled?: boolean;
     keyword_score?: number;
     click_score?: number;
+    points_per_keyword?: number;
+    points_per_click?: number;
+  };
+  metric_weightage?: {
+    click_accuracy?: number;
+    keyword_accuracy?: number;
+    data_entry_accuracy?: number;
+    contextual_accuracy?: number;
+    sentiment_measures?: number;
   };
   sim_practice?: {
     is_unlimited?: boolean;

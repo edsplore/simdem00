@@ -102,6 +102,15 @@ interface SettingTabProps {
       is_enabled?: boolean;
       keyword_score?: number;
       click_score?: number;
+      points_per_keyword?: number;
+      points_per_click?: number;
+    };
+    metric_weightage?: {
+      click_accuracy?: number;
+      keyword_accuracy?: number;
+      data_entry_accuracy?: number;
+      contextual_accuracy?: number;
+      sentiment_measures?: number;
     };
     sim_practice?: {
       is_unlimited?: boolean;
@@ -129,6 +138,8 @@ interface SimulationSettings {
     simulationScore?: "best" | "last" | "average";
     keywordScore?: string;
     clickScore?: string;
+    pointsPerKeyword?: string;
+    pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
     repetitionsAllowed?: string;
     repetitionsNeeded?: string;
@@ -136,6 +147,13 @@ interface SimulationSettings {
       enabled?: boolean;
       keywordScore?: string;
       clickScore?: string;
+    };
+    metricWeightage?: {
+      clickAccuracy?: string;
+      keywordAccuracy?: string;
+      dataEntryAccuracy?: string;
+      contextualAccuracy?: string;
+      sentimentMeasures?: string;
     };
   };
   estimatedTime?: {
@@ -164,8 +182,13 @@ const SettingTab: React.FC<SettingTabProps> = ({
   onPublish,
   script,
 }) => {
-  // Get context data to ensure we have latest changes
-  const { scriptData, visualImages, setIsScriptLocked } = useSimulationWizard();
+  // Get context data to ensure we have latest changes - now including assignedScriptMessageIds
+  const {
+    scriptData,
+    visualImages,
+    setIsScriptLocked,
+    assignedScriptMessageIds,
+  } = useSimulationWizard();
 
   // Use ID from URL params if available, fallback to prop
   const { id: urlId } = useParams<{ id: string }>();
@@ -307,7 +330,10 @@ const SettingTab: React.FC<SettingTabProps> = ({
         !!simulationData?.overviewVideo || !!simulationData?.overview_video,
     };
 
-    // Voice settings
+    // Get metric weightage values
+    const metricWeightage = simulationData?.metric_weightage || {};
+
+    // Voice and scoring settings
     const voiceSettings = {
       voice: {
         language: simulationData?.language || "English",
@@ -330,6 +356,12 @@ const SettingTab: React.FC<SettingTabProps> = ({
         clickScore:
           simulationData?.simulation_scoring_metrics?.click_score?.toString() ||
           (hasScript ? "80" : "100"),
+        pointsPerKeyword:
+          simulationData?.simulation_scoring_metrics?.points_per_keyword?.toString() ||
+          "1",
+        pointsPerClick:
+          simulationData?.simulation_scoring_metrics?.points_per_click?.toString() ||
+          "1",
         practiceMode: simulationData?.sim_practice?.is_unlimited
           ? "unlimited"
           : "limited",
@@ -342,6 +374,13 @@ const SettingTab: React.FC<SettingTabProps> = ({
             simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
           keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score || (hasScript ? 20 : 0)}%`,
           clickScore: `${simulationData?.simulation_scoring_metrics?.click_score || (hasScript ? 80 : 100)}%`,
+        },
+        metricWeightage: {
+          clickAccuracy: `${metricWeightage.click_accuracy || (isAnyVisualType ? 30 : 0)}%`,
+          keywordAccuracy: `${metricWeightage.keyword_accuracy || (hasScript ? 30 : 0)}%`,
+          dataEntryAccuracy: `${metricWeightage.data_entry_accuracy || (isAnyVisualType ? 20 : 0)}%`,
+          contextualAccuracy: `${metricWeightage.contextual_accuracy || 10}%`,
+          sentimentMeasures: `${metricWeightage.sentiment_measures || 10}%`,
         },
       },
     };
@@ -529,11 +568,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
     );
   };
 
-  // Helper function to create the simulation payload
+  // Helper function to parse percentage string to number, remove the % sign
+  const parsePercentage = (value: string | undefined): number => {
+    if (!value) return 0;
+    return parseInt(value.replace("%", "")) || 0;
+  };
+
+  // ENHANCED Helper function to create the simulation payload
   const createSimulationPayload = (status: "published" | "draft") => {
-    // Get the latest script data directly from context instead of props
-    // This ensures we capture changes even if user didn't click "Save Simulation" previously
+    // Get the latest script data directly from context
     const latestScriptData = scriptData;
+
+    // Create a Map of the latest script data for quick lookup
+    const scriptDataMap = new Map(latestScriptData.map((msg) => [msg.id, msg]));
 
     // Transform script to required format by removing 'id' field - but only if there's a script
     const transformedScript =
@@ -578,16 +625,15 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const lvl3Enabled = levelSettings.simulationLevels?.lvl3 === true;
 
     // Check if practice is enabled for each level - use enablePractice setting
-    // Make sure we're explicitly using === true for the comparison
     const lvl1PracticeEnabled = levelSettings.enablePractice?.lvl1 === true;
     const lvl2PracticeEnabled = levelSettings.enablePractice?.lvl2 === true;
     const lvl3PracticeEnabled = levelSettings.enablePractice?.lvl3 === true;
 
-    // Create slidesData array from visualImages context
+    // Create slidesData array from visualImages context with enhanced script data handling
     const slidesData =
       isAnyVisualType && visualImages.length > 0
         ? visualImages.map((img) => {
-            // Extract sequence properly for API format
+            // Extract sequence properly for API format while ensuring latest script data is used
             const sequence = Array.isArray(img.sequence)
               ? img.sequence.map((item) => {
                   if (item.type === "hotspot" && item.content) {
@@ -603,11 +649,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
                     };
                   } else if (item.type === "message" && item.content) {
                     const message = item.content;
+                    // Check if this message exists in the latest script data
+                    // and use the latest content if available
+                    const latestMessage = scriptDataMap.get(message.id);
                     return {
                       type: "message",
                       id: message.id,
-                      role: message.role,
-                      text: message.text,
+                      role: latestMessage?.role || message.role,
+                      text: latestMessage?.message || message.text,
                     };
                   }
                   return item;
@@ -623,6 +672,18 @@ const SettingTab: React.FC<SettingTabProps> = ({
             };
           })
         : [];
+
+    // Process metric weightage values
+    const metricWeightage = scoringConfig.metricWeightage || {};
+
+    // Log what we're sending for debugging
+    console.log(`Preparing ${status} submission with:`);
+    console.log(`- Script items: ${transformedScript.length}`);
+    console.log(`- Visual slides: ${slidesData.length}`);
+    console.log(
+      `- Assigned message IDs: ${Array.from(assignedScriptMessageIds).join(", ")}`,
+    );
+    console.log(`- Metric weightage:`, metricWeightage);
 
     // Create the payload with all the data
     const payload = {
@@ -722,6 +783,17 @@ const SettingTab: React.FC<SettingTabProps> = ({
             "",
           ),
         ),
+        points_per_keyword: parseInt(scoringConfig.pointsPerKeyword || "1"),
+        points_per_click: parseInt(scoringConfig.pointsPerClick || "1"),
+      },
+      metric_weightage: {
+        click_accuracy: parsePercentage(metricWeightage.clickAccuracy),
+        keyword_accuracy: parsePercentage(metricWeightage.keywordAccuracy),
+        data_entry_accuracy: parsePercentage(metricWeightage.dataEntryAccuracy),
+        contextual_accuracy: parsePercentage(
+          metricWeightage.contextualAccuracy,
+        ),
+        sentiment_measures: parsePercentage(metricWeightage.sentimentMeasures),
       },
       sim_practice: {
         is_unlimited: scoringConfig.practiceMode === "unlimited",
@@ -1005,6 +1077,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     "Simulation Completion",
     "Number of Repetition Allowed",
     "Simulation Scoring Metrics",
+    "Score Metric Weightage",
     "Sym Practice",
   ];
 
@@ -1333,6 +1406,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               activeSection={activeSection}
               showVoiceSettings={showVoiceSettings}
               showPromptSettings={showPromptSettings}
+              simulationType={simulationType} // Pass simulation type to control conditional rendering
             />
           </Box>
         </Box>

@@ -45,9 +45,27 @@ interface SimulationData {
   };
   lvl2: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   lvl3: {
     isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
   };
   sim_type: string;
   status: string;
@@ -92,6 +110,9 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   slides,
   onEndSimulation,
 }) => {
+  // Preview mode - always use level 1 settings
+  const levelSettings = simulationData?.lvl1;
+
   // Component state for navigation and progress
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
@@ -132,6 +153,30 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   const currentSequence = currentSlide.sequence || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  // Function to check if a hotspot should be skipped based on settings
+  const shouldSkipHotspot = () => {
+    if (!currentItem || currentItem.type !== "hotspot") return false;
+
+    // Skip highlight hotspots if hideHighlights is enabled
+    if (
+      currentItem.hotspotType === "highlight" &&
+      levelSettings?.hideHighlights
+    ) {
+      return true;
+    }
+
+    // Skip coaching tip hotspots if hideCoachingTips is enabled
+    if (
+      (currentItem.hotspotType === "coaching" ||
+        currentItem.hotspotType === "coachingtip") &&
+      levelSettings?.hideCoachingTips
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   // Initialize timer for simulation
   useEffect(() => {
     timerRef.current = setInterval(() => {
@@ -170,15 +215,16 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     setIsRecording(false);
     setRecordingTime(0);
 
-    // Show coaching tip immediately if it's that type
+    // Show coaching tip immediately if it's that type and not being skipped
     if (
       currentItem?.type === "hotspot" &&
       (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip")
+        currentItem?.hotspotType === "coachingtip") &&
+      !levelSettings?.hideCoachingTips
     ) {
       setShowCoachingTip(true);
     }
-  }, [currentSequenceIndex, currentSlideIndex]);
+  }, [currentSequenceIndex, currentSlideIndex, levelSettings]);
 
   // Auto-start recording for trainee messages and speaking for customer messages
   useEffect(() => {
@@ -234,6 +280,17 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       setIsProcessing(true);
 
       if (currentItem.type === "hotspot") {
+        // Check if this hotspot should be skipped based on settings
+        if (shouldSkipHotspot()) {
+          console.log(
+            "Skipping hotspot due to level settings:",
+            currentItem.hotspotType,
+          );
+          moveToNextItem();
+          setIsProcessing(false);
+          return;
+        }
+
         // For hotspots, highlight and wait for click
         setHighlightHotspot(true);
 
@@ -497,6 +554,123 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     onEndSimulation();
   };
 
+  // Helper function to render message content based on settings
+  const renderMessageContent = () => {
+    if (!currentItem || currentItem.type !== "message") return null;
+
+    // For customer messages
+    if (currentItem.role === "Customer" || currentItem.role === "customer") {
+      if (levelSettings?.hideCustomerScript) {
+        return (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              bgcolor: "blue.50",
+              borderLeft: 4,
+              borderColor: "primary.main",
+              borderRadius: 1,
+              mb: 2,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mb: 1 }}
+            >
+              <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.light" }}>
+                C
+              </Avatar>
+              <Typography variant="subtitle2">Customer</Typography>
+            </Stack>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {/* Hide the text but show a message indicating audio is playing */}
+              {speaking ? "Customer is speaking..." : ""}
+            </Typography>
+          </Paper>
+        );
+      }
+    }
+
+    // For trainee messages
+    if (currentItem.role === "Trainee" || currentItem.role === "assistant") {
+      if (levelSettings?.hideAgentScript) {
+        return (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              bgcolor: "green.50",
+              borderLeft: 4,
+              borderColor: "success.main",
+              borderRadius: 1,
+              mb: 2,
+            }}
+          >
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mb: 1 }}
+            >
+              <Avatar sx={{ width: 32, height: 32, bgcolor: "success.light" }}>
+                T
+              </Avatar>
+              <Typography variant="subtitle2">Trainee</Typography>
+            </Stack>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              {/* Hide the text but show a message indicating recording is in progress */}
+              Your turn to respond...
+            </Typography>
+          </Paper>
+        );
+      }
+    }
+
+    // If no hiding is required, render the original message
+    return (
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          bgcolor: currentItem.role === "customer" ? "blue.50" : "green.50",
+          borderLeft: 4,
+          borderColor:
+            currentItem.role === "customer" ? "primary.main" : "success.main",
+          borderRadius: 1,
+          mb: 2,
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Avatar
+            sx={{
+              width: 32,
+              height: 32,
+              bgcolor:
+                currentItem.role === "Customer" ||
+                currentItem.role === "customer"
+                  ? "primary.light"
+                  : "success.light",
+            }}
+          >
+            {currentItem.role === "Customer" || currentItem.role === "customer"
+              ? "C"
+              : "T"}
+          </Avatar>
+          <Typography variant="subtitle2">
+            {currentItem.role === "Customer" || currentItem.role === "customer"
+              ? "Customer"
+              : "Trainee"}
+          </Typography>
+        </Stack>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          {currentItem.text}
+        </Typography>
+      </Paper>
+    );
+  };
+
   // Show loading state if no data
   if (!simulationData || !slides) {
     return (
@@ -629,7 +803,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
-                currentItem.coordinates && (
+                currentItem.coordinates &&
+                !shouldSkipHotspot() && (
                   <>
                     {/* Button hotspot */}
                     {(currentItem.hotspotType === "button" ||
@@ -809,40 +984,42 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                       </Box>
                     )}
 
-                    {/* Highlight hotspot */}
-                    {currentItem.hotspotType === "highlight" && (
-                      <Box
-                        onClick={handleHotspotClick}
-                        sx={{
-                          position: "absolute",
-                          cursor: "pointer",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                          height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
-                          border: "4px solid",
-                          borderColor:
-                            currentItem.settings?.highlightColor ||
-                            "rgba(68, 76, 231, 0.7)",
-                          boxShadow: highlightHotspot
-                            ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
-                            : "none",
-                          borderRadius: "4px",
-                          backgroundColor: "transparent",
-                          transition: "box-shadow 0.3s",
-                        }}
-                      />
-                    )}
+                    {/* Highlight hotspot - only render if not hidden by settings */}
+                    {currentItem.hotspotType === "highlight" &&
+                      !levelSettings?.hideHighlights && (
+                        <Box
+                          onClick={handleHotspotClick}
+                          sx={{
+                            position: "absolute",
+                            cursor: "pointer",
+                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            border: "4px solid",
+                            borderColor:
+                              currentItem.settings?.highlightColor ||
+                              "rgba(68, 76, 231, 0.7)",
+                            boxShadow: highlightHotspot
+                              ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                              : "none",
+                            borderRadius: "4px",
+                            backgroundColor: "transparent",
+                            transition: "box-shadow 0.3s",
+                          }}
+                        />
+                      )}
                   </>
                 )}
             </Box>
 
-            {/* Coaching tip button */}
+            {/* Coaching tip button - only render if not hidden by settings */}
             {imageLoaded &&
               currentItem?.type === "hotspot" &&
               (currentItem.hotspotType === "coaching" ||
                 currentItem.hotspotType === "coachingtip") &&
-              currentItem.coordinates && (
+              currentItem.coordinates &&
+              !levelSettings?.hideCoachingTips && (
                 <Box
                   onClick={handleHotspotClick}
                   sx={{
@@ -948,55 +1125,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                   // Removed height: '100%' so everything stays right below the message
                 }}
               >
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2,
-                    bgcolor:
-                      currentItem.role === "customer" ? "blue.50" : "green.50",
-                    borderLeft: 4,
-                    borderColor:
-                      currentItem.role === "customer"
-                        ? "primary.main"
-                        : "success.main",
-                    borderRadius: 1,
-                    // Removed mb: "auto" so it doesn't push controls to the bottom
-                    mb: 2,
-                  }}
-                >
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    sx={{ mb: 1 }}
-                  >
-                    <Avatar
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        bgcolor:
-                          currentItem.role === "Customer" ||
-                          currentItem.role === "customer"
-                            ? "primary.light"
-                            : "success.light",
-                      }}
-                    >
-                      {currentItem.role === "Customer" ||
-                      currentItem.role === "customer"
-                        ? "C"
-                        : "T"}
-                    </Avatar>
-                    <Typography variant="subtitle2">
-                      {currentItem.role === "Customer" ||
-                      currentItem.role === "customer"
-                        ? "Customer"
-                        : "Trainee"}
-                    </Typography>
-                  </Stack>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    {currentItem.text}
-                  </Typography>
-                </Paper>
+                {/* Use the renderMessageContent function to apply script hiding rules */}
+                {renderMessageContent()}
 
                 {/* Interaction controls / Next Button */}
                 {/* Placed directly below message bubble (and separated by small margin). */}

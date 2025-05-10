@@ -100,6 +100,58 @@ interface SimulationData {
   }>;
 }
 
+interface SimulationDetails {
+  sim_name: string;
+  version: number;
+  lvl1: {
+    isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
+  };
+  lvl2: {
+    isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
+  };
+  lvl3: {
+    isEnabled: boolean;
+    enablePractice: boolean;
+    hideAgentScript: boolean;
+    hideCustomerScript: boolean;
+    hideKeywordScores: boolean;
+    hideSentimentScores: boolean;
+    hideHighlights: boolean;
+    hideCoachingTips: boolean;
+    enablePostSimulationSurvey: boolean;
+    aiPoweredPausesAndFeedback: boolean;
+  };
+  sim_type: string;
+  status: string;
+  tags: string[];
+  est_time: string;
+  script: Array<{
+    script_sentence: string;
+    role: string;
+    keywords: string[];
+  }>;
+  slidesData: any;
+  [key: string]: any;
+}
+
 interface PreviewTabProps {
   simulationId: string;
   simulationType?: "audio" | "chat" | "visual-audio" | "visual-chat" | "visual";
@@ -116,19 +168,89 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [isCallActive, setIsCallActive] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [simulationDetails, setSimulationDetails] =
+    useState<SimulationDetails | null>(null);
+
+  // Add refs to store hide settings - this will ensure they're available during the update callback
+  const hideAgentScriptRef = useRef(false);
+  const hideCustomerScriptRef = useRef(false);
+
+  // Add a flag to track if settings have ever been properly initialized
+  const settingsInitializedRef = useRef(false);
+
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Input container height - used for spacing calculations
   const inputContainerHeight = 80;
 
   // New state for simulation ending animation
   const [showEndAnimation, setShowEndAnimation] = useState(false);
+
+  // FIXED: Update the level settings and log detailed information
+  const updateLevelSettings = () => {
+    console.log("📋 Updating level settings for preview...");
+    console.log("Simulation details available:", !!simulationDetails);
+    console.log(
+      "Settings previously initialized:",
+      settingsInitializedRef.current,
+    );
+
+    // Only update settings if we have simulation details
+    if (!simulationDetails) {
+      console.log("⚠️ No simulation details available for level settings");
+      // Don't reset settings if we don't have simulation details
+      return;
+    }
+
+    // For preview ALWAYS use level 1 settings
+    const settings = simulationDetails.lvl1;
+    console.log("🔍 Using Level 01 settings for preview:", settings);
+
+    if (!settings) {
+      console.log("⚠️ Could not find Level 01 settings for preview");
+      return;
+    }
+
+    // Update the ref values with the current settings
+    hideAgentScriptRef.current = settings.hideAgentScript || false;
+    hideCustomerScriptRef.current = settings.hideCustomerScript || false;
+
+    // Mark that settings have been properly initialized at least once
+    settingsInitializedRef.current = true;
+
+    console.log("🔄 Updated hide settings for preview:");
+    console.log("Hide agent script:", hideAgentScriptRef.current);
+    console.log("Hide customer script:", hideCustomerScriptRef.current);
+  };
+
+  // Update the settings whenever simulation details changes
+  useEffect(() => {
+    updateLevelSettings();
+  }, [simulationDetails]);
+
+  // Return the filtered messages based on the hide settings
+  // This is a critical change - we filter the messages at render time, not when adding to state
+  const getVisibleMessages = () => {
+    return allMessages.filter((message) => {
+      if (message.speaker === "customer" && hideCustomerScriptRef.current) {
+        return false; // Hide customer messages
+      }
+      if (message.speaker === "trainee" && hideAgentScriptRef.current) {
+        return false; // Hide trainee messages
+      }
+      return true; // Show all other messages
+    });
+  };
+
+  // Get the visible messages for rendering
+  const visibleMessages = getVisibleMessages();
 
   useEffect(() => {
     if (simulationType === "audio") {
@@ -151,7 +273,19 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           const newTranscript = update.transcript;
           const previousTranscript = previousTranscriptRef.current || [];
 
-          setMessages((prevMessages) => {
+          console.log("🔄 Transcript update received.");
+          console.log("Current hide settings from refs:");
+          console.log(
+            "- Hide agent (trainee) messages:",
+            hideAgentScriptRef.current,
+          );
+          console.log(
+            "- Hide customer messages:",
+            hideCustomerScriptRef.current,
+          );
+
+          setAllMessages((prevMessages) => {
+            // Clone the current messages
             const updatedMessages = [...prevMessages];
             const newTranscriptLength = newTranscript.length;
             const prevTranscriptLength = previousTranscript.length;
@@ -160,24 +294,35 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
             if (newTranscriptLength > prevTranscriptLength) {
               const newMsg = newTranscript[newTranscriptLength - 1];
+              const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
+
+              console.log(
+                `📝 NEW MESSAGE: ${isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"} says: "${newMsg.content.substring(0, 30)}${newMsg.content.length > 30 ? "..." : ""}"`,
+              );
+
+              // Always add the message to allMessages
+              // We'll filter them out when rendering, not when adding to state
               updatedMessages.push({
-                speaker: newMsg.role === "agent" ? "customer" : "trainee",
+                speaker: isSpeakerCustomer ? "customer" : "trainee",
                 text: newMsg.content,
               });
             } else if (newTranscriptLength === prevTranscriptLength) {
               const newMsg = newTranscript[newTranscriptLength - 1];
               const lastMsgIndex = updatedMessages.length - 1;
+              const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
 
               if (lastMsgIndex >= 0) {
                 const lastMsg = updatedMessages[lastMsgIndex];
                 if (
                   lastMsg.speaker ===
-                  (newMsg.role === "agent" ? "customer" : "trainee")
+                  (isSpeakerCustomer ? "customer" : "trainee")
                 ) {
+                  // This is updating an existing message that's already shown, so update it
                   updatedMessages[lastMsgIndex].text = newMsg.content;
                 } else {
+                  // Always add the message to allMessages
                   updatedMessages.push({
-                    speaker: newMsg.role === "agent" ? "customer" : "trainee",
+                    speaker: isSpeakerCustomer ? "customer" : "trainee",
                     text: newMsg.content,
                   });
                 }
@@ -202,7 +347,19 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       chatContainerRef.current.scrollTop =
         chatContainerRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [visibleMessages]);
+
+  // Log current state of hide settings when visible messages changes
+  useEffect(() => {
+    console.log("⚠️ RENDER: Visible messages count:", visibleMessages.length);
+    console.log("⚠️ RENDER: All messages count:", allMessages.length);
+    console.log(
+      "⚠️ RENDER: Hide settings - Agent:",
+      hideAgentScriptRef.current,
+      "Customer:",
+      hideCustomerScriptRef.current,
+    );
+  }, [visibleMessages, allMessages]);
 
   const fetchSimulationData = async () => {
     try {
@@ -278,7 +435,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     // Reset all states to initial
     setShowEndAnimation(false);
     setIsCallActive(false);
-    setMessages([]);
+    setAllMessages([]);
     // Clear any data that should be reset
     setSimulationData(null);
     setSlides(new Map());
@@ -290,10 +447,18 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       if (simulationType === "visual-audio") {
         const response = await startVisualAudioPreview("user123", simulationId);
 
-        setSimulationData(response.simulation);
+        // Extract level 1 settings for preview
+        if (response.simulation.lvl1) {
+          // Store full simulation details
+          setSimulationData(response.simulation);
+
+          // Visual-audio specific settings will be handled by updateLevelSettings
+          // when simulationData changes
+        }
+
         setSlides(createImageMap(response.images));
         setIsCallActive(true);
-        setMessages([
+        setAllMessages([
           {
             speaker: "customer",
             text: "",
@@ -302,10 +467,12 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       } else if (simulationType === "visual-chat") {
         const response = await startVisualChatPreview("user123", simulationId);
 
+        // Store full simulation data
         setSimulationData(response.simulation);
+
         setSlides(createImageMap(response.images));
         setIsCallActive(true);
-        setMessages([
+        setAllMessages([
           {
             speaker: "customer",
             text: "Initializing visual chat...",
@@ -314,10 +481,12 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       } else if (simulationType === "visual") {
         const response = await startVisualPreview("user123", simulationId);
 
+        // Store full simulation data
         setSimulationData(response.simulation);
+
         setSlides(createImageMap(response.images));
         setIsCallActive(true);
-        setMessages([
+        setAllMessages([
           {
             speaker: "customer",
             text: "Initializing visual simulation...",
@@ -325,7 +494,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         ]);
       } else if (simulationType === "audio") {
         setIsCallActive(true);
-        setMessages([
+        setAllMessages([
           {
             speaker: "customer",
             text: "Connecting...",
@@ -333,6 +502,26 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         ]);
 
         const response = await startAudioPreview("test_user", simulationId);
+
+        console.log("Audio preview response:", response);
+
+        // Store simulation details
+        if (response.simulation_details) {
+          console.log("📊 SIMULATION DETAILS RECEIVED");
+          console.log("Level 1 settings:", response.simulation_details.lvl1);
+          console.log("Level 2 settings:", response.simulation_details.lvl2);
+          console.log("Level 3 settings:", response.simulation_details.lvl3);
+
+          // Store the full simulation details
+          setSimulationDetails(response.simulation_details);
+
+          // Immediately update hide settings based on Level 1 (Preview always uses Level 1)
+          setTimeout(() => {
+            updateLevelSettings();
+          }, 0);
+        } else {
+          console.warn("⚠️ No simulation details in response");
+        }
 
         if (response.access_token) {
           await webClient.startCall({
@@ -345,7 +534,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         const response = await startChatPreview("test_user", simulationId);
 
         if (response.response) {
-          setMessages([
+          setAllMessages([
             {
               speaker: "customer",
               text: response.response,
@@ -356,7 +545,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     } catch (error) {
       console.error(`Error starting ${simulationType} preview:`, error);
       setIsCallActive(false);
-      setMessages([]);
+      setAllMessages([]);
     } finally {
       setIsStarting(false);
     }
@@ -370,7 +559,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       text: inputMessage.trim(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setAllMessages((prev) => [...prev, newMessage]);
     setInputMessage("");
     setIsLoading(true);
 
@@ -382,7 +571,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
       );
 
       if (response.response) {
-        setMessages((prev) => [
+        setAllMessages((prev) => [
           ...prev,
           {
             speaker: "customer",
@@ -635,7 +824,8 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
               }}
             >
               <Stack spacing={0.75}>
-                {messages.map((message, index) => (
+                {/* Render only visible messages according to hide settings */}
+                {visibleMessages.map((message, index) => (
                   <Stack
                     key={index}
                     direction="row"

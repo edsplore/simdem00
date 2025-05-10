@@ -79,16 +79,14 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({
     loadingInterval.current = setInterval(cycleLoadingMessage, 2000);
 
     try {
-
       // Use our new function from simulation_script.ts
       const response = await convertTextToScript(user?.id || "user123", prompt);
-
 
       // Transform API response into the correct Message format
       if (response && Array.isArray(response.script)) {
         const transformedScript: Message[] = response.script.map(
           (item: any, index: number) => ({
-            id: String(Date.now() + index), // Ensure unique IDs
+            id: item.id || `script-${index}`, // FIXED: Use stable, predictable IDs
             role: item.role || "Trainee",
             message: item.message || "",
             keywords: item.keywords || [],
@@ -101,7 +99,7 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({
         // If API doesn't return expected format, create a fallback message
         const fallbackScript: Message[] = [
           {
-            id: String(Date.now()),
+            id: "fallback-1", // FIXED: Use stable ID
             role: "Trainee",
             message:
               "I apologize, but I couldn't generate a proper script. Please try again.",
@@ -115,7 +113,7 @@ const AIScriptGenerator: React.FC<AIScriptGeneratorProps> = ({
       // Handle error by showing an error message in the script
       const errorScript: Message[] = [
         {
-          id: String(Date.now()),
+          id: "error-1", // FIXED: Use stable ID
           role: "Trainee",
           message:
             "An error occurred while generating the script. Please try again.",

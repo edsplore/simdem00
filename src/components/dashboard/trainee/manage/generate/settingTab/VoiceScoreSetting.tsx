@@ -19,8 +19,10 @@ import {
   Radio,
   RadioGroup,
   FormControlLabel,
+  Alert,
+  Grid,
 } from "@mui/material";
-import { PlayArrow, Pause } from "@mui/icons-material";
+import { PlayArrow, Pause, InfoOutlined } from "@mui/icons-material";
 import {
   listVoices,
   filterVoices,
@@ -42,10 +44,19 @@ interface VoiceScoreSettingProps {
   prompt?: string;
   settings: SimulationSettings;
   onSettingsChange: (settings: SimulationSettings) => void;
-  onPromptChange?: (prompt: string) => void; // This is important!
+  onPromptChange?: (prompt: string) => void;
   activeSection?: string;
   showVoiceSettings?: boolean;
   showPromptSettings?: boolean;
+  simulationType?: string; // Add simulation type prop
+}
+
+interface ScoreMetricWeightage {
+  clickAccuracy: number;
+  keywordAccuracy: number;
+  dataEntryAccuracy: number;
+  contextualAccuracy: number;
+  sentimentMeasures: number;
 }
 
 interface FormData {
@@ -56,6 +67,8 @@ interface FormData {
   simulationScore: "best" | "last" | "average";
   keywordScore: string;
   clickScore: string;
+  pointsPerKeyword: string;
+  pointsPerClick: string;
   practiceMode: "unlimited" | "limited";
   repetitionsAllowed: string;
   repetitionsNeeded: string;
@@ -64,7 +77,33 @@ interface FormData {
     keywordScore: string;
     clickScore: string;
   };
+  metricWeightage: {
+    clickAccuracy: string;
+    keywordAccuracy: string;
+    dataEntryAccuracy: string;
+    contextualAccuracy: string;
+    sentimentMeasures: string;
+  };
 }
+
+const DEFAULT_POINT_VALUES = ["1", "2", "3", "4", "5"];
+const DEFAULT_PERCENTAGE_VALUES = [
+  "0%",
+  "5%",
+  "10%",
+  "15%",
+  "20%",
+  "25%",
+  "30%",
+  "35%",
+  "40%",
+  "50%",
+  "60%",
+  "70%",
+  "80%",
+  "90%",
+  "100%",
+];
 
 const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   prompt,
@@ -74,37 +113,65 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   activeSection,
   showVoiceSettings = true,
   showPromptSettings = true,
+  simulationType = "audio", // Default to audio
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
-  // Initialize selectedVoice from settings, not empty
   const [selectedVoice, setSelectedVoice] = useState<string>(
-    settings.voice.voiceId || "",
+    settings.voice?.voiceId || "",
   );
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const wavesurferRefs = useRef<{ [key: string]: WaveSurfer }>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
+  const [weightageError, setWeightageError] = useState<string | null>(null);
 
-  const { control, handleSubmit, watch, setValue } = useForm<FormData>({
-    mode: "onChange",
-    defaultValues: {
-      language: settings.voice.language,
-      accent: settings.voice.accent,
-      gender: settings.voice.gender,
-      ageGroup: settings.voice.ageGroup,
-      simulationScore: settings.scoring.simulationScore,
-      keywordScore: settings.scoring.keywordScore,
-      clickScore: settings.scoring.clickScore,
-      practiceMode: settings.scoring.practiceMode,
-      repetitionsAllowed: settings.scoring.repetitionsAllowed,
-      repetitionsNeeded: settings.scoring.repetitionsNeeded,
-      scoringMetrics: {
-        enabled: settings.scoring.scoringMetrics?.enabled ?? true,
-        keywordScore: settings.scoring.scoringMetrics?.keywordScore ?? "20%",
-        clickScore: settings.scoring.scoringMetrics?.clickScore ?? "80%",
+  // Check if simulation type is visual
+  const isVisualOnly = simulationType === "visual";
+  const isVisualAudioOrChat =
+    simulationType === "visual-audio" || simulationType === "visual-chat";
+  const isAnyVisualType = isVisualOnly || isVisualAudioOrChat;
+  const hasScript = simulationType !== "visual";
+
+  // Initialize form with default values
+  const { control, handleSubmit, watch, setValue, getValues } =
+    useForm<FormData>({
+      mode: "onChange",
+      defaultValues: {
+        language: settings.voice?.language || "English",
+        accent: settings.voice?.accent || "American",
+        gender: settings.voice?.gender || "Male",
+        ageGroup: settings.voice?.ageGroup || "Middle Aged",
+        simulationScore: settings.scoring?.simulationScore || "best",
+        keywordScore:
+          settings.scoring?.keywordScore || (hasScript ? "20" : "0"),
+        clickScore: settings.scoring?.clickScore || (hasScript ? "80" : "100"),
+        pointsPerKeyword: settings.scoring?.pointsPerKeyword || "1",
+        pointsPerClick: settings.scoring?.pointsPerClick || "1",
+        practiceMode: settings.scoring?.practiceMode || "limited",
+        repetitionsAllowed: settings.scoring?.repetitionsAllowed || "3",
+        repetitionsNeeded: settings.scoring?.repetitionsNeeded || "3",
+        scoringMetrics: {
+          enabled: settings.scoring?.scoringMetrics?.enabled ?? true,
+          keywordScore: settings.scoring?.scoringMetrics?.keywordScore ?? "20%",
+          clickScore: settings.scoring?.scoringMetrics?.clickScore ?? "80%",
+        },
+        metricWeightage: {
+          clickAccuracy:
+            settings.scoring?.metricWeightage?.clickAccuracy ||
+            (isAnyVisualType ? "30%" : "0%"),
+          keywordAccuracy:
+            settings.scoring?.metricWeightage?.keywordAccuracy ||
+            (hasScript ? "30%" : "0%"),
+          dataEntryAccuracy:
+            settings.scoring?.metricWeightage?.dataEntryAccuracy ||
+            (isAnyVisualType ? "20%" : "0%"),
+          contextualAccuracy:
+            settings.scoring?.metricWeightage?.contextualAccuracy || "10%",
+          sentimentMeasures:
+            settings.scoring?.metricWeightage?.sentimentMeasures || "10%",
+        },
       },
-    },
-  });
+    });
 
   const accent = watch("accent");
   const gender = watch("gender");
@@ -117,10 +184,46 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const repetitionsNeeded = watch("repetitionsNeeded");
   const practiceMode = watch("practiceMode");
 
+  // Watch weightage values to validate total
+  const clickAccuracy = watch("metricWeightage.clickAccuracy");
+  const keywordAccuracy = watch("metricWeightage.keywordAccuracy");
+  const dataEntryAccuracy = watch("metricWeightage.dataEntryAccuracy");
+  const contextualAccuracy = watch("metricWeightage.contextualAccuracy");
+  const sentimentMeasures = watch("metricWeightage.sentimentMeasures");
+
+  // Validate weightage totals
+  useEffect(() => {
+    // Remove % and convert to numbers
+    const parsePercentage = (value: string) =>
+      parseInt(value.replace("%", "")) || 0;
+
+    const weightageTotal =
+      parsePercentage(clickAccuracy) +
+      parsePercentage(keywordAccuracy) +
+      parsePercentage(dataEntryAccuracy) +
+      parsePercentage(contextualAccuracy) +
+      parsePercentage(sentimentMeasures);
+
+    if (weightageTotal !== 100) {
+      setWeightageError(
+        `Total weightage is ${weightageTotal}%. Please adjust to total 100%.`,
+      );
+    } else {
+      setWeightageError(null);
+    }
+  }, [
+    clickAccuracy,
+    keywordAccuracy,
+    dataEntryAccuracy,
+    contextualAccuracy,
+    sentimentMeasures,
+  ]);
+
   // Log when component mounts and when settings change
   useEffect(() => {
     console.log("VoiceScore component mounted with settings:", settings);
-    console.log("Initial voice ID:", settings.voice.voiceId);
+    console.log("Initial voice ID:", settings.voice?.voiceId);
+    console.log("Simulation type:", simulationType);
   }, []);
 
   // Add an effect to update parent component when form values change
@@ -143,12 +246,14 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             accent: watch("accent"),
             gender: watch("gender"),
             ageGroup: watch("ageGroup"),
-            voiceId: selectedVoice || settings.voice.voiceId,
+            voiceId: selectedVoice || settings.voice?.voiceId,
           },
           scoring: {
             simulationScore,
             keywordScore: watch("keywordScore"),
             clickScore: watch("clickScore"),
+            pointsPerKeyword: watch("pointsPerKeyword"),
+            pointsPerClick: watch("pointsPerClick"),
             practiceMode,
             repetitionsAllowed,
             repetitionsNeeded,
@@ -156,6 +261,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               enabled: watch("scoringMetrics.enabled"),
               keywordScore: watch("scoringMetrics.keywordScore"),
               clickScore: watch("scoringMetrics.clickScore"),
+            },
+            metricWeightage: {
+              clickAccuracy: watch("metricWeightage.clickAccuracy"),
+              keywordAccuracy: watch("metricWeightage.keywordAccuracy"),
+              dataEntryAccuracy: watch("metricWeightage.dataEntryAccuracy"),
+              contextualAccuracy: watch("metricWeightage.contextualAccuracy"),
+              sentimentMeasures: watch("metricWeightage.sentimentMeasures"),
             },
           },
         });
@@ -170,6 +282,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     repetitionsNeeded,
     practiceMode,
     selectedVoice,
+    clickAccuracy,
+    keywordAccuracy,
+    dataEntryAccuracy,
+    contextualAccuracy,
+    sentimentMeasures,
     onSettingsChange,
   ]);
 
@@ -193,14 +310,14 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   useEffect(() => {
     // If we have a voice ID from settings, select it
-    if (settings.voice.voiceId && settings.voice.voiceId !== selectedVoice) {
+    if (settings.voice?.voiceId && settings.voice.voiceId !== selectedVoice) {
       console.log(
         "Updating selected voice from settings:",
         settings.voice.voiceId,
       );
       setSelectedVoice(settings.voice.voiceId);
     }
-  }, [settings.voice.voiceId]);
+  }, [settings.voice?.voiceId]);
 
   useEffect(() => {
     const filtered = filterVoices(voices, {
@@ -314,10 +431,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         simulationScore: data.simulationScore,
         keywordScore: data.keywordScore,
         clickScore: data.clickScore,
+        pointsPerKeyword: data.pointsPerKeyword,
+        pointsPerClick: data.pointsPerClick,
         practiceMode: data.practiceMode,
         repetitionsAllowed: data.repetitionsAllowed,
         repetitionsNeeded: data.repetitionsNeeded,
         scoringMetrics: data.scoringMetrics,
+        metricWeightage: data.metricWeightage,
       },
     });
   };
@@ -568,24 +688,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 respond during the simulation. You can customize this to match
                 your training scenarios.
               </Typography>
-
-              {/* Debug button - only for development */}
-              <Button
-                size="small"
-                variant="outlined"
-                color="primary"
-                onClick={() => {
-                  console.log("Current prompt value:", prompt);
-                  alert(
-                    `Current prompt: ${prompt?.substring(0, 50)}${prompt?.length > 50 ? "..." : ""}`,
-                  );
-                }}
-                sx={{
-                  display: "none" /* Remove this to enable for debugging */,
-                }}
-              >
-                Debug Prompt
-              </Button>
             </Stack>
           </Card>
         )}
@@ -753,7 +855,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
 
-          {/* Simulation Scoring Metrics */}
+          {/* Enhanced Simulation Scoring Metrics */}
           <Box sx={{ mb: 3 }} data-section="Simulation Scoring Metrics">
             <Box
               sx={{
@@ -776,46 +878,239 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               Set min. values needed on different scoring metrics for plan
               success
             </Typography>
-            <Box
-              sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}
-            >
-              <Controller
-                name="scoringMetrics.keywordScore"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel>Keyword Score</InputLabel>
-                    <Select
-                      {...field}
-                      label="Keyword Score"
-                      disabled={!scoringMetricsEnabled}
-                    >
-                      <MenuItem value="20%">20%</MenuItem>
-                      <MenuItem value="30%">30%</MenuItem>
-                      <MenuItem value="40%">40%</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
-              <Controller
-                name="scoringMetrics.clickScore"
-                control={control}
-                render={({ field }) => (
-                  <FormControl fullWidth>
-                    <InputLabel>Click Score</InputLabel>
-                    <Select
-                      {...field}
-                      label="Click Score"
-                      disabled={!scoringMetricsEnabled}
-                    >
-                      <MenuItem value="60%">60%</MenuItem>
-                      <MenuItem value="70%">70%</MenuItem>
-                      <MenuItem value="80%">80%</MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
-              />
+
+            <Box sx={{ mt: 3 }}>
+              <Grid container spacing={2}>
+                {/* Percentage-based scoring metrics (original) */}
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="scoringMetrics.keywordScore"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Keyword Score (%)</InputLabel>
+                        <Select
+                          {...field}
+                          label="Keyword Score (%)"
+                          disabled={!scoringMetricsEnabled || isVisualOnly}
+                        >
+                          {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="scoringMetrics.clickScore"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Click Score (%)</InputLabel>
+                        <Select
+                          {...field}
+                          label="Click Score (%)"
+                          disabled={!scoringMetricsEnabled || !isAnyVisualType}
+                        >
+                          {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+
+                {/* New point-based metrics */}
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="pointsPerKeyword"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Points per Keyword</InputLabel>
+                        <Select
+                          {...field}
+                          label="Points per Keyword"
+                          disabled={!scoringMetricsEnabled || isVisualOnly}
+                        >
+                          {DEFAULT_POINT_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="pointsPerClick"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Points per Click</InputLabel>
+                        <Select
+                          {...field}
+                          label="Points per Click"
+                          disabled={!scoringMetricsEnabled || !isAnyVisualType}
+                        >
+                          {DEFAULT_POINT_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              </Grid>
             </Box>
+          </Box>
+
+          {/* New Score Metric Weightage section */}
+          <Box sx={{ mb: 3 }} data-section="Score Metric Weightage">
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography variant="h6">Score Metric Weightage</Typography>
+                <IconButton size="small" color="primary">
+                  <InfoOutlined fontSize="small" />
+                </IconButton>
+              </Box>
+            </Box>
+
+            <Typography color="text.secondary" gutterBottom>
+              Set percentage allocation for each metric (total must be 100%)
+            </Typography>
+
+            {weightageError && (
+              <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
+                {weightageError}
+              </Alert>
+            )}
+
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              {/* Only show for visual types */}
+              {isAnyVisualType && (
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="metricWeightage.clickAccuracy"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Click Accuracy</InputLabel>
+                        <Select {...field} label="Click Accuracy">
+                          {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              )}
+
+              {/* Only show for non-visual only types */}
+              {!isVisualOnly && (
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="metricWeightage.keywordAccuracy"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Keyword Accuracy</InputLabel>
+                        <Select {...field} label="Keyword Accuracy">
+                          {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              )}
+
+              {/* Only show for visual types */}
+              {isAnyVisualType && (
+                <Grid item xs={12} md={6}>
+                  <Controller
+                    name="metricWeightage.dataEntryAccuracy"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth>
+                        <InputLabel>Data Entry Accuracy</InputLabel>
+                        <Select {...field} label="Data Entry Accuracy">
+                          {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                            <MenuItem key={val} value={val}>
+                              {val}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              )}
+
+              {/* Show for all types */}
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="metricWeightage.contextualAccuracy"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth>
+                      <InputLabel>Contextual Accuracy</InputLabel>
+                      <Select {...field} label="Contextual Accuracy">
+                        {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                          <MenuItem key={val} value={val}>
+                            {val}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+
+              {/* Show for all types */}
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="metricWeightage.sentimentMeasures"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth>
+                      <InputLabel>Sentiment Measures</InputLabel>
+                      <Select {...field} label="Sentiment Measures">
+                        {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                          <MenuItem key={val} value={val}>
+                            {val}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+            </Grid>
           </Box>
 
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />

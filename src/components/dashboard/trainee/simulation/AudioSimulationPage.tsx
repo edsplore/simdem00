@@ -12,6 +12,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import {
+  HeadsetMic,
   PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
   Phone,
@@ -25,7 +26,7 @@ import {
 } from "@mui/icons-material";
 import { RetellWebClient } from "retell-client-js-sdk";
 // Import useAuth hook from your context
-import { useAuth } from "../../../../context/AuthContext"; // Update this path based on your project structure
+import { useAuth } from "../../../../context/AuthContext";
 // Import audio simulation API functions
 import {
   startAudioSimulation,
@@ -49,6 +50,39 @@ interface AudioSimulationPageProps {
   assignmentId: string;
 }
 
+interface LevelSettings {
+  isEnabled: boolean;
+  enablePractice: boolean;
+  hideAgentScript: boolean;
+  hideCustomerScript: boolean;
+  hideKeywordScores: boolean;
+  hideSentimentScores: boolean;
+  hideHighlights: boolean;
+  hideCoachingTips: boolean;
+  enablePostSimulationSurvey: boolean;
+  aiPoweredPausesAndFeedback: boolean;
+}
+
+interface SimulationDetails {
+  sim_name: string;
+  version: number;
+  lvl1: LevelSettings;
+  lvl2: LevelSettings;
+  lvl3: LevelSettings;
+  sim_type: string;
+  status: string;
+  tags: string[];
+  est_time: string;
+  script: Array<{
+    script_sentence: string;
+    role: string;
+    keywords: string[];
+  }>;
+  slidesData: any;
+  prompt: string;
+  [key: string]: any;
+}
+
 const webClient = new RetellWebClient();
 
 // Minimum passing score threshold
@@ -69,7 +103,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   const userName = user?.name || "User";
 
   const [isCallActive, setIsCallActive] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [allMessages, setAllMessages] = useState<Message[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [isEndingCall, setIsEndingCall] = useState(false);
   const [simulationProgressId, setSimulationProgressId] = useState<
@@ -82,12 +116,90 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   >(null);
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [simulationDetails, setSimulationDetails] =
+    useState<SimulationDetails | null>(null);
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Add refs to store hide settings - this will ensure they're available during the update callback
+  const hideAgentScriptRef = useRef(false);
+  const hideCustomerScriptRef = useRef(false);
+
+  // Add a flag to track if settings have ever been properly initialized
+  const settingsInitializedRef = useRef(false);
+
   // Check if simulation was passed based on scores
   const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+
+  // Return the filtered messages based on the hide settings
+  // This is a critical change - we filter the messages at render time, not when adding to state
+  const getVisibleMessages = () => {
+    return allMessages.filter((message) => {
+      if (message.speaker === "customer" && hideCustomerScriptRef.current) {
+        return false; // Hide customer messages
+      }
+      if (message.speaker === "trainee" && hideAgentScriptRef.current) {
+        return false; // Hide trainee messages
+      }
+      return true; // Show all other messages
+    });
+  };
+
+  // Get the visible messages for rendering
+  const visibleMessages = getVisibleMessages();
+
+  // FIXED: Update the level settings and log detailed information
+  const updateLevelSettings = () => {
+    console.log("📋 Updating level settings...");
+    console.log("Current level:", level);
+    console.log("Simulation details available:", !!simulationDetails);
+    console.log(
+      "Settings previously initialized:",
+      settingsInitializedRef.current,
+    );
+
+    // Only update settings if we have simulation details
+    if (!simulationDetails) {
+      console.log("⚠️ No simulation details available for level settings");
+      // Don't reset settings if we don't have simulation details
+      return;
+    }
+
+    let settings = null;
+
+    if (level === "Level 01") {
+      settings = simulationDetails.lvl1;
+      console.log("🔍 Using Level 01 settings:", settings);
+    } else if (level === "Level 02") {
+      settings = simulationDetails.lvl2;
+      console.log("🔍 Using Level 02 settings:", settings);
+    } else if (level === "Level 03") {
+      settings = simulationDetails.lvl3;
+      console.log("🔍 Using Level 03 settings:", settings);
+    }
+
+    if (!settings) {
+      console.log("⚠️ Could not find settings for level:", level);
+      return;
+    }
+
+    // Update the ref values with the current settings
+    hideAgentScriptRef.current = settings.hideAgentScript || false;
+    hideCustomerScriptRef.current = settings.hideCustomerScript || false;
+
+    // Mark that settings have been properly initialized at least once
+    settingsInitializedRef.current = true;
+
+    console.log("🔄 Updated hide settings:");
+    console.log("Hide agent script:", hideAgentScriptRef.current);
+    console.log("Hide customer script:", hideCustomerScriptRef.current);
+  };
+
+  // Update the settings whenever simulation details or level changes
+  useEffect(() => {
+    updateLevelSettings();
+  }, [simulationDetails, level]);
 
   useEffect(() => {
     webClient.on("conversationStarted", (event) => {
@@ -115,7 +227,16 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         const newTranscript = update.transcript;
         const previousTranscript = previousTranscriptRef.current || [];
 
-        setMessages((prevMessages) => {
+        console.log("🔄 Transcript update received.");
+        console.log("Current hide settings from refs:");
+        console.log(
+          "- Hide agent (trainee) messages:",
+          hideAgentScriptRef.current,
+        );
+        console.log("- Hide customer messages:", hideCustomerScriptRef.current);
+
+        setAllMessages((prevMessages) => {
+          // Clone the current messages
           const updatedMessages = [...prevMessages];
           const newTranscriptLength = newTranscript.length;
           const prevTranscriptLength = previousTranscript.length;
@@ -124,24 +245,34 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
           if (newTranscriptLength > prevTranscriptLength) {
             const newMsg = newTranscript[newTranscriptLength - 1];
+            const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
+
+            console.log(
+              `📝 NEW MESSAGE: ${isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"} says: "${newMsg.content.substring(0, 30)}${newMsg.content.length > 30 ? "..." : ""}"`,
+            );
+
+            // Always add the message to allMessages
+            // We'll filter them out when rendering, not when adding to state
             updatedMessages.push({
-              speaker: newMsg.role === "agent" ? "customer" : "trainee",
+              speaker: isSpeakerCustomer ? "customer" : "trainee",
               text: newMsg.content,
             });
           } else if (newTranscriptLength === prevTranscriptLength) {
             const newMsg = newTranscript[newTranscriptLength - 1];
             const lastMsgIndex = updatedMessages.length - 1;
+            const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
 
             if (lastMsgIndex >= 0) {
               const lastMsg = updatedMessages[lastMsgIndex];
               if (
-                lastMsg.speaker ===
-                (newMsg.role === "agent" ? "customer" : "trainee")
+                lastMsg.speaker === (isSpeakerCustomer ? "customer" : "trainee")
               ) {
+                // This is updating an existing message that's already shown, so update it
                 updatedMessages[lastMsgIndex].text = newMsg.content;
               } else {
+                // Always add the message to allMessages
                 updatedMessages.push({
-                  speaker: newMsg.role === "agent" ? "customer" : "trainee",
+                  speaker: isSpeakerCustomer ? "customer" : "trainee",
                   text: newMsg.content,
                 });
               }
@@ -178,6 +309,14 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     };
   }, [isCallActive]);
 
+  // Scroll to bottom when visible messages change
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
+  }, [visibleMessages]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
       .toString()
@@ -201,7 +340,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     setIsStarting(true);
     try {
       setIsCallActive(true);
-      setMessages([
+      setAllMessages([
         {
           speaker: "customer",
           text: "Connecting...",
@@ -217,6 +356,25 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
       console.log("Start audio response:", response);
 
+      // Log detailed info about the simulation details, especially level settings
+      if (response.simulation_details) {
+        console.log("📊 SIMULATION DETAILS RECEIVED");
+        console.log("Level 1 settings:", response.simulation_details.lvl1);
+        console.log("Level 2 settings:", response.simulation_details.lvl2);
+        console.log("Level 3 settings:", response.simulation_details.lvl3);
+        console.log("Selected level:", level);
+
+        // Store simulation details
+        setSimulationDetails(response.simulation_details);
+
+        // Immediately update hide settings based on the selected level
+        setTimeout(() => {
+          updateLevelSettings();
+        }, 0);
+      } else {
+        console.warn("⚠️ No simulation details in response");
+      }
+
       if (response.access_token) {
         setSimulationProgressId(response.id);
         setCallId(response.call_id);
@@ -227,7 +385,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     } catch (error) {
       console.error("Error starting simulation:", error);
       setIsCallActive(false);
-      setMessages([]);
+      setAllMessages([]);
     } finally {
       setIsStarting(false);
     }
@@ -323,9 +481,10 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   const handleRestartSim = () => {
     setShowCompletionScreen(false);
     setIsCallActive(false);
-    setMessages([]);
+    setAllMessages([]);
     setElapsedTime(0);
     setScores(null);
+    // Don't reset settingsInitializedRef.current here, as we want to keep our settings
   };
 
   const handleViewPlayback = () => {
@@ -334,6 +493,18 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
+
+  // Log current state of hide settings when visible messages changes
+  useEffect(() => {
+    console.log("⚠️ RENDER: Visible messages count:", visibleMessages.length);
+    console.log("⚠️ RENDER: All messages count:", allMessages.length);
+    console.log(
+      "⚠️ RENDER: Hide settings - Agent:",
+      hideAgentScriptRef.current,
+      "Customer:",
+      hideCustomerScriptRef.current,
+    );
+  }, [visibleMessages, allMessages]);
 
   // Render the completion screen based on the image provided
   if (showCompletionScreen) {
@@ -389,6 +560,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
             </Typography>
           </Box>
 
+          {/* Rest of completion screen code... */}
           {/* Simulation details */}
           <Box
             sx={{
@@ -575,11 +747,12 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
+              {/* Other metrics... */}
               {/* Concentration */}
               <Box
                 sx={{
@@ -610,8 +783,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -645,8 +818,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -876,7 +1049,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
               }}
             >
               <Stack spacing={2}>
-                {messages.map((message, index) => (
+                {/* Key change: Instead of rendering all messages, render only visibleMessages */}
+                {visibleMessages.map((message, index) => (
                   <Stack
                     key={index}
                     direction="row"

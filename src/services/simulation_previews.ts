@@ -86,8 +86,43 @@ export interface ChatPreviewRequest extends SimulationPreviewRequest {
 }
 
 // Response interfaces
+export interface SimulationLevelSettings {
+  isEnabled: boolean;
+  enablePractice: boolean;
+  hideAgentScript: boolean;
+  hideCustomerScript: boolean;
+  hideKeywordScores: boolean;
+  hideSentimentScores: boolean;
+  hideHighlights: boolean;
+  hideCoachingTips: boolean;
+  enablePostSimulationSurvey: boolean;
+  aiPoweredPausesAndFeedback: boolean;
+}
+
+export interface SimulationDetails {
+  sim_name: string;
+  version: number;
+  lvl1: SimulationLevelSettings;
+  lvl2: SimulationLevelSettings;
+  lvl3: SimulationLevelSettings;
+  sim_type: string;
+  status: string;
+  tags: string[];
+  est_time: string;
+  script: SimulationScriptItem[];
+  slidesData: any;
+  prompt: string;
+  key_objectives: string[];
+  overview_video: string;
+  quick_tips: string[];
+  [key: string]: any;
+}
+
 export interface AudioPreviewResponse {
   access_token: string;
+  simulation_details: SimulationDetails;
+  id?: string;
+  call_id?: string;
   [key: string]: any;
 }
 
@@ -101,6 +136,7 @@ export interface ChatPreviewResponse {
 export interface VisualPreviewResponse {
   simulation: SimulationData;
   images: ImageData[];
+  id?: string;
   [key: string]: any;
 }
 

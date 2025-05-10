@@ -20,6 +20,58 @@ export interface StartAudioSimulationResponse {
   access_token: string;
   call_id: string | null;
   response: string | null;
+  simulation_details?: {
+    sim_name: string;
+    version: number;
+    lvl1: {
+      isEnabled: boolean;
+      enablePractice: boolean;
+      hideAgentScript: boolean;
+      hideCustomerScript: boolean;
+      hideKeywordScores: boolean;
+      hideSentimentScores: boolean;
+      hideHighlights: boolean;
+      hideCoachingTips: boolean;
+      enablePostSimulationSurvey: boolean;
+      aiPoweredPausesAndFeedback: boolean;
+    };
+    lvl2: {
+      isEnabled: boolean;
+      enablePractice: boolean;
+      hideAgentScript: boolean;
+      hideCustomerScript: boolean;
+      hideKeywordScores: boolean;
+      hideSentimentScores: boolean;
+      hideHighlights: boolean;
+      hideCoachingTips: boolean;
+      enablePostSimulationSurvey: boolean;
+      aiPoweredPausesAndFeedback: boolean;
+    };
+    lvl3: {
+      isEnabled: boolean;
+      enablePractice: boolean;
+      hideAgentScript: boolean;
+      hideCustomerScript: boolean;
+      hideKeywordScores: boolean;
+      hideSentimentScores: boolean;
+      hideHighlights: boolean;
+      hideCoachingTips: boolean;
+      enablePostSimulationSurvey: boolean;
+      aiPoweredPausesAndFeedback: boolean;
+    };
+    sim_type: string;
+    status: string;
+    tags: string[];
+    est_time: string;
+    script: Array<{
+      script_sentence: string;
+      role: string;
+      keywords: string[];
+    }>;
+    slidesData: any;
+    prompt: string;
+    [key: string]: any;
+  };
 }
 
 /**

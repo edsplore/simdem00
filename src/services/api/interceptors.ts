@@ -88,7 +88,7 @@ apiClient.interceptors.response.use(
     }
 
     // Dispatch API error event for global error handling
-    const errorMessage = error.response?.data?.message || error.message || 'An error occurred';
+    const errorMessage = error.response?.data?.detail || error.message || 'An error occurred';
     const errorStatus = error.response?.status;
 
     dispatchApiError({

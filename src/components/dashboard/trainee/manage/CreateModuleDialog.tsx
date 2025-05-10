@@ -138,10 +138,11 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
     formState: { isValid },
     watch,
     setValue,
+    reset
   } = useForm<CreateModuleFormData>({
     mode: "onChange",
     defaultValues: {
-      name: "Untitled Module 01",
+      name: "",
       tags: [],
       selectedSimulations: [],
     },
@@ -181,6 +182,13 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
       });
 
       if (response.status === "success") {
+        // Reset form
+        reset({
+          name: "",
+          tags: [],
+          selectedSimulations: [],
+        });
+        
         onClose();
       }
     } catch (error) {

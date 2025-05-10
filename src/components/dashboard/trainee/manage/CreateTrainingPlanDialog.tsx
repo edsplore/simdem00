@@ -65,11 +65,13 @@ interface CreateTrainingPlanFormData {
 interface CreateTrainingPlanDialogProps {
   open: boolean;
   onClose: () => void;
+  onTrainingPlanCreated?: () => void;
 }
 
 const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
   open,
   onClose,
+  onTrainingPlanCreated,
 }) => {
   const { user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
@@ -162,10 +164,11 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
     formState: { isValid },
     watch,
     setValue,
+    reset
   } = useForm<CreateTrainingPlanFormData>({
     mode: "onChange",
     defaultValues: {
-      name: "Untitled Training Plan 01",
+      name: "",
       tags: [],
       selectedItems: [],
     },
@@ -217,6 +220,15 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
       });
 
       if (response.status === "success") {
+        // Reset form
+        reset({
+          name: "",
+          tags: [],
+          selectedItems: [],
+        });   
+        
+        // Call success callback and close dialog
+        onTrainingPlanCreated?.();
         onClose();
       }
     } catch (error) {

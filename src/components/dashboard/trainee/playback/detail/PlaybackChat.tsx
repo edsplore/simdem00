@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Stack,
   Paper,
@@ -56,6 +56,9 @@ interface PlaybackChatProps {
 }
 
 const PlaybackChat = ({ messages }: PlaybackChatProps) => {
+  useEffect(() => {
+    console.log("messages ----playbck-", messages);
+  }, [messages]);
   return (
     <>
       <Box

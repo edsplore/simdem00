@@ -262,12 +262,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                 justifyContent="space-between"
               >
                 <CompletionTime
-                  time="62/70"
+                  time={`${props.playbackData.clickScore.toFixed(2)}%`}
                   label="Click Score"
                   icon={<MouseIcon fontSize="small" />}
                 />
                 <CompletionTime
-                  time="4/12"
+                  time={`${props.playbackData.keywordScore}%`}
                   label="Keyword Score"
                   icon={<TextFieldsIcon fontSize="small" />}
                 />
@@ -279,12 +279,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                 justifyContent="space-between"
               >
                 <CompletionTime
-                  time="62/70"
+                  time={`${props.playbackData.textFieldKeywordScore}%`}
                   label="Text Field Keyword Score"
                   icon={<TextFieldsIcon fontSize="small" />}
                 />
                 <CompletionTime
-                  time="72%"
+                  time={`${props.playbackData.simAccuracyScore}%`}
                   label="Sim Accuracy Score"
                   icon={<CheckCircleIcon fontSize="small" />}
                 />

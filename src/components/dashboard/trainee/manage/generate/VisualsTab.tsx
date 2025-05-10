@@ -876,7 +876,6 @@ export default function VisualsTab({
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      debugger;
       if (!e.target.files) return;
 
       // setIsSubmitting(true);
@@ -1046,6 +1045,31 @@ export default function VisualsTab({
           }
         });
 
+        const masking = img.masking.map((item) => {
+          if (item.type === "masking") {
+            const masking = item.content as Masking;
+
+            // Start with the base hotspot data structure
+            const maskingData = {
+              type: "masking",
+              id: masking.id,
+              maskingType: masking.type,
+              coordinates: masking.coordinates
+                ? {
+                    // Ensure we explicitly access and use numbers for each coordinate
+                    x: Number(masking.coordinates.x || 0),
+                    y: Number(masking.coordinates.y || 0),
+                    width: Number(masking.coordinates.width || 0),
+                    height: Number(masking.coordinates.height || 0),
+                  }
+                : undefined,
+              settings: masking.settings || {},
+            };           
+
+            return maskingData;
+          } 
+        });
+
         // Create a clean image URL that doesn't include any base64 data
         // The server will use the uploaded file or existing server-side image
         let cleanImageUrl = "";
@@ -1070,6 +1094,7 @@ export default function VisualsTab({
           imageName: img.name,
           imageUrl: cleanImageUrl, // Use the clean URL or empty string
           sequence,
+          masking
         };
       });
 
@@ -1447,8 +1472,7 @@ export default function VisualsTab({
   };
 
   const handleApplyMaskingPhi = () => {
-    // Process PHI masking
-    setMaskingPhi(!maskingPhi);
+    setMaskingPhi(true);
   };
 
   return (
@@ -1548,9 +1572,22 @@ export default function VisualsTab({
               Add Script
             </Button>
 
-            <Button
+            {maskingPhi ?  (<Button
               variant="contained"
-              startIcon={maskingPhi ? <Visibility /> : <VisibilityOffIcon />}
+              startIcon={<Visibility />}
+              onClick={handleSaveAndContinue}
+              sx={{
+                bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A",
+                color: maskingPhi ? "#FFFFFF" : "#343F8A",
+                borderRadius: "8px",
+                "&:hover": { bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A" },
+              }}
+            >
+              Save Masking
+            </Button>) :
+            (<Button
+              variant="contained"
+              startIcon={<VisibilityOffIcon />}
               onClick={handleApplyMaskingPhi}
               sx={{
                 bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A",
@@ -1559,8 +1596,8 @@ export default function VisualsTab({
                 "&:hover": { bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A" },
               }}
             >
-              {maskingPhi ? "Save Masking" : " Mask PHI"}
-            </Button>
+            Mask PHI
+            </Button>)}
           </Stack>
         )}
 

@@ -180,6 +180,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     null,
   );
   const [value, setValue] = React.useState('Solid');
+  const [prevMasking, setPrevMasking] = useState<Masking | null>(null);
 
 
   // Add state for moving maskings
@@ -219,7 +220,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     useState<HTMLElement | null>(null);
   // Convert RGBA components to string
  
-
+ 
   // Process image URL using the EXACT same method from VisualAudioPreview
   const processImageData = useCallback(() => {
     if (!imageUrl) {
@@ -504,7 +505,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     if (!masking || !masking.coordinates) return;
 
     const rect = imageElementRef.current.getBoundingClientRect();
-
+    setPrevMasking({ ...masking });
     // Store starting mouse position in screen coordinates
     setMoveStart({
       x: e.clientX - (masking.coordinates.x * imageScale.width + rect.left),
@@ -576,7 +577,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     // Find the masking
     const masking = maskings.find((h) => h.id === maskingId);
     if (!masking || !masking.coordinates) return;
-
+    setPrevMasking({ ...masking });
     // Store starting mouse position in screen coordinates
     setResizeStart({
       x: e.clientX,
@@ -946,9 +947,24 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     setShowSettings(false);
     setEditMode(false);
     setEditingId(null);
+    setPrevMasking(null);
     onMaskingsChange?.(newMaskings);
   };
 
+  const handleSettingsCancel = () => {
+    setShowSettings(false);
+    setCurrentMasking(null);
+    setEditMode(false);
+    setEditingId(null);
+    if (prevMasking) {
+      const updatedMaskings = maskings.map((masking) =>
+        masking.id === prevMasking.id ? prevMasking : masking
+      );
+  
+      onMaskingsChange?.(updatedMaskings);
+      setPrevMasking(null);
+    }
+  };
   // Helper function to render resize handles for a masking
   const renderResizeHandles = (masking: Masking) => {
     if (!masking.coordinates || !imageElementRef.current) return null;
@@ -1060,6 +1076,12 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
         }}
       >
         <Box
+         onClick={(e) => {
+          e.stopPropagation();
+          if (!isEditing && !isResizing && !isMoving) {
+            onEditMasking?.(masking);
+          }
+        }}
           onMouseEnter={() => setHoveredMasking(masking.id)}
           onMouseLeave={() => setHoveredMasking(null)}
           sx={{
@@ -1137,12 +1159,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
           {/* Type icon indicator in top left */}
           {isHovered && (
             <Box
-              onClick={(e) => {
-                e.stopPropagation();
-                if (!isEditing && !isResizing && !isMoving) {
-                  onEditMasking?.(masking);
-                }
-              }}
               sx={{
                 color: "#444CE7",
                 backgroundColor: "rgba(255, 255, 255, 0.9)",
@@ -1154,16 +1170,17 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 boxShadow: "0 0 4px rgba(0,0,0,0.2)",
               }}
             >
-              <Edit sx={{ fontSize: 16 }} />
+              <Visibility sx={{ fontSize: 16 }} />
             </Box>
           )}
 
-          {isHovered && (
-            <Box
+           {isHovered && <Box
               sx={{
-                // position: "absolute",
-                // top: "4px",
-                // right: "4px",
+                position: "absolute",
+                // Conditionally position based on width
+                ...(scaledCoords.width < 50 
+                  ? { bottom: "-24px", right: "4px" }  // Position at bottom when width < 50px
+                  : { top: "4px", right: "4px" }),     // Default position at top
                 color: "#444CE7",
                 backgroundColor: "rgba(255, 255, 255, 0.9)",
                 borderRadius: "50%",
@@ -1172,15 +1189,21 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 width: "fit-content",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 0 4px rgba(0,0,0,0.2)",
+                boxShadow: "0 0 4px rgba(0,0,0,0.4)",
+                zIndex: 10, // Ensure it's above other elements
               }}
             >
               <Delete
-                onClick={() => onDeleteMasking?.(masking.id, masking.type)}
+                 onClick={(e) => {
+                  e.stopPropagation(); 
+                  onDeleteMasking?.(masking.id, masking.type);
+                  setEditMode(false);
+                  setEditingId(null);
+                }}
                 sx={{ fontSize: 16 }}
               />
-            </Box>
-          )}
+            </Box>}
+         
           {/* Add resize handles when masking is being edited */}
           {renderResizeHandles(masking)}
         </Box>
@@ -1759,10 +1782,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 size="large"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setShowSettings(false);
-                  setCurrentMasking(null);
-                  setEditMode(false);
-                  setEditingId(null);
+                  handleSettingsCancel()
                 }}
                 sx={{ textTransform: "none", py: 1, border: '1px solid #00000033', color: '#00000099' }}
               >

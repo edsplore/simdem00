@@ -62,7 +62,7 @@ import {
   ManagerDashboardTrainingEntityAttemptsStatsResponse,
 } from "../../../services/manager";
 import DashboardContent from "../DashboardContent";
-import { fetchReporteeUsers, User } from "../../../services/users";
+import { fetchReporteeUsers, fetchUsersSummary, User, UserSummary } from "../../../services/users";
 import { fetchTeams, TeamResponse, Team } from "../../../services/teams";
 import DateSelector from "../../common/DateSelector";
 import { BarChart } from "@mui/x-charts";
@@ -577,6 +577,9 @@ const TrainingPlanTable = ({
   onChangePage,
   onChangeRowsPerPage,
   reporteeUserIdsMapToName,
+  activeTab,
+  reporteeUserIdsMapToClassId,
+  isTableLoading,
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
 
@@ -587,13 +590,13 @@ const TrainingPlanTable = ({
     }));
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case "Completed":
+      case "completed":
         return { bg: "#ECFDF3", color: "#027A48" };
-      case "In Progress":
+      case "in_progress":
         return { bg: "#F2F4F7", color: "#344054" };
-      case "Not Started":
+      case "not_started":
         return { bg: "#FFFAEB", color: "#B54708" };
       default:
         return { bg: "#F9FAFB", color: "#B54708" };
@@ -617,7 +620,7 @@ const TrainingPlanTable = ({
               ID No.
             </TableCell>
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
-              Name
+              {activeTab === "TrainingPlan" ? "TRP Name" : activeTab === "Module" ? "Module Name" : "Simulation Name"}
             </TableCell>
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
               Assigned Trainees
@@ -637,6 +640,15 @@ const TrainingPlanTable = ({
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}></TableCell>
           </TableRow>
         </TableHead>
+        {isTableLoading ? (
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={8} align="center">
+                <CircularProgress />
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        ) : (
         <TableBody>
           {trainingPlans.map((plan, index) => (
             <React.Fragment key={`${plan.id}-${index}`}>
@@ -870,7 +882,7 @@ const TrainingPlanTable = ({
                                     fontSize: 16,
                                   }}
                                 >
-                                  {trainee.classId}
+                                  {reporteeUserIdsMapToClassId.get(trainee.name) || trainee.classId}
                                 </TableCell>
                                 <TableCell>
                                   <Chip
@@ -931,6 +943,7 @@ const TrainingPlanTable = ({
             </React.Fragment>
           ))}
         </TableBody>
+        )}
       </Table>
       <Box
         sx={{
@@ -951,6 +964,19 @@ const TrainingPlanTable = ({
         />
       </Box>
     </TableContainer>
+  );
+};
+
+const DashboardAggregatedData = () => {
+  return (
+    <DashboardContent>
+      <Container maxWidth="xl">
+        <Stack gap="40px">
+          {/* Assignment Cards */}
+          <DashboardAggregatedData />
+        </Stack>
+      </Container>
+    </DashboardContent>
   );
 };
 
@@ -1017,13 +1043,11 @@ const ManagerDashboard = () => {
   const [dashboardData, setDashboardData] =
     useState<ManagerDashboardAggregatedDataResponse | null>(null);
   const [reporteeUser, setReporteeUser] = useState<[] | User[]>([]);
-  const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<
-    [] | string[]
-  >([]);
+  const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<[] | string[]>([]);
   const [allUserIds, setAllUserIds] = useState<[] | string[]>([]);
-  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<
-    Map<string, string>
-  >(new Map());
+  const [allCreatorIds, setAllCreatorIds] = useState<[] | string[]>([]);
+  const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<Map<string, string>>(new Map());
+  const [reporteeUserIdsMapToClassId, setReporteeUserIdsMapToClassId] = useState<Map<string, string>>(new Map());
   const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
   const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<
     [] | string[]
@@ -1033,6 +1057,7 @@ const ManagerDashboard = () => {
     Map<string, string>
   >(new Map());
   const [isLoading, setIsLoading] = useState(false);
+  const [isAggregatedDataLoading, setIsAggregatedDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("TrainingPlan");
   const [teamframe, setTeamframe] = useState<[] | string[]>([]);
@@ -1058,13 +1083,9 @@ const ManagerDashboard = () => {
   const [selectedCreators, setSelectedCreators] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [userActivityData, setUserActivityData] = useState({
-    users: mockData.trainingPlans,
-    total: mockData.trainingPlans,
-  });
 
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
-  const handleTeamframeChange = (event) => {
+  const handleTeamframeChange = (event: any) => {
     const { value } = event.target;
 
     const selectedIds = typeof value === "string" ? value.split(",") : value;
@@ -1077,22 +1098,22 @@ const ManagerDashboard = () => {
     setTeamframe(selectedIds);
     setTeamframeNames(selectedUserNames);
 
-    // Update the individual selectors
-    const newSelectedTeams = selectedIds.filter((id) =>
-      reporteeTeamIdsMapToName.has(id)
-    );
+    // // Update the individual selectors
+    // const newSelectedTeams = selectedIds.filter((id) =>
+    //   reporteeTeamIdsMapToName.has(id)
+    // );
 
-    setSelectedTeams(newSelectedTeams);
+    //setSelectedTeams(newSelectedTeams);
   };
   // Handle changes from the team selector
-  const handleTeamsChange = (event) => {
+  const handleTeamsChange = (event: any) => {
     const { value } = event.target;
     const newSelectedTeams =
       typeof value === "string" ? value.split(",") : value;
     setSelectedTeams(newSelectedTeams);
   };
 
-  const handleCreatorChange = (event) => {
+  const handleCreatorChange = (event: any) => {
     const { value } = event.target;
     const newSelectedCreators =
       typeof value === "string" ? value.split(",") : value;
@@ -1108,20 +1129,19 @@ const ManagerDashboard = () => {
   const handleApplyClick = () => {
     // Handle the selected users/teams here
     console.log("teamframe", teamframe, dropdownSearchQuery);
-    const selectedUserIds = teamframe.filter((id: string) =>
+    let selectedUserIds = teamframe.filter((id: string) =>
       allUserIds.includes(id)
     );
-    const selectedTeamIds = teamframe.filter((id: string) =>
+    let selectedTeamIds = teamframe.filter((id: string) =>
       allTeamIds.includes(id)
     );
+    if ((!selectedUserIds || selectedUserIds.length === 0) && (!selectedTeamIds || selectedTeamIds.length === 0)) {
+      selectedUserIds = allUserIds;
+      selectedTeamIds = allTeamIds;
+    }
     setFilteredReporteeUserIds(selectedUserIds);
     setFilteredReporteeTeamIds(selectedTeamIds);
   };
-
-  const filteredTrainingEntities = trainingEntityAttempts.filter((entity) => {
-    const query = searchQuery.toLowerCase();
-    return entity.name.toLowerCase().includes(query);
-  });
 
   const loadReporteeUser = async () => {
     if (user?.id) {
@@ -1138,9 +1158,13 @@ const ManagerDashboard = () => {
         setFilteredReporteeUserIds(userData);
         setAllUserIds(userData);
         const userMap = new Map(
-          data?.map((user) => [user.user_id, user.fullName])
+          data?.map((user) => [user.user_id, user.first_name + " " + user.last_name])
+        );
+        const userMaptoClassId = new Map(
+          data?.map((user) => [user.user_id, user.class_id || ""])
         );
         setReporteeUserIdsMapToName(userMap);
+        setReporteeUserIdsMapToClassId(userMaptoClassId);
       } catch (error) {
         console.error("Error loading reportee users:", error);
         setError("Failed to load reportee users");
@@ -1188,16 +1212,36 @@ const ManagerDashboard = () => {
     }
   };
 
+  const loadCreators = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const params = new URLSearchParams(location.search);
+      const workspaceId = params.get("workspace_id");
+      const response = await fetchUsersSummary(workspaceId || "");
+      const creatorIdsList = response?.map((user: UserSummary) => user.user_id);
+      if (creatorIdsList) {
+        setAllCreatorIds(creatorIdsList);
+      }
+    } catch (error) {
+      console.error("Error loading reportee users:", error);
+      setError("Failed to load reportee users");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loadDashboardData = async () => {
     if (user?.id) {
       try {
-        setIsLoading(true);
+        setIsAggregatedDataLoading(true);
         setError(null);
         const params: any = {
           assignedDateRange: { startDate: "", endDate: "" },
           trainingEntityDateRange: { startDate: "", endDate: "" },
-          trainingEntityCreatedBy: selectedCreators,
-          trainingEntityTeams: selectedTeams,
+          trainingEntityCreatedBy: selectedCreators.filter((creatorId) => (creatorId !== "" && creatorId !== null && creatorId !== undefined)),
+          trainingEntityTeams: selectedTeams.filter((teamId) => (teamId !== "" && teamId !== null && teamId !== undefined)),
+          trainingEntitySearchQuery: searchQuery,
         };
 
         if (dateRange[0] && dateRange[1]) {
@@ -1225,68 +1269,24 @@ const ManagerDashboard = () => {
         console.error("Error loading dashboard data:", error);
         setError("Failed to load dashboard data");
       } finally {
-        setIsLoading(false);
+        setIsAggregatedDataLoading(false);
       }
     }
   };
-  const filteredUserIds = allUserIds.filter((userId) =>
-    (reporteeUserIdsMapToName.get(userId) || "")
-      .toLowerCase()
-      .includes(dropdownSearchQuery.toLowerCase())
-  );
-
-  const filteredTeams =
-    reporteeTeam?.items?.filter((team) =>
-      (reporteeTeamIdsMapToName.get(team.team_id) || "")
-        .toLowerCase()
-        .includes(dropdownSearchQuery.toLowerCase())
-    ) || [];
-
-  const filteredCreators = reporteeUser.filter((creator) =>
-    creator.fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase())
-  );
-
-  const filteredTeamEntity = filteredTeams?.filter((team) =>
-    reporteeTeamIdsMapToName
-      .get(team.team_id)
-      ?.toLowerCase()
-      .includes(teamSearchQuery.toLowerCase())
-  );
-
-  useEffect(() => {
-    loadReporteeUser();
-    loadReporteeTeams();
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (filteredReporteeUserIds && filteredReporteeUserIds?.length > 0) {
-      loadDashboardData();
-      loadTrainingEntityAttemptsForManagerDashboard(activeTab);
-    }
-  }, [filteredReporteeUserIds, filteredReporteeTeamIds]);
-
-  // const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
-  //   setTeamframe(event.target.value);
-  // };
-  const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
-    setTimeframe(event.target.value);
-  };
-  const handleTabChange = (event: any, newValue: any) => {
-    setActiveTab(newValue);
-    loadTrainingEntityAttemptsForManagerDashboard(newValue);
-    setPage(0); // Reset to the first page when changing tabs
-  };
-
+  
   const loadTrainingEntityAttemptsForManagerDashboard = async (
-    type: string
+    type: string,
+    searchQueryOverride: string | null = null,
+    selectedTeamsOverride: string[] | [] = []
   ) => {
     try {
       setIsTableLoading(true);
       const params: any = {
         assignedDateRange: { startDate: "", endDate: "" },
         trainingEntityDateRange: { startDate: "", endDate: "" },
-        trainingEntityCreatedBy: selectedCreators,
-        trainingEntityTeams: selectedTeams,
+        trainingEntityCreatedBy: selectedCreators.filter((creatorId) => (creatorId !== "" && creatorId !== null && creatorId !== undefined)),
+        trainingEntityTeams: selectedTeamsOverride.length > 0 ? selectedTeamsOverride : selectedTeams.filter((teamId) => (teamId !== "" && teamId !== null && teamId !== undefined)),
+        trainingEntitySearchQuery: searchQueryOverride !== null ? searchQueryOverride : searchQuery,
       };
 
       if (dateRange[0] && dateRange[1]) {
@@ -1341,6 +1341,57 @@ const ManagerDashboard = () => {
     }
   };
 
+  const filteredUserIds = allUserIds.filter((userId) =>
+    (reporteeUserIdsMapToName.get(userId) || "")
+      .toLowerCase()
+      .includes(dropdownSearchQuery.toLowerCase().trim())
+  );
+
+  const filteredTeams =
+    reporteeTeam?.items?.filter((team) =>
+      (reporteeTeamIdsMapToName.get(team.team_id) || "")
+        .toLowerCase()
+        .trim()
+        .includes(dropdownSearchQuery.toLowerCase().trim())
+    ) || [];
+
+  const filteredCreators = reporteeUser.filter((creator) =>
+    creator.fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase())
+  );
+
+  const filteredTeamEntity = filteredTeams?.filter((team) =>
+    reporteeTeamIdsMapToName
+      .get(team.team_id)
+      ?.toLowerCase()
+      .includes(teamSearchQuery.toLowerCase().trim())
+  );
+
+  useEffect(() => {
+    loadReporteeUser();
+    loadReporteeTeams();
+    loadCreators();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if ((filteredReporteeUserIds && filteredReporteeUserIds?.length > 0) || (filteredReporteeTeamIds && filteredReporteeTeamIds?.length > 0)) {
+      loadDashboardData();
+      loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    }
+  }, [filteredReporteeUserIds, filteredReporteeTeamIds]);
+
+  // const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
+  //   setTeamframe(event.target.value);
+  // };
+  const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
+    setTimeframe(event.target.value);
+  };
+  const handleTabChange = (event: any, newValue: any) => {
+    setActiveTab(newValue);
+    setSearchQuery(""); // Reset the Search Query when changing tabs
+    loadTrainingEntityAttemptsForManagerDashboard(newValue, "");
+    setPage(0); // Reset to the first page when changing tabs
+  };
+
   const handleDateRangeApplyCallback = () => {
     loadDashboardData();
     loadTrainingEntityAttemptsForManagerDashboard(activeTab);
@@ -1353,6 +1404,22 @@ const ManagerDashboard = () => {
     loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
 
+  const handleTrainingEntityCreatorSelectedApply = () => {
+    // if (selectedCreators.length === 0) {
+    //   loadTrainingEntityAttemptsForManagerDashboard(activeTab, undefined, allCreatorIds);
+    // } else {
+    //   loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    // }
+  };
+
+  const handleTrainingEntityTeamSelectedApply = () => {
+    if (selectedTeams.length === 0) {
+      loadTrainingEntityAttemptsForManagerDashboard(activeTab, undefined, allTeamIds);
+    } else {
+      loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    }
+  };
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -1363,6 +1430,11 @@ const ManagerDashboard = () => {
     setPage(0); // Reset to the first page
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
+
+  const handleTrainingEntitySearch = () => {
+    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+  };
+
   useEffect(() => {
     loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   }, [rowsPerPage, page]);
@@ -1391,389 +1463,402 @@ const ManagerDashboard = () => {
     );
   }
 
+
   return (
     <DashboardContent>
       <Container maxWidth="xl">
         <Stack gap="40px">
-          {/* Assignment Cards */}
-          <Stack gap={2}>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              spacing={2}
-            >
-              <Typography
-                sx={{ fontSize: 18 }}
-                variant="h4"
-                fontWeight="semibold"
-              >
-                My Team's Assignment and Progress
-              </Typography>
-
+          {isAggregatedDataLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+            <CircularProgress />
+          </Box>
+          ) : (
+            <>
+            {/* Assignment Cards */}
+            <Stack gap={2}>
               <Stack
-                direction={{
-                  sm: "column",
-                  md: "row",
-                }}
-                justifyContent="center"
-                gap="12px"
+                direction="row"
+                justifyContent="space-between"
                 alignItems="center"
+                spacing={2}
               >
-                <FormControl size="small" sx={{ minWidth: 230, maxWidth: 230 }}>
-                  <Select
-                    multiple
-                    value={teamframe}
-                    onChange={handleTeamframeChange}
-                    displayEmpty
-                    IconComponent={ExpandMoreIcon}
-                    renderValue={(selected) =>
-                      selected.length === 0 ? (
-                        <>Select Users or Teams</>
-                      ) : teamframeNames.length > 0 ? (
-                        teamframeNames[0] +
-                        (teamframeNames[1] ? `, ${teamframeNames[1]}` : "")
-                      ) : (
-                        "Select Users or Teams"
-                      )
-                    }
-                    MenuProps={{
-                      PaperProps: {
-                        sx: {
-                          mt: 1,
-                          border: "1px solid #0000001A",
-                          borderRadius: 2,
-                          boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
-                          bgcolor: "white",
-                          width: 230,
+                <Typography
+                  sx={{ fontSize: 18 }}
+                  variant="h4"
+                  fontWeight="semibold"
+                >
+                  My Team's Assignment and Progress
+                </Typography>
+
+                <Stack
+                  direction={{
+                    sm: "column",
+                    md: "row",
+                  }}
+                  justifyContent="center"
+                  gap="12px"
+                  alignItems="center"
+                >
+                  <FormControl size="small" sx={{ minWidth: 230, maxWidth: 230 }}>
+                    <Select
+                      multiple
+                      value={teamframe}
+                      onChange={handleTeamframeChange}
+                      displayEmpty
+                      IconComponent={ExpandMoreIcon}
+                      renderValue={(selected) =>
+                        selected.length === 0 ? (
+                          <>All Users and Teams</>
+                        ) : teamframeNames.length > 0 ? (
+                          teamframeNames[0] +
+                          (teamframeNames[1] ? `, ${teamframeNames[1]}` : "")
+                        ) : (
+                          "All Users and Teams"
+                        )
+                      }
+                      MenuProps={{
+                        PaperProps: {
+                          sx: {
+                            mt: 1,
+                            border: "1px solid #0000001A",
+                            borderRadius: 2,
+                            boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
+                            bgcolor: "white",
+                            width: 230,
+                          },
                         },
-                      },
-                      MenuListProps: {
-                        sx: {
-                          padding: 0,
+                        MenuListProps: {
+                          sx: {
+                            padding: 0,
+                          },
                         },
-                      },
-                    }}
-                    sx={menuSelectsx}
-                  >
-                    <Stack sx={{ padding: 0.5 }}>
-                      <TextField
-                        placeholder="Search User or Team"
-                        value={dropdownSearchQuery}
-                        onKeyDown={(e) => e.stopPropagation()}
-                        onChange={(e) => setDropdownSearchQuery(e.target.value)}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment sx={{ p: 0 }} position="start">
-                              <SearchIcon />
-                            </InputAdornment>
-                          ),
-                        }}
+                      }}
+                      sx={menuSelectsx}
+                    >
+                      <Stack sx={{ padding: 0.5 }}>
+                        <TextField
+                          placeholder="Search User or Team"
+                          value={dropdownSearchQuery}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onChange={(e) => setDropdownSearchQuery(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment sx={{ p: 0 }} position="start">
+                                <SearchIcon />
+                              </InputAdornment>
+                            ),
+                          }}
+                          sx={{
+                            bgcolor: "white",
+                            fontSize: 14,
+                            borderRadius: "8px",
+                            boxShadow: "0px 1px 2px 0px #1018280D",
+                          }}
+                          size="small"
+                        />
+                      </Stack>
+
+                      <ListSubheader
                         sx={{
-                          bgcolor: "white",
-                          fontSize: 14,
-                          borderRadius: "8px",
-                          boxShadow: "0px 1px 2px 0px #1018280D",
+                          fontSize: 12,
+                          lineHeight: 2,
+                          fontWeight: 600,
+                          color: "#00000066",
+                          borderBottom: "1px solid #0000001A",
+                          bgcolor: "#F9FAFB",
+                          py: 0.5,
+                          px: 2,
                         }}
-                        size="small"
-                      />
-                    </Stack>
-
-                    <ListSubheader
-                      sx={{
-                        fontSize: 12,
-                        lineHeight: 2,
-                        fontWeight: 600,
-                        color: "#00000066",
-                        borderBottom: "1px solid #0000001A",
-                        bgcolor: "#F9FAFB",
-                        py: 0.5,
-                        px: 2,
-                      }}
-                    >
-                      Users
-                    </ListSubheader>
-                    {filteredUserIds.map((userId) => (
-                      <MenuItem key={userId} sx={menuItemSx} value={userId}>
-                        {reporteeUserIdsMapToName.get(userId)}
-                        {teamframe.includes(userId) && (
-                          <ListItemIcon>
-                            <Check fontSize="small" color="primary" />
-                          </ListItemIcon>
-                        )}
-                      </MenuItem>
-                    ))}
-
-                    <ListSubheader
-                      sx={{
-                        fontSize: 12,
-                        lineHeight: 2,
-                        fontWeight: 600,
-                        color: "#00000066",
-                        borderBottom: "1px solid #0000001A",
-                        bgcolor: "#F9FAFB",
-                        py: 0.5,
-                        px: 2,
-                      }}
-                    >
-                      Teams
-                    </ListSubheader>
-                    {filteredTeams &&
-                      filteredTeams.map((team) => (
-                        <MenuItem
-                          key={team.team_id}
-                          sx={menuItemSx}
-                          value={team.team_id}
-                        >
-                          {reporteeTeamIdsMapToName.get(team.team_id)}
-                          {teamframe.includes(team.team_id) && (
+                      >
+                        Users
+                      </ListSubheader>
+                      {filteredUserIds.map((userId) => (
+                        <MenuItem key={userId} sx={menuItemSx} value={userId}>
+                          {reporteeUserIdsMapToName.get(userId)}
+                          {teamframe.includes(userId) && (
                             <ListItemIcon>
                               <Check fontSize="small" color="primary" />
                             </ListItemIcon>
                           )}
                         </MenuItem>
                       ))}
-                    {/* <MenuItem>{teamframe}</MenuItem> */}
-                    {teamframe.length > 0 && (
+
+                      <ListSubheader
+                        sx={{
+                          fontSize: 12,
+                          lineHeight: 2,
+                          fontWeight: 600,
+                          color: "#00000066",
+                          borderBottom: "1px solid #0000001A",
+                          bgcolor: "#F9FAFB",
+                          py: 0.5,
+                          px: 2,
+                        }}
+                      >
+                        Teams
+                      </ListSubheader>
+                      {filteredTeams &&
+                        filteredTeams.map((team) => (
+                          <MenuItem
+                            key={team.team_id}
+                            sx={menuItemSx}
+                            value={team.team_id}
+                          >
+                            {reporteeTeamIdsMapToName.get(team.team_id)}
+                            {teamframe.includes(team.team_id) && (
+                              <ListItemIcon>
+                                <Check fontSize="small" color="primary" />
+                              </ListItemIcon>
+                            )}
+                          </MenuItem>
+                        ))}
+                      {/* <MenuItem>{teamframe}</MenuItem> */}
+                      {/*teamframe.length > 0 && (
+                        <Stack p={0.5}>
+                          <Button variant="contained" onClick={handleApplyClick}>
+                            Apply
+                          </Button>
+                        </Stack>
+                      )*/}
                       <Stack p={0.5}>
                         <Button variant="contained" onClick={handleApplyClick}>
                           Apply
                         </Button>
                       </Stack>
-                    )}
-                  </Select>
-                </FormControl>
+                    </Select>
+                  </FormControl>
 
-                <DateSelector
-                  dateRange={dateRange}
-                  setDateRange={setDateRange}
-                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
-                />
+                  <DateSelector
+                    dateRange={dateRange}
+                    setDateRange={setDateRange}
+                    handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                  />
+                </Stack>
               </Stack>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <AssignmentCard
+                      title="Training Plans Assigned"
+                      total={dashboardData.assignmentCounts.trainingPlans.total}
+                      completed={
+                        dashboardData.assignmentCounts.trainingPlans.completed
+                      }
+                      inProgress={
+                        dashboardData.assignmentCounts.trainingPlans.inProgress
+                      }
+                      notStarted={
+                        dashboardData.assignmentCounts.trainingPlans.notStarted
+                      }
+                      overdue={
+                        dashboardData.assignmentCounts.trainingPlans.overdue
+                      }
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <AssignmentCard
+                      title="Modules Assigned"
+                      total={dashboardData.assignmentCounts.modules.total}
+                      completed={dashboardData.assignmentCounts.modules.completed}
+                      inProgress={
+                        dashboardData.assignmentCounts.modules.inProgress
+                      }
+                      notStarted={
+                        dashboardData.assignmentCounts.modules.notStarted
+                      }
+                      overdue={dashboardData.assignmentCounts.modules.overdue}
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <AssignmentCard
+                      title="Simulation Assigned"
+                      total={dashboardData.assignmentCounts.simulations.total}
+                      completed={
+                        dashboardData.assignmentCounts.simulations.completed
+                      }
+                      inProgress={
+                        dashboardData.assignmentCounts.simulations.inProgress
+                      }
+                      notStarted={
+                        dashboardData.assignmentCounts.simulations.notStarted
+                      }
+                      overdue={dashboardData.assignmentCounts.simulations.overdue}
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
+                </Grid>
+              </Grid>
             </Stack>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <AssignmentCard
-                    title="Training Plans Assigned"
-                    total={dashboardData.assignmentCounts.trainingPlans.total}
-                    completed={
-                      dashboardData.assignmentCounts.trainingPlans.completed
-                    }
-                    inProgress={
-                      dashboardData.assignmentCounts.trainingPlans.inProgress
-                    }
-                    notStarted={
-                      dashboardData.assignmentCounts.trainingPlans.notStarted
-                    }
-                    overdue={
-                      dashboardData.assignmentCounts.trainingPlans.overdue
-                    }
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <AssignmentCard
-                    title="Modules Assigned"
-                    total={dashboardData.assignmentCounts.modules.total}
-                    completed={dashboardData.assignmentCounts.modules.completed}
-                    inProgress={
-                      dashboardData.assignmentCounts.modules.inProgress
-                    }
-                    notStarted={
-                      dashboardData.assignmentCounts.modules.notStarted
-                    }
-                    overdue={dashboardData.assignmentCounts.modules.overdue}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <AssignmentCard
-                    title="Simulation Assigned"
-                    total={dashboardData.assignmentCounts.simulations.total}
-                    completed={
-                      dashboardData.assignmentCounts.simulations.completed
-                    }
-                    inProgress={
-                      dashboardData.assignmentCounts.simulations.inProgress
-                    }
-                    notStarted={
-                      dashboardData.assignmentCounts.simulations.notStarted
-                    }
-                    overdue={dashboardData.assignmentCounts.simulations.overdue}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
-              </Grid>
-            </Grid>
-          </Stack>
-          {/* Completion Rate Section */}
-          <Stack gap={2}>
-            <Typography
-              sx={{ fontSize: 18 }}
-              variant="h4"
-              fontWeight="semibold"
-            >
-              Completion Rate
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Training Plan"
-                        value={dashboardData.completionRates.trainingPlans}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Modules"
-                        value={dashboardData.completionRates.modules}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Simulation"
-                        value={dashboardData.completionRates.simulations}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
+            {/* Completion Rate Section */}
+            <Stack gap={2}>
+              <Typography
+                sx={{ fontSize: 18 }}
+                variant="h4"
+                fontWeight="semibold"
+              >
+                Completion Rate
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={8}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Training Plan"
+                          value={dashboardData.completionRates.trainingPlans}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Modules"
+                          value={dashboardData.completionRates.modules}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Simulation"
+                          value={dashboardData.completionRates.simulations}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
                   </Grid>
                 </Grid>
-              </Grid>
 
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <LeaderBoard
-                    data={dashboardData.leaderBoards.completion}
-                    title="Completion Rate Leader Board"
-                    sortBy="High to Low"
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
-              </Grid>
-            </Grid>
-          </Stack>
-          {/* Average Score Section */}
-          <Stack gap={2}>
-            <Typography
-              sx={{ fontSize: 18 }}
-              variant="h4"
-              fontWeight="semibold"
-            >
-              Average Score
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Training Plan"
-                        value={dashboardData.averageScores.trainingPlans}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Modules"
-                        value={dashboardData.averageScores.modules}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Simulation"
-                        value={dashboardData.averageScores.simulations}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <LeaderBoard
+                      data={dashboardData.leaderBoards.completion}
+                      title="Completion Rate Leader Board"
+                      sortBy="High to Low"
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
                 </Grid>
               </Grid>
-
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <LeaderBoard
-                    data={dashboardData.leaderBoards.averageScore}
-                    title="Average Score Leader Board"
-                    sortBy="High to Low"
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
-              </Grid>
-            </Grid>
-          </Stack>
-
-          {/* Adherence Rate Section */}
-          <Stack gap={2}>
-            <Typography
-              sx={{ fontSize: 18 }}
-              variant="h4"
-              fontWeight="semibold"
-            >
-              Adherence Rate (On-Time Completion Rate)
-            </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Training Plan"
-                        value={dashboardData.adherenceRates.trainingPlans}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Modules"
-                        value={dashboardData.adherenceRates.modules}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    {dashboardData && (
-                      <CircularProgressCards
-                        title="Simulation"
-                        value={dashboardData.adherenceRates.simulations}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
-                      />
-                    )}
+            </Stack>
+            {/* Average Score Section */}
+            <Stack gap={2}>
+              <Typography
+                sx={{ fontSize: 18 }}
+                variant="h4"
+                fontWeight="semibold"
+              >
+                Average Score
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={8}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Training Plan"
+                          value={dashboardData.averageScores.trainingPlans}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Modules"
+                          value={dashboardData.averageScores.modules}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Simulation"
+                          value={dashboardData.averageScores.simulations}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
                   </Grid>
                 </Grid>
-              </Grid>
 
-              <Grid item xs={12} md={4}>
-                {dashboardData && (
-                  <LeaderBoard
-                    data={dashboardData.leaderBoards.adherence}
-                    title="Adherence Rate Leader Board"
-                    sortBy="High to Low"
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                )}
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <LeaderBoard
+                      data={dashboardData.leaderBoards.averageScore}
+                      title="Average Score Leader Board"
+                      sortBy="High to Low"
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
+                </Grid>
               </Grid>
-            </Grid>
-          </Stack>
+            </Stack>
+            {/* Adherence Rate Section */}
+            <Stack gap={2}>
+              <Typography
+                sx={{ fontSize: 18 }}
+                variant="h4"
+                fontWeight="semibold"
+              >
+                Adherence Rate (On-Time Completion Rate)
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={8}>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Training Plan"
+                          value={dashboardData.adherenceRates.trainingPlans}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Modules"
+                          value={dashboardData.adherenceRates.modules}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      {dashboardData && (
+                        <CircularProgressCards
+                          title="Simulation"
+                          value={dashboardData.adherenceRates.simulations}
+                          popupText="On time completed test Sim / Total no. of test sims completed"
+                        />
+                      )}
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  {dashboardData && (
+                    <LeaderBoard
+                      data={dashboardData.leaderBoards.adherence}
+                      title="Adherence Rate Leader Board"
+                      sortBy="High to Low"
+                      popupText="On time completed test Sim / Total no. of test sims completed"
+                    />
+                  )}
+                </Grid>
+              </Grid>
+            </Stack>
+            </>
+          )}
           {/* Training Plans/Modules/Simulations Tabs */}
           <Stack>
             <Box
@@ -1837,9 +1922,14 @@ const ManagerDashboard = () => {
               justifyContent="space-between"
             >
               <TextField
-                placeholder="Search by Name"
+                placeholder={activeTab === "TrainingPlan" ? "Search by Training Plan Name or ID" : activeTab === "Module" ? "Search by Module Name or ID" : "Search by Simulation Name or ID"}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleTrainingEntitySearch();
+                  }
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -1848,7 +1938,8 @@ const ManagerDashboard = () => {
                   ),
                 }}
                 sx={{
-                  // width: 300,
+                  width: "100%",
+                  maxWidth: 350,
                   bgcolor: "white",
                   boxShadow: "0px 1px 2px 0px #1018280D",
                   "& .MuiOutlinedInput-root": {
@@ -1930,16 +2021,14 @@ const ManagerDashboard = () => {
                         )}
                       </MenuItem>
                     ))}
-                    {selectedTeams.length > 0 && (
-                      <Stack p={0.5}>
-                        <Button
-                          variant="contained"
-                          onClick={handleTrainingEntitySelectedApply}
-                        >
-                          Apply
-                        </Button>
-                      </Stack>
-                    )}
+                    <Stack p={0.5}>
+                      <Button
+                        variant="contained"
+                        onClick={handleTrainingEntityTeamSelectedApply}
+                      >
+                        Apply
+                      </Button>
+                    </Stack>
                   </Select>
                 </FormControl>
                 <DateSelector
@@ -1964,7 +2053,7 @@ const ManagerDashboard = () => {
                   >
                     <Stack sx={{ padding: 0.5 }}>
                       <TextField
-                        placeholder="Search Cretors"
+                        placeholder="Search Creators"
                         value={creatorSearchQuery}
                         onChange={(e) => setCreatorSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.stopPropagation()}
@@ -1998,16 +2087,14 @@ const ManagerDashboard = () => {
                         )}
                       </MenuItem>
                     ))}
-                    {selectedCreators.length > 0 && (
-                      <Stack p={0.5}>
-                        <Button
-                          variant="contained"
-                          onClick={handleTrainingEntitySelectedApply}
-                        >
-                          Apply
-                        </Button>
-                      </Stack>
-                    )}
+                    <Stack p={0.5}>
+                      <Button
+                        variant="contained"
+                        onClick={handleTrainingEntitySelectedApply}
+                      >
+                        Apply
+                      </Button>
+                    </Stack>
                   </Select>
                 </FormControl>
               </Stack>
@@ -2015,9 +2102,7 @@ const ManagerDashboard = () => {
             {/* Training Plans Table */}
             <TrainingPlanTable
               trainingPlans={
-                filteredTrainingEntities
-                  ? filteredTrainingEntities
-                  : trainingEntityAttempts
+                trainingEntityAttempts
               }
               totalCount={trainingEntityPagination.total_count} // Pass total count for pagination
               page={page}
@@ -2025,8 +2110,12 @@ const ManagerDashboard = () => {
               onChangePage={handleChangePage}
               onChangeRowsPerPage={handleChangeRowsPerPage}
               reporteeUserIdsMapToName={reporteeUserIdsMapToName}
+              activeTab={activeTab}
+              reporteeUserIdsMapToClassId={reporteeUserIdsMapToClassId}
+              isTableLoading={isTableLoading}
             />
           </Stack>
+         
         </Stack>
       </Container>
     </DashboardContent>

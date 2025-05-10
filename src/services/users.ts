@@ -8,7 +8,16 @@ export interface User {
   phone_no: string;
   fullName: string;
   profile_img_url?: string;
+  class_id?: string;
 }
+
+export interface UserSummary {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
 
 export interface UserDetails {
   user: {

@@ -2,8 +2,10 @@ import {
   Check,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
+  Download,
   ExpandLess as ExpandLessIcon,
   ExpandMore as ExpandMoreIcon,
+  FileDownload,
   InfoOutlined,
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
@@ -44,7 +46,12 @@ import {
   Popover,
   Divider,
   TablePagination,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Popper,
 } from "@mui/material";
+import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import {
   CalendarMonth as CalendarIcon,
@@ -567,6 +574,106 @@ const CircularProgressCards = ({ value, title, popupText }) => {
     </Card>
   );
 };
+const BreakupDataDialog = ({ downloadData, cancel }) => {
+  return (
+    <Dialog
+      open={true}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 2,
+          maxWidth: 400,
+          p: 3,
+        },
+      }}
+    >
+      <DialogTitle sx={{ p: 0, width: "100%", mb: "32px" }}>
+        <Stack alignItems={"center"} gap="20px">
+          <Stack
+            direction="row"
+            justifyContent="center"
+            alignItems={"center"}
+            width={"100%"}
+          >
+            <Stack
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "56px",
+                height: "56px",
+                bgcolor: "#001EEE0A",
+                borderRadius: "50%",
+              }}
+            >
+              <Stack
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "40px",
+                  height: "40px",
+                  bgcolor: "#001EEE14",
+                  borderRadius: "50%",
+                }}
+              >
+                <FileDownloadOutlinedIcon sx={{ color: "#143FDA", fontSize: 24 }} />
+                {/* <VisibilityOffIcon sx={{ color: "#143FDA", fontSize: 18 }} /> */}
+              </Stack>
+            </Stack>
+          </Stack>
+          <Stack alignItems={"center"} gap={1}>
+            <Typography
+              variant="body2"
+              fontSize={20}
+              fontWeight={600}
+              color="#000000E5"
+            >
+              Download Break-up Data
+            </Typography>
+            <Typography
+              variant="body2"
+              color="#00000099"
+              textAlign={"center"}
+              fontWeight={400}
+              fontSize={14}
+              width="90%"
+            >
+              Download the list of user who haven't completed the simulation.
+            </Typography>
+          </Stack>
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ p: 0, width: "100%" }}>
+        <Stack direction="row" width={"100%"} spacing={2}>
+          <Button
+            variant="outlined"
+            sx={{
+              borderColor: "#0000001A",
+              color: "#000000CC",
+            }}
+            fullWidth
+            onClick={cancel}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            sx={{
+              bgcolor: "#001EEE",
+            }}
+            fullWidth
+            onClick={downloadData}
+          >
+            Download
+          </Button>
+        </Stack>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 
 // TrainingPlanTable component
 const TrainingPlanTable = ({
@@ -582,7 +689,22 @@ const TrainingPlanTable = ({
   isTableLoading,
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  const open = Boolean(anchorEl);
+  const id = open ? "simple-popper" : undefined;
+
+
+  const handlePopupClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+  };
+  const handlePopupClose = (e) => {
+    e.stopPropagation();
+    setAnchorEl(null);
+  };
   const toggleRow = (id) => {
     setExpandedRows((prev) => ({
       ...prev,
@@ -606,6 +728,19 @@ const TrainingPlanTable = ({
   const getCompactId = (id: string) => {
     if (!id || id.length < 6) return id;
     return `${id.slice(0, 3)}..${id.slice(-3)}`;
+  };
+
+  const handleOpenDownloadDialog = (e: any) => {
+    e.stopPropagation();
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogCancel = () => {
+    setIsDialogOpen(false);
+  };
+
+  const handleDownloadCsv = () => {
+    // setIsDialogOpen(false);
   };
 
   return (
@@ -768,9 +903,45 @@ const TrainingPlanTable = ({
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <IconButton size="small">
+                <IconButton sx={{ backgroundColor: "#0000000A" , borderRadius: "4px"}} onClick={handlePopupClick} size="small">
                     <MoreVertIcon fontSize="small" />
                   </IconButton>
+                  <Popover
+                        id={id}
+                        open={open}
+                        anchorEl={anchorEl}
+                        onClose={(e)=>handlePopupClose(e)}
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'right',
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
+                        PaperProps={{
+                          sx: {
+                            boxShadow: "0px 2px 8px -4px rgba(0, 0, 0, 0.1)",
+                            borderRadius: 1, // Optional: to make it look smoother
+                          },
+                        }}
+                      >
+ 
+                    <Box
+                      sx={{
+                        border: 1,
+                        p: 1,
+                        bgcolor: "white",
+                        borderColor: "white",
+                       color:'#00000099',
+                       fontWeight:'medium',
+                       cursor:'pointer',
+                      }}
+                      onClick={(e)=>handleOpenDownloadDialog(e)}
+                    >
+                    <FileDownloadOutlinedIcon sx={{ color: '#00000066'}} />  Download Break-up Data
+                    </Box>
+                  </Popover>
                 </TableCell>
               </TableRow>
 
@@ -963,6 +1134,12 @@ const TrainingPlanTable = ({
           rowsPerPageOptions={[5, 10, 25, 50]}
         />
       </Box>
+      {isDialogOpen && (
+        <BreakupDataDialog
+          downloadData={handleDownloadCsv}
+          cancel={handleDialogCancel}
+        />
+      )}
     </TableContainer>
   );
 };
@@ -1005,11 +1182,14 @@ const menuSelectProps = {
       boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
       bgcolor: "white",
       width: 230,
+      position: 'relative',
     },
   },
   MenuListProps: {
     sx: {
       padding: 0,
+      maxHeight:350,
+      overflowY:"auto",
     },
   },
 };
@@ -1023,7 +1203,9 @@ const menuItemSx = {
   fontSize: 14,
   fontWeight: "medium",
   color: "#00000099",
-  borderBottom: "1px solid #f0f0f0",
+  "&:not(:last-child)": {
+    borderBottom: "1px solid #f0f0f0"
+  },
   "&:hover": {
     bgcolor: "transparent",
     color: "#00000099",
@@ -1056,6 +1238,9 @@ const ManagerDashboard = () => {
   const [reporteeTeamIdsMapToName, setReporteeTeamIdsMapToName] = useState<
     Map<string, string>
   >(new Map());
+  const [creatorIdsMapToName, setCreatorIdsMapToName] = useState<
+    Map<string, string>
+  >(new Map());
   const [isLoading, setIsLoading] = useState(false);
   const [isAggregatedDataLoading, setIsAggregatedDataLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1079,7 +1264,6 @@ const ManagerDashboard = () => {
     DateRange<Dayjs>
   >([null, null]);
   const [selectedTeams, setSelectedTeams] = useState([]);
-  const [creatorName, setCreatorName] = useState<[] | string[]>([]);
   const [selectedCreators, setSelectedCreators] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -1112,17 +1296,11 @@ const ManagerDashboard = () => {
       typeof value === "string" ? value.split(",") : value;
     setSelectedTeams(newSelectedTeams);
   };
-
+  // Handle changes from the creator selector
   const handleCreatorChange = (event: any) => {
     const { value } = event.target;
     const newSelectedCreators =
       typeof value === "string" ? value.split(",") : value;
-
-    const selectedCreatorName = reporteeUser
-      .filter((creator) => newSelectedCreators.includes(creator.user_id))
-      .map((creator) => creator.fullName);
-
-    setCreatorName(selectedCreatorName);
     setSelectedCreators(newSelectedCreators);
   };
 
@@ -1223,6 +1401,13 @@ const ManagerDashboard = () => {
       if (creatorIdsList) {
         setAllCreatorIds(creatorIdsList);
       }
+      const creatorMap = new Map(
+        response?.map((user) => [user.user_id, user.first_name + " " + user.last_name])
+      );
+      if (creatorMap) {
+        setCreatorIdsMapToName(creatorMap);
+      }
+      
     } catch (error) {
       console.error("Error loading reportee users:", error);
       setError("Failed to load reportee users");
@@ -1355,8 +1540,10 @@ const ManagerDashboard = () => {
         .includes(dropdownSearchQuery.toLowerCase().trim())
     ) || [];
 
-  const filteredCreators = reporteeUser.filter((creator) =>
-    creator.fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase())
+  const filteredCreators = allCreatorIds.filter((creatorId) =>
+    (creatorIdsMapToName.get(creatorId) || "")
+      .toLowerCase()
+      .includes(creatorSearchQuery.toLowerCase().trim())
   );
 
   const filteredTeamEntity = filteredTeams?.filter((team) =>
@@ -1506,15 +1693,17 @@ const ManagerDashboard = () => {
                       onChange={handleTeamframeChange}
                       displayEmpty
                       IconComponent={ExpandMoreIcon}
-                      renderValue={(selected) =>
-                        selected.length === 0 ? (
-                          <>All Users and Teams</>
+                      renderValue={(selected) =>{
+                        const filterSelected = selected.filter((data) => data);
+                        return(
+                          filterSelected.length === 0 ? (
+                          "All Users and Teams"
                         ) : teamframeNames.length > 0 ? (
                           teamframeNames[0] +
-                          (teamframeNames[1] ? `, ${teamframeNames[1]}` : "")
+                          (teamframeNames[1] ? `${teamframeNames[1]}` : "")
                         ) : (
                           "All Users and Teams"
-                        )
+                        ))}
                       }
                       MenuProps={{
                         PaperProps: {
@@ -1535,7 +1724,15 @@ const ManagerDashboard = () => {
                       }}
                       sx={menuSelectsx}
                     >
-                      <Stack sx={{ padding: 0.5 }}>
+                      <Stack sx={{
+                            position: 'sticky',
+                            top: "-2px",
+                            left: 0,
+                            right: 0,
+                            p: 0.5,
+                            bgcolor: 'white',
+                            borderBottom: '1px solid #e0e0e0',
+                          }}>
                         <TextField
                           placeholder="Search User or Team"
                           value={dropdownSearchQuery}
@@ -1620,11 +1817,21 @@ const ManagerDashboard = () => {
                           </Button>
                         </Stack>
                       )*/}
-                      <Stack p={0.5}>
-                        <Button variant="contained" onClick={handleApplyClick}>
+                       <Box
+                          sx={{
+                            position: 'sticky',
+                            bottom: "-2px",
+                            left: 0,
+                            right: 0,
+                            p: 1,
+                            bgcolor: 'white',
+                            borderTop: '1px solid #e0e0e0',
+                          }}
+                        >
+                        <Button fullWidth variant="contained" onClick={handleApplyClick}>
                           Apply
                         </Button>
-                      </Stack>
+                      </Box>
                     </Select>
                   </FormControl>
 
@@ -1973,19 +2180,29 @@ const ManagerDashboard = () => {
                     onChange={handleTeamsChange}
                     displayEmpty
                     IconComponent={ExpandMoreIcon}
-                    renderValue={(selected) =>
-                      selected.length === 0 ? (
-                        <>All Teams</>
+                    renderValue={(selected) =>{
+                      const filterSelected = selected.filter((data) => data);
+                      return(filterSelected.length === 0 ? (
+                        "All Teams"
                       ) : (
-                        selected
+                        filterSelected
                           .map((id) => reporteeTeamIdsMapToName.get(id))
                           .join(", ")
-                      )
+                      ))}
                     }
                     MenuProps={menuSelectProps}
                     sx={menuSelectsx}
                   >
-                    <Stack sx={{ padding: 0.5 }}>
+                     <Stack sx={{
+                            position: 'sticky',
+                            top: "-2px",
+                            left: 0,
+                            right: 0,
+                            p: 0.5,
+                            bgcolor: 'white',
+                            borderBottom: '1px solid #e0e0e0',
+                            zIndex: 10,
+                          }}>
                       <TextField
                         placeholder="Search Team"
                         onKeyDown={(e) => e.stopPropagation()}
@@ -2007,7 +2224,7 @@ const ManagerDashboard = () => {
                         size="small"
                       />
                     </Stack>
-                    {filteredTeamEntity?.map((team) => (
+                   {filteredTeamEntity?.map((team) => (
                       <MenuItem
                         key={team.team_id}
                         sx={menuItemSx}
@@ -2021,14 +2238,27 @@ const ManagerDashboard = () => {
                         )}
                       </MenuItem>
                     ))}
-                    <Stack p={0.5}>
+                     <Box
+                          sx={{
+                            position: 'sticky',
+                            bottom: "-2px",
+                            left: 0,
+                            right: 0,
+                            p: 0.5,
+                            bgcolor: 'white',
+                            borderTop: '1px solid #e0e0e0',
+                            borderBottom: '1px solid #e0e0e0',
+                          }}
+                        >
                       <Button
+                      fullWidth
                         variant="contained"
                         onClick={handleTrainingEntityTeamSelectedApply}
+                        
                       >
                         Apply
                       </Button>
-                    </Stack>
+                    </Box>
                   </Select>
                 </FormControl>
                 <DateSelector
@@ -2046,12 +2276,27 @@ const ManagerDashboard = () => {
                     displayEmpty
                     IconComponent={ExpandMoreIcon}
                     renderValue={(selected) =>
-                      selected.length === 0 ? <>All Creators</> : creatorName
+                     {  
+                      const filterSelected = selected.filter((data) => data);
+                      return(filterSelected.length === 0 ? "All Creators" : (
+                        filterSelected
+                          .map((id) => creatorIdsMapToName.get(id))
+                          .join(", ")
+                      ))}
                     }
                     MenuProps={menuSelectProps}
                     sx={menuSelectsx}
                   >
-                    <Stack sx={{ padding: 0.5 }}>
+                    <Stack sx={{
+                            position: 'sticky',
+                            top: "0px",
+                            left: 0,
+                            right: 0,
+                            p: 0.5,
+                            bgcolor: 'white',
+                            borderBottom: '1px solid #e0e0e0',
+                            zIndex: 10,
+                          }}>
                       <TextField
                         placeholder="Search Creators"
                         value={creatorSearchQuery}
@@ -2073,28 +2318,39 @@ const ManagerDashboard = () => {
                         size="small"
                       />
                     </Stack>
-                    {filteredCreators.map((creator) => (
+                    {filteredCreators.map((id) => (
                       <MenuItem
-                        key={creator.user_id}
+                        key={id}
                         sx={menuItemSx}
-                        value={creator.user_id}
+                        value={id}
                       >
-                        {creator.fullName}
-                        {selectedCreators.includes(creator.user_id) && (
+                        {creatorIdsMapToName.get(id)}
+                        {selectedCreators.includes(id) && (
                           <ListItemIcon>
                             <Check fontSize="small" color="primary" />
                           </ListItemIcon>
                         )}
                       </MenuItem>
                     ))}
-                    <Stack p={0.5}>
-                      <Button
-                        variant="contained"
-                        onClick={handleTrainingEntitySelectedApply}
-                      >
-                        Apply
-                      </Button>
-                    </Stack>
+                       <Box
+                          sx={{
+                            position: 'sticky',
+                            bottom: "-2px",
+                            left: 0,
+                            right: 0,
+                            p: 1,
+                            bgcolor: 'white',
+                            borderTop: '1px solid #e0e0e0',
+                          }}
+                        >
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={handleTrainingEntitySelectedApply}
+                          >
+                            Apply
+                          </Button>
+                          </Box>
                   </Select>
                 </FormControl>
               </Stack>

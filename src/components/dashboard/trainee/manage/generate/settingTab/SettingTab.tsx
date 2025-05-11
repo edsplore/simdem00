@@ -613,6 +613,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
                   return item;
                 })
               : [];
+            const masking = Array.isArray(img.masking) ? img.masking : [];
 
             // Return formatted slide data
             return {
@@ -620,6 +621,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               imageName: img.name,
               imageUrl: img.url.startsWith("blob:") ? "" : img.url,
               sequence,
+              masking,
             };
           })
         : [];

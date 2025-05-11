@@ -139,6 +139,7 @@ export interface FetchSimulationResponse {
     imageName: string;
     imageUrl: string;
     sequence: Array<any>;
+    masking?: Array<any>;
   }>;
   lvl1?: any;
   lvl2?: any;
@@ -196,6 +197,11 @@ export interface CloneSimulationResponse {
   id?: string;
   message?: string;
   [key: string]: any; // For any additional fields that might be returned
+}
+
+export interface UpdateImageMaskingObjectResponse {
+  status: string;
+  message?: string;
 }
 
 /**
@@ -299,6 +305,40 @@ export const updateSimulationWithFormData = async (
     return response.data;
   } catch (error) {
     console.error("Error updating simulation with form data:", error);
+    throw error;
+  }
+};
+
+/**
+ * Updates a masking array of an image in a simulation
+ * @param simulationId - The ID of the simulation to update
+ * @param imageId - The ID of the image to update
+ * @param maskingData - The masking data to update
+ * @returns A promise with the masking update response
+ */
+export const updateSimulationWithMasking = async (
+  simulationId: string,
+  imageId: string,
+  maskingData: any,
+): Promise<UpdateImageMaskingObjectResponse> => {
+  try {
+    const response = await apiClient.put<UpdateImageMaskingObjectResponse>(
+      `/simulations/update-image-mask`,
+      {
+        image_id: imageId,
+        masking_list: maskingData,
+        sim_id: simulationId,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error updating simulation with masking:", error);
     throw error;
   }
 };

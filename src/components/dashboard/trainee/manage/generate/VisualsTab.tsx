@@ -60,6 +60,8 @@ import SortableItem from "./SortableItem";
 import ImageHotspot from "./ImageHotspot";
 import HotspotSequence, { SequenceItem } from "./HotspotSequence";
 import MaskingPhi from "./MaskingPhi";
+import { useParams } from "react-router-dom";
+import { UpdateImageMaskingObjectResponse, updateSimulationWithMasking } from "../../../../../services/simulation_operations";
 
 interface Hotspot {
   id: string;
@@ -380,6 +382,8 @@ export default function VisualsTab({
   const { scriptData, assignedScriptMessageIds, setAssignedScriptMessageIds } =
     useSimulationWizard();
 
+  const { id } = useParams<{ id: string }>();
+
   // Initialize visualImages with proper initial state
   const [visualImages, setVisualImages] = useState<VisualImage[]>([]);
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
@@ -586,7 +590,7 @@ export default function VisualsTab({
 
         const processedMaskingSequence = validMaskingSequence.map((item) => {
           // For hotspots, ensure coordinates are properly formatted as numbers
-          if (item.type === "masking" && item.content.coordinates) {
+          if (item.type === "masking" && item.content && item.content.coordinates) {
             item.content.coordinates = {
               x: Number(item.content.coordinates.x || 0),
               y: Number(item.content.coordinates.y || 0),
@@ -1045,31 +1049,7 @@ export default function VisualsTab({
           }
         });
 
-        const masking = img.masking.map((item) => {
-          if (item.type === "masking") {
-            const masking = item.content as Masking;
-
-            // Start with the base hotspot data structure
-            const maskingData = {
-              type: "masking",
-              id: masking.id,
-              maskingType: masking.type,
-              coordinates: masking.coordinates
-                ? {
-                    // Ensure we explicitly access and use numbers for each coordinate
-                    x: Number(masking.coordinates.x || 0),
-                    y: Number(masking.coordinates.y || 0),
-                    width: Number(masking.coordinates.width || 0),
-                    height: Number(masking.coordinates.height || 0),
-                  }
-                : undefined,
-              settings: masking.settings || {},
-            };           
-
-            return maskingData;
-          } 
-        });
-
+        const masking = Array.isArray(img.masking) ? img.masking : [];
         // Create a clean image URL that doesn't include any base64 data
         // The server will use the uploaded file or existing server-side image
         let cleanImageUrl = "";
@@ -1167,6 +1147,36 @@ export default function VisualsTab({
     }
   }, [visualImages, simulationType, createSimulation, onComplete]);
 
+  const handleSaveImageMasking = async () => {
+    try {
+      if (!selectedImage || !selectedImage.masking || !Array.isArray(selectedImage.masking)) {
+        setError("Image not selected or Masking List not found");
+        return;
+      }
+      const simulationId = id || ""
+      const imageId = selectedImageId || ""
+      const maskingData = selectedImage.masking || []
+      const response: UpdateImageMaskingObjectResponse = await updateSimulationWithMasking(simulationId, imageId, maskingData)
+      if (response) {
+        if (response.status === "success") {
+          setMaskingPhi(false)
+        } else {
+          console.error("API returned empty response");
+          setError("Failed to update masking in simulation. Empty response from server.");
+        }
+      } else {
+        console.error("API returned empty response");
+        setError("Failed to update masking in simulation. Empty response from server.");
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(`Error updating masking in simulation: ${error.message}`);
+      } else {
+        setError("An unexpected error occurred while updating masking in the simulation.");
+      }
+    }
+  };
+
   // Update hotspots in the sequence - optimized to minimize state updates
   const updateImageHotspots = useCallback(
     (imageId: string, newHotspots: Hotspot[]) => {
@@ -1263,7 +1273,7 @@ export default function VisualsTab({
 
         const currentImage = currentImages[currentImageIndex];
 
-        // Find all sequence items that are hotspots
+        // Find all sequence items that are masks
         const currentMaskingItems = currentImage.masking.filter(
           (item) => item.type === "masking"
         );
@@ -1271,7 +1281,7 @@ export default function VisualsTab({
           (item) => item.content as Masking
         );
 
-        // Identify deleted hotspots
+        // Identify deleted masks
         const deletedMaskingIds = currentMaskings
           .filter(
             (oldMasking) =>
@@ -1279,13 +1289,13 @@ export default function VisualsTab({
           )
           .map((masking) => masking.id);
 
-        // Updated/added hotspots map for quick lookup
+        // Updated/added masks map for quick lookup
         const updatedMaskingsMap = new Map(
           newMaskings.map((masking) => [masking.id, masking])
         );
 
         // Process sequence in a single pass
-        const updatedSequence = currentImage.masking
+        const updatedMaskingSequence = currentImage.masking
           .filter(
             (item) =>
               !(
@@ -1310,9 +1320,9 @@ export default function VisualsTab({
             return item;
           });
 
-        // Add any remaining new hotspots
+        // Add any remaining new masks
         updatedMaskingsMap.forEach((masking) => {
-          updatedSequence.push({
+          updatedMaskingSequence.push({
             id: `masking-${masking.id}`,
             type: "masking",
             content: masking,
@@ -1324,7 +1334,7 @@ export default function VisualsTab({
         const newImages = [...currentImages];
         newImages[currentImageIndex] = {
           ...currentImage,
-          masking: updatedSequence,
+          masking: updatedMaskingSequence,
         };
 
         return newImages;
@@ -1575,7 +1585,7 @@ export default function VisualsTab({
             {maskingPhi ?  (<Button
               variant="contained"
               startIcon={<Visibility />}
-              onClick={handleSaveAndContinue}
+              onClick={handleSaveImageMasking}
               sx={{
                 bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A",
                 color: maskingPhi ? "#FFFFFF" : "#343F8A",

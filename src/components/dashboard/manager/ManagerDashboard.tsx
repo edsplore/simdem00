@@ -640,7 +640,7 @@ const BreakupDataDialog = ({ downloadData, cancel }) => {
               fontSize={14}
               width="90%"
             >
-              Download the list of user who haven't completed the simulation.
+              Download the list of users.
             </Typography>
           </Stack>
         </Stack>
@@ -690,6 +690,7 @@ const TrainingPlanTable = ({
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedIdForCsvDownload, setSelectedIdForCsvDownload] = useState<string>("");
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
@@ -697,15 +698,16 @@ const TrainingPlanTable = ({
   const id = open ? "simple-popper" : undefined;
 
 
-  const handlePopupClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePopupClick = (event: React.MouseEvent<HTMLButtonElement>, entityId: string) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
+    setSelectedIdForCsvDownload(entityId);
   };
-  const handlePopupClose = (e) => {
+  const handlePopupClose = (e: any) => {
     e.stopPropagation();
     setAnchorEl(null);
   };
-  const toggleRow = (id) => {
+  const toggleRow = (id: any) => {
     setExpandedRows((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -732,6 +734,10 @@ const TrainingPlanTable = ({
 
   const handleOpenDownloadDialog = (e: any) => {
     e.stopPropagation();
+    if (!selectedIdForCsvDownload) {
+      console.warn("No entity ID selected for CSV download.");
+      return;
+    }
     setIsDialogOpen(true);
   };
 
@@ -740,7 +746,29 @@ const TrainingPlanTable = ({
   };
 
   const handleDownloadCsv = () => {
-    // setIsDialogOpen(false);
+    const headers = ["Trainee Name", "Class ID", "Status", "Due Date","Avg. Score"]
+    const trainingEntityData = trainingPlans.find((plan: any) => plan.id === selectedIdForCsvDownload)
+    const csvRows = [headers.join(",")];
+    trainingEntityData.trainees?.forEach((row: any) => {
+      const rowData = [
+        reporteeUserIdsMapToName[row.name] || row.name,
+        reporteeUserIdsMapToClassId[row.name],
+        row.status,
+        row.dueDate,
+        row.avgScore,
+      ].join(",");
+      csvRows.push(rowData);
+    })
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = 'table_data.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    setIsDialogOpen(false);
+    setSelectedIdForCsvDownload("");
   };
 
   return (
@@ -903,7 +931,7 @@ const TrainingPlanTable = ({
                   </Typography>
                 </TableCell>
                 <TableCell>
-                <IconButton sx={{ backgroundColor: "#0000000A" , borderRadius: "4px"}} onClick={handlePopupClick} size="small">
+                <IconButton sx={{ backgroundColor: "#0000000A" , borderRadius: "4px"}} onClick={(e) => handlePopupClick(e, plan.id)} size="small">
                     <MoreVertIcon fontSize="small" />
                   </IconButton>
                   <Popover

@@ -95,6 +95,7 @@ export interface EndVisualAudioRequest {
   user_id: string;
   simulation_id: string;
   usersimulationprogress_id: string;
+  slides_data?: any[]; // Added to include modified slides data with transcriptions
 }
 
 export interface EndVisualAudioResponse {
@@ -147,12 +148,14 @@ export const startVisualAudioAttempt = async (
  * @param userId - The ID of the user making the attempt
  * @param simulationId - The ID of the simulation attempted
  * @param progressId - The ID of the simulation progress record
+ * @param modifiedSlidesData - Optional modified slides data with user responses
  * @returns A promise with the simulation results including scores
  */
 export const endVisualAudioAttempt = async (
   userId: string,
   simulationId: string,
   progressId: string,
+  modifiedSlidesData?: any[]
 ): Promise<EndVisualAudioResponse> => {
   try {
     const response = await apiClient.post<EndVisualAudioResponse>(
@@ -161,6 +164,7 @@ export const endVisualAudioAttempt = async (
         user_id: userId,
         simulation_id: simulationId,
         usersimulationprogress_id: progressId,
+        slides_data: modifiedSlidesData // Include modified slides data in request
       },
     );
 

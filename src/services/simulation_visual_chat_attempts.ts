@@ -1,3 +1,4 @@
+import { AttemptInterface } from "../types/attempts";
 import apiClient from "./api/interceptors";
 
 // Types for Visual Chat simulations
@@ -129,7 +130,7 @@ export interface EndVisualChatResponse {
 export const startVisualChatAttempt = async (
   userId: string,
   simulationId: string,
-  assignmentId: string,
+  assignmentId: string
 ): Promise<StartVisualChatResponse> => {
   try {
     const response = await apiClient.post<StartVisualChatResponse>(
@@ -138,7 +139,7 @@ export const startVisualChatAttempt = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      },
+      }
     );
 
     return response.data;
@@ -159,6 +160,7 @@ export const endVisualChatAttempt = async (
   userId: string,
   simulationId: string,
   simulationProgressId: string,
+  userAttemptSequence: AttemptInterface[]
 ): Promise<EndVisualChatResponse> => {
   try {
     const response = await apiClient.post<EndVisualChatResponse>(
@@ -167,7 +169,8 @@ export const endVisualChatAttempt = async (
         user_id: userId,
         simulation_id: simulationId,
         usersimulationprogress_id: simulationProgressId,
-      },
+        userAttemptSequence: userAttemptSequence,
+      }
     );
 
     return response.data;

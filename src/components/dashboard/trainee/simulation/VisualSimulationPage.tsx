@@ -40,6 +40,7 @@ import {
   SimulationData,
   ImageData,
 } from "../../../../services/simulation_visual_attempts";
+import { AttemptInterface } from "../../../../types/attempts";
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -160,6 +161,15 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     return false;
   };
+
+  // user attempt sequence data
+  const [attemptSequenceData, setAttemptSequenceData] = useState<
+    AttemptInterface[]
+  >([]);
+
+  useEffect(() => {
+    console.log("attempt Simulation page ------- ", attemptSequenceData);
+  }, [attemptSequenceData]);
 
   // Debug current slide and sequence
   useEffect(() => {
@@ -412,6 +422,70 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
   };
 
+  // to  check if user is clicking outside the hubspot
+  useEffect(() => {
+    if (currentItem?.type !== "hotspot") return;
+
+    const handleClick = (event: MouseEvent) => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to the container
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const {
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+
+      // Check if the click is outside the currentItem box
+      const isOutside =
+        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+
+      if (isOutside) {
+        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
+        setAttemptSequenceData((prevData) => {
+          const existingItem = prevData.find(
+            (item) => item.id === currentItem.id,
+          );
+          if (existingItem) {
+            return [
+              ...prevData.filter((item) => item.id !== currentItem.id),
+              {
+                ...existingItem,
+                wrong_clicks: [
+                  ...(existingItem.wrong_clicks || []),
+                  { x_cordinates: x, y_cordinates: y },
+                ],
+              },
+            ];
+          } else {
+            return [
+              ...prevData,
+              {
+                ...currentItem,
+                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              },
+            ];
+          }
+        });
+        // Your custom logic for outside click
+      } else {
+        console.log("Clicked inside currentItem box — ignoring");
+      }
+    };
+
+    const container = imageContainerRef.current;
+    container?.addEventListener("click", handleClick);
+
+    return () => {
+      container?.removeEventListener("click", handleClick);
+    };
+  }, [currentItem]);
+
   // Handle hotspot click based on type
   const handleHotspotClick = () => {
     if (
@@ -432,6 +506,27 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
+
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+          },
+        ];
+      }
+    });
 
     switch (hotspotType) {
       case "button":
@@ -492,6 +587,29 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setDropdownValue(option);
     setDropdownOpen(false);
 
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      }
+    });
+
     if (currentItem?.settings?.advanceOnSelect) {
       setTimeout(() => moveToNextItem(), 500);
     }
@@ -501,6 +619,30 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id,
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        }
+      });
       moveToNextItem();
     }
   };
@@ -638,6 +780,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
+        attemptSequenceData,
       );
 
       if (response && response.scores) {
@@ -1324,10 +1467,21 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1363,9 +1517,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1377,7 +1539,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   open={dropdownOpen}
                                   onClose={() => setDropdownOpen(false)}
                                   sx={{
-                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
                                       ? `2px solid ${getHighlightColor()}`
@@ -1417,8 +1582,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               onClick={handleHotspotClick}
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -1459,9 +1629,17 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -1514,10 +1692,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
-                                  left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                  top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                  width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                  height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
                                   border: "4px solid",
                                   borderColor: getHighlightColor(),
                                   boxShadow: highlightHotspot
@@ -1530,6 +1720,68 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 }}
                               />
                             )}
+
+                          {/* Coaching tip button */}
+                          {(currentItem.hotspotType === "coaching" ||
+                            currentItem.hotspotType === "coachingtip") && (
+                            <Box
+                              onClick={handleHotspotClick}
+                              sx={{
+                                position: "absolute",
+                                cursor: "pointer",
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
+                                zIndex: 50,
+                              }}
+                            >
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                sx={{
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
+                                  border: "4px solid",
+                                  borderColor: getHighlightColor(),
+                                  boxShadow: highlightHotspot
+                                    ? `0 0 12px 3px ${getHighlightColor()}`
+                                    : "none",
+                                  borderRadius: "4px",
+                                  backgroundColor: "transparent",
+                                  transition: "box-shadow 0.3s",
+                                  zIndex: 10,
+                                }}
+                              />
+                            </Box>
+                          )}
                         </>
                       )}
                   </Box>

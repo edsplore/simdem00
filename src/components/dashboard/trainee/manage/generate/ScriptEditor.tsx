@@ -44,14 +44,31 @@ import AudioRecorder from "./AudioRecorder";
 //
 // 1. Define a custom Quill format for "keyword"
 //    This style uses green text + lightgreen background.
-//
-const KeywordStyle = Quill.import("formats/bold"); // or use a more basic blot
-class KeywordFormat extends KeywordStyle {}
+// //
+// const KeywordStyle = Quill.import("formats/bold"); // or use a more basic blot
+// class KeywordFormat extends KeywordStyle {}
+// KeywordFormat.blotName = "keyword";
+// KeywordFormat.tagName = "span";
+// KeywordFormat.className = "keyword-highlight"; // we can define styling in CSS
+// Quill.register(KeywordFormat, true);
+
+const Inline = Quill.import("blots/inline");
+
+class KeywordFormat extends Inline {
+  static create(value) {
+    const node = super.create();
+    node.classList.add("keyword-highlight");
+    return node;
+  }
+
+  static formats(node) {
+    return node.classList.contains("keyword-highlight");
+  }
+}
+
 KeywordFormat.blotName = "keyword";
 KeywordFormat.tagName = "span";
-KeywordFormat.className = "keyword-highlight"; // we can define styling in CSS
 Quill.register(KeywordFormat, true);
-
 //
 // 2. Set up a small CSS rule for .keyword-highlight
 //    (You can also do this inline in a <style> or your theme.)
@@ -146,6 +163,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   // Editing
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState(""); // we store the Quill HTML here
+  const [draftDeltaText, setDraftDeltaText] = useState<any>("");
   const [draftRole, setDraftRole] = useState<"Customer" | "Trainee">(
     "Customer",
   ); // NEW: track edited role
@@ -186,16 +204,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   // We define which Quill formats are allowed
   const formats = useMemo(
-    () => [
-      "bold",
-      "italic",
-      "underline",
-      "span",
-      "keyword",
-      "keyword-highlight",
-    ],
-    [],
+    () => ["bold", "italic", "underline", "span", "keyword"],
+    []
   );
+
+  useEffect(() => {
+    const editor = quillRef?.current?.getEditor();
+    console.log("draft Text ----- ", draftText);
+  }, [draftText]);
+
+  // We will attach a small ref to Quill
+  const quillRef = useRef<ReactQuill>(null);
 
   // ----------------------------
   //  Basic UI logic
@@ -374,12 +393,13 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // In a real app, 'msg.message' might be plain text or already HTML. We'll assume HTML
     console.log(msg.message);
     const inputHtml =
-      '<p><span class="">Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I’m here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>';
+      "<p><span class='keyword'>Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I’m here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>";
     const safeHtml = inputHtml
       .replace(/<span[^>]*>/g, "")
       .replace(/<\/span>/g, "");
-
     setDraftText(msg.message);
+
+    // setDraftText(delta);
     setDraftRole(msg.role); // NEW: initialize draft role
     console.log(editingKeywords, "-------------------------editingKeywords");
     setEditingKeywords(msg.keywords || []);
@@ -463,7 +483,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // If the user highlights text, we figure out if it's already a "keyword"
     const format = editor.getText(range.index, range.length);
 
-    const isKeyword = !!format.keyword;
+    const selectedMessage = messages.find(
+      (message) => message.id === editingId
+    );
+
+    let isKeyword = selectedMessage?.keywords.includes(format) || false;
+    isKeyword = editingKeywords?.includes(format) || false;
     setIsAlreadyKeyword(isKeyword);
 
     // We'll store the selection index/length
@@ -504,7 +529,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const addKeyword = (quill: any) => {
     const range = quill.getSelection();
     if (!range || range.length === 0) return;
-    debugger;
     const selectionIndex = range.index;
     const selectionLength = range.length;
 
@@ -532,9 +556,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
     setShowKeywordPopper(false);
   };
-
-  // We will attach a small ref to Quill
-  const quillRef = useRef<ReactQuill>(null);
 
   // We'll create a Popper that points to our "selectionAnchor" (a DOM Range).
   // However, DOM Ranges aren't typical "anchorEl", so we do a trick: we create an empty hidden span near the selection:
@@ -804,7 +825,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                           value={draftText}
                           onChange={handleQuillChange}
                           onChangeSelection={handleQuillChangeSelection}
-                          modules={modules}
+                          // modules={modules}
                           formats={formats}
                           theme="snow"
                           style={{
@@ -813,6 +834,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             border: "none",
                           }}
                         />
+                        {/* <style>{`.keyword-style { background-color: yellow; font-weight: bold; }`}</style> */}
                         <Popper
                           open={showKeywordPopper}
                           anchorEl={keywordPopperRef.current} // not used in a standard way

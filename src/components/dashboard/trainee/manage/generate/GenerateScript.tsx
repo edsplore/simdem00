@@ -70,6 +70,7 @@ interface SimulationData {
       role?: string;
       text?: string;
       options?: string[];
+      keywords: string[];
     }>;
   }>;
   status?: string;
@@ -405,7 +406,7 @@ const GenerateScriptContent = () => {
                 role: scriptItem.role === "assistant" ? "Trainee" : "Customer",
                 message: scriptItem.script_sentence || "",
                 keywords: scriptItem.keywords || [],
-              }),
+              })
             );
             setScriptData(transformedScript);
 
@@ -498,7 +499,7 @@ const GenerateScriptContent = () => {
               if (!blobUrl && slide.imageUrl) {
                 console.warn(
                   `Using fallback imageUrl for ${slide.imageId}:`,
-                  slide.imageUrl,
+                  slide.imageUrl
                 );
                 blobUrl = slide.imageUrl;
               }
@@ -554,6 +555,7 @@ const GenerateScriptContent = () => {
                           text: item.text || "",
                           visualId: slide.imageId,
                           order: item.order || 0,
+                          keywords: item.keywords || [],
                         },
                         timestamp: Date.now(),
                       };
@@ -574,7 +576,7 @@ const GenerateScriptContent = () => {
 
               console.log(
                 `Processed image ${slide.imageId} with URL:`,
-                blobUrl,
+                blobUrl
               );
             }
           }
@@ -635,7 +637,7 @@ const GenerateScriptContent = () => {
           ) {
             console.log(
               "Processing images from document wrapper:",
-              responseData.document.images,
+              responseData.document.images
             );
 
             // Process each image
@@ -713,7 +715,7 @@ const GenerateScriptContent = () => {
         console.error("Error loading simulation:", error);
         // Only show error for complete API failure, not for missing fields
         setError(
-          "Failed to connect to the server. Please check your connection and try again.",
+          "Failed to connect to the server. Please check your connection and try again."
         );
       } finally {
         setInitialLoading(false);
@@ -818,8 +820,8 @@ const GenerateScriptContent = () => {
     const tabKeys = isVisualOnly
       ? ["visuals", "settings", "preview"]
       : isVisualAudioOrChat
-        ? ["script", "visuals", "settings", "preview"]
-        : ["script", "settings", "preview"];
+      ? ["script", "visuals", "settings", "preview"]
+      : ["script", "settings", "preview"];
 
     if (!enabledTabs[tabKeys[newValue]]) {
       return;
@@ -831,7 +833,7 @@ const GenerateScriptContent = () => {
     (script: Message[]) => {
       setScriptData(script);
     },
-    [setScriptData],
+    [setScriptData]
   );
 
   // Modified to handle different simulation types and move to settings tab before processing
@@ -911,7 +913,7 @@ const GenerateScriptContent = () => {
 
         console.log(
           "Updated simulationResponse state with prompt:",
-          responsePrompt,
+          responsePrompt
         );
       }
     } catch (error) {
@@ -944,7 +946,7 @@ const GenerateScriptContent = () => {
             return [entry[0], `File: ${(entry[1] as File).name}`];
           }
           return entry;
-        }),
+        })
       );
 
       // Transform script data to match API format if not visual-only type
@@ -966,7 +968,7 @@ const GenerateScriptContent = () => {
       formData.append("department_id", loadedSimulation.department || "");
       formData.append(
         "sim_type",
-        loadedSimulation.simulationType.toLowerCase(),
+        loadedSimulation.simulationType.toLowerCase()
       ); // Changed to sim_type
 
       // Only add script for non-visual types
@@ -1004,7 +1006,7 @@ const GenerateScriptContent = () => {
 
         console.log(
           "Updated simulationResponse state with prompt from slides update:",
-          responsePrompt,
+          responsePrompt
         );
         return response;
       }
@@ -1067,7 +1069,7 @@ const GenerateScriptContent = () => {
               if (visualImages.length > 0) {
                 // Move to settings tab
                 const settingsTabIndex = tabs.findIndex(
-                  (tab) => tab.label === "Settings",
+                  (tab) => tab.label === "Settings"
                 );
                 setTabValue(settingsTabIndex);
               }
@@ -1087,7 +1089,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview",
+                (tab) => tab.label === "Preview"
               );
               setTabValue(previewTabIndex);
             }}
@@ -1123,7 +1125,7 @@ const GenerateScriptContent = () => {
               if (visualImages.length > 0) {
                 // Move to settings tab
                 const settingsTabIndex = tabs.findIndex(
-                  (tab) => tab.label === "Settings",
+                  (tab) => tab.label === "Settings"
                 );
                 setTabValue(settingsTabIndex);
               }
@@ -1142,7 +1144,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview",
+                (tab) => tab.label === "Preview"
               );
               setTabValue(previewTabIndex);
             }}
@@ -1179,7 +1181,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview",
+                (tab) => tab.label === "Preview"
               );
               setTabValue(previewTabIndex);
             }}

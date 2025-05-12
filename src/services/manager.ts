@@ -99,10 +99,17 @@ export interface ManagerDashboardTrainingEntityAttemptsStatsPayload {
   reportee_user_ids?: string[];
   reportee_team_ids?: string[];
   params: {
-    dateRange: {
+    assignedDateRange: {
       startDate: string;
       endDate: string;
     };
+    trainingEntityDateRange: {
+      startDate: string;
+      endDate: string;
+    };
+    trainingEntityCreatedBy?: string;
+    trainingEntityTeams?: string[];
+    trainingEntitySearchQuery?: string;
   };
   pagination: {
     page: number;

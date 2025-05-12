@@ -36,6 +36,7 @@ import {
   TextFields as TextFieldsIcon,
   Lightbulb as LightbulbIcon,
 } from "@mui/icons-material";
+import { Masking } from "./MaskingPhi";
 
 interface Hotspot {
   id: string;
@@ -58,6 +59,7 @@ interface Hotspot {
     placeholder?: string;
     advanceOnSelect?: boolean;
     advanceOnCheck?: boolean;
+    expectedValue?: string;
     textColor?: string;
     fontSize?: number;
     highlightColor?: string;
@@ -80,6 +82,7 @@ interface ColorOption {
 interface ImageHotspotProps {
   imageUrl: string;
   onHotspotsChange?: (hotspots: Hotspot[]) => void;
+  maskings?: Masking[];
   hotspots?: Hotspot[];
   onEditHotspot?: (hotspot: Hotspot) => void;
   editingHotspot?: Hotspot | null;
@@ -172,6 +175,7 @@ const getHotspotTypeName = (hotspotType: string) => {
 const ImageHotspot: React.FC<ImageHotspotProps> = ({
   imageUrl,
   onHotspotsChange,
+  maskings = [],
   hotspots = [],
   onEditHotspot,
   editingHotspot,
@@ -180,7 +184,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentHotspot, setCurrentHotspot] = useState<Partial<Hotspot> | null>(
-    null,
+    null
   );
   const [showSettings, setShowSettings] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -201,7 +205,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [optionsList, setOptionsList] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(
-    null,
+    null
   );
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
 
@@ -275,7 +279,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     try {
       // Parse "rgba(r, g, b, a)" format
       const match = rgbaStr.match(
-        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/,
+        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/
       );
       if (match) {
         result = {
@@ -467,7 +471,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             });
 
             console.log(
-              `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
+              `Image scales updated - width: ${widthScale}, height: ${heightScale}`
             );
           }
         }
@@ -662,16 +666,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       0,
       Math.min(
         (e.clientX - moveStart.x - rect.left) / imageScale.width,
-        originalImageSize.width - hotspot.coordinates.width,
-      ),
+        originalImageSize.width - hotspot.coordinates.width
+      )
     );
 
     const newY = Math.max(
       0,
       Math.min(
         (e.clientY - moveStart.y - rect.top) / imageScale.height,
-        originalImageSize.height - hotspot.coordinates.height,
-      ),
+        originalImageSize.height - hotspot.coordinates.height
+      )
     );
 
     // Update all hotspots with the moved one
@@ -702,7 +706,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const handleStartResize = (
     e: React.MouseEvent,
     hotspotId: string,
-    handle: string,
+    handle: string
   ) => {
     e.stopPropagation();
     if (!imageElementRef.current) return;
@@ -765,11 +769,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top-left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+          Math.max(0, resizeOriginal.x + deltaX)
         );
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+          Math.max(0, resizeOriginal.y + deltaY)
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
@@ -777,7 +781,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top-right":
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+          Math.max(0, resizeOriginal.y + deltaY)
         );
         newWidth = Math.max(5, resizeOriginal.width + deltaX);
         newWidth = Math.min(newWidth, originalImageSize.width - newX);
@@ -786,7 +790,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "bottom-left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+          Math.max(0, resizeOriginal.x + deltaX)
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         newHeight = Math.max(5, resizeOriginal.height + deltaY);
@@ -801,7 +805,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top":
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+          Math.max(0, resizeOriginal.y + deltaY)
         );
         newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
         break;
@@ -816,7 +820,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+          Math.max(0, resizeOriginal.x + deltaX)
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         break;
@@ -897,11 +901,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     // Get the most accurate viewport dimensions
     const viewportWidth = Math.max(
       document.documentElement.clientWidth,
-      window.innerWidth || 0,
+      window.innerWidth || 0
     );
     const viewportHeight = Math.max(
       document.documentElement.clientHeight,
-      window.innerHeight || 0,
+      window.innerHeight || 0
     );
 
     // Find the main content element (nearest scrollable container)
@@ -958,8 +962,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         padding + scrollRect.left,
         Math.min(
           x + width / 2 - dialogWidth / 2,
-          effectiveRight - dialogWidth - padding,
-        ),
+          effectiveRight - dialogWidth - padding
+        )
       );
     }
 
@@ -989,8 +993,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           scrollRect.top + padding,
           Math.min(
             y - dialogHeight / 2,
-            effectiveBottom - dialogHeight - padding,
-          ),
+            effectiveBottom - dialogHeight - padding
+          )
         );
       }
     } else {
@@ -1001,11 +1005,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     // Final boundary check
     left = Math.max(
       scrollRect.left + padding,
-      Math.min(left, effectiveRight - dialogWidth - padding),
+      Math.min(left, effectiveRight - dialogWidth - padding)
     );
     top = Math.max(
       scrollRect.top + padding,
-      Math.min(top, effectiveBottom - dialogHeight - padding),
+      Math.min(top, effectiveBottom - dialogHeight - padding)
     );
 
     setDialogPosition({ top, left });
@@ -1053,7 +1057,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   // Handle deleting option from dropdown
   const handleDeleteOption = (optionToDelete: string) => {
     const updatedOptions = optionsList.filter(
-      (option) => option !== optionToDelete,
+      (option) => option !== optionToDelete
     );
     setOptionsList(updatedOptions);
 
@@ -1082,7 +1086,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (!currentHotspot || !currentHotspot.coordinates) {
       console.error(
         "Cannot save hotspot - missing coordinates:",
-        currentHotspot,
+        currentHotspot
       );
       return;
     }
@@ -1096,7 +1100,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       (timeoutDuration === undefined || timeoutDuration <= 0)
     ) {
       setTimeoutError(
-        "Timeout duration is required for highlight and coaching hotspots",
+        "Timeout duration is required for highlight and coaching hotspots"
       );
       return;
     } else {
@@ -1124,6 +1128,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             settings.settings?.advanceOnSelect !== undefined
               ? settings.settings.advanceOnSelect
               : true,
+          expectedValue: settings.settings?.expectedValue || "",
         };
         break;
       case "checkbox":
@@ -1141,6 +1146,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           placeholder: settings.settings?.placeholder || "Enter text...",
           textColor: settings.settings?.textColor || "#000000",
           fontSize: settings.settings?.fontSize || 14,
+          expectedValue: settings.settings?.expectedValue || "",
         };
         break;
       case "highlight":
@@ -1318,7 +1324,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     const isHovered = hoveredHotspot === hotspot.id;
 
     // Get tooltip text for hotspot
-    const tooltipText = `${getHotspotTypeName(hotspot.hotspotType)}: ${hotspot.name}`;
+    const tooltipText = `${getHotspotTypeName(hotspot.hotspotType)}: ${
+      hotspot.name
+    }`;
 
     // Get the icon for the hotspot type
     const hotspotIcon = getHotspotTypeIcon(hotspot.hotspotType);
@@ -1352,8 +1360,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             borderColor: isEditing
               ? "#00AB55"
               : isMoving || isResizing
-                ? "#FF4785"
-                : "#444CE7",
+              ? "#FF4785"
+              : "#444CE7",
             backgroundColor: isHovered
               ? "rgba(68, 76, 231, 0.2)"
               : "rgba(68, 76, 231, 0.1)",
@@ -1391,8 +1399,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               backgroundColor: isEditing
                 ? "#00AB55"
                 : isMoving || isResizing
-                  ? "#FF4785"
-                  : "#444CE7",
+                ? "#FF4785"
+                : "#444CE7",
               cursor: "move",
               zIndex: 2,
               boxShadow: "0 0 4px rgba(0,0,0,0.3)",
@@ -1432,6 +1440,50 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
           {/* Add resize handles when hotspot is being edited */}
           {renderResizeHandles(hotspot)}
+        </Box>
+      </Tooltip>
+    );
+  };
+  const renderMasking = (masking: Masking) => {
+    if (!masking.coordinates || !imageElementRef.current) return null;
+
+    // Convert coordinates from original image coordinates to rendered coordinates
+    const scaledCoords = {
+      left: masking.coordinates.x * imageScale.width,
+      top: masking.coordinates.y * imageScale.height,
+      width: masking.coordinates.width * imageScale.width,
+      height: masking.coordinates.height * imageScale.height,
+    };
+
+    return (
+      <Tooltip
+        key={masking.id}
+        title={"Masking"}
+        arrow
+        placement="top"
+        PopperProps={{
+          sx: { zIndex: 1400 },
+        }}
+      >
+        <Box
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+          sx={{
+            position: "absolute",
+            left: `${scaledCoords.left}px`,
+            top: `${scaledCoords.top}px`,
+            width: `${scaledCoords.width}px`,
+            height: `${scaledCoords.height}px`,
+            border: "2px solid #00AB55 ",
+            backgroundColor: masking.settings?.color,
+            cursor: "pointer",
+            transition: "background-color 0.2s ease",
+          }}
+        >
+          {" "}
+          {/* Add resize handles when masking is being edited */}
+          {renderResizeHandles(masking)}
         </Box>
       </Tooltip>
     );
@@ -1510,7 +1562,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             onError={(e) => {
               console.error(
                 "Error loading processed image:",
-                processedImageUrl,
+                processedImageUrl
               );
               setImageError("Could not load image");
             }}
@@ -1551,6 +1603,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
         {/* Existing hotspots */}
         {Array.isArray(hotspots) && hotspots.map(renderHotspot)}
+        {Array.isArray(maskings) && maskings.map(renderMasking)}
 
         {/* Currently drawing hotspot */}
         {currentHotspot && currentHotspot.coordinates && !showSettings && (
@@ -1560,7 +1613,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               left: `${currentHotspot.coordinates.x * imageScale.width}px`,
               top: `${currentHotspot.coordinates.y * imageScale.height}px`,
               width: `${currentHotspot.coordinates.width * imageScale.width}px`,
-              height: `${currentHotspot.coordinates.height * imageScale.height}px`,
+              height: `${
+                currentHotspot.coordinates.height * imageScale.height
+              }px`,
               border: "2px solid #444CE7",
               backgroundColor: "rgba(68, 76, 231, 0.1)",
               pointerEvents: "none",
@@ -1577,11 +1632,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             position: "fixed",
             top: Math.max(
               16,
-              Math.min(dialogPosition.top, viewportSize.height - 480 - 16),
+              Math.min(dialogPosition.top, viewportSize.height - 480 - 16)
             ),
             left: Math.max(
               16,
-              Math.min(dialogPosition.left, viewportSize.width - 550 - 16),
+              Math.min(dialogPosition.left, viewportSize.width - 550 - 16)
             ),
             maxWidth: 550,
             width: "100%",
@@ -1772,7 +1827,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       currentHotspot?.settings?.highlightColor ||
                       "rgba(255, 193, 7, 0.8)";
                     const match = rgba.match(
-                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/
                     );
                     if (match) {
                       const r = parseInt(match[1])
@@ -1836,7 +1891,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                               currentHotspot?.settings?.highlightColor ||
                               "rgba(255, 193, 7, 0.8)";
                             const match = rgba.match(
-                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/
                             );
                             if (match) {
                               const r = parseInt(match[1])
@@ -1864,7 +1919,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                             const rgba =
                               currentHotspot?.settings?.highlightColor || "";
                             const match = rgba.match(
-                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
+                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/
                             );
                             return match ? parseFloat(match[1]) : 1;
                           })();
@@ -2279,40 +2334,100 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       Add
                     </Button>
                   </Stack>
+                  <TextField
+                    size="medium"
+                    label="Expected Value"
+                    value={currentHotspot?.settings?.expectedValue || ""}
+                    placeholder="Enter text..."
+                    onChange={(e) =>
+                      setCurrentHotspot((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev?.settings,
+                          expectedValue: e.target.value,
+                        },
+                      }))
+                    }
+                    onClick={(e) => {
+                      if (!currentHotspot?.settings?.placeholder) {
+                        setCurrentHotspot((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev?.settings,
+                            expectedValue: "",
+                          },
+                        }));
+                      }
+                    }}
+                    InputProps={{
+                      style: { height: "48px" },
+                    }}
+                  />
                 </Stack>
               )}
 
               {/* TextField-specific settings */}
               {currentHotspot?.hotspotType === "textfield" && (
-                <TextField
-                  size="medium"
-                  label="Placeholder"
-                  value={currentHotspot?.settings?.placeholder || ""}
-                  placeholder="Enter text..."
-                  onChange={(e) =>
-                    setCurrentHotspot((prev) => ({
-                      ...prev,
-                      settings: {
-                        ...prev?.settings,
-                        placeholder: e.target.value,
-                      },
-                    }))
-                  }
-                  onClick={(e) => {
-                    if (!currentHotspot?.settings?.placeholder) {
+                <>
+                  <TextField
+                    size="medium"
+                    label="Placeholder"
+                    value={currentHotspot?.settings?.placeholder || ""}
+                    placeholder="Enter text..."
+                    onChange={(e) =>
                       setCurrentHotspot((prev) => ({
                         ...prev,
                         settings: {
                           ...prev?.settings,
-                          placeholder: "",
+                          placeholder: e.target.value,
                         },
-                      }));
+                      }))
                     }
-                  }}
-                  InputProps={{
-                    style: { height: "48px" },
-                  }}
-                />
+                    onClick={(e) => {
+                      if (!currentHotspot?.settings?.placeholder) {
+                        setCurrentHotspot((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev?.settings,
+                            placeholder: "",
+                          },
+                        }));
+                      }
+                    }}
+                    InputProps={{
+                      style: { height: "48px" },
+                    }}
+                  />
+                  <TextField
+                    size="medium"
+                    label="Expected Value"
+                    value={currentHotspot?.settings?.expectedValue || ""}
+                    placeholder="Enter text..."
+                    onChange={(e) =>
+                      setCurrentHotspot((prev) => ({
+                        ...prev,
+                        settings: {
+                          ...prev?.settings,
+                          expectedValue: e.target.value,
+                        },
+                      }))
+                    }
+                    onClick={(e) => {
+                      if (!currentHotspot?.settings?.placeholder) {
+                        setCurrentHotspot((prev) => ({
+                          ...prev,
+                          settings: {
+                            ...prev?.settings,
+                            expectedValue: "",
+                          },
+                        }));
+                      }
+                    }}
+                    InputProps={{
+                      style: { height: "48px" },
+                    }}
+                  />
+                </>
               )}
 
               {/* Coaching-specific settings */}

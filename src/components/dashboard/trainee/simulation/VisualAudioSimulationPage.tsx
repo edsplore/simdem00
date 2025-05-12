@@ -43,7 +43,9 @@ import {
   ImageData,
   EndVisualAudioResponse,
 } from "../../../../services/simulation_visual_audio_attempts";
+
 import { convertAudioToText } from "../../../../services/simulation_script";
+import { AttemptInterface } from "../../../../types/attempts";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -185,6 +187,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     return false;
   };
+  // user attempt sequence data
+  const [attemptSequenceData, setAttemptSequenceData] = useState<
+    AttemptInterface[]
+  >([]);
+
+  useEffect(() => {
+    console.log("Attempt Sequence Data:", attemptSequenceData);
+  }, [attemptSequenceData]);
 
   // Debug current slide and sequence
   useEffect(() => {
@@ -296,6 +306,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         speakText(currentItem.text || "")
           .then(() => {
+            setAttemptSequenceData((prevState) => [...prevState, currentItem]);
             setSpeaking(false);
             setCallStatus("Connected");
 
@@ -833,6 +844,54 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
+  // to  check if user is clicking outside the hubspot
+  useEffect(() => {
+    if (currentItem?.type !== "hotspot") return;
+
+    const handleClick = (event: MouseEvent) => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to the container
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const {
+        x: boxX,
+        y: boxY,
+        width,
+        height,
+      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+
+      // Check if the click is outside the currentItem box
+      const isOutside =
+        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+
+      if (isOutside) {
+        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
+        setAttemptSequenceData((prevData) => [
+          ...prevData,
+          {
+            id: currentItem.id,
+            type: "wrong_click",
+            x_cordinates: x,
+            y_cordinates: y,
+          },
+        ]);
+        // Your custom logic for outside click
+      } else {
+        console.log("Clicked inside currentItem box — ignoring");
+      }
+    };
+
+    const container = imageContainerRef.current;
+    container?.addEventListener("click", handleClick);
+
+    return () => {
+      container?.removeEventListener("click", handleClick);
+    };
+  }, [currentItem]);
+
   // Handle hotspot click based on type
   const handleHotspotClick = () => {
     if (
@@ -849,10 +908,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
-
+    setAttemptSequenceData((prevData) => [...prevData, currentItem]);
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
-
     switch (hotspotType) {
       case "button":
       case "highlight":
@@ -1388,6 +1446,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         simulationId,
         simulationProgressId,
         modifiedSlidesData, // Send modified slides data with transcriptions
+        attemptSequenceData,
       );
 
       console.log("End API call completed with response:", response);
@@ -2129,10 +2188,21 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               sx={{
                                 position: "absolute",
                                 cursor: "pointer",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -2154,7 +2224,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   },
                                   boxShadow: highlightHotspot ? 4 : 0,
                                   border: highlightHotspot
-                                    ? `2px solid ${currentItem.settings?.highlightColor || "white"}`
+                                    ? `2px solid ${
+                                        currentItem.settings?.highlightColor ||
+                                        "white"
+                                      }`
                                     : "none",
                                 }}
                               >
@@ -2168,9 +2241,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -2182,10 +2263,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   open={dropdownOpen}
                                   onClose={() => setDropdownOpen(false)}
                                   sx={{
-                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
                                     bgcolor: "white",
                                     border: highlightHotspot
-                                      ? `2px solid ${currentItem.settings?.highlightColor || "#444CE7"}`
+                                      ? `2px solid ${
+                                          currentItem.settings
+                                            ?.highlightColor || "#444CE7"
+                                        }`
                                       : "1px solid #ddd",
                                     boxShadow: highlightHotspot ? 2 : 0,
                                   }}
@@ -2222,8 +2309,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               onClick={handleHotspotClick}
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
                                 cursor: "pointer",
                                 display: "flex",
                                 alignItems: "center",
@@ -2265,9 +2357,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             <Box
                               sx={{
                                 position: "absolute",
-                                left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
                                 zIndex: 10,
                               }}
                             >
@@ -2321,10 +2421,22 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
-                                  left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                                  top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                                  width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                                  height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
                                   border: "4px solid",
                                   borderColor:
                                     currentItem.settings?.highlightColor ||
@@ -2339,6 +2451,94 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 }}
                               />
                             )}
+
+                          {/* Coaching tip button */}
+                          {(currentItem.hotspotType === "coaching" ||
+                            currentItem.hotspotType === "coachingtip") && (
+                            <Box
+                              onClick={handleHotspotClick}
+                              sx={{
+                                position: "absolute",
+                                cursor: "pointer",
+                                left: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(currentItem.coordinates)?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(currentItem.coordinates)
+                                    ?.height
+                                }px`,
+                                zIndex: 50,
+                                border: highlightHotspot
+                                  ? `2px solid ${
+                                      currentItem.settings?.highlightColor ||
+                                      "#1e293b"
+                                    }`
+                                  : "none",
+                                boxShadow: highlightHotspot ? 3 : 0,
+                                transition: "all 0.3s ease",
+                              }}
+                            >
+                              <Button
+                                fullWidth
+                                variant="contained"
+                                sx={{
+                                  height: "100%",
+                                  backgroundColor:
+                                    currentItem.settings?.buttonColor ||
+                                    "#1e293b",
+                                  color:
+                                    currentItem.settings?.textColor ||
+                                    "#FFFFFF",
+                                  "&:hover": {
+                                    backgroundColor: currentItem.settings
+                                      ?.buttonColor
+                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                      : "#0f172a",
+                                  },
+                                  boxShadow: highlightHotspot ? 4 : 0,
+                                }}
+                                sx={{
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
+                                  border: "4px solid",
+                                  borderColor:
+                                    currentItem.settings?.highlightColor ||
+                                    "rgba(68, 76, 231, 0.7)",
+                                  boxShadow: highlightHotspot
+                                    ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                    : "none",
+                                  borderRadius: "4px",
+                                  backgroundColor: "transparent",
+                                  transition: "box-shadow 0.3s",
+                                  zIndex: 10,
+                                }}
+                              />
+                            </Box>
+                          )}
                         </>
                       )}
 
@@ -2355,13 +2555,24 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            left: `${
+                              scaleCoordinates(currentItem.coordinates)?.left
+                            }px`,
+                            top: `${
+                              scaleCoordinates(currentItem.coordinates)?.top
+                            }px`,
+                            width: `${
+                              scaleCoordinates(currentItem.coordinates)?.width
+                            }px`,
+                            height: `${
+                              scaleCoordinates(currentItem.coordinates)?.height
+                            }px`,
                             zIndex: 50,
                             border: highlightHotspot
-                              ? `2px solid ${currentItem.settings?.highlightColor || "#1e293b"}`
+                              ? `2px solid ${
+                                  currentItem.settings?.highlightColor ||
+                                  "#1e293b"
+                                }`
                               : "none",
                             boxShadow: highlightHotspot ? 3 : 0,
                             transition: "all 0.3s ease",

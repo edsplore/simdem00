@@ -135,7 +135,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       const response = await startChatSimulation(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start chat response:", response);
@@ -148,7 +148,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
           simulationId,
           assignmentId,
           "",
-          response.id,
+          response.id
         );
 
         console.log("Initial message response:", initialResponse);
@@ -191,7 +191,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationId,
         assignmentId,
         inputMessage.trim(),
-        simulationProgressId,
+        simulationProgressId
       );
 
       console.log("Message response:", response);
@@ -241,7 +241,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        chatHistory,
+        chatHistory
       );
 
       console.log("End chat response:", response);
@@ -521,8 +521,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -556,8 +556,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -591,8 +591,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

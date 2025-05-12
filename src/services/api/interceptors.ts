@@ -35,6 +35,15 @@ apiClient.interceptors.request.use(
       };
     }
 
+    // Add workspace ID header if available
+    const workspaceId = authService.getCurrentWorkspaceId();
+    if (workspaceId) {
+      config.headers = {
+        ...config.headers,
+        'x-workspace-id': workspaceId,
+      };
+    }
+
     return config;
   },
   (error: AxiosError): Promise<AxiosError> => {

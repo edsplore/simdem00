@@ -420,12 +420,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           // Convert audio to text
           console.log("Sending audio for transcription, size:", audioBlob.size);
           const response = await convertAudioToText(userId, audioBlob);
-          const transcribedText = response.text;
+          const transcribedText = response.text.replace(/\n/g, "");
           console.log("Transcription result:", transcribedText);
 
           setIsTranscribing(false);
           // Set current transcription for UI feedback
           setCurrentTranscription(transcribedText);
+          setAttemptSequenceData((prevState) => [
+            ...prevState,
+            {
+              ...currentItem,
+              userText: transcribedText.replace(/\n/g, ""),
+            },
+          ]);
           resolve(transcribedText);
         } catch (error) {
           console.error("Error transcribing audio:", error);
@@ -697,6 +704,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
+        attemptSequenceData,
         modifiedSlidesData // Send modified slides data with direct transcriptions
       );
 
@@ -869,15 +877,31 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       if (isOutside) {
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
-        setAttemptSequenceData((prevData) => [
-          ...prevData,
-          {
-            id: currentItem.id,
-            type: "wrong_click",
-            x_cordinates: x,
-            y_cordinates: y,
-          },
-        ]);
+        setAttemptSequenceData((prevData) => {
+          const existingItem = prevData.find(
+            (item) => item.id === currentItem.id
+          );
+          if (existingItem) {
+            return [
+              ...prevData.filter((item) => item.id !== currentItem.id),
+              {
+                ...existingItem,
+                wrong_clicks: [
+                  ...(existingItem.wrong_clicks || []),
+                  { x_cordinates: x, y_cordinates: y },
+                ],
+              },
+            ];
+          } else {
+            return [
+              ...prevData,
+              {
+                ...currentItem,
+                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              },
+            ];
+          }
+        });
         // Your custom logic for outside click
       } else {
         console.log("Clicked inside currentItem box — ignoring");
@@ -908,7 +932,26 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
-    setAttemptSequenceData((prevData) => [...prevData, currentItem]);
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+          },
+        ];
+      }
+    });
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
     switch (hotspotType) {
@@ -965,6 +1008,29 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setDropdownValue(option);
     setDropdownOpen(false);
 
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find((item) => item.id === currentItem.id);
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            isClicked: true,
+            userInput: option,
+          },
+        ];
+      }
+    });
+
     if (currentItem?.settings?.advanceOnSelect) {
       setTimeout(() => moveToNextItem(), 500);
     }
@@ -974,6 +1040,30 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+              userInput: textInputValue,
+            },
+          ];
+        }
+      });
       moveToNextItem();
     }
   };
@@ -1445,8 +1535,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        modifiedSlidesData, // Send modified slides data with transcriptions
-        attemptSequenceData
+        attemptSequenceData,
+        modifiedSlidesData // Send modified slides data with transcriptions
       );
 
       console.log("End API call completed with response:", response);
@@ -2489,22 +2579,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               <Button
                                 fullWidth
                                 variant="contained"
-                                sx={{
-                                  height: "100%",
-                                  backgroundColor:
-                                    currentItem.settings?.buttonColor ||
-                                    "#1e293b",
-                                  color:
-                                    currentItem.settings?.textColor ||
-                                    "#FFFFFF",
-                                  "&:hover": {
-                                    backgroundColor: currentItem.settings
-                                      ?.buttonColor
-                                      ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                                      : "#0f172a",
-                                  },
-                                  boxShadow: highlightHotspot ? 4 : 0,
-                                }}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",

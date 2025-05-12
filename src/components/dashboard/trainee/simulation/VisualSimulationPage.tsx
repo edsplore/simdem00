@@ -87,7 +87,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Visual-specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -243,7 +243,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     if (shouldSkipHotspot()) {
       console.log(
         "Skipping hotspot due to level settings:",
-        currentItem.hotspotType,
+        currentItem.hotspotType
       );
       // Skip to the next item
       moveToNextItem();
@@ -374,7 +374,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -403,7 +403,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -449,7 +449,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
+            (item) => item.id === currentItem.id
           );
           if (existingItem) {
             return [
@@ -570,7 +570,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -621,7 +621,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+          (item) => item.id === currentItem.id
         );
         if (existingItem) {
           return [
@@ -686,7 +686,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const response = await startVisualSimulation(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual simulation response:", response);
@@ -780,7 +780,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -1066,8 +1066,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1101,8 +1101,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1136,8 +1136,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

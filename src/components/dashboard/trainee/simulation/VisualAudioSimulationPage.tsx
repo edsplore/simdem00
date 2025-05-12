@@ -88,7 +88,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualAudioResponse["scores"] | null>(
-    null,
+    null
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -97,7 +97,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Visual-audio specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -318,7 +318,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             // If it's the last item and it's a customer message, auto-advance to end
             if (isLastItem) {
               console.log(
-                "Last item is a customer message, ending after speech",
+                "Last item is a customer message, ending after speech"
               );
               setTimeout(() => handleEndCall(), 500);
             }
@@ -389,7 +389,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       .catch((error) => {
         console.error("Error accessing microphone:", error);
         alert(
-          "Microphone access is required for this simulation. Please allow microphone access and try again.",
+          "Microphone access is required for this simulation. Please allow microphone access and try again."
         );
       });
   };
@@ -454,7 +454,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         } else {
           console.log(
             "Recorder not in recording state:",
-            recordingInstance.state,
+            recordingInstance.state
           );
           resolve("");
         }
@@ -498,7 +498,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         if (shouldSkipHotspot()) {
           console.log(
             "Skipping hotspot due to level settings:",
-            currentItem.hotspotType,
+            currentItem.hotspotType
           );
           moveToNextItem();
           setIsProcessing(false);
@@ -569,7 +569,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }, 1000);
       } else {
         console.log(
-          "Last item is a trainee message, waiting for user to click Next",
+          "Last item is a trainee message, waiting for user to click Next"
         );
       }
     }
@@ -586,7 +586,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // New function to handle end call with direct transcriptions
   const handleEndCallWithTranscriptions = async (
-    directTranscriptions: Map<string, string>,
+    directTranscriptions: Map<string, string>
   ) => {
     console.log("🔴 END CALL BUTTON PRESSED WITH DIRECT TRANSCRIPTIONS");
 
@@ -647,7 +647,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     try {
       console.log(
-        "Preparing modified simulation data with direct transcriptions",
+        "Preparing modified simulation data with direct transcriptions"
       );
 
       // Create a deep copy of the slides data to modify
@@ -673,7 +673,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               newItem.text = directTranscriptions.get(newItem.id);
               console.log(
                 `Replacing text for ${newItem.id} with direct transcription:`,
-                newItem.text,
+                newItem.text
               );
             }
 
@@ -697,7 +697,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        modifiedSlidesData, // Send modified slides data with direct transcriptions
+        modifiedSlidesData // Send modified slides data with direct transcriptions
       );
 
       console.log("End API call completed with response:", response);
@@ -709,7 +709,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Force update to completion screen
         setShowCompletionScreen(true);
         console.log(
-          "Set showCompletionScreen to true, should show completion screen now",
+          "Set showCompletionScreen to true, should show completion screen now"
         );
       } else {
         console.warn("No scores received in response");
@@ -795,7 +795,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -812,7 +812,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
 
     // Check if this is the last item in the entire simulation
@@ -948,7 +948,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -1178,7 +1178,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const response = await startVisualAudioAttempt(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual-audio response:", response);
@@ -1237,7 +1237,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           updatedTranscriptions.set(currentItem.id!, transcribedText);
           console.log(
             `Stored transcription for item ${currentItem.id}:`,
-            transcribedText,
+            transcribedText
           );
 
           // Update state (though this might not be available immediately)
@@ -1251,7 +1251,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         if (isLastItem) {
           console.log(
-            "Last trainee message completed, ending simulation directly",
+            "Last trainee message completed, ending simulation directly"
           );
           // For the last trainee message, pass the updated transcriptions directly
           setTimeout(() => {
@@ -1291,7 +1291,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       if (isLastItem) {
         console.log(
-          "Last item acknowledged without recording, ending simulation",
+          "Last item acknowledged without recording, ending simulation"
         );
         handleEndCall();
       } else {
@@ -1319,7 +1319,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     // Safety check: Don't end call if we're in a trainee message recording state
     // with auto-end (not from user button) unless the recorder has finished
     const isCalledFromTraineeNext = new Error().stack?.includes(
-      "handleTraineeNext",
+      "handleTraineeNext"
     );
     const isCalledFromButton =
       new Error().stack?.includes("handleEndCall") &&
@@ -1339,7 +1339,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       isRecording
     ) {
       console.log(
-        "Cannot auto-end during trainee recording, waiting for user input",
+        "Cannot auto-end during trainee recording, waiting for user input"
       );
       return;
     }
@@ -1421,7 +1421,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               newItem.text = messageTranscriptions.get(newItem.id);
               console.log(
                 `Replacing text for ${newItem.id} with transcription:`,
-                newItem.text,
+                newItem.text
               );
             }
 
@@ -1446,7 +1446,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         simulationId,
         simulationProgressId,
         modifiedSlidesData, // Send modified slides data with transcriptions
-        attemptSequenceData,
+        attemptSequenceData
       );
 
       console.log("End API call completed with response:", response);
@@ -1458,7 +1458,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Force update to completion screen
         setShowCompletionScreen(true);
         console.log(
-          "Set showCompletionScreen to true, should show completion screen now",
+          "Set showCompletionScreen to true, should show completion screen now"
         );
       } else {
         console.warn("No scores received in response");
@@ -1801,8 +1801,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1836,8 +1836,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1871,8 +1871,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

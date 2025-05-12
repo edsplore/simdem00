@@ -169,7 +169,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
-    null,
+    null
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -178,7 +178,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Visual-chat specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -364,7 +364,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       if (shouldSkipHotspot()) {
         console.log(
           "Skipping hotspot due to level settings:",
-          currentItem.hotspotType,
+          currentItem.hotspotType
         );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
@@ -547,7 +547,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -576,7 +576,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -674,7 +674,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -724,7 +724,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+          (item) => item.id === currentItem.id
         );
         if (existingItem) {
           return [
@@ -833,7 +833,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const response = await startVisualChatAttempt(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual-chat response:", response);
@@ -925,7 +925,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -990,7 +990,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
+            (item) => item.id === currentItem.id
           );
           if (existingItem) {
             return [
@@ -1276,8 +1276,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1311,8 +1311,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1346,8 +1346,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

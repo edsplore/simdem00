@@ -7,11 +7,15 @@ import {
   type SimulationPaginationParams,
 } from "../../../services/simulations";
 import { fetchUsersSummary, type User } from "../../../services/users";
-import { fetchTeams, type Team, fetchTeamDetails } from "../../../services/teams";
-import { 
-  createAssignment, 
+import {
+  fetchTeams,
+  type Team,
+  fetchTeamDetails,
+} from "../../../services/teams";
+import {
+  createAssignment,
   type Team as DetailedTeam,
-  type TeamMember
+  type TeamMember,
 } from "../../../services/assignments";
 import {
   Dialog,
@@ -90,7 +94,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
     formState: { isValid },
     watch,
     setValue,
-    reset
+    reset,
   } = useForm<CreateSimulationFormData>({
     mode: "onChange",
     defaultValues: {
@@ -114,7 +118,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
           pagesize: 100, // Fetch a larger number to avoid pagination in the dialog
           status: ["published"], // Only fetch published simulations
           sortBy: "simName",
-          sortDir: "asc"
+          sortDir: "asc",
         };
 
         // Add search filter if provided
@@ -122,7 +126,10 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
           paginationParams.search = searchQuery;
         }
 
-        const response = await fetchSimulations(user?.id || "user123", paginationParams);
+        const response = await fetchSimulations(
+          user?.id || "user123",
+          paginationParams
+        );
         setSimulations(response.simulations);
       } catch (err) {
         setError("Failed to load simulations");
@@ -204,7 +211,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
 
   const selectedAssignees = watch("assignTo");
   const filteredSimulations = simulations.filter((simulation) =>
-    simulation.sim_name.toLowerCase().includes(searchQuery.toLowerCase()),
+    simulation.sim_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredAssignees = assignees.filter(
@@ -213,7 +220,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
       (assignee.email &&
         assignee.email
           .toLowerCase()
-          .includes(assigneeSearchQuery.toLowerCase())),
+          .includes(assigneeSearchQuery.toLowerCase()))
   );
 
   const onSubmit = async (data: CreateSimulationFormData) => {
@@ -228,14 +235,14 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
 
       // Split assignees into teams and trainees
       const teamIds = data.assignTo.filter(
-        (id) => assignees.find((a) => a.id === id)?.type === "team",
+        (id) => assignees.find((a) => a.id === id)?.type === "team"
       );
       const trainees = data.assignTo.filter(
-        (id) => assignees.find((a) => a.id === id)?.type === "trainee",
+        (id) => assignees.find((a) => a.id === id)?.type === "trainee"
       );
 
       // Fetch detailed team information for each team
-      const teamDetailsPromises = teamIds.map(teamId => 
+      const teamDetailsPromises = teamIds.map((teamId) =>
         fetchTeamDetails(currentWorkspaceId, teamId)
       );
 
@@ -265,7 +272,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
           assignTo: [],
         });
         setSelectedSimulation(null);
-        
+
         // Call success callback and close dialog
         onAssignmentCreated?.();
         onClose();
@@ -284,7 +291,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
 
   const handleDeleteAssignee = (
     assigneeId: string,
-    event: React.MouseEvent,
+    event: React.MouseEvent
   ) => {
     event.stopPropagation();
     const newValue = selectedAssignees.filter((id) => id !== assigneeId);
@@ -392,10 +399,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
                         justifyContent="space-between"
                         alignItems="center"
                       >
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                        >
+                        <Typography variant="body2" color="text.secondary">
                           {selectedSimulation.id.slice(-6)}
                         </Typography>
                         <Chip

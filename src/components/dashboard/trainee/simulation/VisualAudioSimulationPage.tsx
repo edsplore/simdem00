@@ -1237,7 +1237,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           </Typography>
         </Stack>
         <Typography variant="body2" sx={{ mb: 1 }}>
-          {currentItem.text}
+          {currentItem.text
+            ? currentItem.text.replace(/<.*?>/g, "")
+            : currentItem.text}
         </Typography>
         {(currentItem.role === "Trainee" || currentItem.role === "assistant") &&
           currentTranscription && (

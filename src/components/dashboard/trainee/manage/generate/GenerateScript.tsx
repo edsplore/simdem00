@@ -565,12 +565,14 @@ const GenerateScriptContent = () => {
                   })
                 : [];
 
-              // Add to processed images with validated data
+              const masking = Array.isArray(slide.masking)? slide.masking: []
+                // Add to processed images with validated data
               processedImages.push({
                 id: slide.imageId,
                 url: blobUrl,
                 name: slide.imageName || `Image ${slide.imageId}`,
                 sequence: sequence,
+                masking: masking,
                 file: undefined, // No file reference for loaded images
               });
 

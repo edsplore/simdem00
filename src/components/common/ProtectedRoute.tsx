@@ -27,7 +27,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null;
   }
 
-  // Check permission-based access
+  // Special case for dashboard path
+  if (path === '/dashboard') {
+    // For dashboard, we'll check if the user has any dashboard permission
+    const hasAnyDashboardPermission = 
+      user.permissions["dashboard-trainee"] || 
+      user.permissions["dashboard-manager"] || 
+      user.permissions["dashboard-admin"];
+
+    if (!hasAnyDashboardPermission) {
+      console.log('No dashboard permissions found');
+      const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
+      return <Navigate to={`/training${workspaceParam}`} />;
+    }
+
+    // If they have permission, the DashboardRouter component will handle which dashboard to show
+    return <>{children}</>;
+  }
+
+  // For other paths, check permission as usual
   if (!hasPermission(path)) {
     console.log('Permission denied for path:', path);
 

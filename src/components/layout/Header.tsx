@@ -74,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({
             setProfileImageUrl(userDetails.user.profile_img_url);
           }
 
-          createUser({ user_id: user.id });
+          // createUser({ user_id: user.id });
         } catch (error) {
           console.error("Error loading user details:", error);
         }

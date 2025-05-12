@@ -7,7 +7,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import ThemeProvider from "./theme/ThemeProvider";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -72,6 +72,29 @@ const WorkspaceHandler: React.FC<{ children: React.ReactNode }> = ({
   return <>{children}</>;
 };
 
+// Component to determine which dashboard to render based on permissions
+const DashboardRouter = () => {
+  const { user } = useAuth();
+
+  // Check permissions for different dashboards
+  const hasTraineeDashboardAccess = user?.permissions?.["dashboard-trainee"];
+  const hasManagerDashboardAccess = user?.permissions?.["dashboard-manager"];
+  const hasAdminDashboardAccess = user?.permissions?.["dashboard-admin"];
+
+  // Determine which dashboard to render based on permissions
+  // Priority: Admin > Manager > Trainee
+  if (hasAdminDashboardAccess) {
+    return <AdminDashboard />;
+  } else if (hasManagerDashboardAccess) {
+    return <ManagerDashboard />;
+  } else if (hasTraineeDashboardAccess) {
+    return <TraineeDashboard />;
+  } else {
+    // If no dashboard permissions, show unauthorized
+    return <Navigate to="/training" />;
+  }
+};
+
 // Component to handle the root redirect with workspace ID preservation
 const RootRedirect = () => {
   const location = useLocation();
@@ -105,26 +128,36 @@ const App: React.FC = () => {
                   <Routes>
                     {/* Public routes */}
                     <Route path="/unauthorized" element={<Unauthorized />} />
-  
+
                     {/* Default redirect - now preserves workspace ID */}
                     <Route path="/" element={<RootRedirect />} />
-  
-                    {/* Protected routes */}
+
+                    {/* Dashboard route - now uses DashboardRouter to determine which dashboard to show */}
                     <Route
                       path="/dashboard"
                       element={
                         <ProtectedRoute path="/dashboard">
-                          <TraineeDashboard />
+                          <DashboardRouter />
                         </ProtectedRoute>
                       }
                     />
+
+                    {/* Keep these routes for direct access if needed */}
                     <Route
                       path="/dashboard-manager"
-                      element={<ManagerDashboard />}
+                      element={
+                        
+                          <ManagerDashboard />
+                        
+                      }
                     />
                     <Route
                       path="/dashboard-admin"
-                      element={<AdminDashboard />}
+                      element={
+                        
+                          <AdminDashboard />
+                        
+                      }
                     />
                     <Route
                       path="/training"
@@ -206,7 +239,7 @@ const App: React.FC = () => {
                         </ProtectedRoute>
                       }
                     />
-  
+
                     {/* Catch all - redirect to dashboard with workspace ID preservation */}
                     <Route path="*" element={<RootRedirect />} />
                   </Routes>

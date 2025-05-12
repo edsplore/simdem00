@@ -46,7 +46,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const location = useLocation();
   const { user, currentWorkspaceId, currentTimeZone } = useAuth();
 
+  // Determine which dashboard the user has access to
+  const hasTraineeDashboardAccess = user?.permissions?.["dashboard-trainee"];
+  const hasManagerDashboardAccess = user?.permissions?.["dashboard-manager"];
+  const hasAdminDashboardAccess = user?.permissions?.["dashboard-admin"];
+
+  // Determine the dashboard path based on permissions
+  // Priority: Admin > Manager > Trainee
+  const getDashboardPath = () => {
+    if (hasAdminDashboardAccess) {
+      return '/dashboard'; // Will render AdminDashboard via DashboardRouter
+    } else if (hasManagerDashboardAccess) {
+      return '/dashboard'; // Will render ManagerDashboard via DashboardRouter
+    } else {
+      return '/dashboard'; // Will render TraineeDashboard via DashboardRouter
+    }
+  };
+
   const isActive = (path: string) => {
+    // Special case for dashboard paths
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || 
+             location.pathname === '/dashboard-manager' || 
+             location.pathname === '/dashboard-admin';
+    }
     return location.pathname === path;
   };
 
@@ -68,7 +91,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
 
   // Define all possible nav items
   const allNavItems = [
-    { path: '/dashboard', icon: BarChartIcon, label: 'Dashboard', permission: 'dashboard-trainee' },
+    { path: getDashboardPath(), icon: BarChartIcon, label: 'Dashboard', permission: hasTraineeDashboardAccess || hasManagerDashboardAccess || hasAdminDashboardAccess ? true : false },
     { path: '/training', icon: MenuBookIcon, label: 'Training Plan', permission: 'training-plan' },
     { path: '/playback', icon: PlayCircleIcon, label: 'Playback', permission: 'playback' },
     { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations', permission: 'assign-simulations' },
@@ -83,6 +106,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
   const navItems = allNavItems.filter(item => {
     // If no permission is required, show the item
     if (!item.permission) return true;
+
+    // If permission is a boolean, use that directly
+    if (typeof item.permission === 'boolean') return item.permission;
 
     // Check if user has the required permission
     return user?.permissions?.[item.permission];

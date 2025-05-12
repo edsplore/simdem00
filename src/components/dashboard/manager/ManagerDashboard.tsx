@@ -1356,7 +1356,7 @@ const ManagerDashboard = () => {
     ) || [];
 
   const filteredCreators = reporteeUser.filter((creator) =>
-    creator.fullName.toLowerCase().includes(creatorSearchQuery.toLowerCase())
+    creator?.fullName?.toLowerCase().includes(creatorSearchQuery.toLowerCase())
   );
 
   const filteredTeamEntity = filteredTeams?.filter((team) =>

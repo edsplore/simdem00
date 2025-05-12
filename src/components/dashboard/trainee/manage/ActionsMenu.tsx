@@ -138,7 +138,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
 
       {canCreate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
-      <MenuItem
+      {/* <MenuItem
         onClick={onClose}
         sx={{
           color: "#666666",
@@ -208,7 +208,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         >
           <DeleteIcon sx={{ mr: 1 }} /> Delete
         </MenuItem>
-      )}
+      )} */}
     </Menu>
   );
 };

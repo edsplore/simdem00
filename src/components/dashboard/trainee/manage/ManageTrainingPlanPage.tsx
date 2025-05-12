@@ -33,6 +33,7 @@ import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
 import CreateModuleDialog from './CreateModuleDialog';
 import TrainingPlanDetailsDialog from './TrainingPlanDetailsDialog';
+import ModuleDetailsDialog from './ModuleDetailsDialog';
 import EditTrainingPlanDialog from './EditTrainingPlanDialog';
 import EditModuleDialog from './EditModuleDialog';
 import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
@@ -46,10 +47,12 @@ import {
   fetchModules, 
   type Module,
   type ModulePaginationParams,
+  fetchModuleDetails,
 } from '../../../../services/modules';
 import { fetchTags, type Tag } from '../../../../services/tags';
 import { fetchUsersSummary, type User } from '../../../../services/users';
 import { hasCreatePermission } from '../../../../utils/permissions';
+import { fetchTrainingPlanDetails } from '../../../../services/training';
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
@@ -94,10 +97,12 @@ const ManageTrainingPlanPage = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan' } | null>(null);
   const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
+  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isModuleDetailsDialogOpen, setIsModuleDetailsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingTrainingPlan, setEditingTrainingPlan] = useState<TrainingPlan | null>(null);
   const [isEditModuleDialogOpen, setIsEditModuleDialogOpen] = useState(false);
+  const [editingTrainingPlan, setEditingTrainingPlan] = useState<TrainingPlan | null>(null);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [tags, setTags] = useState<Tag[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
@@ -107,6 +112,10 @@ const ManageTrainingPlanPage = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [userMap, setUserMap] = useState<Record<string, string>>({});
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [trainingPlanDetails, setTrainingPlanDetails] = useState<any>(null);
+  const [moduleDetails, setModuleDetails] = useState<any>(null);
+  const [isLoadingModuleDetails, setIsLoadingModuleDetails] = useState(false);
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
@@ -327,11 +336,39 @@ const ManageTrainingPlanPage = () => {
     setPage(0);
   };
 
-  const handleRowClick = (item: TrainingPlan | Module) => {
+  const handleRowClick = async (item: TrainingPlan | Module) => {
     // Only show details dialog for training plans
     if (currentTab === 'Training Plans') {
       setSelectedTrainingPlan(item as TrainingPlan);
-      setIsDetailsDialogOpen(true);
+
+      // Fetch training plan details
+      try {
+        setIsLoadingDetails(true);
+        const details = await fetchTrainingPlanDetails(user?.id || '', item.id);
+        setTrainingPlanDetails(details);
+        setIsDetailsDialogOpen(true);
+      } catch (error) {
+        console.error('Error fetching training plan details:', error);
+        setError('Failed to load training plan details');
+      } finally {
+        setIsLoadingDetails(false);
+      }
+    } else {
+      // For modules tab
+      setSelectedModule(item as Module);
+
+      // Fetch module details
+      try {
+        setIsLoadingModuleDetails(true);
+        const details = await fetchModuleDetails(item.id);
+        setModuleDetails(details);
+        setIsModuleDetailsDialogOpen(true);
+      } catch (error) {
+        console.error('Error fetching module details:', error);
+        setError('Failed to load module details');
+      } finally {
+        setIsLoadingModuleDetails(false);
+      }
     }
   };
 
@@ -732,9 +769,9 @@ const ManageTrainingPlanPage = () => {
                         key={item.id} 
                         onClick={() => handleRowClick(item)}
                         sx={{
-                          cursor: currentTab === 'Training Plans' ? 'pointer' : 'default',
+                          cursor: 'pointer',
                           '&:hover': {
-                            bgcolor: currentTab === 'Training Plans' ? 'action.hover' : 'inherit',
+                            bgcolor: 'action.hover',
                           },
                         }}
                       >
@@ -826,6 +863,16 @@ const ManageTrainingPlanPage = () => {
           open={isDetailsDialogOpen}
           onClose={() => setIsDetailsDialogOpen(false)}
           trainingPlan={selectedTrainingPlan}
+          trainingPlanDetails={trainingPlanDetails}
+          isLoading={isLoadingDetails}
+        />
+
+        <ModuleDetailsDialog
+          open={isModuleDetailsDialogOpen}
+          onClose={() => setIsModuleDetailsDialogOpen(false)}
+          module={selectedModule}
+          moduleDetails={moduleDetails}
+          isLoading={isLoadingModuleDetails}
         />
 
         <TrainingPlanActionsMenu

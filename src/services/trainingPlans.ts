@@ -77,6 +77,38 @@ export interface TrainingPlansResponse {
   };
 }
 
+export interface CloneTrainingPlanRequest {
+  user_id: string;
+  training_plan_id: string;
+}
+
+export interface CloneTrainingPlanResponse {
+  id: string;
+  status: string;
+}
+
+/**
+ * Clones an existing training plan
+ * @param userId The user ID making the request
+ * @param trainingPlanId The ID of the training plan to clone
+ * @returns Promise with the cloned training plan response
+ */
+export const cloneTrainingPlan = async (
+  userId: string,
+  trainingPlanId: string
+): Promise<CloneTrainingPlanResponse> => {
+  try {
+    const response = await apiClient.post('/training-plans/clone', {
+      user_id: userId,
+      training_plan_id: trainingPlanId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error cloning training plan:', error);
+    throw error;
+  }
+};
+
 /**
  * Fetches training plans with pagination, filtering, and sorting
  * @param userId User ID

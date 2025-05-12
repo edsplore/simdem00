@@ -8,6 +8,7 @@ import {
   type Simulation,
   type SimulationPaginationParams,
 } from "../../../../services/simulations";
+import { fetchTags, createTag, Tag } from "../../../../services/tags";
 import {
   Dialog,
   DialogTitle,
@@ -33,12 +34,16 @@ import {
   ClickAwayListener,
   Checkbox,
   CircularProgress,
+  Autocomplete,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import {
   Close as CloseIcon,
   Book as BookIcon,
   Search as SearchIcon,
   Delete as DeleteIcon,
+  Add as AddIcon,
 } from "@mui/icons-material";
 
 interface SimulationItem {
@@ -59,8 +64,6 @@ interface EditModuleDialogProps {
   onUpdateSuccess?: () => void;
 }
 
-const availableTags = ["Tag 01", "Tag 02", "Tag 03", "Tag 04", "Tag 05"];
-
 const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
   open,
   onClose,
@@ -77,6 +80,12 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+
+  // Tags related state
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [inputValue, setInputValue] = useState("");
 
   const {
     control,
@@ -108,6 +117,27 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
       loadSimulations();
     }
   }, [module, reset]);
+
+  // Load tags
+  useEffect(() => {
+    const loadTags = async () => {
+      if (!user?.id) return;
+
+      try {
+        setIsLoadingTags(true);
+        const tagsData = await fetchTags(user.id);
+        setAvailableTags(tagsData);
+      } catch (error) {
+        console.error("Failed to load tags:", error);
+      } finally {
+        setIsLoadingTags(false);
+      }
+    };
+
+    if (open) {
+      loadTags();
+    }
+  }, [open, user?.id]);
 
   const loadSimulations = async () => {
     if (!user?.id || !module) return;
@@ -161,6 +191,7 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
   }, [searchQuery, open, module]);
 
   const selectedSimulations = watch("selectedSimulations");
+  const selectedTags = watch("tags");
   const isSimulationSelected = (simulation: Simulation) => {
     return selectedSimulations.some(
       (selected) => selected.id === simulation.id,
@@ -243,6 +274,39 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
 
     setValue("selectedSimulations", newSimulations, { shouldValidate: true });
     // Removed setShowSimulationsList(false) to keep dropdown open
+  };
+
+  const handleCreateTag = async (tagName: string) => {
+    if (!tagName.trim() || !user?.id) return;
+
+    setIsCreatingTag(true);
+    try {
+      const response = await createTag(user.id, tagName.trim());
+
+      if (response && response.id) {
+        // Add the new tag to the available tags list
+        const newTag: Tag = {
+          id: response.id,
+          name: tagName.trim(),
+          created_by: user.id,
+          created_at: new Date().toISOString(),
+          last_modified_by: user.id,
+          last_modified_at: new Date().toISOString(),
+        };
+
+        setAvailableTags((prev) => [...prev, newTag]);
+
+        // Add the new tag to the selected tags
+        setValue("tags", [...selectedTags, tagName.trim()]);
+
+        // Clear the input
+        setInputValue("");
+      }
+    } catch (error) {
+      console.error("Error creating tag:", error);
+    } finally {
+      setIsCreatingTag(false);
+    }
   };
 
   if (!module) {
@@ -336,49 +400,114 @@ const EditModuleDialog: React.FC<EditModuleDialogProps> = ({
               name="tags"
               control={control}
               render={({ field }) => (
-                <Select
+                <Autocomplete
                   {...field}
                   multiple
-                  fullWidth
-                  displayEmpty
-                  renderValue={(selected) => (
-                    <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
-                      {selected?.length === 0 ? (
-                        <Typography color="text.secondary">Add Tags</Typography>
-                      ) : (
-                        selected.map((tag) => (
-                          <Chip
-                            key={tag}
-                            label={tag}
-                            onDelete={(event) => {
-                              event.stopPropagation();
-                              const newTags = field.value.filter(
-                                (t) => t !== tag,
-                              );
-                              field.onChange(newTags);
-                            }}
-                            onMouseDown={(event) => {
-                              // Also prevent the mousedown event from propagating
-                              event.stopPropagation();
-                            }}
-                            sx={{
-                              borderRadius: 20,
-                              backgroundColor: "#F5F6FF",
-                              border: "1px solid #DEE2FC",
-                              color: "#444CE7",
-                            }}
+                  id="tags-autocomplete"
+                  options={availableTags.map((tag) => tag.name)}
+                  value={field.value}
+                  onChange={(_, newValue) => {
+                    field.onChange(newValue);
+                  }}
+                  inputValue={inputValue}
+                  onInputChange={(_, newInputValue) => {
+                    setInputValue(newInputValue);
+                  }}
+                  filterOptions={(options, params) => {
+                    const filtered = options.filter((option) =>
+                      option
+                        .toLowerCase()
+                        .includes(params.inputValue.toLowerCase()),
+                    );
+
+                    // Add "Create" option if input is not empty and doesn't exist in options
+                    const inputValue = params.inputValue.trim();
+                    if (
+                      inputValue !== "" &&
+                      !options.includes(inputValue) &&
+                      !selectedTags.includes(inputValue)
+                    ) {
+                      filtered.unshift(inputValue);
+                    }
+
+                    return filtered;
+                  }}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip
+                        {...getTagProps({ index })}
+                        key={option}
+                        label={option}
+                        sx={{
+                          borderRadius: 20,
+                          backgroundColor: "#F5F6FF",
+                          border: "1px solid #DEE2FC",
+                          color: "#444CE7",
+                        }}
+                      />
+                    ))
+                  }
+                  renderOption={(props, option) => {
+                    const isNewOption = !availableTags.some(
+                      (tag) => tag.name === option,
+                    );
+
+                    if (isNewOption) {
+                      return (
+                        <ListItem {...props} key={`create-${option}`}>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{ display: "flex", alignItems: "center" }}
+                              >
+                                <Typography>Create "{option}"</Typography>
+                                <Button
+                                  size="small"
+                                  startIcon={<AddIcon />}
+                                  variant="contained"
+                                  color="primary"
+                                  sx={{ ml: 2 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCreateTag(option);
+                                  }}
+                                  disabled={isCreatingTag}
+                                >
+                                  {isCreatingTag ? "Creating..." : "Create"}
+                                </Button>
+                              </Box>
+                            }
                           />
-                        ))
-                      )}
-                    </Box>
+                        </ListItem>
+                      );
+                    }
+
+                    return (
+                      <MenuItem {...props} key={option}>
+                        {option}
+                      </MenuItem>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tags"
+                      placeholder="Add or create tags"
+                      InputProps={{
+                        ...params.InputProps,
+                        endAdornment: (
+                          <>
+                            {isLoadingTags && <CircularProgress size={20} />}
+                            {params.InputProps.endAdornment}
+                          </>
+                        ),
+                      }}
+                    />
                   )}
-                >
-                  {availableTags.map((tag) => (
-                    <MenuItem key={tag} value={tag}>
-                      {tag}
-                    </MenuItem>
-                  ))}
-                </Select>
+                  loading={isLoadingTags}
+                  loadingText="Loading tags..."
+                  noOptionsText="No matching tags"
+                />
               )}
             />
 

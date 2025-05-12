@@ -65,6 +65,39 @@ export interface ModulesResponse {
   };
 }
 
+export interface CloneModuleRequest {
+  user_id: string;
+  module_id: string;
+}
+
+export interface CloneModuleResponse {
+  id: string;
+  status: string;
+}
+
+
+/**
+ * Clones an existing module
+ * @param userId The user ID making the request
+ * @param moduleId The ID of the module to clone
+ * @returns Promise with the cloned module response
+ */
+export const cloneModule = async (
+  userId: string,
+  moduleId: string
+): Promise<CloneModuleResponse> => {
+  try {
+    const response = await apiClient.post('/modules/clone', {
+      user_id: userId,
+      module_id: moduleId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error cloning module:', error);
+    throw error;
+  }
+};
+
 export const createModule = async (payload: CreateModulePayload): Promise<CreateModuleResponse> => {
   try {
     const response = await apiClient.post('/modules/create', payload);

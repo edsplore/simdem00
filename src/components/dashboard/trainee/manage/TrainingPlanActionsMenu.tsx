@@ -1,3 +1,4 @@
+// src/components/dashboard/trainee/manage/TrainingPlanActionsMenu.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Menu, MenuItem, Divider, CircularProgress } from '@mui/material';
@@ -8,9 +9,9 @@ import {
   DeleteOutlined as DeleteIcon,
 } from '@mui/icons-material';
 import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
-import axios from 'axios';
 import { useAuth } from '../../../../context/AuthContext';
-import { TrainingPlan } from '../../../../services/trainingPlans';
+import { cloneTrainingPlan } from '../../../../services/trainingPlans';
+import { cloneModule } from '../../../../services/modules';
 
 interface TrainingPlanActionsMenuProps {
   anchorEl: HTMLElement | null;
@@ -55,34 +56,24 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
     setIsCloning(true);
 
     try {
-      let endpoint = '';
-      let payload = {};
+      let response;
 
-      // Different endpoints for modules and training plans
       if (selectedItem.type === 'module') {
-        endpoint = '/api/modules/clone';
-        payload = {
-          user_id: user.id,
-          module_id: selectedItem.id
-        };
+        // Use the cloneModule function from modules.ts
+        response = await cloneModule(user.id, selectedItem.id);
       } else {
-        endpoint = '/api/training-plans/clone';
-        payload = {
-          user_id: user.id,
-          training_plan_id: selectedItem.id
-        };
+        // Use the cloneTrainingPlan function from trainingPlans.ts
+        response = await cloneTrainingPlan(user.id, selectedItem.id);
       }
 
-      const response = await axios.post(endpoint, payload);
-
-      if (response.data && response.data.status === 'success') {
-        console.log(`${selectedItem.type} cloned successfully:`, response.data);
+      if (response && response.status === 'success') {
+        console.log(`${selectedItem.type} cloned successfully:`, response);
         // Call the success callback to refresh the list
         if (onCloneSuccess) {
           onCloneSuccess();
         }
       } else {
-        console.error(`Failed to clone ${selectedItem.type}:`, response.data);
+        console.error(`Failed to clone ${selectedItem.type}:`, response);
       }
     } catch (error) {
       console.error(`Error cloning ${selectedItem.type}:`, error);
@@ -166,7 +157,7 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
         </MenuItem>
       )}
 
-      {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {/* {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
 
       {canUpdate && (
         <MenuItem
@@ -198,7 +189,7 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
         >
           <DeleteIcon sx={{ mr: 1 }} /> Delete
         </MenuItem>
-      )}
+      )} */}
     </Menu>
   );
 };

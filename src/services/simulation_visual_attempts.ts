@@ -22,11 +22,35 @@ export interface SimulationSequenceItem {
   tipText?: string;
 }
 
+export interface Masking {
+  id: string;
+  type: string;
+  coordinates?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  settings?: {
+    color: string;
+    solid_mask: boolean;
+    blur_mask: boolean;
+  };
+}
+
+export interface MaskingItem {
+    id: string;
+    type: string;
+    content: Masking;
+    timestamp?: number;
+}
+
 export interface SimulationSlideData {
   imageId: string;
   imageName: string;
   imageUrl: string;
   sequence: SimulationSequenceItem[];
+  masking: MaskingItem[];
 }
 
 export interface SimulationLevelSettings {

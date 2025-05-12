@@ -130,6 +130,26 @@ interface SimulationData {
       options?: string[];
       tipText?: string;
     }>;
+    masking: Array<{
+      id: string;
+      type: string;
+      content: {
+        id: string;
+        type: string;
+        coordinates?: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        };
+        settings?: {
+          color: string;
+          solid_mask: boolean;
+          blur_mask: boolean;
+        };
+      };
+      timestamp?: number;
+    }>;
   }>;
 }
 
@@ -219,6 +239,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const slidesData = simulationData?.slidesData || [];
   const currentSlide = slidesData[currentSlideIndex] || {};
   const currentSequence = currentSlide.sequence || [];
+  const currentMasking = currentSlide.masking || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
   // Function to get the appropriate level settings
@@ -2060,6 +2081,44 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             )}
                         </>
                       )}
+
+                {imageLoaded &&
+                currentMasking &&
+                currentMasking.map((item, index) => (
+                  item?.content && (
+                    <Box
+                      key={index}
+                      // onClick={handleHotspotClick}
+                      sx={{
+                        position: "absolute",
+                        cursor: "pointer",
+                        left: `${
+                          scaleCoordinates(item.content.coordinates)?.left
+                        }px`,
+                        top: `${
+                          scaleCoordinates(item.content.coordinates)?.top
+                        }px`,
+                        width: `${
+                          scaleCoordinates(item.content.coordinates)?.width
+                        }px`,
+                        height: `${
+                          scaleCoordinates(item.content.coordinates)?.height
+                        }px`,
+                        border: "4px solid",
+                        borderColor:
+                          item.content.settings?.color ||
+                          "rgba(68, 76, 231, 0.7)",
+                        boxShadow: item.content.settings?.color
+                          ? `0 0 12px 3px ${item.content.settings?.color}`
+                          : "none",
+                        borderRadius: "4px",
+                        backgroundColor: item.content.settings?.color,
+                        transition: "box-shadow 0.3s",
+                        zIndex: 10,
+                      }}
+                    />
+                  )
+                ))}
                   </Box>
                 )}
               </Box>

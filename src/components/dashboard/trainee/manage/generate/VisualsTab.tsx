@@ -1550,6 +1550,7 @@ export default function VisualsTab({
       )}
 
       <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" gap={2}>
         {isPureVisual ? (
           // For pure visual type, show information instead of Add Script Message button
           <Tooltip title="Script messages are not available in Visual type simulations">
@@ -1582,7 +1583,10 @@ export default function VisualsTab({
               Add Script
             </Button>
 
-            {maskingPhi ?  (<Button
+           
+          </Stack>
+        )}
+         {maskingPhi ?  (<Button
               variant="contained"
               startIcon={<Visibility />}
               onClick={handleSaveImageMasking}
@@ -1608,9 +1612,7 @@ export default function VisualsTab({
             >
             Mask PHI
             </Button>)}
-          </Stack>
-        )}
-
+        </Stack>
         {/* Actions for when we have images */}
         {visualImages.length > 0 && (
           <Stack direction="row" spacing={2}>

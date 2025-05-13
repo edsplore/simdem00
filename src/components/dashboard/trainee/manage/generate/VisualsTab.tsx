@@ -61,7 +61,12 @@ import ImageHotspot from "./ImageHotspot";
 import HotspotSequence, { SequenceItem } from "./HotspotSequence";
 import MaskingPhi from "./MaskingPhi";
 import { useParams } from "react-router-dom";
-import { UpdateImageMaskingObjectResponse, updateSimulationWithMasking } from "../../../../../services/simulation_operations";
+import {
+  detectMaskAreas,
+  DetectMaskPHIResponse,
+  UpdateImageMaskingObjectResponse,
+  updateSimulationWithMasking,
+} from "../../../../../services/simulation_operations";
 
 interface Hotspot {
   id: string;
@@ -590,7 +595,11 @@ export default function VisualsTab({
 
         const processedMaskingSequence = validMaskingSequence.map((item) => {
           // For hotspots, ensure coordinates are properly formatted as numbers
-          if (item.type === "masking" && item.content && item.content.coordinates) {
+          if (
+            item.type === "masking" &&
+            item.content &&
+            item.content.coordinates
+          ) {
             item.content.coordinates = {
               x: Number(item.content.coordinates.x || 0),
               y: Number(item.content.coordinates.y || 0),
@@ -906,7 +915,6 @@ export default function VisualsTab({
   //   [handleFiles]
   // );
 
-
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
@@ -1001,7 +1009,7 @@ export default function VisualsTab({
 
     setIsSubmitting(true);
     setError(null);
-    
+
     try {
       // Create FormData for multipart/form-data submission with files
       const formData = new FormData();
@@ -1074,7 +1082,7 @@ export default function VisualsTab({
           imageName: img.name,
           imageUrl: cleanImageUrl, // Use the clean URL or empty string
           sequence,
-          masking
+          masking,
         };
       });
 
@@ -1149,30 +1157,41 @@ export default function VisualsTab({
 
   const handleSaveImageMasking = async () => {
     try {
-      if (!selectedImage || !selectedImage.masking || !Array.isArray(selectedImage.masking)) {
+      if (
+        !selectedImage ||
+        !selectedImage.masking ||
+        !Array.isArray(selectedImage.masking)
+      ) {
         setError("Image not selected or Masking List not found");
         return;
       }
-      const simulationId = id || ""
-      const imageId = selectedImageId || ""
-      const maskingData = selectedImage.masking || []
-      const response: UpdateImageMaskingObjectResponse = await updateSimulationWithMasking(simulationId, imageId, maskingData)
+      const simulationId = id || "";
+      const imageId = selectedImageId || "";
+      const maskingData = selectedImage.masking || [];
+      const response: UpdateImageMaskingObjectResponse =
+        await updateSimulationWithMasking(simulationId, imageId, maskingData);
       if (response) {
         if (response.status === "success") {
-          setMaskingPhi(false)
+          setMaskingPhi(false);
         } else {
           console.error("API returned empty response");
-          setError("Failed to update masking in simulation. Empty response from server.");
+          setError(
+            "Failed to update masking in simulation. Empty response from server."
+          );
         }
       } else {
         console.error("API returned empty response");
-        setError("Failed to update masking in simulation. Empty response from server.");
+        setError(
+          "Failed to update masking in simulation. Empty response from server."
+        );
       }
     } catch (error) {
       if (error instanceof Error) {
         setError(`Error updating masking in simulation: ${error.message}`);
       } else {
-        setError("An unexpected error occurred while updating masking in the simulation.");
+        setError(
+          "An unexpected error occurred while updating masking in the simulation."
+        );
       }
     }
   };
@@ -1473,10 +1492,55 @@ export default function VisualsTab({
   const closeMaskPhiDialog = () => {
     setIsFileUploaded(false);
   };
-  const handleClickMaskPhi = () => {
+  const handleClickMaskPhi = async () => {
     // Process PHI masking
+    const formData = new FormData();
+
+    visualImages.forEach((image) => {
+      if (image.file && image.masking.length == 0) {
+        // Use image ID in the key name to maintain correct mapping
+        formData.append(`${image.id}`, image.file, image.name);
+      }
+    });
+    const response: DetectMaskPHIResponse[] = await detectMaskAreas(formData);
+
+    for (let maskPhiResponse of response) {
+      if (maskPhiResponse.id) {
+        const visualImage = visualImages.find(
+          (image) => image.id === maskPhiResponse.id
+        );
+        if (visualImage) {
+          // Update the visualImage with the masking information
+
+          const finalMasking = maskPhiResponse.masking.rectangles.map(
+            (rectangle) => ({
+              id: maskPhiResponse.id,
+              type: "masking",
+              content: {
+                id: rectangle.id,
+                type: "masking",
+                coordinates: {
+                  x: parseInt(rectangle.x),
+                  y: parseInt(rectangle.y),
+                  width: parseInt(rectangle.width),
+                  height: parseInt(rectangle.height),
+                },
+                settings: {
+                  color: "#000000",
+                  solid_mask: true,
+                  blur_mask: false,
+                },
+              },
+            })
+          );
+
+          visualImage.masking.push(...finalMasking);
+        }
+      }
+    }
     setIsFileUploaded(false);
   };
+
   const cancelMaskPhi = () => {
     setIsFileUploaded(false);
   };
@@ -1503,7 +1567,7 @@ export default function VisualsTab({
             height: "100vh",
             zIndex: 1400, // higher than typical material components
             backgroundColor: "#00000099",
-            backdropFilter: "blur(16px)", // applies the blur effect behind
+            backdropFilter: "blur(100px)", // applies the blur effect behind
             WebkitBackdropFilter: "blur(16px)",
             display: "flex",
             justifyContent: "center",
@@ -1551,42 +1615,41 @@ export default function VisualsTab({
 
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Stack direction="row" gap={2}>
-        {isPureVisual ? (
-          // For pure visual type, show information instead of Add Script Message button
-          <Tooltip title="Script messages are not available in Visual type simulations">
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <InfoIcon sx={{ color: "text.disabled" }} />
-              <Typography variant="body2" color="text.disabled">
-                No script messages in Visual type
-              </Typography>
-            </Box>
-          </Tooltip>
-        ) : (
-          // For visual-audio and visual-chat, show the Add Script Message button
-          <Stack direction="row" spacing={2}>
+          {isPureVisual ? (
+            // For pure visual type, show information instead of Add Script Message button
+            <Tooltip title="Script messages are not available in Visual type simulations">
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <InfoIcon sx={{ color: "text.disabled" }} />
+                <Typography variant="body2" color="text.disabled">
+                  No script messages in Visual type
+                </Typography>
+              </Box>
+            </Tooltip>
+          ) : (
+            // For visual-audio and visual-chat, show the Add Script Message button
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                disabled={
+                  !selectedImageId ||
+                  !Array.isArray(scriptData) ||
+                  scriptData.length === 0 ||
+                  unassignedMessages.length === 0
+                }
+                onClick={handleOpenScriptMenu}
+                sx={{
+                  bgcolor: "#001EEE0A",
+                  color: "#343F8A",
+                  "&:hover": { bgcolor: "#001EEE0A" },
+                }}
+              >
+                Add Script
+              </Button>
+            </Stack>
+          )}
+          {maskingPhi ? (
             <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              disabled={
-                !selectedImageId ||
-                !Array.isArray(scriptData) ||
-                scriptData.length === 0 ||
-                unassignedMessages.length === 0
-              }
-              onClick={handleOpenScriptMenu}
-              sx={{
-                bgcolor: "#001EEE0A",
-                color: "#343F8A",
-                "&:hover": { bgcolor: "#001EEE0A" },
-              }}
-            >
-              Add Script
-            </Button>
-
-           
-          </Stack>
-        )}
-         {maskingPhi ?  (<Button
               variant="contained"
               startIcon={<Visibility />}
               onClick={handleSaveImageMasking}
@@ -1598,8 +1661,9 @@ export default function VisualsTab({
               }}
             >
               Save Masking
-            </Button>) :
-            (<Button
+            </Button>
+          ) : (
+            <Button
               variant="contained"
               startIcon={<VisibilityOffIcon />}
               onClick={handleApplyMaskingPhi}
@@ -1610,8 +1674,9 @@ export default function VisualsTab({
                 "&:hover": { bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A" },
               }}
             >
-            Mask PHI
-            </Button>)}
+              Mask PHI
+            </Button>
+          )}
         </Stack>
         {/* Actions for when we have images */}
         {visualImages.length > 0 && (

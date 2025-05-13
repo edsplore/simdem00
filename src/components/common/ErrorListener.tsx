@@ -12,7 +12,7 @@ const ErrorListener = () => {
 
       // Format the error message with status code if available
       const formattedMessage = status 
-        ? `Error ${status}: ${message}` 
+        ? `${message}` 
         : message;
 
       showNotification(formattedMessage, 'error');

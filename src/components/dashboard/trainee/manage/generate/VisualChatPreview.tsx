@@ -1034,13 +1034,14 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                         borderColor:
                           item.content.settings?.color ||
                           "rgba(68, 76, 231, 0.7)",
-                        boxShadow: item.content.settings?.color
-                          ? `0 0 12px 3px ${item.content.settings?.color}`
-                          : "none",
+                        boxShadow:item.content.settings?.blur_mask ?  `0 0 12px 3px ${item.content.settings?.color}` : "none",
                         borderRadius: "4px",
                         backgroundColor: item.content.settings?.color,
                         transition: "box-shadow 0.3s",
                         zIndex: 10,
+                        filter: item.content.settings?.blur_mask
+                        ? "blur(8px)" : "none",
+                        backdropFilter: item.content.settings?.blur_mask ? "blur(8px)": "none",
                       }}
                     />
                   )

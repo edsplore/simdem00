@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Stack,
   Container,
@@ -9,10 +9,14 @@ import {
   Card,
   CircularProgress,
   Alert,
+  IconButton,
+  Chip,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
+  ChevronLeft as ChevronLeftIcon,
+  ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
 import DashboardContent from "../DashboardContent";
 import ChatSimulationPage from "./simulation/ChatSimulationPage";
@@ -21,21 +25,124 @@ import VisualAudioSimulationPage from "./simulation/VisualAudioSimulationPage";
 import VisualChatSimulationPage from "./simulation/VisualChatSimulationPage";
 import VisualSimulationPage from "./simulation/VisualSimulationPage";
 import { fetchSimulationById } from "../../../services/simulations";
-import type { Simulation } from "../../../types/training";
+import { fetchTrainingData } from "../../../services/training";
+import { useAuth } from "../../../context/AuthContext";
+import type { Simulation, TrainingData } from "../../../types/training";
+
+interface SimulationItem {
+  simulation_id: string;
+  name: string;
+  type: string;
+  status: string;
+  assignment_id: string;
+}
 
 const SimulationAttemptPage = () => {
   const { id: simulationId, assignment_id: assignmentId } = useParams<{
     id: string;
     assignment_id: string;
   }>();
+  const navigate = useNavigate();
+  const { user, currentWorkspaceId } = useAuth();
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
-  const [selectedAttempt, setSelectedAttempt] = useState<"Test" | "Practice">(
-    "Test",
-  );
+  const [selectedAttempt, setSelectedAttempt] = useState<
+    "Test" | "Practice" | null
+  >(null);
   const [showStartPage, setShowStartPage] = useState(false);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
+  const [allSimulations, setAllSimulations] = useState<SimulationItem[]>([]);
+  const [currentSimIndex, setCurrentSimIndex] = useState(0);
+
+  // Fetch training data and extract all simulations
+  useEffect(() => {
+    const loadTrainingData = async () => {
+      if (!user?.id) return;
+
+      try {
+        const data = await fetchTrainingData(user.id);
+        setTrainingData(data);
+
+        // Extract all simulations from training plans, modules, and standalone simulations
+        const simulations: SimulationItem[] = [];
+
+        // From training plans
+        if (data.training_plans) {
+          data.training_plans.forEach((plan) => {
+            plan.modules.forEach((module) => {
+              module.simulations.forEach((sim) => {
+                simulations.push({
+                  simulation_id: sim.simulation_id,
+                  name: sim.name,
+                  type: sim.type,
+                  status: sim.status,
+                  assignment_id: sim.assignment_id,
+                });
+              });
+            });
+          });
+        }
+
+        // From standalone modules
+        if (data.modules) {
+          data.modules.forEach((module) => {
+            module.simulations.forEach((sim) => {
+              simulations.push({
+                simulation_id: sim.simulation_id,
+                name: sim.name,
+                type: sim.type,
+                status: sim.status,
+                assignment_id: sim.assignment_id,
+              });
+            });
+          });
+        }
+
+        // From standalone simulations
+        if (data.simulations) {
+          data.simulations.forEach((sim) => {
+            simulations.push({
+              simulation_id: sim.simulation_id,
+              name: sim.name,
+              type: sim.type,
+              status: sim.status,
+              assignment_id: sim.assignment_id,
+            });
+          });
+        }
+
+        setAllSimulations(simulations);
+
+        // Remove duplicates based on simulation_id and assignment_id combination
+        const uniqueSimulations = simulations.filter(
+          (sim, index, arr) =>
+            arr.findIndex(
+              (s) =>
+                s.simulation_id === sim.simulation_id &&
+                s.assignment_id === sim.assignment_id,
+            ) === index,
+        );
+
+        setAllSimulations(uniqueSimulations);
+
+        // Find the current simulation index
+        const currentIndex = uniqueSimulations.findIndex(
+          (sim) =>
+            sim.simulation_id === simulationId &&
+            sim.assignment_id === assignmentId,
+        );
+        if (currentIndex !== -1) {
+          setCurrentSimIndex(currentIndex);
+        }
+      } catch (error) {
+        console.error("Error loading training data:", error);
+      }
+    };
+
+    loadTrainingData();
+  }, [user?.id, simulationId, assignmentId]);
 
   useEffect(() => {
     const loadSimulation = async () => {
@@ -47,14 +154,7 @@ const SimulationAttemptPage = () => {
         const data = await fetchSimulationById(simulationId);
         setSimulation(data);
 
-        // Automatically select the first enabled level
-        if (data?.lvl1?.isEnabled) {
-          setSelectedLevel("Level 01");
-        } else if (data?.lvl2?.isEnabled) {
-          setSelectedLevel("Level 02");
-        } else if (data?.lvl3?.isEnabled) {
-          setSelectedLevel("Level 03");
-        }
+        // Don't automatically select any level - let user choose
       } catch (err) {
         console.error("Error loading simulation:", err);
         setError("Failed to load simulation");
@@ -65,6 +165,62 @@ const SimulationAttemptPage = () => {
 
     loadSimulation();
   }, [simulationId]);
+
+  // Navigate to different simulation
+  const navigateToSimulation = (index: number) => {
+    if (index < 0 || index >= allSimulations.length) return;
+
+    const sim = allSimulations[index];
+    const workspaceParam = currentWorkspaceId
+      ? `?workspace_id=${currentWorkspaceId}`
+      : "";
+    navigate(
+      `/simulation/${sim.simulation_id}/${sim.assignment_id}/attempt${workspaceParam}`,
+    );
+  };
+
+  const navigatePrevious = () => {
+    if (currentSimIndex > 0) {
+      navigateToSimulation(currentSimIndex - 1);
+    }
+  };
+
+  const navigateNext = () => {
+    if (currentSimIndex < allSimulations.length - 1) {
+      navigateToSimulation(currentSimIndex + 1);
+    }
+  };
+
+  // Handle navigation from simulation back to list
+  const handleBackToSimList = () => {
+    setShowStartPage(false);
+    // Reset selection states
+    setSelectedLevel(null);
+    setSelectedAttempt(null);
+  };
+
+  // Handle navigation to next simulation
+  const handleGoToNextSim = () => {
+    if (currentSimIndex < allSimulations.length - 1) {
+      navigateToSimulation(currentSimIndex + 1);
+    }
+  };
+
+  // Check if there's a next simulation available
+  const hasNextSimulation = currentSimIndex < allSimulations.length - 1;
+
+  // Get status color for simulation status chips
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return { bg: "#ECFDF3", color: "#027A48" };
+      case "ongoing":
+      case "in_progress":
+        return { bg: "#EEF4FF", color: "#3538CD" };
+      default:
+        return { bg: "#FFFAEB", color: "#B54708" };
+    }
+  };
 
   // Check if practice is enabled for the selected level
   const isPracticeEnabled = () => {
@@ -85,7 +241,7 @@ const SimulationAttemptPage = () => {
     setSelectedLevel(level);
 
     // If practice is not enabled for the new level and practice was selected,
-    // reset to Test mode
+    // reset to null (unselected state)
     if (selectedAttempt === "Practice") {
       const practiceEnabled =
         (level === "Level 01" && simulation?.lvl1?.enablePractice) ||
@@ -93,7 +249,7 @@ const SimulationAttemptPage = () => {
         (level === "Level 03" && simulation?.lvl3?.enablePractice);
 
       if (!practiceEnabled) {
-        setSelectedAttempt("Test");
+        setSelectedAttempt(null);
       }
     }
   };
@@ -151,7 +307,9 @@ const SimulationAttemptPage = () => {
         simType={simulation.sim_type}
         attemptType={selectedAttempt}
         assignmentId={assignmentId}
-        onBackToList={() => setShowStartPage(false)}
+        onBackToList={handleBackToSimList}
+        onGoToNextSim={handleGoToNextSim}
+        hasNextSimulation={hasNextSimulation}
       />
     );
   }
@@ -159,6 +317,115 @@ const SimulationAttemptPage = () => {
   return (
     <DashboardContent>
       <Container maxWidth="lg" sx={{ py: 2, bgcolor: "#F3F5F5" }}>
+        {/* Simulation Navigation Bar */}
+        {allSimulations.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Stack direction="row" alignItems="center" spacing={2}>
+              <IconButton
+                onClick={navigatePrevious}
+                disabled={currentSimIndex === 0}
+                sx={{
+                  bgcolor: "background.paper",
+                  border: "1px solid #E0E0E0",
+                  "&:disabled": { opacity: 0.5 },
+                }}
+              >
+                <ChevronLeftIcon />
+              </IconButton>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2,
+                  overflow: "auto",
+                  maxWidth: "calc(100vw - 200px)",
+                  pb: 1,
+                  "&::-webkit-scrollbar": { height: 6 },
+                  "&::-webkit-scrollbar-track": { bgcolor: "#f1f1f1" },
+                  "&::-webkit-scrollbar-thumb": {
+                    bgcolor: "#888",
+                    borderRadius: "3px",
+                  },
+                }}
+              >
+                {allSimulations.map((sim, index) => (
+                  <Card
+                    key={`${sim.simulation_id}-${sim.assignment_id}`}
+                    sx={{
+                      minWidth: 300,
+                      p: 2,
+                      cursor: "pointer",
+                      border:
+                        index === currentSimIndex
+                          ? "2px solid #001EEE"
+                          : "1px solid #E0E0E0",
+                      bgcolor: index === currentSimIndex ? "#FAFAFF" : "white",
+                      "&:hover": {
+                        bgcolor:
+                          index === currentSimIndex ? "#FAFAFF" : "#F5F5F5",
+                      },
+                    }}
+                    onClick={() => navigateToSimulation(index)}
+                  >
+                    <Stack spacing={1}>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "1rem",
+                          color:
+                            index === currentSimIndex
+                              ? "#001EEE"
+                              : "text.primary",
+                        }}
+                      >
+                        {index + 1}. {sim.name}
+                      </Typography>
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Sim Type: {sim.type}
+                        </Typography>
+                        <Chip
+                          label={
+                            sim.status === "not_started"
+                              ? "Not Started"
+                              : sim.status === "completed"
+                                ? "Completed"
+                                : "In Progress"
+                          }
+                          size="small"
+                          sx={{
+                            bgcolor: getStatusColor(sim.status).bg,
+                            color: getStatusColor(sim.status).color,
+                            fontWeight: 500,
+                            fontSize: "0.75rem",
+                          }}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Card>
+                ))}
+              </Box>
+
+              <IconButton
+                onClick={navigateNext}
+                disabled={currentSimIndex === allSimulations.length - 1}
+                sx={{
+                  bgcolor: "background.paper",
+                  border: "1px solid #E0E0E0",
+                  "&:disabled": { opacity: 0.5 },
+                }}
+              >
+                <ChevronRightIcon />
+              </IconButton>
+            </Stack>
+          </Box>
+        )}
+
         <Card sx={{ p: 2, borderRadius: 3 }}>
           <Box
             sx={{ display: "flex", justifyContent: "center", height: "100vh" }}

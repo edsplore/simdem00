@@ -53,6 +53,18 @@ import { fetchTags, type Tag } from '../../../../services/tags';
 import { fetchUsersSummary, type User } from '../../../../services/users';
 import { hasCreatePermission } from '../../../../utils/permissions';
 import { fetchTrainingPlanDetails } from '../../../../services/training';
+import { formatDateToTimeZone, formatTimeToTimeZone } from '../../../../utils/dateTime';
+
+// Update formatDate function to use timezone
+const formatDate = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return 'Not set';
+  return formatDateToTimeZone(dateString, timeZone);
+};
+
+const formatDateTime = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return '';
+  return formatTimeToTimeZone(dateString, timeZone);
+};
 
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
@@ -68,17 +80,8 @@ const orderByToSortBy: Record<OrderBy, string> = {
   last_modified_by: "lastModifiedBy"
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-};
-
 const ManageTrainingPlanPage = () => {
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState('All Tags');
@@ -802,9 +805,9 @@ const ManageTrainingPlanPage = () => {
                         <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
                         <TableCell>
                           <Stack sx={{ minWidth: 180 }}>
-                            <Typography variant="body2">{formatDate(item.created_at)}</Typography>
+                            <Typography variant="body2">{formatDate(item.created_at, currentTimeZone)}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {new Date(item.created_at).toLocaleTimeString()}
+                              {formatDateTime(item.created_at, currentTimeZone)}
                             </Typography>
                           </Stack>
                         </TableCell>
@@ -815,9 +818,9 @@ const ManageTrainingPlanPage = () => {
                         </TableCell>
                         <TableCell>
                           <Stack sx={{ minWidth: 180 }}>
-                            <Typography variant="body2">{formatDate(item.last_modified_at)}</Typography>
+                            <Typography variant="body2">{formatDate(item.last_modified_at, currentTimeZone)}</Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {new Date(item.last_modified_at).toLocaleTimeString()}
+                              {formatDateTime(item.last_modified_at, currentTimeZone)}
                             </Typography>
                           </Stack>
                         </TableCell>

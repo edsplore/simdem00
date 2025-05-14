@@ -95,20 +95,33 @@ const DashboardRouter = () => {
   }
 };
 
-// Component to handle the root redirect with workspace ID preservation
+// Component to handle the root redirect with workspace ID and timeZone preservation
 const RootRedirect = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const workspaceId = params.get("workspace_id");
+    const workspaceId = params.get('workspace_id');
+    const timeZone = params.get('timeZone');
 
-    // Redirect to dashboard with workspace ID if present
-    const target = workspaceId
-      ? `/dashboard?workspace_id=${encodeURIComponent(workspaceId)}`
-      : "/dashboard";
+    console.log('RootRedirect - URL params:', { workspaceId, timeZone });
 
+    // Build redirect URL with all available parameters
+    const targetParams = new URLSearchParams();
+
+    if (workspaceId) {
+      targetParams.set('workspace_id', workspaceId);
+    }
+
+    if (timeZone) {
+      targetParams.set('timeZone', timeZone);
+    }
+
+    const queryString = targetParams.toString();
+    const target = `/dashboard${queryString ? `?${queryString}` : ''}`;
+
+    console.log('RootRedirect - Navigating to:', target);
     navigate(target, { replace: true });
   }, [location, navigate]);
 

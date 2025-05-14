@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User } from '../types/auth';
 import { authService } from '../services/authService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -22,6 +22,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasInitialNavigation, setHasInitialNavigation] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -31,37 +32,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const workspaceId = params.get('workspace_id');
     const timeZone = params.get('timeZone');
 
-    if (workspaceId) {
-      // Store the workspace ID exactly as received, without any manipulation
+    console.log('URL params:', { workspaceId, timeZone, pathname: location.pathname });
+
+    // Update state with new values from URL
+    if (workspaceId && workspaceId !== currentWorkspaceId) {
+      console.log('Setting workspace ID:', workspaceId);
       setCurrentWorkspaceId(workspaceId);
     }
 
-    if (timeZone) {
-      // Store the timeZone exactly as received
+    if (timeZone && timeZone !== currentTimeZone) {
+      console.log('Setting time zone:', timeZone);
       setCurrentTimeZone(timeZone);
     }
 
-    // If the current route doesn't have workspace_id or timeZone and we just got one, add it to the URL
-    if ((workspaceId && !location.search.includes('workspace_id')) || 
-        (timeZone && !location.search.includes('timeZone'))) {
+    // Only perform navigation on initial load to avoid infinite loops
+    if (!hasInitialNavigation && (workspaceId || timeZone)) {
+      setHasInitialNavigation(true);
 
-      // Build the new search params
-      const newParams = new URLSearchParams(location.search);
+      // Check if we need to add missing parameters to the URL
+      const currentParams = new URLSearchParams(location.search);
+      let needsUpdate = false;
 
-      if (workspaceId && !location.search.includes('workspace_id')) {
-        newParams.set('workspace_id', workspaceId);
+      if (workspaceId && !currentParams.has('workspace_id')) {
+        currentParams.set('workspace_id', workspaceId);
+        needsUpdate = true;
       }
 
-      if (timeZone && !location.search.includes('timeZone')) {
-        newParams.set('timeZone', timeZone);
+      if (timeZone && !currentParams.has('timeZone')) {
+        currentParams.set('timeZone', timeZone);
+        needsUpdate = true;
       }
 
-      navigate({
-        pathname: location.pathname,
-        search: newParams.toString()
-      }, { replace: true });
+      if (needsUpdate) {
+        console.log('Updating URL with parameters:', currentParams.toString());
+        navigate({
+          pathname: location.pathname,
+          search: currentParams.toString()
+        }, { replace: true });
+      }
     }
-  }, [location.search, navigate, location.pathname]);
+  }, [location.search, location.pathname, navigate, currentWorkspaceId, currentTimeZone, hasInitialNavigation]);
 
   const updateUserState = useCallback(() => {
     const currentUser = authService.getCurrentUser();
@@ -89,6 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Initial token refresh when component mounts or workspace changes
       authService.refreshToken(currentWorkspaceId)
         .then(() => {
+          console.log('Token refresh successful');
           updateUserState();
           setIsRefreshing(false);
           setIsInitialized(true);
@@ -112,6 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const queryString = params.toString();
             const redirectPath = `/unauthorized${queryString ? `?${queryString}` : ''}`;
 
+            console.log('Redirecting to unauthorized with params:', redirectPath);
             navigate(redirectPath);
           }
         });
@@ -119,6 +131,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [updateUserState, currentWorkspaceId, navigate, location.pathname, isInitialized, isRefreshing, currentTimeZone]);
 
   const login = (token: string, workspaceId?: string, timeZone?: string) => {
+    console.log('Login called with:', { token: !!token, workspaceId, timeZone });
+
     authService.setToken(token, workspaceId || currentWorkspaceId);
 
     // Update timeZone if provided
@@ -130,6 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    console.log('Logout called');
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
@@ -146,12 +161,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const queryString = params.toString();
     const redirectPath = `/unauthorized${queryString ? `?${queryString}` : ''}`;
 
+    console.log('Logout redirect with params:', redirectPath);
     navigate(redirectPath);
   };
 
   if (!isInitialized) {
     return <LoadingSpinner />;
   }
+
+  console.log('AuthContext state:', { currentWorkspaceId, currentTimeZone, isAuthenticated });
 
   return (
     <AuthContext.Provider value={{ 

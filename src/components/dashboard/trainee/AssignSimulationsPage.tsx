@@ -41,14 +41,16 @@ import { fetchUsersByIds, fetchUsersSummary, type User } from '../../../services
 import { useAuth } from '../../../context/AuthContext';
 import { hasCreatePermission } from '../../../utils/permissions';
 import AssignmentDetailsDialog from './AssignmentDetailsDialog';
+import { formatDateToTimeZone, formatTimeToTimeZone } from '../../../utils/dateTime';
 
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string, timeZone: string | null = null) => {
   if (!dateString) return 'Not set';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
+  return formatDateToTimeZone(dateString, timeZone);
+};
+
+const formatDateTime = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return '';
+  return formatTimeToTimeZone(dateString, timeZone);
 };
 
 type Order = 'asc' | 'desc';
@@ -70,7 +72,7 @@ const orderByToSortBy: Record<OrderBy, string> = {
 };
 
 const AssignSimulationsPage = () => {
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [currentTab, setCurrentTab] = useState('Training Plans');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
@@ -103,9 +105,9 @@ const AssignSimulationsPage = () => {
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<AssignmentPaginationParams>(() => {
-    
-    
-    
+
+
+
     const params: AssignmentPaginationParams = {
       page: page + 1, // API uses 1-based indexing
       pagesize: rowsPerPage,
@@ -435,8 +437,8 @@ const AssignSimulationsPage = () => {
         </TableCell>
         <TableCell>{row.team_id?.length || 0} Teams</TableCell>
         <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
-        <TableCell>{formatDate(row.start_date)}</TableCell>
-        <TableCell>{formatDate(row.end_date)}</TableCell>
+        <TableCell>{formatDate(row.start_date, currentTimeZone)}</TableCell>
+        <TableCell>{formatDate(row.end_date, currentTimeZone)}</TableCell>
         <TableCell>
           <Stack direction="row" spacing={1} alignItems="center">
             <Chip
@@ -451,9 +453,9 @@ const AssignSimulationsPage = () => {
         </TableCell>
         <TableCell sx={{ minWidth: 180 }}>
           <Stack>
-            <Typography variant="body2">{formatDate(row.last_modified_at)}</Typography>
+            <Typography variant="body2" fontWeight="600">{formatDate(row.last_modified_at, currentTimeZone)}</Typography>
             <Typography variant="caption" color="text.secondary">
-              {new Date(row.last_modified_at).toLocaleTimeString()}
+              {formatDateTime(row.last_modified_at, currentTimeZone)}
             </Typography>
           </Stack>
         </TableCell>
@@ -464,9 +466,9 @@ const AssignSimulationsPage = () => {
         </TableCell>
         <TableCell sx={{ minWidth: 180 }}>
           <Stack>
-            <Typography variant="body2">{formatDate(row.created_at)}</Typography>
+            <Typography variant="body2" fontWeight="600">{formatDate(row.created_at, currentTimeZone)}</Typography>
             <Typography variant="caption" color="text.secondary">
-              {new Date(row.created_at).toLocaleTimeString()}
+              {formatDateTime(row.created_at, currentTimeZone)}
             </Typography>
           </Stack>
         </TableCell>

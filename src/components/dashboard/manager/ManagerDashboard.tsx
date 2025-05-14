@@ -1563,7 +1563,7 @@ const ManagerDashboard = () => {
                   teamId !== "" && teamId !== null && teamId !== undefined
               ),
         trainingEntitySearchQuery:
-          searchQueryOverride !== null ? searchQueryOverride : searchQuery,
+          searchQueryOverride !== null ? searchQueryOverride.trim() : searchQuery.trim(),
         trainingEntityReportingUserIds:
           selectedTeamsOverride.length > 0
             ? filteredReporteeUserIdsTrainingEntity

@@ -1114,7 +1114,7 @@ const TrainingPlanTable = ({
                                   >
                                     {reporteeUserIdsMapToClassId.get(
                                       trainee.name
-                                    ) || trainee.classId}
+                                    ) || '-'}
                                   </TableCell>
                                   <TableCell>
                                     <Chip
@@ -1825,11 +1825,11 @@ const ManagerDashboard = () => {
                             (data) => data
                           );
                           return filterSelected.length === 0
-                            ? "All Users and Teams"
+                            ? <b>All Users and Teams</b>
                             : teamframeNames.length > 0
                             ? teamframeNames[0] +
                               (teamframeNames[1] ? `${teamframeNames[1]}` : "")
-                            : "All Users and Teams";
+                            : <b>All Users and Teams</b>;
                         }}
                         MenuProps={{
                           PaperProps: {

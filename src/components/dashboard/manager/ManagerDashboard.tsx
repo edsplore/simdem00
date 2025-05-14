@@ -1293,10 +1293,6 @@ const ManagerDashboard = () => {
     filteredReporteeUserIdsTrainingEntity,
     setFilteredReporteeUserIdsTrainingEntity,
   ] = useState<[] | string[]>([]);
-  const [
-    filteredReporteeUserIdsTrainingEntity,
-    setFilteredReporteeUserIdsTrainingEntity,
-  ] = useState<[] | string[]>([]);
   const [allUserIds, setAllUserIds] = useState<[] | string[]>([]);
   const [allCreatorIds, setAllCreatorIds] = useState<[] | string[]>([]);
   const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<
@@ -1511,9 +1507,6 @@ const ManagerDashboard = () => {
           trainingEntityCreatedBy: [],
           trainingEntityTeams: [],
           trainingEntitySearchQuery: "",
-          trainingEntityCreatedBy: [],
-          trainingEntityTeams: [],
-          trainingEntitySearchQuery: "",
         };
 
         if (dateRange[0] && dateRange[1]) {
@@ -1575,10 +1568,6 @@ const ManagerDashboard = () => {
           selectedTeamsOverride.length > 0
             ? filteredReporteeUserIdsTrainingEntity
             : [],
-        trainingEntityReportingUserIds:
-          selectedTeamsOverride.length > 0
-            ? filteredReporteeUserIdsTrainingEntity
-            : [],
       };
 
       // if (dateRange[0] && dateRange[1]) {
@@ -1624,8 +1613,6 @@ const ManagerDashboard = () => {
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
         type: type,
-        reportee_user_ids: [],
-        reportee_team_ids: [],
         reportee_user_ids: [],
         reportee_team_ids: [],
         params,

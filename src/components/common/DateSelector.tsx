@@ -16,7 +16,7 @@ import {
   Grid,
   Divider,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const DateFilterButton = styled(Button)(({ theme }) => ({
   backgroundColor: theme.palette.background.paper,
@@ -60,10 +60,18 @@ const DateSelector = ({
   handleDateRangeApplyCallback,
 }: DateSelectorProps) => {
   const [dateAnchorEl, setDateAnchorEl] = useState<HTMLElement | null>(null);
-  // const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
   const [selectionState, setSelectionState] = useState<"start" | "end">(
     "start"
   );
+  const [currentMonth, setCurrentMonth] = useState(dayjs().month());
+  const [currentYear, setCurrentYear] = useState(dayjs().year());
+
+  // Initialize current month and year when component mounts
+  useEffect(() => {
+    const now = dayjs();
+    setCurrentMonth(now.month());
+    setCurrentYear(now.year());
+  }, []);
 
   // Format date range for display
   const getDateRangeText = () => {
@@ -141,6 +149,118 @@ const DateSelector = ({
 
   const handleAllTime = () => {
     setDateRange([null, null]);
+  };
+
+  // Generate calendar for a specific month
+  const renderCalendar = (month: number, year: number) => {
+    const firstDayOfMonth = dayjs().year(year).month(month).date(1);
+    const daysInMonth = firstDayOfMonth.daysInMonth();
+    const monthName = firstDayOfMonth.format('MMMM YYYY');
+
+    return (
+      <div style={{ padding: "8px 12px" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "8px 0px",
+            fontWeight: 500,
+          }}
+        >
+          {monthName}
+        </div>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(7, 40px)",
+            gridGap: "4px",
+          }}
+        >
+          {/* Day headers */}
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
+            <Box
+              key={`header-${month}-${index}`}
+              sx={{
+                textAlign: "center",
+                color: "text.secondary",
+                fontSize: "0.75rem",
+                padding: "8px 0",
+              }}
+            >
+              {day}
+            </Box>
+          ))}
+
+          {/* Empty cells for days before the 1st of the month */}
+          {Array(firstDayOfMonth.day())
+            .fill(null)
+            .map((_, index) => (
+              <Box key={`empty-${month}-${index}`} />
+            ))}
+
+          {/* Calendar days */}
+          {Array(daysInMonth)
+            .fill(0)
+            .map((_, i) => {
+              const day = i + 1;
+              const date = dayjs().year(year).month(month).date(day);
+
+              // Check if this date is within the selected range
+              const isStartDate =
+                dateRange[0] && date.isSame(dateRange[0], "day");
+              const isEndDate =
+                dateRange[1] && date.isSame(dateRange[1], "day");
+              const isInRange =
+                dateRange[0] &&
+                dateRange[1] &&
+                date.isAfter(dateRange[0], "day") &&
+                date.isBefore(dateRange[1], "day");
+
+              return (
+                <Box
+                  key={`day-${month}-${day}`}
+                  sx={{
+                    width: "40px",
+                    height: "40px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    borderRadius:
+                      isStartDate || isEndDate
+                        ? "50%"
+                        : isInRange
+                        ? "0"
+                        : "50%",
+                    backgroundColor:
+                      isStartDate || isEndDate
+                        ? "#1976d2"
+                        : isInRange
+                        ? "rgba(25, 118, 210, 0.2)"
+                        : "transparent",
+                    color:
+                      isStartDate || isEndDate
+                        ? "white"
+                        : isInRange
+                        ? "#1976d2"
+                        : "text.primary",
+                    "&:hover": {
+                      backgroundColor:
+                        isStartDate || isEndDate
+                          ? "#1565c0"
+                          : isInRange
+                          ? "rgba(25, 118, 210, 0.3)"
+                          : "action.hover",
+                    },
+                  }}
+                  onClick={() => handleDateSelect(date)}
+                >
+                  {day}
+                </Box>
+              );
+            })}
+        </Box>
+      </div>
+    );
   };
 
   return (
@@ -239,310 +359,17 @@ const DateSelector = ({
                 }}
               >
                 <div style={{ display: "flex" }}>
-                  {/* April Calendar */}
-                  <div style={{ padding: "8px 12px" }}>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "8px 0px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      April 2025
-                    </div>
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(7, 40px)",
-                        gridGap: "4px",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        S
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        M
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        T
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        W
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        T
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        F
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        S
-                      </Box>
-                      {Array(30)
-                        .fill(0)
-                        .map((_, i) => {
-                          const day = i + 1;
-                          const date = dayjs().year(2025).month(3).date(day);
-
-                          // Check if this date is within the selected range
-                          const isStartDate =
-                            dateRange[0] && date.isSame(dateRange[0], "day");
-                          const isEndDate =
-                            dateRange[1] && date.isSame(dateRange[1], "day");
-                          const isInRange =
-                            dateRange[0] &&
-                            dateRange[1] &&
-                            date.isAfter(dateRange[0], "day") &&
-                            date.isBefore(dateRange[1], "day");
-
-                          return (
-                            <Box
-                              key={`apr-${day}`}
-                              sx={{
-                                width: "40px",
-                                height: "40px",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                cursor: "pointer",
-                                borderRadius:
-                                  isStartDate || isEndDate
-                                    ? "50%"
-                                    : isInRange
-                                    ? "0"
-                                    : "50%",
-                                backgroundColor:
-                                  isStartDate || isEndDate
-                                    ? "#1976d2"
-                                    : isInRange
-                                    ? "rgba(25, 118, 210, 0.2)"
-                                    : "transparent",
-                                color:
-                                  isStartDate || isEndDate
-                                    ? "white"
-                                    : isInRange
-                                    ? "#1976d2"
-                                    : "text.primary",
-                                "&:hover": {
-                                  backgroundColor:
-                                    isStartDate || isEndDate
-                                      ? "#1565c0"
-                                      : isInRange
-                                      ? "rgba(25, 118, 210, 0.3)"
-                                      : "action.hover",
-                                },
-                              }}
-                              onClick={() => handleDateSelect(date)}
-                            >
-                              {day}
-                            </Box>
-                          );
-                        })}
-                    </Box>
-                  </div>
+                  {/* Current Month Calendar */}
+                  {renderCalendar(currentMonth, currentYear)}
 
                   {/* Vertical divider */}
                   <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
-                  {/* May Calendar */}
-                  <div style={{ padding: "8px 12px" }}>
-                    <div
-                      style={{
-                        textAlign: "center",
-                        padding: "8px 0px",
-                        fontWeight: 500,
-                      }}
-                    >
-                      May 2025
-                    </div>
-                    <Box
-                      sx={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(7, 40px)",
-                        gridGap: "4px",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        S
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        M
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        T
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        W
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        T
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        F
-                      </Box>
-                      <Box
-                        sx={{
-                          textAlign: "center",
-                          color: "text.secondary",
-                          fontSize: "0.75rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        S
-                      </Box>
-                      {Array(31)
-                        .fill(0)
-                        .map((_, i) => {
-                          const day = i + 1;
-                          const date = dayjs().year(2025).month(4).date(day);
-
-                          // Check if this date is within the selected range
-                          const isStartDate =
-                            dateRange[0] && date.isSame(dateRange[0], "day");
-                          const isEndDate =
-                            dateRange[1] && date.isSame(dateRange[1], "day");
-                          const isInRange =
-                            dateRange[0] &&
-                            dateRange[1] &&
-                            date.isAfter(dateRange[0], "day") &&
-                            date.isBefore(dateRange[1], "day");
-
-                          return (
-                            <Box
-                              key={`may-${day}`}
-                              sx={{
-                                width: "40px",
-                                height: "40px",
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                cursor: "pointer",
-                                borderRadius:
-                                  isStartDate || isEndDate
-                                    ? "50%"
-                                    : isInRange
-                                    ? "0"
-                                    : "50%",
-                                backgroundColor:
-                                  isStartDate || isEndDate
-                                    ? "#1976d2"
-                                    : isInRange
-                                    ? "rgba(25, 118, 210, 0.2)"
-                                    : "transparent",
-                                color:
-                                  isStartDate || isEndDate
-                                    ? "white"
-                                    : isInRange
-                                    ? "#1976d2"
-                                    : "text.primary",
-                                "&:hover": {
-                                  backgroundColor:
-                                    isStartDate || isEndDate
-                                      ? "#1565c0"
-                                      : isInRange
-                                      ? "rgba(25, 118, 210, 0.3)"
-                                      : "action.hover",
-                                },
-                              }}
-                              onClick={() => handleDateSelect(date)}
-                            >
-                              {day}
-                            </Box>
-                          );
-                        })}
-                    </Box>
-                  </div>
+                  {/* Next Month Calendar */}
+                  {renderCalendar(
+                    (currentMonth + 1) % 12,
+                    currentMonth === 11 ? currentYear + 1 : currentYear
+                  )}
                 </div>
               </Box>
 

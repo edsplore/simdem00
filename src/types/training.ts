@@ -20,6 +20,7 @@ interface Module {
   status: 'not_started' | 'ongoing' | 'finished';
   simulations: Simulation[];
   estimated_time?: number;
+  est_time?: number;
 }
 
 interface TrainingPlan {

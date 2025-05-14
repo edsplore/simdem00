@@ -805,7 +805,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       },
                     }}
                   >
-                    Best of 3 attempts
+                    Best of all attempts
                   </Button>
                   <Button
                     onClick={() => {

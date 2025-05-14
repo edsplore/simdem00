@@ -58,11 +58,13 @@ interface CreateModuleFormData {
 interface CreateModuleDialogProps {
   open: boolean;
   onClose: () => void;
+  onModuleCreated?: () => void;
 }
 
 const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
   open,
   onClose,
+  onModuleCreated,
 }) => {
   const { user } = useAuth();
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -188,7 +190,9 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
           tags: [],
           selectedSimulations: [],
         });
-        
+
+        // Call success callback to refresh data
+        onModuleCreated?.();
         onClose();
       }
     } catch (error) {

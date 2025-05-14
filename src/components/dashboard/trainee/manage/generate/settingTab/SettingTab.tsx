@@ -767,10 +767,10 @@ const SettingTab: React.FC<SettingTabProps> = ({
       ),
       final_simulation_score_criteria:
         scoringConfig.simulationScore === "best"
-          ? "Best of three"
+          ? "best"
           : scoringConfig.simulationScore === "last"
-            ? "Last attempt"
-            : "Average of all",
+            ? "last"
+            : "average",
       simulation_scoring_metrics: {
         is_enabled: scoringConfig.scoringMetrics?.enabled === true,
         keyword_score: parseInt(

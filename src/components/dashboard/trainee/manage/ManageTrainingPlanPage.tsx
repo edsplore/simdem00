@@ -23,11 +23,13 @@ import {
   InputAdornment,
   Autocomplete,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import {
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
+  RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
@@ -122,6 +124,15 @@ const ManageTrainingPlanPage = () => {
 
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
+
+  // Check if any filters are applied
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      selectedTags !== "All Tags" ||
+      selectedCreator !== "Created By"
+    );
+  }, [searchQuery, selectedTags, selectedCreator]);
 
   // Create a memoized pagination params object for training plans
   const trainingPlanPaginationParams = useMemo<TrainingPlanPaginationParams>(() => {
@@ -398,6 +409,27 @@ const ManageTrainingPlanPage = () => {
     loadData();
   };
 
+  // Add callback handlers for create operations
+  const handleTrainingPlanCreated = () => {
+    // Refresh the data after creating a training plan
+    loadData();
+  };
+
+  const handleModuleCreated = () => {
+    // Refresh the data after creating a module
+    loadData();
+  };
+
+  // New function to reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedTags("All Tags");
+    setSelectedCreator("Created By");
+    setCreatorSearchQuery("");
+    setTagsSearchQuery("");
+    setPage(0);
+  };
+
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
@@ -649,6 +681,29 @@ const ManageTrainingPlanPage = () => {
                 noOptionsText="No users found"
                 sx={{ width: 200 }}
               />
+
+              {/* Reset Filters Button */}
+              <Tooltip title="Reset all filters">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ResetIcon />}
+                    onClick={handleResetFilters}
+                    disabled={!hasActiveFilters}
+                    sx={{
+                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
+                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
+                      "&:hover": {
+                        borderColor: "#3538CD",
+                        bgcolor: "#F5F6FF",
+                      },
+                      borderRadius: 2,
+                      height: 40,
+                    }}
+                  >
+                  </Button>
+                </span>
+              </Tooltip>
             </Stack>
           </Stack>
 
@@ -901,15 +956,18 @@ const ManageTrainingPlanPage = () => {
         />
       </Container>
 
+      {/* Updated dialogs with callbacks */}
       {currentTab === 'Training Plans' ? (
         <CreateTrainingPlanDialog
           open={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
+          onTrainingPlanCreated={handleTrainingPlanCreated}
         />
       ) : (
         <CreateModuleDialog
           open={isCreateDialogOpen}
           onClose={() => setIsCreateDialogOpen(false)}
+          onModuleCreated={handleModuleCreated}
         />
       )}
     </DashboardContent>

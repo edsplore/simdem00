@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Stack,
@@ -19,6 +19,7 @@ import {
   Button,
   Popover,
   InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
@@ -26,14 +27,21 @@ import {
   CalendarMonth as CalendarIcon,
   KeyboardArrowDown as ArrowDownIcon,
   Clear as ClearIcon,
+  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import type { TrainingPlan, Module, Simulation } from "../../../types/training";
 import { useAuth } from "../../../context/AuthContext";
 import DateSelector from "../../common/DateSelector";
+
+// Extend dayjs with plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface TrainingItemsTableProps {
   trainingPlans?: TrainingPlan[];
@@ -74,7 +82,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   showTrainingPlans = true,
 }) => {
   const navigate = useNavigate();
-  const { currentWorkspaceId } = useAuth();
+  const { currentWorkspaceId, currentTimeZone } = useAuth();
   const [rowsPerPage, setRowsPerPage] = useState("5");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -83,6 +91,15 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   const [expandedModules, setExpandedModules] = useState<{
     [key: string]: boolean;
   }>({});
+
+  // Check if any filters are applied
+  const hasActiveFilters = useMemo(() => {
+    return (
+      searchQuery !== "" ||
+      statusFilter !== "all" ||
+      (dateRange[0] !== null || dateRange[1] !== null)
+    );
+  }, [searchQuery, statusFilter, dateRange]);
 
   // Calculate total simulations count
   const totalSimulationsCount = showTrainingPlans 
@@ -124,25 +141,54 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     setCurrentPage(1);
   };
 
-  const handleDateRangeApply = () => {
-    // You can add any additional logic here if needed
-    console.log('Date range applied:', dateRange);
+  // Handle date range apply callback
+  const handleDateRangeApplyCallback = () => {
+    // The dateRange state contains dates in the user's timezone
+    // The isDateInRange function will handle conversion to UTC for backend comparison
+    console.log("Date range applied:", dateRange);
+  };
+
+  // New function to reset all filters
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setDateRange([null, null]);
+    setStatusFilter("all");
+    setCurrentPage(1);
   };
 
   const isDateInRange = (dateStr: string | null) => {
     if (!dateStr) return true;
     if (!dateRange[0] && !dateRange[1]) return true;
 
-    const date = dayjs(dateStr);
-    const startDate = dateRange[0];
-    const endDate = dateRange[1];
+    // Parse the backend date (assumed to be in UTC)
+    const backendDate = dayjs.utc(dateStr);
 
-    if (startDate && endDate) {
-      return date.isAfter(startDate.subtract(1, 'day')) && date.isBefore(endDate.add(1, 'day'));
-    } else if (startDate) {
-      return date.isAfter(startDate.subtract(1, 'day'));
-    } else if (endDate) {
-      return date.isBefore(endDate.add(1, 'day'));
+    // Convert selected date range to UTC for comparison
+    // The selected dates are in the user's timezone, so we need to convert them
+    let startDateUTC = null;
+    let endDateUTC = null;
+
+    if (dateRange[0]) {
+      // Convert start of day in user's timezone to UTC
+      startDateUTC = currentTimeZone 
+        ? dayjs.tz(dateRange[0].format('YYYY-MM-DD'), currentTimeZone).startOf('day').utc()
+        : dateRange[0].utc().startOf('day');
+    }
+
+    if (dateRange[1]) {
+      // Convert end of day in user's timezone to UTC
+      endDateUTC = currentTimeZone
+        ? dayjs.tz(dateRange[1].format('YYYY-MM-DD'), currentTimeZone).endOf('day').utc()
+        : dateRange[1].utc().endOf('day');
+    }
+
+    // Compare UTC dates
+    if (startDateUTC && endDateUTC) {
+      return backendDate.isAfter(startDateUTC) && backendDate.isBefore(endDateUTC);
+    } else if (startDateUTC) {
+      return backendDate.isAfter(startDateUTC);
+    } else if (endDateUTC) {
+      return backendDate.isBefore(endDateUTC);
     }
 
     return true;
@@ -332,7 +378,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
             <DateSelector
               dateRange={dateRange}
               setDateRange={setDateRange}
-              handleDateRangeApplyCallback={handleDateRangeApply}
+              handleDateRangeApplyCallback={handleDateRangeApplyCallback}
             />
 
             <Select
@@ -350,6 +396,29 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
               <MenuItem value="ongoing">In Progress</MenuItem>
               <MenuItem value="over_due">Overdue</MenuItem>
             </Select>
+
+            {/* Reset Filters Button */}
+            <Tooltip title="Reset all filters">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={<ResetIcon />}
+                  onClick={handleResetFilters}
+                  disabled={!hasActiveFilters}
+                  sx={{
+                    borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
+                    color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
+                    "&:hover": {
+                      borderColor: "#3538CD",
+                      bgcolor: "#F5F6FF",
+                    },
+                    borderRadius: 2,
+                    height: 40,
+                  }}
+                >
+                </Button>
+              </span>
+            </Tooltip>
           </Stack>
         </Paper>
 
@@ -652,17 +721,17 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                               variant="body2"
                               sx={{
                                 color:
-                                  sim.highest_attempt_score &&
-                                  sim.highest_attempt_score >= 80
+                                  sim.final_score &&
+                                  sim.final_score >= 80
                                     ? "success.main"
-                                    : sim.highest_attempt_score &&
-                                        sim.highest_attempt_score >= 60
+                                    : sim.final_score &&
+                                        sim.final_score >= 60
                                       ? "warning.main"
                                       : "error.main",
                               }}
                             >
-                              {sim.highest_attempt_score
-                                ? `${sim.highest_attempt_score}%`
+                              {sim.final_score
+                                ? `${sim.final_score}%`
                                 : "N/A"}
                             </Typography>
                           </Grid>
@@ -754,17 +823,17 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                         variant="body2"
                         sx={{
                           color:
-                            simulation.highest_attempt_score &&
-                            simulation.highest_attempt_score >= 80
+                            simulation.final_score &&
+                            simulation.final_score >= 80
                               ? "success.main"
-                              : simulation.highest_attempt_score &&
-                                  simulation.highest_attempt_score >= 60
+                              : simulation.final_score &&
+                                  simulation.final_score >= 60
                                 ? "warning.main"
                                 : "error.main",
                         }}
                       >
-                        {simulation.highest_attempt_score
-                          ? `${simulation.highest_attempt_score}%`
+                        {simulation.final_score
+                          ? `${simulation.final_score}%`
                           : "N/A"}
                       </Typography>
                     </Grid>

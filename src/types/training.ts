@@ -8,6 +8,7 @@ interface Simulation {
   due_date?: string | null;
   status: 'not_started' | 'ongoing' | 'finished';
   highest_attempt_score: number | null;
+  final_score: number | null;
   assignment_id?: string;
 }
 

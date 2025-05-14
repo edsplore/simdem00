@@ -1289,6 +1289,9 @@ const ManagerDashboard = () => {
   const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<
     [] | string[]
   >([]);
+  const [filteredReporteeUserIdsTrainingEntity, setFilteredReporteeUserIdsTrainingEntity] = useState<
+    [] | string[]
+  >([]);
   const [allUserIds, setAllUserIds] = useState<[] | string[]>([]);
   const [allCreatorIds, setAllCreatorIds] = useState<[] | string[]>([]);
   const [reporteeUserIdsMapToName, setReporteeUserIdsMapToName] = useState<
@@ -1403,6 +1406,7 @@ const ManagerDashboard = () => {
         const userData = data?.map((user: User) => user.user_id) || [];
         setReporteeUser(data);
         setFilteredReporteeUserIds(userData);
+        setFilteredReporteeUserIdsTrainingEntity(userData);
         setAllUserIds(userData);
         const userMap = new Map(
           data?.map((user) => [
@@ -1498,14 +1502,9 @@ const ManagerDashboard = () => {
         const params: any = {
           assignedDateRange: { startDate: "", endDate: "" },
           trainingEntityDateRange: { startDate: "", endDate: "" },
-          trainingEntityCreatedBy: selectedCreators.filter(
-            (creatorId) =>
-              creatorId !== "" && creatorId !== null && creatorId !== undefined
-          ),
-          trainingEntityTeams: selectedTeams.filter(
-            (teamId) => teamId !== "" && teamId !== null && teamId !== undefined
-          ),
-          trainingEntitySearchQuery: searchQuery,
+          trainingEntityCreatedBy: [],
+          trainingEntityTeams: [],
+          trainingEntitySearchQuery: "",
         };
 
         if (dateRange[0] && dateRange[1]) {
@@ -1545,6 +1544,9 @@ const ManagerDashboard = () => {
   ) => {
     try {
       setIsTableLoading(true);
+      if (selectedTeams && selectedTeams.length > 0) {
+        
+      }
       const params: any = {
         assignedDateRange: { startDate: "", endDate: "" },
         trainingEntityDateRange: { startDate: "", endDate: "" },
@@ -1561,18 +1563,19 @@ const ManagerDashboard = () => {
               ),
         trainingEntitySearchQuery:
           searchQueryOverride !== null ? searchQueryOverride : searchQuery,
+        trainingEntityReportingUserIds: selectedTeamsOverride.length > 0 ? filteredReporteeUserIdsTrainingEntity : [],
       };
 
-      if (dateRange[0] && dateRange[1]) {
-        params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-        params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      } else if (dateRange[0]) {
-        params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-        params.assignedDateRange.endDate = null;
-      } else if (dateRange[1]) {
-        params.assignedDateRange.startDate = null;
-        params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      }
+      // if (dateRange[0] && dateRange[1]) {
+      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
+      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+      // } else if (dateRange[0]) {
+      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
+      //   params.assignedDateRange.endDate = null;
+      // } else if (dateRange[1]) {
+      //   params.assignedDateRange.startDate = null;
+      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+      // }
 
       if (trainingEntityDateRange[0] && trainingEntityDateRange[1]) {
         params.trainingEntityDateRange.startDate =
@@ -1596,8 +1599,8 @@ const ManagerDashboard = () => {
       const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
         user_id: user?.id || "user123",
         type: type,
-        reportee_user_ids: filteredReporteeUserIds,
-        reportee_team_ids: filteredReporteeTeamIds,
+        reportee_user_ids: [],
+        reportee_team_ids: [],
         params,
         pagination,
       });
@@ -1652,9 +1655,13 @@ const ManagerDashboard = () => {
       (filteredReporteeTeamIds && filteredReporteeTeamIds?.length > 0)
     ) {
       loadDashboardData();
-      loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+      //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     }
   }, [filteredReporteeUserIds, filteredReporteeTeamIds]);
+
+  useEffect(() => {
+    handleTrainingEntityTeamSelectedApply();
+  }, [filteredReporteeUserIdsTrainingEntity, allTeamIds]);
 
   // const handleTeamframeChange = (event: SelectChangeEvent<string>) => {
   //   setTeamframe(event.target.value);
@@ -1671,7 +1678,7 @@ const ManagerDashboard = () => {
 
   const handleDateRangeApplyCallback = () => {
     loadDashboardData();
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
   const handleTrainingEntityDateRangeApplyCallback = () => {
     loadTrainingEntityAttemptsForManagerDashboard(activeTab);

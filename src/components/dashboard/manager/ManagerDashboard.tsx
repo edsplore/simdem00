@@ -1706,7 +1706,8 @@ const ManagerDashboard = () => {
   };
 
   const handleTrainingEntitySelectedApply = () => {
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    handleTrainingEntityTeamSelectedApply()
   };
 
   const handleTrainingEntityCreatorSelectedApply = () => {

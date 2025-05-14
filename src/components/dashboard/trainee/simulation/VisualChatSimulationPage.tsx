@@ -130,6 +130,26 @@ interface SimulationData {
       options?: string[];
       tipText?: string;
     }>;
+    masking: Array<{
+      id: string;
+      type: string;
+      content: {
+        id: string;
+        type: string;
+        coordinates?: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        };
+        settings?: {
+          color: string;
+          solid_mask: boolean;
+          blur_mask: boolean;
+        };
+      };
+      timestamp?: number;
+    }>;
   }>;
 }
 
@@ -173,7 +193,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
-    null,
+    null
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -182,7 +202,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Visual-chat specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -223,6 +243,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const slidesData = simulationData?.slidesData || [];
   const currentSlide = slidesData[currentSlideIndex] || {};
   const currentSequence = currentSlide.sequence || [];
+  const currentMasking = currentSlide.masking || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
   // Function to get the appropriate level settings
@@ -368,7 +389,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       if (shouldSkipHotspot()) {
         console.log(
           "Skipping hotspot due to level settings:",
-          currentItem.hotspotType,
+          currentItem.hotspotType
         );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
@@ -409,7 +430,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         else {
           setWaitingForUserInput(true);
           // Store the expected trainee response for the hint
-          setExpectedTraineeResponse(currentItem.text || "");
+          setExpectedTraineeResponse(
+            currentItem.text?.replace(/<.*?>/g, "") || ""
+          );
           setIsProcessing(false);
 
           // Focus the input field
@@ -551,7 +574,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -580,7 +603,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -678,7 +701,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -728,7 +751,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+          (item) => item.id === currentItem.id
         );
         if (existingItem) {
           return [
@@ -837,7 +860,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const response = await startVisualChatAttempt(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual-chat response:", response);
@@ -929,7 +952,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -1008,7 +1031,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
+            (item) => item.id === currentItem.id
           );
           if (existingItem) {
             return [
@@ -1294,8 +1317,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1329,8 +1352,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1364,8 +1387,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -2125,6 +2148,55 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               </Box>
                             )}
                         </>
+                      )}
+
+                    {imageLoaded &&
+                      currentMasking &&
+                      currentMasking.map(
+                        (item, index) =>
+                          item?.content && (
+                            <Box
+                              key={index}
+                              // onClick={handleHotspotClick}
+                              sx={{
+                                position: "absolute",
+                                cursor: "pointer",
+                                left: `${
+                                  scaleCoordinates(item.content.coordinates)
+                                    ?.left
+                                }px`,
+                                top: `${
+                                  scaleCoordinates(item.content.coordinates)
+                                    ?.top
+                                }px`,
+                                width: `${
+                                  scaleCoordinates(item.content.coordinates)
+                                    ?.width
+                                }px`,
+                                height: `${
+                                  scaleCoordinates(item.content.coordinates)
+                                    ?.height
+                                }px`,
+                                border: "4px solid",
+                                borderColor:
+                                  item.content.settings?.color ||
+                                  "rgba(68, 76, 231, 0.7)",
+                                boxShadow: item.content.settings?.blur_mask
+                                  ? `0 0 12px 3px ${item.content.settings?.color}`
+                                  : "none",
+                                borderRadius: "4px",
+                                backgroundColor: item.content.settings?.color,
+                                transition: "box-shadow 0.3s",
+                                zIndex: 10,
+                                filter: item.content.settings?.blur_mask
+                                  ? "blur(8px)"
+                                  : "none",
+                                backdropFilter: item.content.settings?.blur_mask
+                                  ? "blur(8px)"
+                                  : "none",
+                              }}
+                            />
+                          )
                       )}
                   </Box>
                 )}

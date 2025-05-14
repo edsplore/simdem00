@@ -222,18 +222,33 @@ export interface UpdateImageMaskingObjectResponse {
   message?: string;
 }
 
+export interface DetectMaskPHIResponse {
+  id: string;
+  masking: {
+    imageWidth: string;
+    imageHeight: string;
+    rectangles: {
+      id: string;
+      x: string;
+      y: string;
+      width: string;
+      height: string;
+    }[];
+  };
+}
+
 /**
  * Creates a new simulation
  * @param simulationData - The data for the new simulation
  * @returns A promise with the simulation creation response
  */
 export const createSimulation = async (
-  simulationData: CreateSimulationRequest,
+  simulationData: CreateSimulationRequest
 ): Promise<CreateSimulationResponse> => {
   try {
     const response = await apiClient.post<CreateSimulationResponse>(
       "/simulations/create",
-      simulationData,
+      simulationData
     );
 
     return response.data;
@@ -260,7 +275,7 @@ export const createSimulationWithDefaults = async (
     division_id?: string;
     department_id?: string;
     tags?: string[];
-  },
+  }
 ): Promise<CreateSimulationResponse> => {
   const simulationData: CreateSimulationRequest = {
     user_id: userId,
@@ -284,12 +299,12 @@ export const createSimulationWithDefaults = async (
  */
 export const updateSimulation = async (
   simulationId: string,
-  updateData: UpdateSimulationRequest,
+  updateData: UpdateSimulationRequest
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
       `/simulations/${simulationId}/update`,
-      updateData,
+      updateData
     );
 
     return response.data;
@@ -307,7 +322,7 @@ export const updateSimulation = async (
  */
 export const updateSimulationWithFormData = async (
   simulationId: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
@@ -317,7 +332,7 @@ export const updateSimulationWithFormData = async (
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      },
+      }
     );
 
     return response.data;
@@ -337,7 +352,7 @@ export const updateSimulationWithFormData = async (
 export const updateSimulationWithMasking = async (
   simulationId: string,
   imageId: string,
-  maskingData: any,
+  maskingData: any
 ): Promise<UpdateImageMaskingObjectResponse> => {
   try {
     const response = await apiClient.put<UpdateImageMaskingObjectResponse>(
@@ -351,7 +366,7 @@ export const updateSimulationWithMasking = async (
         headers: {
           "Content-Type": "application/json",
         },
-      },
+      }
     );
 
     return response.data;
@@ -369,12 +384,12 @@ export const updateSimulationWithMasking = async (
  */
 export const publishSimulation = async (
   simulationId: string,
-  publishData: PublishSimulationRequest,
+  publishData: PublishSimulationRequest
 ): Promise<UpdateSimulationResponse> => {
   try {
     const response = await apiClient.put<UpdateSimulationResponse>(
       `/simulations/${simulationId}/update`,
-      publishData,
+      publishData
     );
 
     return response.data;
@@ -392,7 +407,7 @@ export const publishSimulation = async (
  */
 export const publishSimulationWithFormData = async (
   simulationId: string,
-  formData: FormData,
+  formData: FormData
 ): Promise<UpdateSimulationResponse> => {
   try {
     // Make sure the status is set to "published" in the FormData
@@ -407,7 +422,7 @@ export const publishSimulationWithFormData = async (
         headers: {
           "Content-Type": "multipart/form-data",
         },
-      },
+      }
     );
 
     return response.data;
@@ -423,11 +438,11 @@ export const publishSimulationWithFormData = async (
  * @returns A promise with the complete simulation data response
  */
 export const fetchCompleteSimulation = async (
-  simulationId: string,
+  simulationId: string
 ): Promise<CompleteSimulationResponse> => {
   try {
     const response = await apiClient.get<CompleteSimulationResponse>(
-      `/simulations/fetch/${simulationId}`,
+      `/simulations/fetch/${simulationId}`
     );
 
     return response.data;
@@ -445,7 +460,7 @@ export const fetchCompleteSimulation = async (
  */
 export const cloneSimulation = async (
   userId: string,
-  simulationId: string,
+  simulationId: string
 ): Promise<CloneSimulationResponse> => {
   try {
     const cloneData: CloneSimulationRequest = {
@@ -455,7 +470,28 @@ export const cloneSimulation = async (
 
     const response = await apiClient.post<CloneSimulationResponse>(
       "/simulations/clone",
-      cloneData,
+      cloneData
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error cloning simulation:", error);
+    throw error;
+  }
+};
+
+export const detectMaskAreas = async (
+  formData: FormData
+): Promise<DetectMaskPHIResponse[]> => {
+  try {
+    const response = await apiClient.post<DetectMaskPHIResponse[]>(
+      `/simulations/detect-mask-areas`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
 
     return response.data;

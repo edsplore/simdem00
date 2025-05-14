@@ -76,6 +76,26 @@ export interface SimulationData {
       options?: string[];
       tipText?: string;
     }>;
+    masking: Array<{
+      id: string;
+      type: string;
+      content: {
+        id: string;
+        type: string;
+        coordinates?: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+        };
+        settings?: {
+          color: string;
+          solid_mask: boolean;
+          blur_mask: boolean;
+        };
+      };
+      timestamp?: number;
+    }>;
   }>;
 }
 

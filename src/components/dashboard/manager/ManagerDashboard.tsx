@@ -1546,7 +1546,8 @@ const ManagerDashboard = () => {
   ) => {
     try {
       setIsTableLoading(true);
-      if (selectedTeams && selectedTeams.length > 0) {
+      if (searchQueryOverride == "" && selectedTeams.length == 0) {
+        selectedTeamsOverride = allTeamIds;
       }
       const params: any = {
         assignedDateRange: { startDate: "", endDate: "" },

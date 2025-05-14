@@ -342,7 +342,7 @@ const MaskPhiDialog = ({
               textAlign={"center"}
               fontWeight={500}
             >
-              <span> 12 PHI Identified </span> , Do you want to mask them? You
+              Do you want to mask Personal Identifiable information? You
               can edit them later.
             </Typography>
           </Stack>

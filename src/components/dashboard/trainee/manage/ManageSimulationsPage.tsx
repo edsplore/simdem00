@@ -53,6 +53,18 @@ import { fetchTags, Tag } from "../../../../services/tags";
 import { fetchUsersSummary, User, fetchUsersByIds } from "../../../../services/users";
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
+import { formatDateToTimeZone, formatTimeToTimeZone } from '../../../../utils/dateTime';
+
+// Helper functions for date formatting with timezone
+const formatDate = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return 'Invalid date';
+  return formatDateToTimeZone(dateString, timeZone);
+};
+
+const formatDateTime = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return '';
+  return formatTimeToTimeZone(dateString, timeZone);
+};
 
 type Order = "asc" | "desc";
 type OrderBy =
@@ -81,17 +93,8 @@ const orderByToSortBy: Record<OrderBy, string> = {
   created_by: "createdBy"
 };
 
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-};
-
 const ManageSimulationsPage = () => {
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [currentTab, setCurrentTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState("All Tags");
@@ -648,15 +651,13 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ minWidth: 180 }}>
           <Stack>
             <Typography variant="body2">
-              {formatDate(row.last_modified)}
+              {formatDate(row.last_modified, currentTimeZone)}
             </Typography>
             <Typography
               variant="caption"
               color="text.secondary"
             >
-              {new Date(
-                row.last_modified,
-              ).toLocaleTimeString()}
+              {formatDateTime(row.last_modified, currentTimeZone)}
             </Typography>
           </Stack>
         </TableCell>
@@ -670,13 +671,13 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ minWidth: 180 }}>
           <Stack>
             <Typography variant="body2">
-              {formatDate(row.created_on)}
+              {formatDate(row.created_on, currentTimeZone)}
             </Typography>
             <Typography
               variant="caption"
               color="text.secondary"
             >
-              {new Date(row.created_on).toLocaleTimeString()}
+              {formatDateTime(row.created_on, currentTimeZone)}
             </Typography>
           </Stack>
         </TableCell>

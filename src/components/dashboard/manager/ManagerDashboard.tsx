@@ -1544,8 +1544,8 @@ const ManagerDashboard = () => {
   ) => {
     try {
       setIsTableLoading(true);
-      if (selectedTeams && selectedTeams.length > 0) {
-        
+      if (searchQueryOverride == "" && selectedTeams.length == 0) {
+        selectedTeamsOverride = allTeamIds;
       }
       const params: any = {
         assignedDateRange: { startDate: "", endDate: "" },
@@ -1681,7 +1681,8 @@ const ManagerDashboard = () => {
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
   const handleTrainingEntityDateRangeApplyCallback = () => {
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    handleTrainingEntityTeamSelectedApply();
   };
 
   const handleTrainingEntitySelectedApply = () => {
@@ -1720,11 +1721,13 @@ const ManagerDashboard = () => {
   };
 
   const handleTrainingEntitySearch = () => {
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    handleTrainingEntityTeamSelectedApply();
   };
 
   useEffect(() => {
-    loadTrainingEntityAttemptsForManagerDashboard(activeTab);
+    handleTrainingEntityTeamSelectedApply();
+    //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   }, [rowsPerPage, page]);
 
   if (isLoading) {

@@ -75,7 +75,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
 }) => {
   const navigate = useNavigate();
   const { currentWorkspaceId } = useAuth();
-  const [rowsPerPage, setRowsPerPage] = useState("10");
+  const [rowsPerPage, setRowsPerPage] = useState("5");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
@@ -450,8 +450,8 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     </Grid>
                     <Grid item xs={2.5}>
                       <Typography variant="body2">
-                        {plan.total_modules} Modules | {plan.total_simulations}{" "}
-                        Sims
+                        {plan.total_modules} {plan.total_modules === 1 ? 'Module' : 'Modules'} | {plan.total_simulations}{" "}
+                        {plan.total_simulations === 1 ? 'Sim' : 'Sims'}
                       </Typography>
                     </Grid>
                     <Grid item xs={1.5}>
@@ -543,12 +543,12 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                       </Grid>
                       <Grid item xs={2.5}>
                         <Typography variant="body2">
-                          {module.total_simulations} Simulations
+                          {module.total_simulations} {module.total_simulations === 1 ? 'Simulation' : 'Simulations'}
                         </Typography>
                       </Grid>
                       <Grid item xs={1.5}>
                         <Typography variant="body2">
-                          {module.est_time || 0}m
+                          {module.estimated_time || 0}m
                         </Typography>
                       </Grid>
                       <Grid item xs={1.5}>
@@ -694,7 +694,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
             {/* Simulations Section */}
             {displayedSimulations.length > 0 && (
               <>
-                <SectionHeader>Independent Simulations</SectionHeader>
+                <SectionHeader>Simulations</SectionHeader>
                 {displayedSimulations.map((simulation) => (
                   <Grid
                     key={simulation.simulation_id}

@@ -39,10 +39,10 @@ export interface Masking {
 }
 
 export interface MaskingItem {
-    id: string;
-    type: string;
-    content: Masking;
-    timestamp?: number;
+  id: string;
+  type: string;
+  content: Masking;
+  timestamp?: number;
 }
 
 export interface SimulationSlideData {
@@ -125,7 +125,14 @@ export interface SimulationScores {
 export interface EndVisualSimulationResponse {
   id: string;
   status: string;
-  scores: SimulationScores;
+  scores: {
+    ContextualAccuracy: number;
+    KeywordScore: number;
+    ClickScore: number;
+    Confidence: number;
+    Energy: number;
+    Concentration: number;
+  };
   duration: number;
   transcript: string;
   audio_url: string;

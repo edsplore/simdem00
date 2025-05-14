@@ -91,7 +91,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Visual-specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null,
+    null
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -248,7 +248,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     if (shouldSkipHotspot()) {
       console.log(
         "Skipping hotspot due to level settings:",
-        currentItem.hotspotType,
+        currentItem.hotspotType
       );
       // Skip to the next item
       moveToNextItem();
@@ -379,7 +379,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
       );
     }
   };
@@ -408,7 +408,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex,
+      currentSlideIndex
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -454,7 +454,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
+            (item) => item.id === currentItem.id
           );
           if (existingItem) {
             return [
@@ -575,7 +575,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
+    coords: { x: number; y: number; width: number; height: number } | undefined
   ) => {
     if (!coords) return null;
 
@@ -626,7 +626,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+          (item) => item.id === currentItem.id
         );
         if (existingItem) {
           return [
@@ -691,7 +691,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const response = await startVisualSimulation(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start visual simulation response:", response);
@@ -785,7 +785,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        attemptSequenceData
       );
 
       if (response && response.scores) {
@@ -1019,7 +1019,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -1081,11 +1081,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.confidence >= 80
+                  {scores && scores.Confidence >= 80
                     ? "High"
-                    : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Confidence >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1116,11 +1116,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.concentration >= 80
+                  {scores && scores.Concentration >= 80
                     ? "High"
-                    : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Concentration >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -1151,11 +1151,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.energy >= 80
+                  {scores && scores.Energy >= 80
                     ? "High"
-                    : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Energy >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1883,14 +1883,19 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 borderColor:
                                   item.content.settings?.color ||
                                   "rgba(68, 76, 231, 0.7)",
-                                  boxShadow:item.content.settings?.blur_mask ?  `0 0 12px 3px ${item.content.settings?.color}` : "none",
+                                boxShadow: item.content.settings?.blur_mask
+                                  ? `0 0 12px 3px ${item.content.settings?.color}`
+                                  : "none",
                                 borderRadius: "4px",
                                 backgroundColor: item.content.settings?.color,
                                 transition: "box-shadow 0.3s",
                                 zIndex: 10,
                                 filter: item.content.settings?.blur_mask
-                        ? "blur(8px)" : "none",
-                        backdropFilter: item.content.settings?.blur_mask ? "blur(8px)": "none",
+                                  ? "blur(8px)"
+                                  : "none",
+                                backdropFilter: item.content.settings?.blur_mask
+                                  ? "blur(8px)"
+                                  : "none",
                               }}
                             />
                           )

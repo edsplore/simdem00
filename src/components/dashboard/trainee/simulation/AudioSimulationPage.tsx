@@ -160,7 +160,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     console.log("Simulation details available:", !!simulationDetails);
     console.log(
       "Settings previously initialized:",
-      settingsInitializedRef.current,
+      settingsInitializedRef.current
     );
 
     // Only update settings if we have simulation details
@@ -235,7 +235,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         console.log("Current hide settings from refs:");
         console.log(
           "- Hide agent (trainee) messages:",
-          hideAgentScriptRef.current,
+          hideAgentScriptRef.current
         );
         console.log("- Hide customer messages:", hideCustomerScriptRef.current);
 
@@ -252,7 +252,11 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
             const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
 
             console.log(
-              `📝 NEW MESSAGE: ${isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"} says: "${newMsg.content.substring(0, 30)}${newMsg.content.length > 30 ? "..." : ""}"`,
+              `📝 NEW MESSAGE: ${
+                isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"
+              } says: "${newMsg.content.substring(0, 30)}${
+                newMsg.content.length > 30 ? "..." : ""
+              }"`
             );
 
             // Always add the message to allMessages
@@ -519,7 +523,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
       "⚠️ RENDER: Hide settings - Agent:",
       hideAgentScriptRef.current,
       "Customer:",
-      hideCustomerScriptRef.current,
+      hideCustomerScriptRef.current
     );
   }, [visibleMessages, allMessages]);
 
@@ -698,7 +702,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -760,11 +764,11 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.confidence >= 80
+                  {scores && scores.Confidence >= 80
                     ? "High"
-                    : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Confidence >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -796,11 +800,11 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.concentration >= 80
+                  {scores && scores.Concentration >= 80
                     ? "High"
-                    : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Concentration >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -831,11 +835,11 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.energy >= 80
+                  {scores && scores.Energy >= 80
                     ? "High"
-                    : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Energy >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

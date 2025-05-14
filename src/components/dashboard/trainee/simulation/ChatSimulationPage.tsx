@@ -139,7 +139,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       const response = await startChatSimulation(
         userId,
         simulationId,
-        assignmentId,
+        assignmentId
       );
 
       console.log("Start chat response:", response);
@@ -152,7 +152,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
           simulationId,
           assignmentId,
           "",
-          response.id,
+          response.id
         );
 
         console.log("Initial message response:", initialResponse);
@@ -195,7 +195,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationId,
         assignmentId,
         inputMessage.trim(),
-        simulationProgressId,
+        simulationProgressId
       );
 
       console.log("Message response:", response);
@@ -245,7 +245,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        chatHistory,
+        chatHistory
       );
 
       console.log("End chat response:", response);
@@ -457,7 +457,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -519,11 +519,11 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.confidence >= 80
+                  {scores && scores.Confidence >= 80
                     ? "High"
-                    : scores && scores.confidence >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Confidence >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -554,11 +554,11 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.concentration >= 80
+                  {scores && scores.Concentration >= 80
                     ? "High"
-                    : scores && scores.concentration >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Concentration >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
 
@@ -589,11 +589,11 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.energy >= 80
+                  {scores && scores.Energy >= 80
                     ? "High"
-                    : scores && scores.energy >= 60
-                      ? "Medium"
-                      : "Low"}
+                    : scores && scores.Energy >= 60
+                    ? "Medium"
+                    : "Low"}
                 </Typography>
               </Box>
             </Box>

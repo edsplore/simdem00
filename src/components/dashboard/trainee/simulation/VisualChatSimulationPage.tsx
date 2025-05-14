@@ -1252,7 +1252,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.sim_accuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -1314,9 +1314,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   Confidence
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.confidence >= 80
+                  {scores && scores.Confidence >= 80
                     ? "High"
-                    : scores && scores.confidence >= 60
+                    : scores && scores.Confidence >= 60
                     ? "Medium"
                     : "Low"}
                 </Typography>
@@ -1349,9 +1349,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   Concentration
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.concentration >= 80
+                  {scores && scores.Concentration >= 80
                     ? "High"
-                    : scores && scores.concentration >= 60
+                    : scores && scores.Concentration >= 60
                     ? "Medium"
                     : "Low"}
                 </Typography>
@@ -1384,9 +1384,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   Energy
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.energy >= 80
+                  {scores && scores.Energy >= 80
                     ? "High"
-                    : scores && scores.energy >= 60
+                    : scores && scores.Energy >= 60
                     ? "Medium"
                     : "Low"}
                 </Typography>

@@ -109,12 +109,12 @@ export interface EndVisualChatResponse {
   id: string;
   status: string;
   scores: {
-    sim_accuracy: number;
-    keyword_score: number;
-    click_score: number;
-    confidence: number;
-    energy: number;
-    concentration: number;
+    ContextualAccuracy: number;
+    KeywordScore: number;
+    ClickScore: number;
+    Confidence: number;
+    Energy: number;
+    Concentration: number;
   };
   duration: number;
   transcript: string;

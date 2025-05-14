@@ -38,12 +38,12 @@ export interface EndChatResponse {
   id: string;
   status: string;
   scores: {
-    sim_accuracy: number;
-    keyword_score: number;
-    click_score: number;
-    confidence: number;
-    energy: number;
-    concentration: number;
+    ContextualAccuracy: number;
+    KeywordScore: number;
+    ClickScore: number;
+    Confidence: number;
+    Energy: number;
+    Concentration: number;
   };
   duration: number;
   transcript: string;
@@ -60,7 +60,7 @@ export interface EndChatResponse {
 export const startChatSimulation = async (
   userId: string,
   simId: string,
-  assignmentId: string,
+  assignmentId: string
 ): Promise<ChatResponse> => {
   try {
     const response = await apiClient.post<ChatResponse>(
@@ -69,7 +69,7 @@ export const startChatSimulation = async (
         user_id: userId,
         sim_id: simId,
         assignment_id: assignmentId,
-      },
+      }
     );
 
     return response.data;
@@ -93,7 +93,7 @@ export const sendChatMessage = async (
   simId: string,
   assignmentId: string,
   message: string,
-  simulationProgressId: string,
+  simulationProgressId: string
 ): Promise<ChatResponse> => {
   try {
     const response = await apiClient.post<ChatResponse>(
@@ -104,7 +104,7 @@ export const sendChatMessage = async (
         assignment_id: assignmentId,
         message: message,
         usersimulationprogress_id: simulationProgressId,
-      },
+      }
     );
 
     return response.data;
@@ -126,7 +126,7 @@ export const endChatSimulation = async (
   userId: string,
   simId: string,
   simulationProgressId: string,
-  chatHistory?: Array<{ sentence: string; role: string }>,
+  chatHistory?: Array<{ sentence: string; role: string }>
 ): Promise<EndChatResponse> => {
   try {
     const response = await apiClient.post<EndChatResponse>(
@@ -136,7 +136,7 @@ export const endChatSimulation = async (
         simulation_id: simId,
         usersimulationprogress_id: simulationProgressId,
         chat_history: chatHistory || [],
-      },
+      }
     );
 
     return response.data;

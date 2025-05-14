@@ -150,26 +150,6 @@ interface SimulationData {
       };
       timestamp?: number;
     }>;
-    masking: Array<{
-      id: string;
-      type: string;
-      content: {
-        id: string;
-        type: string;
-        coordinates?: {
-          x: number;
-          y: number;
-          width: number;
-          height: number;
-        };
-        settings?: {
-          color: string;
-          solid_mask: boolean;
-          blur_mask: boolean;
-        };
-      };
-      timestamp?: number;
-    }>;
   }>;
 }
 
@@ -263,7 +243,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const slidesData = simulationData?.slidesData || [];
   const currentSlide = slidesData[currentSlideIndex] || {};
   const currentSequence = currentSlide.sequence || [];
-  const currentMasking = currentSlide.masking || [];
   const currentMasking = currentSlide.masking || [];
   const currentItem = currentSequence[currentSequenceIndex];
 

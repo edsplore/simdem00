@@ -47,6 +47,8 @@ interface AudioSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  onGoToNextSim?: () => void;
+  hasNextSimulation?: boolean;
   assignmentId: string;
 }
 
@@ -95,6 +97,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  onGoToNextSim,
+  hasNextSimulation,
   assignmentId,
 }) => {
   // Get authenticated user using useAuth hook
@@ -478,6 +482,19 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     }, 500); // Small delay to ensure state updates have propagated
   };
 
+  // Updated navigation handlers
+  const handleBackToSimList = () => {
+    setShowCompletionScreen(false);
+    onBackToList();
+  };
+
+  const handleGoToNextSim = () => {
+    if (onGoToNextSim && hasNextSimulation) {
+      setShowCompletionScreen(false);
+      onGoToNextSim();
+    }
+  };
+
   const handleRestartSim = () => {
     setShowCompletionScreen(false);
     setIsCallActive(false);
@@ -560,7 +577,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
             </Typography>
           </Box>
 
-          {/* Rest of completion screen code... */}
           {/* Simulation details */}
           <Box
             sx={{
@@ -824,40 +840,88 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
               </Box>
             </Box>
 
-            {/* Buttons */}
-            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleRestartSim}
-                sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                Restart Sim
-              </Button>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleViewPlayback}
-                sx={{
-                  bgcolor: "#4299E1",
-                  "&:hover": {
-                    bgcolor: "#3182CE",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                View Playback
-              </Button>
+            {/* Updated Buttons - Now with all 4 buttons */}
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}
+            >
+              {/* First row - Navigation buttons */}
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleBackToSimList}
+                  sx={{
+                    borderColor: "#E2E8F0",
+                    color: "#4A5568",
+                    "&:hover": {
+                      borderColor: "#CBD5E0",
+                      bgcolor: "#F7FAFC",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  Back to Sim List
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleGoToNextSim}
+                  disabled={!hasNextSimulation}
+                  sx={{
+                    bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
+                    "&:hover": {
+                      bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
+                    },
+                    "&.Mui-disabled": {
+                      color: "#718096",
+                      bgcolor: "#E2E8F0",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  {hasNextSimulation
+                    ? "Go to Next Simulation"
+                    : "Last Simulation"}
+                </Button>
+              </Box>
+
+              {/* Second row - Action buttons */}
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleRestartSim}
+                  sx={{
+                    borderColor: "#E2E8F0",
+                    color: "#4A5568",
+                    "&:hover": {
+                      borderColor: "#CBD5E0",
+                      bgcolor: "#F7FAFC",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  Restart Sim
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleViewPlayback}
+                  sx={{
+                    bgcolor: "#4299E1",
+                    "&:hover": {
+                      bgcolor: "#3182CE",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  View Playback
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Paper>

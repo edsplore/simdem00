@@ -44,6 +44,8 @@ interface ChatSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  onGoToNextSim?: () => void;
+  hasNextSimulation?: boolean;
   assignmentId: string;
 }
 
@@ -57,6 +59,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  onGoToNextSim,
+  hasNextSimulation,
   assignmentId,
 }) => {
   // Get authenticated user
@@ -135,7 +139,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       const response = await startChatSimulation(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start chat response:", response);
@@ -148,7 +152,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
           simulationId,
           assignmentId,
           "",
-          response.id
+          response.id,
         );
 
         console.log("Initial message response:", initialResponse);
@@ -191,7 +195,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationId,
         assignmentId,
         inputMessage.trim(),
-        simulationProgressId
+        simulationProgressId,
       );
 
       console.log("Message response:", response);
@@ -241,7 +245,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        chatHistory
+        chatHistory,
       );
 
       console.log("End chat response:", response);
@@ -265,20 +269,17 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     }
   };
 
-  const handleRestartSim = () => {
+  // Updated navigation handlers
+  const handleBackToSimList = () => {
     setShowCompletionScreen(false);
-    setIsStarted(false);
-    setMessages([]);
-    setElapsedTime(0);
-    setScores(null);
-    setSimulationProgressId(null);
+    onBackToList();
   };
 
-  const handleViewPlayback = () => {
-    // Handle playback view action
-    console.log("View playback clicked");
-    // For now, just close the completion screen
-    setShowCompletionScreen(false);
+  const handleGoToNextSim = () => {
+    if (onGoToNextSim && hasNextSimulation) {
+      setShowCompletionScreen(false);
+      onGoToNextSim();
+    }
   };
 
   // Render the completion screen based on the image provided
@@ -521,8 +522,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -556,8 +557,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -591,18 +592,18 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
 
-            {/* Buttons */}
+            {/* Updated Buttons */}
             <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                onClick={handleRestartSim}
+                onClick={handleBackToSimList}
                 sx={{
                   borderColor: "#E2E8F0",
                   color: "#4A5568",
@@ -614,22 +615,29 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   borderRadius: "8px",
                 }}
               >
-                Restart Sim
+                Back to Sim List
               </Button>
               <Button
                 fullWidth
                 variant="contained"
-                onClick={handleViewPlayback}
+                onClick={handleGoToNextSim}
+                disabled={!hasNextSimulation}
                 sx={{
-                  bgcolor: "#4299E1",
+                  bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
                   "&:hover": {
-                    bgcolor: "#3182CE",
+                    bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
+                  },
+                  "&.Mui-disabled": {
+                    color: "#718096",
+                    bgcolor: "#E2E8F0",
                   },
                   py: 1.5,
                   borderRadius: "8px",
                 }}
               >
-                View Playback
+                {hasNextSimulation
+                  ? "Go to Next Simulation"
+                  : "Last Simulation"}
               </Button>
             </Box>
           </Box>

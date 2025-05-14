@@ -65,22 +65,38 @@ const SimulationAttemptPage = () => {
         const data = await fetchTrainingData(user.id);
         setTrainingData(data);
 
-        // Extract all simulations from training plans, modules, and standalone simulations
-        const simulations: SimulationItem[] = [];
+        // Use a Map to track unique simulation + assignment combinations
+        const simulationMap = new Map<string, SimulationItem>();
 
-        // From training plans
+        // Helper function to add simulation to map
+        const addSimulation = (sim: any) => {
+          const key = `${sim.simulation_id}-${sim.assignment_id}`;
+
+          // Only add if this exact combination doesn't exist yet
+          if (!simulationMap.has(key)) {
+            simulationMap.set(key, {
+              simulation_id: sim.simulation_id,
+              name: sim.name,
+              type: sim.type,
+              status: sim.status,
+              assignment_id: sim.assignment_id,
+            });
+          }
+        };
+
+        // From training plans (both modules and direct simulations)
         if (data.training_plans) {
           data.training_plans.forEach((plan) => {
+            // Simulations from modules within training plans
             plan.modules.forEach((module) => {
               module.simulations.forEach((sim) => {
-                simulations.push({
-                  simulation_id: sim.simulation_id,
-                  name: sim.name,
-                  type: sim.type,
-                  status: sim.status,
-                  assignment_id: sim.assignment_id,
-                });
+                addSimulation(sim);
               });
+            });
+
+            // Direct simulations in training plans
+            plan.simulations.forEach((sim) => {
+              addSimulation(sim);
             });
           });
         }
@@ -89,13 +105,7 @@ const SimulationAttemptPage = () => {
         if (data.modules) {
           data.modules.forEach((module) => {
             module.simulations.forEach((sim) => {
-              simulations.push({
-                simulation_id: sim.simulation_id,
-                name: sim.name,
-                type: sim.type,
-                status: sim.status,
-                assignment_id: sim.assignment_id,
-              });
+              addSimulation(sim);
             });
           });
         }
@@ -103,27 +113,15 @@ const SimulationAttemptPage = () => {
         // From standalone simulations
         if (data.simulations) {
           data.simulations.forEach((sim) => {
-            simulations.push({
-              simulation_id: sim.simulation_id,
-              name: sim.name,
-              type: sim.type,
-              status: sim.status,
-              assignment_id: sim.assignment_id,
-            });
+            addSimulation(sim);
           });
         }
 
-        setAllSimulations(simulations);
+        // Convert Map to array
+        const uniqueSimulations = Array.from(simulationMap.values());
 
-        // Remove duplicates based on simulation_id and assignment_id combination
-        const uniqueSimulations = simulations.filter(
-          (sim, index, arr) =>
-            arr.findIndex(
-              (s) =>
-                s.simulation_id === sim.simulation_id &&
-                s.assignment_id === sim.assignment_id,
-            ) === index,
-        );
+        // Sort simulations by name for consistent ordering
+        uniqueSimulations.sort((a, b) => a.name.localeCompare(b.name));
 
         setAllSimulations(uniqueSimulations);
 
@@ -133,6 +131,7 @@ const SimulationAttemptPage = () => {
             sim.simulation_id === simulationId &&
             sim.assignment_id === assignmentId,
         );
+
         if (currentIndex !== -1) {
           setCurrentSimIndex(currentIndex);
         }

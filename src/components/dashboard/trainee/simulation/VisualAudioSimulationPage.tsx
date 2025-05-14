@@ -59,6 +59,8 @@ interface VisualAudioSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  onGoToNextSim?: () => void;
+  hasNextSimulation?: boolean;
   assignmentId: string;
 }
 
@@ -72,6 +74,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  onGoToNextSim,
+  hasNextSimulation,
   assignmentId,
 }) => {
   // Get authenticated user using useAuth hook
@@ -88,7 +92,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualAudioResponse["scores"] | null>(
-    null
+    null,
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -97,9 +101,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Visual-audio specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null
+    null,
   );
-  const [slides, setSlides] = useState<Map<string, string>>(new Map());
+  // CHANGED: Remove slides map, we'll store raw base64 data instead
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -107,6 +111,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingVisuals, setIsLoadingVisuals] = useState(false);
+
+  // NEW: Keep raw image data instead of blob URLs
+  const slideDataRef = useRef<Record<string, string>>({});
+  // NEW: Current slide URL state (created just-in-time)
+  const [frameUrl, setFrameUrl] = useState<string>("");
 
   // Interactive elements state
   const [highlightHotspot, setHighlightHotspot] = useState(false);
@@ -205,7 +214,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         currentSequenceIndex,
         currentSlide: currentSlide?.imageId || "none",
         currentSequenceLength: currentSequence?.length || 0,
-        slidesMapSize: slides.size,
+        // CHANGED: No longer tracking slides.size
       });
     }
   }, [
@@ -214,8 +223,31 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     currentSequenceIndex,
     currentSlide,
     currentSequence,
-    slides.size,
   ]);
+
+  // NEW: Create just-in-time URL for current slide
+  useEffect(() => {
+    if (!currentSlide?.imageId) {
+      setFrameUrl("");
+      return;
+    }
+
+    const b64 = slideDataRef.current[currentSlide.imageId];
+    if (!b64) {
+      setFrameUrl("");
+      return;
+    }
+
+    // Convert base64 to blob URL just-in-time
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    setFrameUrl(url);
+
+    // Clean up URL when we leave this slide
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [currentSlideIndex, currentSlide?.imageId]);
 
   // Initialize timer for simulation
   useEffect(() => {
@@ -318,7 +350,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             // If it's the last item and it's a customer message, auto-advance to end
             if (isLastItem) {
               console.log(
-                "Last item is a customer message, ending after speech"
+                "Last item is a customer message, ending after speech",
               );
               setTimeout(() => handleEndCall(), 500);
             }
@@ -389,7 +421,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       .catch((error) => {
         console.error("Error accessing microphone:", error);
         alert(
-          "Microphone access is required for this simulation. Please allow microphone access and try again."
+          "Microphone access is required for this simulation. Please allow microphone access and try again.",
         );
       });
   };
@@ -461,7 +493,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         } else {
           console.log(
             "Recorder not in recording state:",
-            recordingInstance.state
+            recordingInstance.state,
           );
           resolve("");
         }
@@ -505,7 +537,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         if (shouldSkipHotspot()) {
           console.log(
             "Skipping hotspot due to level settings:",
-            currentItem.hotspotType
+            currentItem.hotspotType,
           );
           moveToNextItem();
           setIsProcessing(false);
@@ -576,7 +608,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }, 1000);
       } else {
         console.log(
-          "Last item is a trainee message, waiting for user to click Next"
+          "Last item is a trainee message, waiting for user to click Next",
         );
       }
     }
@@ -593,7 +625,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // New function to handle end call with direct transcriptions
   const handleEndCallWithTranscriptions = async (
-    directTranscriptions: Map<string, string>
+    directTranscriptions: Map<string, string>,
   ) => {
     console.log("🔴 END CALL BUTTON PRESSED WITH DIRECT TRANSCRIPTIONS");
 
@@ -654,7 +686,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     try {
       console.log(
-        "Preparing modified simulation data with direct transcriptions"
+        "Preparing modified simulation data with direct transcriptions",
       );
 
       // Create a deep copy of the slides data to modify
@@ -680,7 +712,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               newItem.text = directTranscriptions.get(newItem.id);
               console.log(
                 `Replacing text for ${newItem.id} with direct transcription:`,
-                newItem.text
+                newItem.text,
               );
             }
 
@@ -705,7 +737,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         simulationId,
         simulationProgressId,
         attemptSequenceData,
-        modifiedSlidesData // Send modified slides data with direct transcriptions
+        modifiedSlidesData, // Send modified slides data with direct transcriptions
       );
 
       console.log("End API call completed with response:", response);
@@ -717,7 +749,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Force update to completion screen
         setShowCompletionScreen(true);
         console.log(
-          "Set showCompletionScreen to true, should show completion screen now"
+          "Set showCompletionScreen to true, should show completion screen now",
         );
       } else {
         console.warn("No scores received in response");
@@ -803,7 +835,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
@@ -820,7 +852,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex
+      currentSlideIndex,
     );
 
     // Check if this is the last item in the entire simulation
@@ -879,7 +911,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id
+            (item) => item.id === currentItem.id,
           );
           if (existingItem) {
             return [
@@ -991,7 +1023,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined
+    coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
@@ -1042,7 +1074,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id
+          (item) => item.id === currentItem.id,
         );
         if (existingItem) {
           return [
@@ -1270,7 +1302,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const response = await startVisualAudioAttempt(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start visual-audio response:", response);
@@ -1282,27 +1314,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         setCallStatus("Connected");
       }
 
-      // Process image data
+      // CHANGED: Store base64 data instead of creating blob URLs
       if (response.images && response.images.length > 0) {
-        const newSlides = new Map();
         console.log(`Processing ${response.images.length} images`);
         for (const image of response.images) {
-          // Convert base64 string to Uint8Array
-          const binaryString = atob(image.image_data);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          // Create blob from Uint8Array
-          const blob = new Blob([bytes], { type: "image/png" });
-          const blobUrl = URL.createObjectURL(blob);
-          console.log(`Created blob URL for image ${image.image_id}`);
-          newSlides.set(image.image_id, blobUrl);
+          // Store raw base64 data in the ref
+          slideDataRef.current[image.image_id] = image.image_data;
+          console.log(`Stored base64 data for image ${image.image_id}`);
         }
-        setSlides(newSlides);
-        console.log(`Set ${newSlides.size} slides`);
+        console.log(`Stored ${response.images.length} image data items`);
       }
     } catch (error) {
       console.error("Error starting visual-audio simulation:", error);
@@ -1329,7 +1349,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           updatedTranscriptions.set(currentItem.id!, transcribedText);
           console.log(
             `Stored transcription for item ${currentItem.id}:`,
-            transcribedText
+            transcribedText,
           );
 
           // Update state (though this might not be available immediately)
@@ -1343,7 +1363,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         if (isLastItem) {
           console.log(
-            "Last trainee message completed, ending simulation directly"
+            "Last trainee message completed, ending simulation directly",
           );
           // For the last trainee message, pass the updated transcriptions directly
           setTimeout(() => {
@@ -1383,7 +1403,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       if (isLastItem) {
         console.log(
-          "Last item acknowledged without recording, ending simulation"
+          "Last item acknowledged without recording, ending simulation",
         );
         handleEndCall();
       } else {
@@ -1411,7 +1431,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     // Safety check: Don't end call if we're in a trainee message recording state
     // with auto-end (not from user button) unless the recorder has finished
     const isCalledFromTraineeNext = new Error().stack?.includes(
-      "handleTraineeNext"
+      "handleTraineeNext",
     );
     const isCalledFromButton =
       new Error().stack?.includes("handleEndCall") &&
@@ -1431,7 +1451,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       isRecording
     ) {
       console.log(
-        "Cannot auto-end during trainee recording, waiting for user input"
+        "Cannot auto-end during trainee recording, waiting for user input",
       );
       return;
     }
@@ -1513,7 +1533,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               newItem.text = messageTranscriptions.get(newItem.id);
               console.log(
                 `Replacing text for ${newItem.id} with transcription:`,
-                newItem.text
+                newItem.text,
               );
             }
 
@@ -1538,7 +1558,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         simulationId,
         simulationProgressId,
         attemptSequenceData,
-        modifiedSlidesData // Send modified slides data with transcriptions
+        modifiedSlidesData, // Send modified slides data with transcriptions
       );
 
       console.log("End API call completed with response:", response);
@@ -1550,7 +1570,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Force update to completion screen
         setShowCompletionScreen(true);
         console.log(
-          "Set showCompletionScreen to true, should show completion screen now"
+          "Set showCompletionScreen to true, should show completion screen now",
         );
       } else {
         console.warn("No scores received in response");
@@ -1568,9 +1588,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
+  // Navigation handlers for completion screen
   const handleRestartSim = () => {
     console.log("Restarting simulation");
-    // Reset state but preserve simulation data and images
+    // Reset state but preserve simulation data
     setShowCompletionScreen(false);
     setIsCallActive(false);
     setElapsedTime(0);
@@ -1583,6 +1604,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setIsPaused(false);
     setCallStatus("Restarting simulation...");
     setCurrentTranscription("");
+    // Clear frame URL
+    setFrameUrl("");
 
     // Small delay before automatically starting the simulation again
     setTimeout(() => {
@@ -1598,13 +1621,22 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setShowCompletionScreen(false);
   };
 
-  // Cleanup object URLs when component unmounts
+  // New navigation handlers
+  const handleBackToSimList = () => {
+    setShowCompletionScreen(false);
+    onBackToList();
+  };
+
+  const handleGoToNextSim = () => {
+    if (onGoToNextSim && hasNextSimulation) {
+      setShowCompletionScreen(false);
+      onGoToNextSim();
+    }
+  };
+
+  // CHANGED: No longer cleanup object URLs when component unmounts (we don't have any)
   useEffect(() => {
     return () => {
-      slides.forEach((blobUrl) => {
-        URL.revokeObjectURL(blobUrl);
-      });
-
       // Stop any active recording
       if (recordingInstance) {
         try {
@@ -1617,7 +1649,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         });
       }
     };
-  }, [slides, recordingInstance]);
+  }, [recordingInstance]);
 
   // Check for audio chunks to update live transcription
   useEffect(() => {
@@ -1893,8 +1925,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1928,8 +1960,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1963,13 +1995,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
 
-            {/* Buttons */}
+            {/* Top row buttons - keeping existing ones */}
             <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
               <Button
                 fullWidth
@@ -2002,6 +2034,55 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                 }}
               >
                 View Playback
+              </Button>
+            </Box>
+
+            {/* Bottom row buttons - new navigation buttons */}
+            <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleBackToSimList}
+                startIcon={
+                  <PlayArrowIcon sx={{ transform: "rotate(180deg)" }} />
+                }
+                sx={{
+                  borderColor: "#E2E8F0",
+                  color: "#4A5568",
+                  "&:hover": {
+                    borderColor: "#CBD5E0",
+                    bgcolor: "#F7FAFC",
+                  },
+                  py: 1.5,
+                  borderRadius: "8px",
+                }}
+              >
+                Back to Sim List
+              </Button>
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleGoToNextSim}
+                disabled={!hasNextSimulation}
+                endIcon={<PlayArrowIcon />}
+                sx={{
+                  borderColor: hasNextSimulation ? "#E2E8F0" : "#CBD5E0",
+                  color: hasNextSimulation ? "#4A5568" : "#A0AEC0",
+                  "&:hover": {
+                    borderColor: hasNextSimulation ? "#CBD5E0" : "#E2E8F0",
+                    bgcolor: hasNextSimulation ? "#F7FAFC" : "#F7FAFC",
+                  },
+                  "&.Mui-disabled": {
+                    borderColor: "#E2E8F0",
+                    color: "#CBD5E0",
+                  },
+                  py: 1.5,
+                  borderRadius: "8px",
+                }}
+              >
+                {hasNextSimulation
+                  ? "Go to Next Simulation"
+                  : "Last Simulation"}
               </Button>
             </Box>
           </Box>
@@ -2239,7 +2320,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     <CircularProgress size={40} sx={{ mb: 2 }} />
                     <Typography>Loading simulation visuals...</Typography>
                   </Box>
-                ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
+                ) : !currentSlide || !frameUrl ? (
                   <Box sx={{ textAlign: "center", p: 4 }}>
                     <Typography color="text.secondary">
                       No visual content available
@@ -2255,7 +2336,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                   >
                     <img
                       ref={imageRef}
-                      src={slides.get(currentSlide.imageId)}
+                      src={frameUrl} // CHANGED: Use frameUrl instead of slides.get()
                       alt={currentSlide.imageName || "Simulation slide"}
                       style={{
                         maxWidth: "100%",

@@ -140,6 +140,8 @@ interface VisualChatSimulationPageProps {
   simType: string;
   attemptType: string;
   onBackToList: () => void;
+  onGoToNextSim?: () => void;
+  hasNextSimulation?: boolean;
   assignmentId: string;
 }
 
@@ -153,6 +155,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   simType,
   attemptType,
   onBackToList,
+  onGoToNextSim,
+  hasNextSimulation,
   assignmentId,
 }) => {
   // Get authenticated user
@@ -169,7 +173,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
-    null
+    null,
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -178,7 +182,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Visual-chat specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null
+    null,
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -364,7 +368,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       if (shouldSkipHotspot()) {
         console.log(
           "Skipping hotspot due to level settings:",
-          currentItem.hotspotType
+          currentItem.hotspotType,
         );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
@@ -547,7 +551,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
@@ -576,7 +580,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex
+      currentSlideIndex,
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -674,7 +678,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined
+    coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
@@ -724,7 +728,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id
+          (item) => item.id === currentItem.id,
         );
         if (existingItem) {
           return [
@@ -833,7 +837,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const response = await startVisualChatAttempt(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start visual-chat response:", response);
@@ -925,7 +929,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData
+        attemptSequenceData,
       );
 
       if (response && response.scores) {
@@ -945,6 +949,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
   };
 
+  // Original handlers (kept for existing functionality)
   const handleRestartSim = () => {
     setShowCompletionScreen(false);
     setIsStarted(false);
@@ -961,6 +966,19 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
+  };
+
+  // Updated navigation handlers
+  const handleBackToSimList = () => {
+    setShowCompletionScreen(false);
+    onBackToList();
+  };
+
+  const handleGoToNextSim = () => {
+    if (onGoToNextSim && hasNextSimulation) {
+      setShowCompletionScreen(false);
+      onGoToNextSim();
+    }
   };
 
   // to  check if user is clicking outside the hubspot
@@ -990,7 +1008,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id
+            (item) => item.id === currentItem.id,
           );
           if (existingItem) {
             return [
@@ -1276,8 +1294,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.confidence >= 80
                     ? "High"
                     : scores && scores.confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1311,8 +1329,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.concentration >= 80
                     ? "High"
                     : scores && scores.concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1346,46 +1364,94 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.energy >= 80
                     ? "High"
                     : scores && scores.energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
 
-            {/* Buttons */}
-            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleRestartSim}
-                sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                Restart Sim
-              </Button>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleViewPlayback}
-                sx={{
-                  bgcolor: "#4299E1",
-                  "&:hover": {
-                    bgcolor: "#3182CE",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                View Playback
-              </Button>
+            {/* Updated Buttons - All 4 buttons */}
+            <Box
+              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}
+            >
+              {/* Original buttons row */}
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleRestartSim}
+                  sx={{
+                    borderColor: "#E2E8F0",
+                    color: "#4A5568",
+                    "&:hover": {
+                      borderColor: "#CBD5E0",
+                      bgcolor: "#F7FAFC",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  Restart Sim
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleViewPlayback}
+                  sx={{
+                    bgcolor: "#4299E1",
+                    "&:hover": {
+                      bgcolor: "#3182CE",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  View Playback
+                </Button>
+              </Box>
+
+              {/* New navigation buttons row */}
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={handleBackToSimList}
+                  sx={{
+                    borderColor: "#E2E8F0",
+                    color: "#4A5568",
+                    "&:hover": {
+                      borderColor: "#CBD5E0",
+                      bgcolor: "#F7FAFC",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  Back to Sim List
+                </Button>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={handleGoToNextSim}
+                  disabled={!hasNextSimulation}
+                  sx={{
+                    bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
+                    "&:hover": {
+                      bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
+                    },
+                    "&.Mui-disabled": {
+                      color: "#718096",
+                      bgcolor: "#E2E8F0",
+                    },
+                    py: 1.5,
+                    borderRadius: "8px",
+                  }}
+                >
+                  {hasNextSimulation
+                    ? "Go to Next Simulation"
+                    : "Last Simulation"}
+                </Button>
+              </Box>
             </Box>
           </Box>
         </Paper>
@@ -2424,6 +2490,33 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               </Box>
             </Box>
           </Box>
+        </Box>
+      )}
+
+      {/* Loading overlay for ending chat */}
+      {isEndingChat && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(255, 255, 255, 0.8)",
+            zIndex: 9999,
+          }}
+        >
+          <CircularProgress size={60} sx={{ mb: 2 }} />
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Processing Simulation
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Calculating your performance scores...
+          </Typography>
         </Box>
       )}
     </Box>

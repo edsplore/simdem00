@@ -768,8 +768,8 @@ const TrainingPlanTable = ({
     const csvRows = [headers.join(",")];
     trainingEntityData.trainees?.forEach((row: any) => {
       const rowData = [
-        reporteeUserIdsMapToName[row.name] || row.name,
-        reporteeUserIdsMapToClassId[row.name],
+        reporteeUserIdsMapToName.get(row.name) || row.name,
+        reporteeUserIdsMapToClassId.get(row.name),
         row.status,
         row.dueDate,
         row.avgScore,
@@ -1611,18 +1611,20 @@ const ManagerDashboard = () => {
         pagesize: rowsPerPage,
       };
 
-      const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
-        user_id: user?.id || "user123",
-        type: type,
-        reportee_user_ids: [],
-        reportee_team_ids: [],
-        params,
-        pagination,
-      });
-
-      setTrainingEntityPagination(data.pagination);
-      setTrainingEntityAttempts(data.training_entity);
-      setError(null);
+      if ((params && params.trainingEntityTeams && params.trainingEntityTeams.length > 0) || (params && params.trainingEntityReportingUserIds && params.trainingEntityReportingUserIds.length > 0)) {
+        const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
+          user_id: user?.id || "user123",
+          type: type,
+          reportee_user_ids: [],
+          reportee_team_ids: [],
+          params,
+          pagination,
+        });
+  
+        setTrainingEntityPagination(data.pagination);
+        setTrainingEntityAttempts(data.training_entity);
+        setError(null);
+      }
     } catch (err) {
       setError("Failed to load training entity attempts");
       console.error("Error loading training entity attempts:", err);

@@ -34,6 +34,7 @@ import {
   StartAudioSimulationResponse,
   EndAudioSimulationResponse,
 } from "../../../../services/simulation_audio_attempts";
+import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -333,12 +334,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     return `${mins}:${secs}`;
   };
 
-  const formatCompletionTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
-
   const handleStart = async () => {
     if (!userId) {
       console.error("Error: User ID is required to start simulation");
@@ -527,717 +522,333 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     );
   }, [visibleMessages, allMessages]);
 
-  // Render the completion screen based on the image provided
-  if (showCompletionScreen) {
-    return (
-      <Box
-        sx={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#f5f7fa",
-        }}
-      >
-        <Paper
-          elevation={3}
+  return (
+    <>
+      <SimulationCompletionScreen
+        showCompletionScreen={showCompletionScreen}
+        userName={userName}
+        simulationName={simulationName}
+        level={level}
+        simType={simType}
+        attemptType={attemptType}
+        scores={scores}
+        duration={duration}
+        isPassed={isPassed}
+        onBackToList={handleBackToSimList}
+        onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
+        onRestartSim={handleRestartSim}
+        onViewPlayback={handleViewPlayback}
+        hasNextSimulation={hasNextSimulation}
+        minPassingScore={MIN_PASSING_SCORE}
+      />
+
+      <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
+        {/* Header */}
+        <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
+          <Stack
+            direction="row"
+            sx={{
+              p: 2,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              backgroundColor: "#F9FAFB",
+              borderRadius: "16px",
+              gap: "20px",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{ borderRadius: "8px", padding: "4px 8px" }}
+            >
+              {simulationName}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {level}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              Sim Type: {simType}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {attemptType} Attempt
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+                ml: "auto",
+                color: "#0037ff",
+              }}
+            >
+              {formatTime(elapsedTime)}
+            </Typography>
+          </Stack>
+        </Box>
+
+        <Card
           sx={{
-            width: "650px",
+            maxWidth: "900px",
+            minHeight: "600px",
+            mx: "auto",
+            mt: 1,
             borderRadius: "16px",
-            overflow: "hidden",
+            position: "relative",
           }}
         >
-          {/* Header */}
           <Box
             sx={{
-              p: 3,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              borderBottom: "1px solid #eaedf0",
-            }}
-          >
-            <Box
-              sx={{
-                width: 60,
-                height: 60,
-                bgcolor: "#F0F3F5",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mb: 1,
-              }}
-            >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
-                <SmartToyIcon sx={{ color: "#A3AED0" }} />
-              </Avatar>
-            </Box>
-            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-              Great work,
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              {userName}
-            </Typography>
-          </Box>
-
-          {/* Simulation details */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 2,
               p: 2,
-              borderBottom: "1px solid #eaedf0",
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              display: "flex",
+              justifyContent: "space-between",
             }}
           >
-            <Chip
-              label={simulationName}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={level}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`Sim Type: ${simType}`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`${attemptType} Attempt`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
+            <Typography variant="subtitle2" color="text.secondary">
+              Customer
+            </Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Trainee
+            </Typography>
           </Box>
 
-          {/* Score details */}
-          <Box sx={{ px: 4, py: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
-              }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Score Details
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ color: "#718096" }}>
-                  Min passing score:
-                </Typography>
+          <Box sx={{ position: "relative", height: "calc(100vh - 200px)" }}>
+            {!isCallActive ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minHeight: "400px",
+                  width: "50%",
+                  mx: "auto",
+                  my: 10,
+                  border: "1px solid #DEE2FD",
+                  borderRadius: 4,
+                }}
+              >
+                <Box
+                  sx={{
+                    bgcolor: "#f5f7ff",
+                    borderRadius: "50%",
+                    p: 2,
+                    mb: 2,
+                  }}
+                >
+                  <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
+                </Box>
                 <Typography
-                  variant="body2"
-                  sx={{ color: "#6366F1", fontWeight: 600 }}
+                  variant="h4"
+                  sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
                 >
-                  {MIN_PASSING_SCORE}%
+                  Start Simulation
                 </Typography>
-                <Chip
-                  label={isPassed ? "Passed" : "Failed"}
-                  size="small"
-                  sx={{
-                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
-                    color: isPassed ? "#319795" : "#E53E3E",
-                    fontSize: "12px",
-                    height: "22px",
-                  }}
-                />
-              </Box>
-            </Box>
-
-            {/* Metrics */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {/* Sim Score */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Sim Score
+                <Typography sx={{ color: "#666", mb: 4 }}>
+                  Press start to attempt the Audio Simulation
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
-                </Typography>
-              </Box>
-
-              {/* Completion Time */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Completion Time
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {formatCompletionTime(duration)}
-                </Typography>
-              </Box>
-
-              {/* Confidence */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Confidence
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Confidence >= 80
-                    ? "High"
-                    : scores && scores.Confidence >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Other metrics... */}
-              {/* Concentration */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Concentration
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Concentration >= 80
-                    ? "High"
-                    : scores && scores.Concentration >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Energy */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <EnergyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Energy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Energy >= 80
-                    ? "High"
-                    : scores && scores.Energy >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Updated Buttons - Now with all 4 buttons */}
-            <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}
-            >
-              {/* First row - Navigation buttons */}
-              <Box sx={{ display: "flex", gap: 2 }}>
                 <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleBackToSimList}
+                  variant="contained"
+                  startIcon={<PlayArrowIcon />}
+                  onClick={handleStart}
+                  disabled={isStarting || !userId}
                   sx={{
-                    borderColor: "#E2E8F0",
-                    color: "#4A5568",
-                    "&:hover": {
-                      borderColor: "#CBD5E0",
-                      bgcolor: "#F7FAFC",
-                    },
+                    bgcolor: "#0037ff",
+                    color: "white",
+                    px: 6,
                     py: 1.5,
-                    borderRadius: "8px",
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontSize: "16px",
+                    "&:hover": {
+                      bgcolor: "#002ed4",
+                    },
+                  }}
+                >
+                  {isStarting ? "Starting..." : "Start Simulation"}
+                </Button>
+                <Button
+                  variant="text"
+                  onClick={onBackToList}
+                  sx={{
+                    mt: 2,
+                    color: "#666",
+                    textTransform: "none",
+                    border: "1px solid #DEE2FD",
+                    px: 8,
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontSize: "16px",
                   }}
                 >
                   Back to Sim List
                 </Button>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleGoToNextSim}
-                  disabled={!hasNextSimulation}
-                  sx={{
-                    bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
-                    "&:hover": {
-                      bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
-                    },
-                    "&.Mui-disabled": {
-                      color: "#718096",
-                      bgcolor: "#E2E8F0",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  {hasNextSimulation
-                    ? "Go to Next Simulation"
-                    : "Last Simulation"}
-                </Button>
               </Box>
-
-              {/* Second row - Action buttons */}
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleRestartSim}
-                  sx={{
-                    borderColor: "#E2E8F0",
-                    color: "#4A5568",
-                    "&:hover": {
-                      borderColor: "#CBD5E0",
-                      bgcolor: "#F7FAFC",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  Restart Sim
-                </Button>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleViewPlayback}
-                  sx={{
-                    bgcolor: "#4299E1",
-                    "&:hover": {
-                      bgcolor: "#3182CE",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  View Playback
-                </Button>
+            ) : (
+              <Box
+                ref={chatContainerRef}
+                sx={{
+                  height: "calc(100% - 80px)",
+                  overflowY: "auto",
+                  px: 3,
+                  py: 2,
+                  "&::-webkit-scrollbar": { display: "none" },
+                  scrollbarWidth: "none",
+                }}
+              >
+                <Stack spacing={2}>
+                  {/* Key change: Instead of rendering all messages, render only visibleMessages */}
+                  {visibleMessages.map((message, index) => (
+                    <Stack
+                      key={index}
+                      direction="row"
+                      spacing={2}
+                      justifyContent={
+                        message.speaker === "customer"
+                          ? "flex-start"
+                          : "flex-end"
+                      }
+                      alignItems="flex-start"
+                    >
+                      {message.speaker === "customer" && (
+                        <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          maxWidth: "70%",
+                          bgcolor: "#FAFAFF",
+                          p: 2,
+                          borderRadius: 3,
+                          border: "2px solid #6D7295",
+                          borderTopLeftRadius:
+                            message.speaker === "customer" ? 0 : 3,
+                          borderTopRightRadius:
+                            message.speaker === "trainee" ? 0 : 3,
+                        }}
+                      >
+                        <Typography variant="body1">{message.text}</Typography>
+                      </Box>
+                      {message.speaker === "trainee" && (
+                        <Avatar
+                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                          sx={{ width: 32, height: 32 }}
+                        />
+                      )}
+                    </Stack>
+                  ))}
+                </Stack>
               </Box>
-            </Box>
+            )}
           </Box>
-        </Paper>
-      </Box>
-    );
-  }
+          {isCallActive && (
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={2}
+              sx={{
+                maxWidth: 900,
+                margin: "0 auto",
+                p: 2,
+                bgcolor: "#F9FAFB",
+                borderTop: "1px solid #E5E7EB",
+                borderRadius: 3,
+              }}
+            >
+              <IconButton
+                sx={{
+                  bgcolor: "#D8F3D2",
+                  "&:hover": { bgcolor: "#D8F3D2" },
+                  mr: 1,
+                }}
+              >
+                <Phone sx={{ color: "#2E7D16" }} />
+              </IconButton>
 
-  return (
-    <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>
-      {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
-        <Stack
-          direction="row"
-          sx={{
-            p: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            backgroundColor: "#F9FAFB",
-            borderRadius: "16px",
-            gap: "20px",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{ borderRadius: "8px", padding: "4px 8px" }}
-          >
-            {simulationName}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {level}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            Sim Type: {simType}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {attemptType} Attempt
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-              ml: "auto",
-              color: "#0037ff",
-            }}
-          >
-            {formatTime(elapsedTime)}
-          </Typography>
-        </Stack>
-      </Box>
+              <Typography
+                variant="subtitle1"
+                sx={{ color: "black", flexGrow: 1 }}
+              >
+                <span style={{ fontWeight: "normal" }}>Call with </span>
+                <span style={{ fontWeight: "bold" }}>Lewis Simmons</span>
+                <span style={{ fontWeight: "normal" }}>
+                  {" "}
+                  {formatTime(elapsedTime)}
+                </span>
+              </Typography>
 
-      <Card
-        sx={{
-          maxWidth: "900px",
-          minHeight: "600px",
-          mx: "auto",
-          mt: 1,
-          borderRadius: "16px",
-          position: "relative",
-        }}
-      >
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography variant="subtitle2" color="text.secondary">
-            Customer
-          </Typography>
-          <Typography variant="subtitle2" color="text.secondary">
-            Trainee
-          </Typography>
-        </Box>
+              <IconButton
+                onClick={handleEndCall}
+                disabled={isEndingCall}
+                sx={{
+                  bgcolor: "#E6352B",
+                  "&:hover": { bgcolor: "#E6352B" },
+                  "&.Mui-disabled": {
+                    bgcolor: "#FFD1CF",
+                  },
+                }}
+              >
+                <CallEnd sx={{ color: "white" }} />
+              </IconButton>
+            </Stack>
+          )}
 
-        <Box sx={{ position: "relative", height: "calc(100vh - 200px)" }}>
-          {!isCallActive ? (
+          {/* Loading overlay for ending call */}
+          {isEndingCall && (
             <Box
               sx={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                minHeight: "400px",
-                width: "50%",
-                mx: "auto",
-                my: 10,
-                border: "1px solid #DEE2FD",
-                borderRadius: 4,
+                bgcolor: "rgba(255, 255, 255, 0.95)",
+                zIndex: 10,
               }}
             >
-              <Box
-                sx={{
-                  bgcolor: "#f5f7ff",
-                  borderRadius: "50%",
-                  p: 2,
-                  mb: 2,
-                }}
-              >
-                <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
-              </Box>
-              <Typography
-                variant="h4"
-                sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
-              >
-                Start Simulation
+              <CircularProgress size={60} sx={{ mb: 2 }} />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Analyzing Attempt
               </Typography>
-              <Typography sx={{ color: "#666", mb: 4 }}>
-                Press start to attempt the Audio Simulation
+              <Typography variant="body2" color="text.secondary">
+                Processing your performance and calculating scores...
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<PlayArrowIcon />}
-                onClick={handleStart}
-                disabled={isStarting || !userId}
-                sx={{
-                  bgcolor: "#0037ff",
-                  color: "white",
-                  px: 6,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontSize: "16px",
-                  "&:hover": {
-                    bgcolor: "#002ed4",
-                  },
-                }}
-              >
-                {isStarting ? "Starting..." : "Start Simulation"}
-              </Button>
-              <Button
-                variant="text"
-                onClick={onBackToList}
-                sx={{
-                  mt: 2,
-                  color: "#666",
-                  textTransform: "none",
-                  border: "1px solid #DEE2FD",
-                  px: 8,
-                  py: 1.5,
-                  borderRadius: 2,
-                  fontSize: "16px",
-                }}
-              >
-                Back to Sim List
-              </Button>
-            </Box>
-          ) : (
-            <Box
-              ref={chatContainerRef}
-              sx={{
-                height: "calc(100% - 80px)",
-                overflowY: "auto",
-                px: 3,
-                py: 2,
-                "&::-webkit-scrollbar": { display: "none" },
-                scrollbarWidth: "none",
-              }}
-            >
-              <Stack spacing={2}>
-                {/* Key change: Instead of rendering all messages, render only visibleMessages */}
-                {visibleMessages.map((message, index) => (
-                  <Stack
-                    key={index}
-                    direction="row"
-                    spacing={2}
-                    justifyContent={
-                      message.speaker === "customer" ? "flex-start" : "flex-end"
-                    }
-                    alignItems="flex-start"
-                  >
-                    {message.speaker === "customer" && (
-                      <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
-                    )}
-                    <Box
-                      sx={{
-                        maxWidth: "70%",
-                        bgcolor: "#FAFAFF",
-                        p: 2,
-                        borderRadius: 3,
-                        border: "2px solid #6D7295",
-                        borderTopLeftRadius:
-                          message.speaker === "customer" ? 0 : 3,
-                        borderTopRightRadius:
-                          message.speaker === "trainee" ? 0 : 3,
-                      }}
-                    >
-                      <Typography variant="body1">{message.text}</Typography>
-                    </Box>
-                    {message.speaker === "trainee" && (
-                      <Avatar
-                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-                        sx={{ width: 32, height: 32 }}
-                      />
-                    )}
-                  </Stack>
-                ))}
-              </Stack>
             </Box>
           )}
-        </Box>
-        {isCallActive && (
-          <Stack
-            direction="row"
-            alignItems="center"
-            spacing={2}
-            sx={{
-              maxWidth: 900,
-              margin: "0 auto",
-              p: 2,
-              bgcolor: "#F9FAFB",
-              borderTop: "1px solid #E5E7EB",
-              borderRadius: 3,
-            }}
-          >
-            <IconButton
-              sx={{
-                bgcolor: "#D8F3D2",
-                "&:hover": { bgcolor: "#D8F3D2" },
-                mr: 1,
-              }}
-            >
-              <Phone sx={{ color: "#2E7D16" }} />
-            </IconButton>
-
-            <Typography
-              variant="subtitle1"
-              sx={{ color: "black", flexGrow: 1 }}
-            >
-              <span style={{ fontWeight: "normal" }}>Call with </span>
-              <span style={{ fontWeight: "bold" }}>Lewis Simmons</span>
-              <span style={{ fontWeight: "normal" }}>
-                {" "}
-                {formatTime(elapsedTime)}
-              </span>
-            </Typography>
-
-            <IconButton
-              onClick={handleEndCall}
-              disabled={isEndingCall}
-              sx={{
-                bgcolor: "#E6352B",
-                "&:hover": { bgcolor: "#E6352B" },
-                "&.Mui-disabled": {
-                  bgcolor: "#FFD1CF",
-                },
-              }}
-            >
-              <CallEnd sx={{ color: "white" }} />
-            </IconButton>
-          </Stack>
-        )}
-
-        {/* Loading overlay for ending call */}
-        {isEndingCall && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              zIndex: 10,
-            }}
-          >
-            <CircularProgress size={60} sx={{ mb: 2 }} />
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Analyzing Attempt
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Processing your performance and calculating scores...
-            </Typography>
-          </Box>
-        )}
-      </Card>
-    </Box>
+        </Card>
+      </Box>
+    </>
   );
 };
 

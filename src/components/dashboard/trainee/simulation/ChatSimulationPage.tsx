@@ -30,6 +30,7 @@ import {
   ChatResponse,
   EndChatResponse,
 } from "../../../../services/simulation_chat_attempts";
+import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -117,12 +118,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       .padStart(2, "0");
     const secs = (seconds % 60).toString().padStart(2, "0");
     return `${mins}:${secs}`;
-  };
-
-  const formatCompletionTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
   };
 
   const handleStart = async () => {
@@ -282,718 +277,376 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     }
   };
 
-  // Render the completion screen based on the image provided
-  if (showCompletionScreen) {
-    return (
+  return (
+    <>
+      <SimulationCompletionScreen
+        showCompletionScreen={showCompletionScreen}
+        userName={userName}
+        simulationName={simulationName}
+        level={level}
+        simType={simType}
+        attemptType={attemptType}
+        scores={scores}
+        duration={duration}
+        isPassed={isPassed}
+        onBackToList={handleBackToSimList}
+        onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
+        onRestartSim={undefined} // Chat doesn't have restart
+        onViewPlayback={undefined} // Chat doesn't have playback
+        hasNextSimulation={hasNextSimulation}
+        minPassingScore={MIN_PASSING_SCORE}
+      />
+
       <Box
         sx={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#f5f7fa",
+          height: "calc(100vh - 20px)",
+          bgcolor: "white",
+          py: 0,
+          px: 0,
+          position: "relative",
         }}
       >
-        <Paper
-          elevation={3}
+        {/* Header */}
+        <Box
+          sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mb: 0.5 }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              p: 2,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              backgroundColor: "#F9FAFB",
+              borderRadius: "16px",
+              gap: "20px",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{ borderRadius: "8px", padding: "4px 8px" }}
+            >
+              {simulationName}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {level}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              Sim Type: {simType}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {attemptType} Attempt
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+                ml: "auto",
+                color: "#0037ff",
+              }}
+            >
+              {formatTime(elapsedTime)}
+            </Typography>
+          </Stack>
+        </Box>
+
+        <Card
           sx={{
-            width: "650px",
+            maxWidth: "900px",
+            height: isStarted ? "calc(100vh - 200px)" : "450px",
+            mx: "auto",
+            mt: 0.5,
             borderRadius: "16px",
+            position: "relative",
+            display: "flex",
+            flexDirection: "column",
             overflow: "hidden",
           }}
         >
-          {/* Header */}
           <Box
             sx={{
-              p: 3,
+              p: 2,
+              borderBottom: "1px solid",
+              borderColor: "divider",
               display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              borderBottom: "1px solid #eaedf0",
+              justifyContent: "space-between",
             }}
           >
+            <Typography variant="subtitle2" color="text.secondary">
+              Customer
+            </Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Trainee
+            </Typography>
+          </Box>
+
+          {!isStarted ? (
             <Box
               sx={{
-                width: 60,
-                height: 60,
-                bgcolor: "#F0F3F5",
-                borderRadius: "50%",
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
-                mb: 1,
+                flex: 1,
+                width: "50%",
+                mx: "auto",
+                my: 2,
+                border: "1px solid #DEE2FD",
+                borderRadius: 4,
               }}
             >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
-                <SmartToyIcon sx={{ color: "#A3AED0" }} />
-              </Avatar>
-            </Box>
-            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-              Great work,
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              {userName}
-            </Typography>
-          </Box>
-
-          {/* Simulation details */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              gap: 2,
-              p: 2,
-              borderBottom: "1px solid #eaedf0",
-            }}
-          >
-            <Chip
-              label={simulationName}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={level}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`Sim Type: ${simType}`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`${attemptType} Attempt`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-          </Box>
-
-          {/* Score details */}
-          <Box sx={{ px: 4, py: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
-              }}
-            >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Score Details
+              <Box
+                sx={{
+                  bgcolor: "#f5f7ff",
+                  borderRadius: "50%",
+                  p: 2,
+                  mb: 2,
+                }}
+              >
+                <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
+              </Box>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+              >
+                Start Simulation
               </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ color: "#718096" }}>
-                  Min passing score:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "#6366F1", fontWeight: 600 }}
-                >
-                  {MIN_PASSING_SCORE}%
-                </Typography>
-                <Chip
-                  label={isPassed ? "Passed" : "Failed"}
-                  size="small"
-                  sx={{
-                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
-                    color: isPassed ? "#319795" : "#E53E3E",
-                    fontSize: "12px",
-                    height: "22px",
-                  }}
-                />
-              </Box>
-            </Box>
-
-            {/* Metrics */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {/* Sim Score */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Sim Score
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
-                </Typography>
-              </Box>
-
-              {/* Completion Time */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Completion Time
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {formatCompletionTime(duration)}
-                </Typography>
-              </Box>
-
-              {/* Confidence */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Confidence
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Confidence >= 80
-                    ? "High"
-                    : scores && scores.Confidence >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Concentration */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Concentration
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Concentration >= 80
-                    ? "High"
-                    : scores && scores.Concentration >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Energy */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <EnergyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Energy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Energy >= 80
-                    ? "High"
-                    : scores && scores.Energy >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Updated Buttons */}
-            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
+              <Typography sx={{ color: "#666", mb: 4 }}>
+                Press start to attempt the Chat Simulation
+              </Typography>
               <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleBackToSimList}
+                variant="contained"
+                startIcon={<SmartToyIcon />}
+                onClick={handleStart}
+                disabled={!userId}
                 sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
+                  bgcolor: "#0037ff",
+                  color: "white",
+                  px: 6,
                   py: 1.5,
-                  borderRadius: "8px",
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontSize: "16px",
+                  "&:hover": {
+                    bgcolor: "#002ed4",
+                  },
+                }}
+              >
+                Start Simulation
+              </Button>
+              <Button
+                variant="text"
+                onClick={onBackToList}
+                sx={{
+                  mt: 2,
+                  color: "#666",
+                  textTransform: "none",
+                  border: "1px solid #DEE2FD",
+                  px: 8,
+                  py: 1.5,
+                  borderRadius: 2,
+                  fontSize: "16px",
                 }}
               >
                 Back to Sim List
               </Button>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleGoToNextSim}
-                disabled={!hasNextSimulation}
+            </Box>
+          ) : (
+            <>
+              <Box
+                ref={chatContainerRef}
                 sx={{
-                  bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
-                  "&:hover": {
-                    bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
+                  flex: 1,
+                  overflowY: "auto",
+                  px: 1,
+                  py: 0.5,
+                  "&::-webkit-scrollbar": { width: "8px" },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#E2E8F0",
+                    borderRadius: "4px",
                   },
-                  "&.Mui-disabled": {
-                    color: "#718096",
-                    bgcolor: "#E2E8F0",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
+                  marginBottom: 0,
                 }}
               >
-                {hasNextSimulation
-                  ? "Go to Next Simulation"
-                  : "Last Simulation"}
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        height: "calc(100vh - 20px)",
-        bgcolor: "white",
-        py: 0,
-        px: 0,
-        position: "relative",
-      }}
-    >
-      {/* Header */}
-      <Box
-        sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mb: 0.5 }}
-      >
-        <Stack
-          direction="row"
-          sx={{
-            p: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            backgroundColor: "#F9FAFB",
-            borderRadius: "16px",
-            gap: "20px",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{ borderRadius: "8px", padding: "4px 8px" }}
-          >
-            {simulationName}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {level}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            Sim Type: {simType}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {attemptType} Attempt
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-              ml: "auto",
-              color: "#0037ff",
-            }}
-          >
-            {formatTime(elapsedTime)}
-          </Typography>
-        </Stack>
-      </Box>
-
-      <Card
-        sx={{
-          maxWidth: "900px",
-          height: isStarted ? "calc(100vh - 200px)" : "450px",
-          mx: "auto",
-          mt: 0.5,
-          borderRadius: "16px",
-          position: "relative",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          sx={{
-            p: 2,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            display: "flex",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography variant="subtitle2" color="text.secondary">
-            Customer
-          </Typography>
-          <Typography variant="subtitle2" color="text.secondary">
-            Trainee
-          </Typography>
-        </Box>
-
-        {!isStarted ? (
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              flex: 1,
-              width: "50%",
-              mx: "auto",
-              my: 2,
-              border: "1px solid #DEE2FD",
-              borderRadius: 4,
-            }}
-          >
-            <Box
-              sx={{
-                bgcolor: "#f5f7ff",
-                borderRadius: "50%",
-                p: 2,
-                mb: 2,
-              }}
-            >
-              <SmartToyIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
-            </Box>
-            <Typography
-              variant="h4"
-              sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
-            >
-              Start Simulation
-            </Typography>
-            <Typography sx={{ color: "#666", mb: 4 }}>
-              Press start to attempt the Chat Simulation
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<SmartToyIcon />}
-              onClick={handleStart}
-              disabled={!userId}
-              sx={{
-                bgcolor: "#0037ff",
-                color: "white",
-                px: 6,
-                py: 1.5,
-                borderRadius: 2,
-                textTransform: "none",
-                fontSize: "16px",
-                "&:hover": {
-                  bgcolor: "#002ed4",
-                },
-              }}
-            >
-              Start Simulation
-            </Button>
-            <Button
-              variant="text"
-              onClick={onBackToList}
-              sx={{
-                mt: 2,
-                color: "#666",
-                textTransform: "none",
-                border: "1px solid #DEE2FD",
-                px: 8,
-                py: 1.5,
-                borderRadius: 2,
-                fontSize: "16px",
-              }}
-            >
-              Back to Sim List
-            </Button>
-          </Box>
-        ) : (
-          <>
-            <Box
-              ref={chatContainerRef}
-              sx={{
-                flex: 1,
-                overflowY: "auto",
-                px: 1,
-                py: 0.5,
-                "&::-webkit-scrollbar": { width: "8px" },
-                "&::-webkit-scrollbar-thumb": {
-                  backgroundColor: "#E2E8F0",
-                  borderRadius: "4px",
-                },
-                marginBottom: 0,
-              }}
-            >
-              <Stack spacing={0.5}>
-                {messages.map((message, index) => (
-                  <Stack
-                    key={index}
-                    direction="row"
-                    spacing={2}
-                    justifyContent={
-                      message.speaker === "customer" ? "flex-start" : "flex-end"
-                    }
-                    alignItems="flex-start"
-                  >
-                    {message.speaker === "customer" && (
-                      <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
-                    )}
-                    <Box
-                      sx={{
-                        maxWidth: "70%",
-                        bgcolor: "#FAFAFF",
-                        p: 2,
-                        borderRadius: 3,
-                        border: "2px solid #6D7295",
-                        borderTopLeftRadius:
-                          message.speaker === "customer" ? 0 : 3,
-                        borderTopRightRadius:
-                          message.speaker === "trainee" ? 0 : 3,
-                      }}
+                <Stack spacing={0.5}>
+                  {messages.map((message, index) => (
+                    <Stack
+                      key={index}
+                      direction="row"
+                      spacing={2}
+                      justifyContent={
+                        message.speaker === "customer"
+                          ? "flex-start"
+                          : "flex-end"
+                      }
+                      alignItems="flex-start"
                     >
-                      <Typography variant="body1">{message.text}</Typography>
-                    </Box>
-                    {message.speaker === "trainee" && (
-                      <Avatar
-                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
-                        sx={{ width: 32, height: 32 }}
-                      />
-                    )}
-                  </Stack>
-                ))}
-              </Stack>
-            </Box>
+                      {message.speaker === "customer" && (
+                        <Avatar sx={{ width: 32, height: 32 }}>C</Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          maxWidth: "70%",
+                          bgcolor: "#FAFAFF",
+                          p: 2,
+                          borderRadius: 3,
+                          border: "2px solid #6D7295",
+                          borderTopLeftRadius:
+                            message.speaker === "customer" ? 0 : 3,
+                          borderTopRightRadius:
+                            message.speaker === "trainee" ? 0 : 3,
+                        }}
+                      >
+                        <Typography variant="body1">{message.text}</Typography>
+                      </Box>
+                      {message.speaker === "trainee" && (
+                        <Avatar
+                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                          sx={{ width: 32, height: 32 }}
+                        />
+                      )}
+                    </Stack>
+                  ))}
+                </Stack>
+              </Box>
 
-            {/* Sticky input area at bottom */}
+              {/* Sticky input area at bottom */}
+              <Box
+                sx={{
+                  position: "sticky",
+                  bottom: 0,
+                  p: 1,
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "white",
+                  display: "flex",
+                  gap: 2,
+                  zIndex: 100,
+                  boxShadow: "0px -2px 10px rgba(0,0,0,0.05)",
+                  marginTop: "auto",
+                  borderBottomLeftRadius: "16px",
+                  borderBottomRightRadius: "16px",
+                }}
+              >
+                <TextField
+                  fullWidth
+                  multiline
+                  maxRows={2}
+                  placeholder="Type your message..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  disabled={isLoading || isEndingChat}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                    },
+                  }}
+                />
+                <Stack direction="row" spacing={1}>
+                  <IconButton
+                    onClick={handleSendMessage}
+                    disabled={isLoading || !inputMessage.trim() || isEndingChat}
+                    sx={{
+                      bgcolor: "#444CE7",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "#3538CD",
+                      },
+                      "&.Mui-disabled": {
+                        bgcolor: "#F5F6FF",
+                        color: "#444CE7",
+                      },
+                    }}
+                  >
+                    {isLoading ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      <SendIcon />
+                    )}
+                  </IconButton>
+                  <IconButton
+                    onClick={handleEndChat}
+                    disabled={isEndingChat || messages.length < 2}
+                    sx={{
+                      bgcolor: "#E6352B",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "#C82333",
+                      },
+                      "&.Mui-disabled": {
+                        bgcolor: "#FFD1CF",
+                      },
+                    }}
+                  >
+                    {isEndingChat ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      <CallEndIcon />
+                    )}
+                  </IconButton>
+                </Stack>
+              </Box>
+            </>
+          )}
+
+          {/* Loading overlay for ending chat */}
+          {isEndingChat && (
             <Box
               sx={{
-                position: "sticky",
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
                 bottom: 0,
-                p: 1,
-                borderTop: "1px solid",
-                borderColor: "divider",
-                bgcolor: "white",
                 display: "flex",
-                gap: 2,
-                zIndex: 100,
-                boxShadow: "0px -2px 10px rgba(0,0,0,0.05)",
-                marginTop: "auto",
-                borderBottomLeftRadius: "16px",
-                borderBottomRightRadius: "16px",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(255, 255, 255, 0.95)",
+                zIndex: 10,
               }}
             >
-              <TextField
-                fullWidth
-                multiline
-                maxRows={2}
-                placeholder="Type your message..."
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading || isEndingChat}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                  },
-                }}
-              />
-              <Stack direction="row" spacing={1}>
-                <IconButton
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !inputMessage.trim() || isEndingChat}
-                  sx={{
-                    bgcolor: "#444CE7",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "#3538CD",
-                    },
-                    "&.Mui-disabled": {
-                      bgcolor: "#F5F6FF",
-                      color: "#444CE7",
-                    },
-                  }}
-                >
-                  {isLoading ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    <SendIcon />
-                  )}
-                </IconButton>
-                <IconButton
-                  onClick={handleEndChat}
-                  disabled={isEndingChat || messages.length < 2}
-                  sx={{
-                    bgcolor: "#E6352B",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "#C82333",
-                    },
-                    "&.Mui-disabled": {
-                      bgcolor: "#FFD1CF",
-                    },
-                  }}
-                >
-                  {isEndingChat ? (
-                    <CircularProgress size={24} color="inherit" />
-                  ) : (
-                    <CallEndIcon />
-                  )}
-                </IconButton>
-              </Stack>
+              <CircularProgress size={60} sx={{ mb: 2 }} />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                Analyzing Attempt
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Evaluating your responses and calculating performance scores...
+              </Typography>
             </Box>
-          </>
-        )}
-
-        {/* Loading overlay for ending chat */}
-        {isEndingChat && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              zIndex: 10,
-            }}
-          >
-            <CircularProgress size={60} sx={{ mb: 2 }} />
-            <Typography variant="h6" sx={{ mb: 1 }}>
-              Analyzing Attempt
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Evaluating your responses and calculating performance scores...
-            </Typography>
-          </Box>
-        )}
-      </Card>
-    </Box>
+          )}
+        </Card>
+      </Box>
+    </>
   );
 };
 

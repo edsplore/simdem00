@@ -379,7 +379,26 @@ const chartSetting = {
 };
 
 // LeaderBoard component
-const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
+const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
+  const [sortBy, setSortBy] = useState("High to Low");
+
+  const handleSortChange = (event) => {
+    const newSortBy = event.target.value;
+    setSortBy(newSortBy);
+    if (onSortChange) {
+      onSortChange(newSortBy);
+    }
+  };
+
+  // Sort the data based on current selection
+  const sortedData = [...data].sort((a, b) => {
+    if (sortBy === "High to Low") {
+      return b.score - a.score;
+    } else {
+      return a.score - b.score;
+    }
+  });
+
   return (
     <Card
       sx={{
@@ -410,15 +429,38 @@ const LeaderBoard = ({ data, title, sortBy = "High to Low", popupText }) => {
             </Typography>
             <InfoIconPopup title={popupText} />
           </Stack>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography fontSize={12} variant="caption" color="#00000099">
-              Sort by: {sortBy}
+          <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
+            <Typography fontSize={12} variant="caption" color="#00000099" sx={{ mr: 1 }}>
+              Sort by:
             </Typography>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <Select
+                value={sortBy}
+                onChange={handleSortChange}
+                sx={{
+                  fontSize: 12,
+                  "& .MuiSelect-select": {
+                    py: 0.5,
+                    px: 1,
+                  },
+                  "& fieldset": {
+                    border: "1px solid #E0E0E0",
+                  },
+                }}
+              >
+                <MenuItem value="High to Low" sx={{ fontSize: 12 }}>
+                  High to Low
+                </MenuItem>
+                <MenuItem value="Low to High" sx={{ fontSize: 12 }}>
+                  Low to High
+                </MenuItem>
+              </Select>
+            </FormControl>
           </Box>
         </Stack>
         <Stack sx={{ px: 1.5, pt: 2 }} gap={1}>
           <BarChart
-            dataset={data}
+            dataset={sortedData}
             yAxis={[{ scaleType: "band", dataKey: "team" }]}
             series={[
               {
@@ -1387,6 +1429,11 @@ const ManagerDashboard = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
+  // State for managing leaderboard sorting
+  const [completionSortBy, setCompletionSortBy] = useState("High to Low");
+  const [averageScoreSortBy, setAverageScoreSortBy] = useState("High to Low");
+  const [adherenceSortBy, setAdherenceSortBy] = useState("High to Low");
+
   //const [dashboardAggregatedData, setDashboardAggregatedData] = useState<ManagerDashboardAggregatedDataResponse | {}>({});
   const handleTeamframeChange = (event: any) => {
     const { value } = event.target;
@@ -1571,7 +1618,7 @@ const ManagerDashboard = () => {
       const workspaceId = params.get("workspace_id");
 
       // Fetch only users with Sim Creator and Manager roles for the creator dropdown
-      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager", "anmol_test", "Instructional Designer", "Organizational Admin"]);
+      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager"]);
 
       console.log("Creators and Managers from fetchUsersSummary:", response);
 
@@ -1874,6 +1921,19 @@ const ManagerDashboard = () => {
   const handleTrainingEntitySearch = () => {
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     handleTrainingEntityTeamSelectedApply();
+  };
+
+  // Handlers for leaderboard sorting
+  const handleCompletionSortChange = (newSortBy) => {
+    setCompletionSortBy(newSortBy);
+  };
+
+  const handleAverageScoreSortChange = (newSortBy) => {
+    setAverageScoreSortBy(newSortBy);
+  };
+
+  const handleAdherenceSortChange = (newSortBy) => {
+    setAdherenceSortBy(newSortBy);
   };
 
   useEffect(() => {
@@ -2223,7 +2283,7 @@ const ManagerDashboard = () => {
                       <LeaderBoard
                         data={dashboardData.leaderBoards.completion}
                         title="Completion Rate Leader Board"
-                        sortBy="High to Low"
+                        onSortChange={handleCompletionSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
                       />
                     )}
@@ -2277,7 +2337,7 @@ const ManagerDashboard = () => {
                       <LeaderBoard
                         data={dashboardData.leaderBoards.averageScore}
                         title="Average Score Leader Board"
-                        sortBy="High to Low"
+                        onSortChange={handleAverageScoreSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
                       />
                     )}
@@ -2331,7 +2391,7 @@ const ManagerDashboard = () => {
                       <LeaderBoard
                         data={dashboardData.leaderBoards.adherence}
                         title="Adherence Rate Leader Board"
-                        sortBy="High to Low"
+                        onSortChange={handleAdherenceSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
                       />
                     )}

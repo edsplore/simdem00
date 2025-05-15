@@ -4,7 +4,6 @@ import {
   Typography,
   Button,
   Stack,
-  Card,
   Avatar,
   IconButton,
   Chip,
@@ -43,9 +42,9 @@ import {
   ImageData,
   EndVisualAudioResponse,
 } from "../../../../services/simulation_visual_audio_attempts";
-
 import { convertAudioToText } from "../../../../services/simulation_script";
 import { AttemptInterface } from "../../../../types/attempts";
+import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -775,13 +774,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       .padStart(2, "0");
     const secs = (seconds % 60).toString().padStart(2, "0");
     return `${mins}:${secs}`;
-  };
-
-  // Format completion time as Xm Ys
-  const formatCompletionTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
   };
 
   // Function to speak text
@@ -1686,983 +1678,573 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   }, [audioChunks, isRecording, isTranscribing, currentItem, userId]);
 
-  // Render the completion screen based on the image provided
-  if (showCompletionScreen) {
-    return (
+  return (
+    <>
+      <SimulationCompletionScreen
+        showCompletionScreen={showCompletionScreen}
+        userName={userName}
+        simulationName={simulationName}
+        level={level}
+        simType={simType}
+        attemptType={attemptType}
+        scores={scores}
+        duration={duration}
+        isPassed={isPassed}
+        onBackToList={handleBackToSimList}
+        onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
+        onRestartSim={handleRestartSim}
+        onViewPlayback={handleViewPlayback}
+        hasNextSimulation={hasNextSimulation}
+        minPassingScore={MIN_PASSING_SCORE}
+      />
+
       <Box
-        sx={{
-          height: "calc(100vh - 40px)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#f5f7fa",
-        }}
+        sx={{ height: "calc(100vh - 30px)", bgcolor: "white", py: 0, px: 0 }}
       >
-        <Paper
-          elevation={3}
+        {/* Pause Overlay */}
+        <Modal
+          open={isPaused && isCallActive}
+          onClose={togglePause}
+          closeAfterTransition
+          slotProps={{
+            backdrop: {
+              timeout: 500,
+            },
+          }}
           sx={{
-            width: "650px",
-            borderRadius: "16px",
-            overflow: "hidden",
+            backdropFilter: "blur(5px)",
           }}
         >
-          {/* Header */}
+          <Fade in={isPaused && isCallActive}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 400,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                boxShadow: 24,
+                p: 4,
+                textAlign: "center",
+              }}
+            >
+              <PlayArrow sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+              <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+                Simulation Paused
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Click anywhere or press the play button to continue
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={togglePause}
+                startIcon={<PlayArrow />}
+              >
+                Resume Simulation
+              </Button>
+            </Box>
+          </Fade>
+        </Modal>
+
+        {/* Header */}
+        <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
+          <Stack
+            direction="row"
+            sx={{
+              p: 1.5,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              backgroundColor: "#F9FAFB",
+              borderRadius: "16px",
+              gap: "20px",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{ borderRadius: "8px", padding: "4px 8px" }}
+            >
+              {simulationName}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {level}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              Sim Type: {simType}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {attemptType} Attempt
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+                ml: "auto",
+                color: "#0037ff",
+              }}
+            >
+              {formatTime(elapsedTime)}
+            </Typography>
+          </Stack>
+        </Box>
+
+        {!isCallActive ? (
           <Box
             sx={{
-              p: 3,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              borderBottom: "1px solid #eaedf0",
-            }}
-          >
-            <Box
-              sx={{
-                width: 60,
-                height: 60,
-                bgcolor: "#F0F3F5",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mb: 1,
-              }}
-            >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
-                <SmartToyIcon sx={{ color: "#A3AED0" }} />
-              </Avatar>
-            </Box>
-            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-              Great work,
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              {userName}
-            </Typography>
-          </Box>
-
-          {/* Simulation details */}
-          <Box
-            sx={{
-              display: "flex",
               justifyContent: "center",
-              gap: 2,
-              p: 2,
-              borderBottom: "1px solid #eaedf0",
+              minHeight: "350px",
+              width: "50%",
+              mx: "auto",
+              my: 6,
+              border: "1px solid #DEE2FD",
+              borderRadius: 4,
             }}
           >
-            <Chip
-              label={simulationName}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={level}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`Sim Type: ${simType}`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`${attemptType} Attempt`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-          </Box>
-
-          {/* Score details */}
-          <Box sx={{ px: 4, py: 3 }}>
             <Box
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
+                bgcolor: "#f5f7ff",
+                borderRadius: "50%",
+                p: 2,
+                mb: 2,
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Score Details
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ color: "#718096" }}>
-                  Min passing score:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "#6366F1", fontWeight: 600 }}
-                >
-                  {MIN_PASSING_SCORE}%
-                </Typography>
-                <Chip
-                  label={isPassed ? "Passed" : "Failed"}
-                  size="small"
-                  sx={{
-                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
-                    color: isPassed ? "#319795" : "#E53E3E",
-                    fontSize: "12px",
-                    height: "22px",
-                  }}
-                />
-              </Box>
+              <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
             </Box>
-
-            {/* Metrics */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {/* Sim Score */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Score
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores["FinalScore"])}%` : "86%"}
-                </Typography>
-              </Box>
-
-              {/* Completion Time */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Completion Time
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {formatCompletionTime(duration)}
-                </Typography>
-              </Box>
-
-              {/* Confidence */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Confidence
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Confidence >= 80
-                    ? "High"
-                    : scores && scores.Confidence >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Concentration */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Concentration
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Concentration >= 80
-                    ? "High"
-                    : scores && scores.Concentration >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Energy */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <EnergyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Energy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Energy >= 80
-                    ? "High"
-                    : scores && scores.Energy >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Top row buttons - keeping existing ones */}
-            <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleRestartSim}
-                sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                Restart Sim
-              </Button>
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleViewPlayback}
-                sx={{
-                  bgcolor: "#4299E1",
-                  "&:hover": {
-                    bgcolor: "#3182CE",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                View Playback
-              </Button>
-            </Box>
-
-            {/* Bottom row buttons - new navigation buttons */}
-            <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleBackToSimList}
-                startIcon={
-                  <PlayArrowIcon sx={{ transform: "rotate(180deg)" }} />
-                }
-                sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                Back to Sim List
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={handleGoToNextSim}
-                disabled={!hasNextSimulation}
-                endIcon={<PlayArrowIcon />}
-                sx={{
-                  borderColor: hasNextSimulation ? "#E2E8F0" : "#CBD5E0",
-                  color: hasNextSimulation ? "#4A5568" : "#A0AEC0",
-                  "&:hover": {
-                    borderColor: hasNextSimulation ? "#CBD5E0" : "#E2E8F0",
-                    bgcolor: hasNextSimulation ? "#F7FAFC" : "#F7FAFC",
-                  },
-                  "&.Mui-disabled": {
-                    borderColor: "#E2E8F0",
-                    color: "#CBD5E0",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                {hasNextSimulation
-                  ? "Go to Next Simulation"
-                  : "Last Simulation"}
-              </Button>
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ height: "calc(100vh - 30px)", bgcolor: "white", py: 0, px: 0 }}>
-      {/* Pause Overlay */}
-      <Modal
-        open={isPaused && isCallActive}
-        onClose={togglePause}
-        closeAfterTransition
-        slotProps={{
-          backdrop: {
-            timeout: 500,
-          },
-        }}
-        sx={{
-          backdropFilter: "blur(5px)",
-        }}
-      >
-        <Fade in={isPaused && isCallActive}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 400,
-              bgcolor: "background.paper",
-              borderRadius: 2,
-              boxShadow: 24,
-              p: 4,
-              textAlign: "center",
-            }}
-          >
-            <PlayArrow sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
-            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
-              Simulation Paused
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
+            >
+              Start Simulation
             </Typography>
-            <Typography variant="body1" sx={{ mb: 3 }}>
-              Click anywhere or press the play button to continue
+            <Typography sx={{ color: "#666", mb: 3 }}>
+              Press start to attempt the Visual-Audio Simulation
             </Typography>
             <Button
               variant="contained"
-              onClick={togglePause}
-              startIcon={<PlayArrow />}
+              startIcon={<PlayArrowIcon />}
+              onClick={handleStart}
+              disabled={isStarting || !userId}
+              sx={{
+                bgcolor: "#0037ff",
+                color: "white",
+                px: 6,
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "16px",
+                "&:hover": {
+                  bgcolor: "#002ed4",
+                },
+              }}
             >
-              Resume Simulation
+              {isStarting ? "Starting..." : "Start Simulation"}
+            </Button>
+            <Button
+              variant="text"
+              onClick={onBackToList}
+              sx={{
+                mt: 2,
+                color: "#666",
+                textTransform: "none",
+                border: "1px solid #DEE2FD",
+                px: 8,
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: "16px",
+              }}
+            >
+              Back to Sim List
             </Button>
           </Box>
-        </Fade>
-      </Modal>
-
-      {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px" }}>
-        <Stack
-          direction="row"
-          sx={{
-            p: 1.5,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            backgroundColor: "#F9FAFB",
-            borderRadius: "16px",
-            gap: "20px",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{ borderRadius: "8px", padding: "4px 8px" }}
-          >
-            {simulationName}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {level}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            Sim Type: {simType}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {attemptType} Attempt
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-              ml: "auto",
-              color: "#0037ff",
-            }}
-          >
-            {formatTime(elapsedTime)}
-          </Typography>
-        </Stack>
-      </Box>
-
-      {!isCallActive ? (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "350px",
-            width: "50%",
-            mx: "auto",
-            my: 6,
-            border: "1px solid #DEE2FD",
-            borderRadius: 4,
-          }}
-        >
+        ) : (
           <Box
             sx={{
-              bgcolor: "#f5f7ff",
-              borderRadius: "50%",
-              p: 2,
-              mb: 2,
-            }}
-          >
-            <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
-          </Box>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
-          >
-            Start Simulation
-          </Typography>
-          <Typography sx={{ color: "#666", mb: 3 }}>
-            Press start to attempt the Visual-Audio Simulation
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<PlayArrowIcon />}
-            onClick={handleStart}
-            disabled={isStarting || !userId}
-            sx={{
-              bgcolor: "#0037ff",
-              color: "white",
-              px: 6,
-              py: 1.5,
-              borderRadius: 2,
-              textTransform: "none",
-              fontSize: "16px",
-              "&:hover": {
-                bgcolor: "#002ed4",
-              },
-            }}
-          >
-            {isStarting ? "Starting..." : "Start Simulation"}
-          </Button>
-          <Button
-            variant="text"
-            onClick={onBackToList}
-            sx={{
-              mt: 2,
-              color: "#666",
-              textTransform: "none",
-              border: "1px solid #DEE2FD",
-              px: 8,
-              py: 1.5,
-              borderRadius: 2,
-              fontSize: "16px",
-            }}
-          >
-            Back to Sim List
-          </Button>
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            height: "calc(100vh - 80px)",
-            bgcolor: "background.default",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {/* Main content */}
-          <Box
-            sx={{
-              flex: 1,
+              height: "calc(100vh - 80px)",
+              bgcolor: "background.default",
               display: "flex",
-              maxWidth: "1200px",
-              mx: "auto",
-              mt: 1,
+              flexDirection: "column",
             }}
           >
-            {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 1.5 }} ref={imageContainerRef}>
-              <Box
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  position: "relative",
-                  bgcolor: "background.paper",
-                  borderRadius: 1,
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {isLoadingVisuals ? (
-                  <Box sx={{ textAlign: "center", p: 4 }}>
-                    <CircularProgress size={40} sx={{ mb: 2 }} />
-                    <Typography>Loading simulation visuals...</Typography>
-                  </Box>
-                ) : !currentSlide || !frameUrl ? (
-                  <Box sx={{ textAlign: "center", p: 4 }}>
-                    <Typography color="text.secondary">
-                      No visual content available
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      position: "relative",
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                    }}
-                  >
-                    <img
-                      ref={imageRef}
-                      src={frameUrl} // CHANGED: Use frameUrl instead of slides.get()
-                      alt={currentSlide.imageName || "Simulation slide"}
-                      style={{
+            {/* Main content */}
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                maxWidth: "1200px",
+                mx: "auto",
+                mt: 1,
+              }}
+            >
+              {/* Left side - Visual interface */}
+              <Box sx={{ flex: 1, p: 1.5 }} ref={imageContainerRef}>
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    position: "relative",
+                    bgcolor: "background.paper",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {isLoadingVisuals ? (
+                    <Box sx={{ textAlign: "center", p: 4 }}>
+                      <CircularProgress size={40} sx={{ mb: 2 }} />
+                      <Typography>Loading simulation visuals...</Typography>
+                    </Box>
+                  ) : !currentSlide || !frameUrl ? (
+                    <Box sx={{ textAlign: "center", p: 4 }}>
+                      <Typography color="text.secondary">
+                        No visual content available
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{
+                        position: "relative",
                         maxWidth: "100%",
-                        maxHeight: "calc(100vh - 150px)",
-                        display: "block",
-                        margin: "0 auto",
+                        maxHeight: "100%",
                       }}
-                      onLoad={handleImageLoad}
-                    />
+                    >
+                      <img
+                        ref={imageRef}
+                        src={frameUrl} // CHANGED: Use frameUrl instead of slides.get()
+                        alt={currentSlide.imageName || "Simulation slide"}
+                        style={{
+                          maxWidth: "100%",
+                          maxHeight: "calc(100vh - 150px)",
+                          display: "block",
+                          margin: "0 auto",
+                        }}
+                        onLoad={handleImageLoad}
+                      />
 
-                    {/* Render hotspots directly on the image - don't render if it should be skipped */}
-                    {imageLoaded &&
-                      currentItem?.type === "hotspot" &&
-                      currentItem.coordinates &&
-                      !shouldSkipHotspot() && (
-                        <>
-                          {/* Button hotspot */}
-                          {(currentItem.hotspotType === "button" ||
-                            !currentItem.hotspotType) && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.height
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <Button
-                                fullWidth
-                                variant="contained"
+                      {/* Render hotspots directly on the image - don't render if it should be skipped */}
+                      {imageLoaded &&
+                        currentItem?.type === "hotspot" &&
+                        currentItem.coordinates &&
+                        !shouldSkipHotspot() && (
+                          <>
+                            {/* Button hotspot */}
+                            {(currentItem.hotspotType === "button" ||
+                              !currentItem.hotspotType) && (
+                              <Box
+                                onClick={handleHotspotClick}
                                 sx={{
-                                  height: "100%",
-                                  backgroundColor:
-                                    currentItem.settings?.buttonColor ||
-                                    "#444CE7",
-                                  color:
-                                    currentItem.settings?.textColor ||
-                                    "#FFFFFF",
-                                  "&:hover": {
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
+                                  zIndex: 10,
+                                }}
+                              >
+                                <Button
+                                  fullWidth
+                                  variant="contained"
+                                  sx={{
+                                    height: "100%",
                                     backgroundColor:
                                       currentItem.settings?.buttonColor ||
                                       "#444CE7",
-                                  },
-                                  boxShadow: highlightHotspot ? 4 : 0,
-                                  border: highlightHotspot
-                                    ? `2px solid ${
-                                        currentItem.settings?.highlightColor ||
-                                        "white"
-                                      }`
-                                    : "none",
-                                }}
-                              >
-                                {currentItem.name || "Click here"}
-                              </Button>
-                            </Box>
-                          )}
-
-                          {/* Dropdown hotspot */}
-                          {currentItem.hotspotType === "dropdown" && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <FormControl fullWidth>
-                                <Select
-                                  value={dropdownValue}
-                                  displayEmpty
-                                  onClick={handleHotspotClick}
-                                  open={dropdownOpen}
-                                  onClose={() => setDropdownOpen(false)}
-                                  sx={{
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    bgcolor: "white",
+                                    color:
+                                      currentItem.settings?.textColor ||
+                                      "#FFFFFF",
+                                    "&:hover": {
+                                      backgroundColor:
+                                        currentItem.settings?.buttonColor ||
+                                        "#444CE7",
+                                    },
+                                    boxShadow: highlightHotspot ? 4 : 0,
                                     border: highlightHotspot
                                       ? `2px solid ${
                                           currentItem.settings
-                                            ?.highlightColor || "#444CE7"
+                                            ?.highlightColor || "white"
                                         }`
-                                      : "1px solid #ddd",
-                                    boxShadow: highlightHotspot ? 2 : 0,
+                                      : "none",
                                   }}
                                 >
-                                  <MenuItem value="" disabled>
-                                    {currentItem.settings?.placeholder ||
-                                      "Select an option"}
-                                  </MenuItem>
-                                  {(
-                                    currentItem.options || [
-                                      "Option 1",
-                                      "Option 2",
-                                      "Option 3",
-                                    ]
-                                  ).map((option, idx) => (
-                                    <MenuItem
-                                      key={idx}
-                                      value={option}
-                                      onClick={() =>
-                                        handleDropdownSelect(option)
-                                      }
-                                    >
-                                      {option}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
-                            </Box>
-                          )}
+                                  {currentItem.name || "Click here"}
+                                </Button>
+                              </Box>
+                            )}
 
-                          {/* Checkbox hotspot */}
-                          {currentItem.hotspotType === "checkbox" && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                zIndex: 10,
-                              }}
-                            >
-                              <Checkbox
-                                checked={checkboxChecked}
+                            {/* Dropdown hotspot */}
+                            {currentItem.hotspotType === "dropdown" && (
+                              <Box
                                 sx={{
-                                  padding: 0,
-                                  "& .MuiSvgIcon-root": {
-                                    fontSize: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                  },
-                                  color: highlightHotspot
-                                    ? currentItem.settings?.highlightColor ||
-                                      "#444CE7"
-                                    : "action.active",
-                                  "&.Mui-checked": {
-                                    color: "#444CE7",
-                                  },
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  zIndex: 10,
                                 }}
-                              />
-                              {currentItem.name && (
-                                <Typography
-                                  variant="body2"
-                                  sx={{ ml: 1, color: "text.primary" }}
-                                >
-                                  {currentItem.name}
-                                </Typography>
-                              )}
-                            </Box>
-                          )}
+                              >
+                                <FormControl fullWidth>
+                                  <Select
+                                    value={dropdownValue}
+                                    displayEmpty
+                                    onClick={handleHotspotClick}
+                                    open={dropdownOpen}
+                                    onClose={() => setDropdownOpen(false)}
+                                    sx={{
+                                      height: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                      bgcolor: "white",
+                                      border: highlightHotspot
+                                        ? `2px solid ${
+                                            currentItem.settings
+                                              ?.highlightColor || "#444CE7"
+                                          }`
+                                        : "1px solid #ddd",
+                                      boxShadow: highlightHotspot ? 2 : 0,
+                                    }}
+                                  >
+                                    <MenuItem value="" disabled>
+                                      {currentItem.settings?.placeholder ||
+                                        "Select an option"}
+                                    </MenuItem>
+                                    {(
+                                      currentItem.options || [
+                                        "Option 1",
+                                        "Option 2",
+                                        "Option 3",
+                                      ]
+                                    ).map((option, idx) => (
+                                      <MenuItem
+                                        key={idx}
+                                        value={option}
+                                        onClick={() =>
+                                          handleDropdownSelect(option)
+                                        }
+                                      >
+                                        {option}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Box>
+                            )}
 
-                          {/* Text field hotspot */}
-                          {currentItem.hotspotType === "textfield" && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <TextField
-                                fullWidth
-                                value={textInputValue}
-                                onChange={(e) =>
-                                  setTextInputValue(e.target.value)
-                                }
-                                onKeyDown={handleTextInputSubmit}
-                                placeholder={
-                                  currentItem.settings?.placeholder ||
-                                  "Type and press Enter"
-                                }
-                                variant="outlined"
+                            {/* Checkbox hotspot */}
+                            {currentItem.hotspotType === "checkbox" && (
+                              <Box
+                                onClick={handleHotspotClick}
                                 sx={{
-                                  "& .MuiOutlinedInput-root": {
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  zIndex: 10,
+                                }}
+                              >
+                                <Checkbox
+                                  checked={checkboxChecked}
+                                  sx={{
+                                    padding: 0,
+                                    "& .MuiSvgIcon-root": {
+                                      fontSize: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                    },
+                                    color: highlightHotspot
+                                      ? currentItem.settings?.highlightColor ||
+                                        "#444CE7"
+                                      : "action.active",
+                                    "&.Mui-checked": {
+                                      color: "#444CE7",
+                                    },
+                                  }}
+                                />
+                                {currentItem.name && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ ml: 1, color: "text.primary" }}
+                                  >
+                                    {currentItem.name}
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+
+                            {/* Text field hotspot */}
+                            {currentItem.hotspotType === "textfield" && (
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  zIndex: 10,
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  value={textInputValue}
+                                  onChange={(e) =>
+                                    setTextInputValue(e.target.value)
+                                  }
+                                  onKeyDown={handleTextInputSubmit}
+                                  placeholder={
+                                    currentItem.settings?.placeholder ||
+                                    "Type and press Enter"
+                                  }
+                                  variant="outlined"
+                                  sx={{
+                                    "& .MuiOutlinedInput-root": {
+                                      height: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                      bgcolor: "white",
+                                      "& fieldset": {
+                                        borderColor: highlightHotspot
+                                          ? currentItem.settings
+                                              ?.highlightColor || "#444CE7"
+                                          : "rgba(0, 0, 0, 0.23)",
+                                        borderWidth: highlightHotspot ? 2 : 1,
+                                      },
+                                      "&:hover fieldset": {
+                                        borderColor: "#444CE7",
+                                      },
+                                      "&.Mui-focused fieldset": {
+                                        borderColor: "#444CE7",
+                                      },
+                                    },
+                                  }}
+                                  autoFocus
+                                />
+                              </Box>
+                            )}
+
+                            {/* Highlight hotspot - only render if not hidden by settings */}
+                            {currentItem.hotspotType === "highlight" &&
+                              !levelSettings?.hideHighlights && (
+                                <Box
+                                  onClick={() => {
+                                    console.log("Highlight hotspot clicked");
+                                    handleHotspotClick();
+                                  }}
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.width
+                                    }px`,
                                     height: `${
                                       scaleCoordinates(currentItem.coordinates)
                                         ?.height
                                     }px`,
-                                    bgcolor: "white",
-                                    "& fieldset": {
-                                      borderColor: highlightHotspot
-                                        ? currentItem.settings
-                                            ?.highlightColor || "#444CE7"
-                                        : "rgba(0, 0, 0, 0.23)",
-                                      borderWidth: highlightHotspot ? 2 : 1,
-                                    },
-                                    "&:hover fieldset": {
-                                      borderColor: "#444CE7",
-                                    },
-                                    "&.Mui-focused fieldset": {
-                                      borderColor: "#444CE7",
-                                    },
-                                  },
-                                }}
-                                autoFocus
-                              />
-                            </Box>
-                          )}
-
-                          {/* Highlight hotspot - only render if not hidden by settings */}
-                          {currentItem.hotspotType === "highlight" &&
-                            !levelSettings?.hideHighlights && (
-                              <Box
-                                onClick={() => {
-                                  console.log("Highlight hotspot clicked");
-                                  handleHotspotClick();
-                                }}
-                                sx={{
-                                  position: "absolute",
-                                  cursor: "pointer",
-                                  left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
-                                  }px`,
-                                  top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
-                                  }px`,
-                                  width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
-                                  }px`,
-                                  height: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.height
-                                  }px`,
-                                  border: "4px solid",
-                                  borderColor:
-                                    currentItem.settings?.highlightColor ||
-                                    "rgba(68, 76, 231, 0.7)",
-                                  boxShadow: highlightHotspot
-                                    ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
-                                    : "none",
-                                  borderRadius: "4px",
-                                  backgroundColor: "transparent",
-                                  transition: "box-shadow 0.3s",
-                                  zIndex: 10,
-                                }}
-                              />
-                            )}
-
-                          {/* Coaching tip button */}
-                          {(currentItem.hotspotType === "coaching" ||
-                            currentItem.hotspotType === "coachingtip") && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.height
-                                }px`,
-                                zIndex: 50,
-                                border: highlightHotspot
-                                  ? `2px solid ${
+                                    border: "4px solid",
+                                    borderColor:
                                       currentItem.settings?.highlightColor ||
-                                      "#1e293b"
-                                    }`
-                                  : "none",
-                                boxShadow: highlightHotspot ? 3 : 0,
-                                transition: "all 0.3s ease",
-                              }}
-                            >
-                              <Button
-                                fullWidth
-                                variant="contained"
+                                      "rgba(68, 76, 231, 0.7)",
+                                    boxShadow: highlightHotspot
+                                      ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                      : "none",
+                                    borderRadius: "4px",
+                                    backgroundColor: "transparent",
+                                    transition: "box-shadow 0.3s",
+                                    zIndex: 10,
+                                  }}
+                                />
+                              )}
+
+                            {/* Coaching tip button */}
+                            {(currentItem.hotspotType === "coaching" ||
+                              currentItem.hotspotType === "coachingtip") && (
+                              <Box
+                                onClick={handleHotspotClick}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -2682,395 +2264,431 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     scaleCoordinates(currentItem.coordinates)
                                       ?.height
                                   }px`,
-                                  border: "4px solid",
-                                  borderColor:
-                                    currentItem.settings?.highlightColor ||
-                                    "rgba(68, 76, 231, 0.7)",
-                                  boxShadow: highlightHotspot
-                                    ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                  zIndex: 50,
+                                  border: highlightHotspot
+                                    ? `2px solid ${
+                                        currentItem.settings?.highlightColor ||
+                                        "#1e293b"
+                                      }`
                                     : "none",
-                                  borderRadius: "4px",
-                                  backgroundColor: "transparent",
-                                  transition: "box-shadow 0.3s",
-                                  zIndex: 10,
+                                  boxShadow: highlightHotspot ? 3 : 0,
+                                  transition: "all 0.3s ease",
                                 }}
-                              />
-                            </Box>
-                          )}
-                        </>
-                      )}
+                              >
+                                <Button
+                                  fullWidth
+                                  variant="contained"
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.width
+                                    }px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
+                                    border: "4px solid",
+                                    borderColor:
+                                      currentItem.settings?.highlightColor ||
+                                      "rgba(68, 76, 231, 0.7)",
+                                    boxShadow: highlightHotspot
+                                      ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                      : "none",
+                                    borderRadius: "4px",
+                                    backgroundColor: "transparent",
+                                    transition: "box-shadow 0.3s",
+                                    zIndex: 10,
+                                  }}
+                                />
+                              </Box>
+                            )}
+                          </>
+                        )}
 
-                    {/* Coaching tip button - only render if not hidden by settings */}
-                    {imageLoaded &&
-                      currentItem?.type === "hotspot" &&
-                      (currentItem.hotspotType === "coaching" ||
-                        currentItem.hotspotType === "coachingtip") &&
-                      currentItem.coordinates &&
-                      levelSettings &&
-                      !levelSettings.hideCoachingTips && (
-                        <Box
-                          onClick={handleHotspotClick}
-                          sx={{
-                            position: "absolute",
-                            cursor: "pointer",
-                            left: `${
-                              scaleCoordinates(currentItem.coordinates)?.left
-                            }px`,
-                            top: `${
-                              scaleCoordinates(currentItem.coordinates)?.top
-                            }px`,
-                            width: `${
-                              scaleCoordinates(currentItem.coordinates)?.width
-                            }px`,
-                            height: `${
-                              scaleCoordinates(currentItem.coordinates)?.height
-                            }px`,
-                            zIndex: 50,
-                            border: highlightHotspot
-                              ? `2px solid ${
-                                  currentItem.settings?.highlightColor ||
-                                  "#1e293b"
-                                }`
-                              : "none",
-                            boxShadow: highlightHotspot ? 3 : 0,
-                            transition: "all 0.3s ease",
-                          }}
-                        >
-                          <Button
-                            fullWidth
-                            variant="contained"
+                      {/* Coaching tip button - only render if not hidden by settings */}
+                      {imageLoaded &&
+                        currentItem?.type === "hotspot" &&
+                        (currentItem.hotspotType === "coaching" ||
+                          currentItem.hotspotType === "coachingtip") &&
+                        currentItem.coordinates &&
+                        levelSettings &&
+                        !levelSettings.hideCoachingTips && (
+                          <Box
+                            onClick={handleHotspotClick}
                             sx={{
-                              height: "100%",
-                              backgroundColor:
-                                currentItem.settings?.buttonColor || "#1e293b",
-                              color:
-                                currentItem.settings?.textColor || "#FFFFFF",
-                              "&:hover": {
-                                backgroundColor: currentItem.settings
-                                  ?.buttonColor
-                                  ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                                  : "#0f172a",
-                              },
-                              boxShadow: highlightHotspot ? 4 : 0,
+                              position: "absolute",
+                              cursor: "pointer",
+                              left: `${
+                                scaleCoordinates(currentItem.coordinates)?.left
+                              }px`,
+                              top: `${
+                                scaleCoordinates(currentItem.coordinates)?.top
+                              }px`,
+                              width: `${
+                                scaleCoordinates(currentItem.coordinates)?.width
+                              }px`,
+                              height: `${
+                                scaleCoordinates(currentItem.coordinates)
+                                  ?.height
+                              }px`,
+                              zIndex: 50,
+                              border: highlightHotspot
+                                ? `2px solid ${
+                                    currentItem.settings?.highlightColor ||
+                                    "#1e293b"
+                                  }`
+                                : "none",
+                              boxShadow: highlightHotspot ? 3 : 0,
+                              transition: "all 0.3s ease",
                             }}
                           >
-                            {currentItem.settings?.tipText ||
-                              currentItem.name ||
-                              "Coaching Tip"}
-                          </Button>
-                        </Box>
-                      )}
-
-                    {imageLoaded &&
-                      currentMasking &&
-                      currentMasking.map(
-                        (item, index) =>
-                          item?.content && (
-                            <Box
-                              key={index}
-                              // onClick={handleHotspotClick}
+                            <Button
+                              fullWidth
+                              variant="contained"
                               sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.height
-                                }px`,
-                                border: "4px solid",
-                                borderColor:
-                                  item.content.settings?.color ||
-                                  "rgba(68, 76, 231, 0.7)",
-                                boxShadow: item.content.settings?.blur_mask
-                                  ? `0 0 12px 3px ${item.content.settings?.color}`
-                                  : "none",
-                                borderRadius: "4px",
-                                backgroundColor: item.content.settings?.color,
-                                transition: "box-shadow 0.3s",
-                                zIndex: 10,
-                                filter: item.content.settings?.blur_mask
-                                  ? "blur(5px)"
-                                  : "none",
+                                height: "100%",
+                                backgroundColor:
+                                  currentItem.settings?.buttonColor ||
+                                  "#1e293b",
+                                color:
+                                  currentItem.settings?.textColor || "#FFFFFF",
+                                "&:hover": {
+                                  backgroundColor: currentItem.settings
+                                    ?.buttonColor
+                                    ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                    : "#0f172a",
+                                },
+                                boxShadow: highlightHotspot ? 4 : 0,
                               }}
-                            />
-                          ),
-                      )}
-                  </Box>
-                )}
-              </Box>
-            </Box>
+                            >
+                              {currentItem.settings?.tipText ||
+                                currentItem.name ||
+                                "Coaching Tip"}
+                            </Button>
+                          </Box>
+                        )}
 
-            {/* Right side - Message display panel */}
-            <Box
-              sx={{
-                width: 320,
-                borderLeft: 1,
-                borderColor: "divider",
-                display: "flex",
-                flexDirection: "column",
-                bgcolor: "background.paper",
-              }}
-            >
-              {/* Status + top controls */}
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderBottom: 1,
-                  borderColor: "divider",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary">
-                  {callStatus}
-                </Typography>
-                <Box>
-                  <IconButton
-                    onClick={togglePause}
-                    sx={{ bgcolor: "grey.100", mr: 1 }}
-                  >
-                    {isPaused ? <PlayArrow /> : <Pause />}
-                  </IconButton>
-
-                  <IconButton
-                    onClick={handleEndCall}
-                    sx={{
-                      bgcolor: "error.main",
-                      color: "white",
-                      "&:hover": { bgcolor: "error.dark" },
-                    }}
-                  >
-                    <CallEnd />
-                  </IconButton>
+                      {imageLoaded &&
+                        currentMasking &&
+                        currentMasking.map(
+                          (item, index) =>
+                            item?.content && (
+                              <Box
+                                key={index}
+                                // onClick={handleHotspotClick}
+                                sx={{
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${
+                                    scaleCoordinates(item.content.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(item.content.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(item.content.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(item.content.coordinates)
+                                      ?.height
+                                  }px`,
+                                  border: "4px solid",
+                                  borderColor:
+                                    item.content.settings?.color ||
+                                    "rgba(68, 76, 231, 0.7)",
+                                  boxShadow: item.content.settings?.blur_mask
+                                    ? `0 0 12px 3px ${item.content.settings?.color}`
+                                    : "none",
+                                  borderRadius: "4px",
+                                  backgroundColor: item.content.settings?.color,
+                                  transition: "box-shadow 0.3s",
+                                  zIndex: 10,
+                                  filter: item.content.settings?.blur_mask
+                                    ? "blur(5px)"
+                                    : "none",
+                                }}
+                              />
+                            ),
+                        )}
+                    </Box>
+                  )}
                 </Box>
               </Box>
 
-              {/* Current message display area */}
+              {/* Right side - Message display panel */}
               <Box
                 sx={{
-                  flex: 1,
-                  p: 1.5,
+                  width: 320,
+                  borderLeft: 1,
+                  borderColor: "divider",
                   display: "flex",
                   flexDirection: "column",
-                  maxHeight: "calc(100vh - 180px)",
-                  overflowY: "auto",
+                  bgcolor: "background.paper",
                 }}
               >
-                {currentItem?.type === "message" ? (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    {/* Use the renderMessageContent function to apply script hiding rules */}
-                    {renderMessageContent()}
+                {/* Status + top controls */}
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {callStatus}
+                  </Typography>
+                  <Box>
+                    <IconButton
+                      onClick={togglePause}
+                      sx={{ bgcolor: "grey.100", mr: 1 }}
+                    >
+                      {isPaused ? <PlayArrow /> : <Pause />}
+                    </IconButton>
 
-                    {/* Interaction controls / Next Button */}
-                    <Box>
-                      {/* Trainee recording indicator */}
-                      {(currentItem.role === "Trainee" ||
-                        currentItem.role === "assistant") &&
-                        isRecording && (
-                          <Paper
-                            sx={{
-                              p: 1.5,
-                              bgcolor: "grey.100",
-                              borderRadius: 1,
-                              mb: 2,
-                              display: "flex",
-                              alignItems: "center",
-                              position: "relative", // Added for loading indicator
-                            }}
-                          >
-                            <Box sx={{ position: "relative", mr: 2 }}>
+                    <IconButton
+                      onClick={handleEndCall}
+                      sx={{
+                        bgcolor: "error.main",
+                        color: "white",
+                        "&:hover": { bgcolor: "error.dark" },
+                      }}
+                    >
+                      <CallEnd />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                {/* Current message display area */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    p: 1.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    maxHeight: "calc(100vh - 180px)",
+                    overflowY: "auto",
+                  }}
+                >
+                  {currentItem?.type === "message" ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      {/* Use the renderMessageContent function to apply script hiding rules */}
+                      {renderMessageContent()}
+
+                      {/* Interaction controls / Next Button */}
+                      <Box>
+                        {/* Trainee recording indicator */}
+                        {(currentItem.role === "Trainee" ||
+                          currentItem.role === "assistant") &&
+                          isRecording && (
+                            <Paper
+                              sx={{
+                                p: 1.5,
+                                bgcolor: "grey.100",
+                                borderRadius: 1,
+                                mb: 2,
+                                display: "flex",
+                                alignItems: "center",
+                                position: "relative", // Added for loading indicator
+                              }}
+                            >
+                              <Box sx={{ position: "relative", mr: 2 }}>
+                                <Avatar
+                                  sx={{
+                                    bgcolor: "error.main",
+                                    animation: "pulse 1.5s infinite",
+                                    "@keyframes pulse": {
+                                      "0%": { opacity: 0.7 },
+                                      "50%": { opacity: 1 },
+                                      "100%": { opacity: 0.7 },
+                                    },
+                                  }}
+                                >
+                                  <Mic />
+                                </Avatar>
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    top: -2,
+                                    right: -2,
+                                    width: 10,
+                                    height: 10,
+                                    bgcolor: "error.main",
+                                    borderRadius: "50%",
+                                    animation: "ping 1.5s infinite",
+                                    "@keyframes ping": {
+                                      "75%, 100%": {
+                                        transform: "scale(2)",
+                                        opacity: 0,
+                                      },
+                                    },
+                                  }}
+                                />
+                              </Box>
+                              <Box>
+                                <Typography variant="body2" fontWeight="medium">
+                                  Listening...
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  {formatTime(recordingTime)}
+                                </Typography>
+                              </Box>
+
+                              {/* Loading indicator for transcription */}
+                              {isTranscribing && (
+                                <CircularProgress
+                                  size={20}
+                                  sx={{
+                                    position: "absolute",
+                                    right: 10,
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                  }}
+                                />
+                              )}
+                            </Paper>
+                          )}
+
+                        {/* Customer speech indicator */}
+                        {(currentItem.role === "Customer" ||
+                          currentItem.role === "customer") &&
+                          speaking && (
+                            <Paper
+                              sx={{
+                                p: 1.5,
+                                bgcolor: "grey.100",
+                                borderRadius: 1,
+                                mb: 2,
+                                display: "flex",
+                                alignItems: "center",
+                              }}
+                            >
                               <Avatar
                                 sx={{
-                                  bgcolor: "error.main",
+                                  bgcolor: "primary.main",
                                   animation: "pulse 1.5s infinite",
                                   "@keyframes pulse": {
                                     "0%": { opacity: 0.7 },
                                     "50%": { opacity: 1 },
                                     "100%": { opacity: 0.7 },
                                   },
+                                  mr: 2,
                                 }}
                               >
-                                <Mic />
+                                <VolumeUp />
                               </Avatar>
-                              <Box
-                                sx={{
-                                  position: "absolute",
-                                  top: -2,
-                                  right: -2,
-                                  width: 10,
-                                  height: 10,
-                                  bgcolor: "error.main",
-                                  borderRadius: "50%",
-                                  animation: "ping 1.5s infinite",
-                                  "@keyframes ping": {
-                                    "75%, 100%": {
-                                      transform: "scale(2)",
-                                      opacity: 0,
-                                    },
-                                  },
-                                }}
-                              />
-                            </Box>
-                            <Box>
                               <Typography variant="body2" fontWeight="medium">
-                                Listening...
+                                Speaking...
                               </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {formatTime(recordingTime)}
-                              </Typography>
-                            </Box>
+                            </Paper>
+                          )}
 
-                            {/* Loading indicator for transcription */}
-                            {isTranscribing && (
-                              <CircularProgress
-                                size={20}
-                                sx={{
-                                  position: "absolute",
-                                  right: 10,
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                }}
-                              />
-                            )}
-                          </Paper>
-                        )}
-
-                      {/* Customer speech indicator */}
-                      {(currentItem.role === "Customer" ||
-                        currentItem.role === "customer") &&
-                        speaking && (
-                          <Paper
-                            sx={{
-                              p: 1.5,
-                              bgcolor: "grey.100",
-                              borderRadius: 1,
-                              mb: 2,
-                              display: "flex",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Avatar
-                              sx={{
-                                bgcolor: "primary.main",
-                                animation: "pulse 1.5s infinite",
-                                "@keyframes pulse": {
-                                  "0%": { opacity: 0.7 },
-                                  "50%": { opacity: 1 },
-                                  "100%": { opacity: 0.7 },
-                                },
-                                mr: 2,
-                              }}
-                            >
-                              <VolumeUp />
-                            </Avatar>
-                            <Typography variant="body2" fontWeight="medium">
-                              Speaking...
-                            </Typography>
-                          </Paper>
-                        )}
-
-                      {/* Next button */}
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        endIcon={<ArrowForward />}
-                        disabled={
-                          (currentItem.role === "Customer" ||
-                            currentItem.role === "customer") &&
-                          speaking
-                        }
-                        onClick={() => {
-                          // For customer messages
-                          if (
-                            currentItem.role === "Customer" ||
-                            currentItem.role === "customer"
-                          ) {
-                            speechSynthRef.current.cancel();
-                            setSpeaking(false);
-                            moveToNextItem();
+                        {/* Next button */}
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          color="primary"
+                          endIcon={<ArrowForward />}
+                          disabled={
+                            (currentItem.role === "Customer" ||
+                              currentItem.role === "customer") &&
+                            speaking
                           }
-                          // For trainee messages, use the new handler
-                          else {
-                            handleTraineeNext();
-                          }
-                        }}
-                      >
-                        Next
-                      </Button>
+                          onClick={() => {
+                            // For customer messages
+                            if (
+                              currentItem.role === "Customer" ||
+                              currentItem.role === "customer"
+                            ) {
+                              speechSynthRef.current.cancel();
+                              setSpeaking(false);
+                              moveToNextItem();
+                            }
+                            // For trainee messages, use the new handler
+                            else {
+                              handleTraineeNext();
+                            }
+                          }}
+                        >
+                          Next
+                        </Button>
+                      </Box>
                     </Box>
-                  </Box>
-                ) : (
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      height: "100%",
-                      textAlign: "center",
-                      color: "text.secondary",
-                    }}
-                  >
-                    <Phone sx={{ fontSize: 40, mb: 2, opacity: 0.5 }} />
-                    <Typography variant="body2">
-                      Interact with the interface to continue the simulation
-                    </Typography>
-                  </Box>
-                )}
+                  ) : (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        textAlign: "center",
+                        color: "text.secondary",
+                      }}
+                    >
+                      <Phone sx={{ fontSize: 40, mb: 2, opacity: 0.5 }} />
+                      <Typography variant="body2">
+                        Interact with the interface to continue the simulation
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </Box>
             </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {/* Loading overlay for ending simulation */}
-      {isEndingCall && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "rgba(255, 255, 255, 0.95)",
-            zIndex: 9999,
-          }}
-        >
-          <CircularProgress size={60} sx={{ mb: 2 }} />
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Analyzing Attempt
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Processing interactions and audio responses...
-          </Typography>
-        </Box>
-      )}
-    </Box>
+        {/* Loading overlay for ending simulation */}
+        {isEndingCall && (
+          <Box
+            sx={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(255, 255, 255, 0.95)",
+              zIndex: 9999,
+            }}
+          >
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Analyzing Attempt
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Processing interactions and audio responses...
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </>
   );
 };
 

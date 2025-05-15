@@ -41,6 +41,7 @@ import {
   ImageData,
 } from "../../../../services/simulation_visual_attempts";
 import { AttemptInterface } from "../../../../types/attempts";
+import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -347,13 +348,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       .padStart(2, "0");
     const secs = (seconds % 60).toString().padStart(2, "0");
     return `${mins}:${secs}`;
-  };
-
-  // Format completion time as Xm Ys
-  const formatCompletionTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
   };
 
   // Updated to calculate both width and height scales
@@ -844,917 +838,577 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     };
   }, [slides]);
 
-  // Render the completion screen based on the image provided
-  if (showCompletionScreen) {
-    return (
-      <Box
-        sx={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "#f5f7fa",
-        }}
-      >
-        <Paper
-          elevation={3}
+  return (
+    <>
+      <SimulationCompletionScreen
+        showCompletionScreen={showCompletionScreen}
+        userName={userName}
+        simulationName={simulationName}
+        level={level}
+        simType={simType}
+        attemptType={attemptType}
+        scores={scores}
+        duration={duration}
+        isPassed={isPassed}
+        onBackToList={handleBackToSimList}
+        onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
+        onRestartSim={handleRestartSim}
+        onViewPlayback={handleViewPlayback}
+        hasNextSimulation={hasNextSimulation}
+        minPassingScore={MIN_PASSING_SCORE}
+      />
+
+      <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>
+        {/* Pause Overlay */}
+        <Modal
+          open={isPaused && isStarted}
+          onClose={togglePause}
+          closeAfterTransition
+          slotProps={{
+            backdrop: {
+              timeout: 500,
+            },
+          }}
           sx={{
-            width: "650px",
-            borderRadius: "16px",
-            overflow: "hidden",
+            backdropFilter: "blur(5px)",
           }}
         >
-          {/* Header */}
+          <Fade in={isPaused && isStarted}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 400,
+                bgcolor: "background.paper",
+                borderRadius: 2,
+                boxShadow: 24,
+                p: 4,
+                textAlign: "center",
+              }}
+            >
+              <PlayArrow sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
+              <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+                Simulation Paused
+              </Typography>
+              <Typography variant="body1" sx={{ mb: 3 }}>
+                Click anywhere or press the play button to continue
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={togglePause}
+                startIcon={<PlayArrow />}
+              >
+                Resume Simulation
+              </Button>
+            </Box>
+          </Fade>
+        </Modal>
+
+        {/* Header */}
+        <Box
+          sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mt: 1 }}
+        >
+          <Stack
+            direction="row"
+            sx={{
+              p: 1.5,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              backgroundColor: "#F9FAFB",
+              borderRadius: "16px",
+              gap: "20px",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{ borderRadius: "8px", padding: "4px 8px" }}
+            >
+              {simulationName}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {level}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              Sim Type: {simType}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+              }}
+            >
+              {attemptType} Attempt
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.main"
+              sx={{
+                backgroundColor: "#ECEFF3",
+                borderRadius: "12px",
+                padding: "4px 8px",
+                ml: "auto",
+                color: "#0037ff",
+              }}
+            >
+              {formatTime(elapsedTime)}
+            </Typography>
+          </Stack>
+        </Box>
+
+        {!isStarted ? (
           <Box
             sx={{
-              p: 3,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              borderBottom: "1px solid #eaedf0",
-            }}
-          >
-            <Box
-              sx={{
-                width: 60,
-                height: 60,
-                bgcolor: "#F0F3F5",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mb: 1,
-              }}
-            >
-              <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
-                <SmartToyIcon sx={{ color: "#A3AED0" }} />
-              </Avatar>
-            </Box>
-            <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-              Great work,
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-              {userName}
-            </Typography>
-          </Box>
-
-          {/* Simulation details */}
-          <Box
-            sx={{
-              display: "flex",
               justifyContent: "center",
-              gap: 2,
-              p: 2,
-              borderBottom: "1px solid #eaedf0",
+              minHeight: "360px",
+              width: "50%",
+              mx: "auto",
+              my: 6,
+              border: "1px solid #DEE2FD",
+              borderRadius: 4,
             }}
           >
-            <Chip
-              label={simulationName}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={level}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`Sim Type: ${simType}`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-            <Chip
-              label={`${attemptType} Attempt`}
-              variant="outlined"
-              sx={{
-                borderRadius: "8px",
-                color: "#4A5568",
-                bgcolor: "#f7fafc",
-                border: "none",
-                fontSize: "13px",
-              }}
-            />
-          </Box>
-
-          {/* Score details */}
-          <Box sx={{ px: 4, py: 3 }}>
             <Box
               sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 3,
+                bgcolor: "#f5f7ff",
+                borderRadius: "50%",
+                p: 2,
+                mb: 2,
               }}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                Score Details
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Typography variant="body2" sx={{ color: "#718096" }}>
-                  Min passing score:
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{ color: "#6366F1", fontWeight: 600 }}
-                >
-                  {MIN_PASSING_SCORE}%
-                </Typography>
-                <Chip
-                  label={isPassed ? "Passed" : "Failed"}
-                  size="small"
-                  sx={{
-                    bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
-                    color: isPassed ? "#319795" : "#E53E3E",
-                    fontSize: "12px",
-                    height: "22px",
-                  }}
-                />
-              </Box>
+              <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
             </Box>
-
-            {/* Metrics */}
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {/* Sim Score */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Sim Score
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
-                </Typography>
-              </Box>
-
-              {/* Completion Time */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <AccessTimeIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Completion Time
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {formatCompletionTime(duration)}
-                </Typography>
-              </Box>
-
-              {/* Confidence */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Confidence
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Confidence >= 80
-                    ? "High"
-                    : scores && scores.Confidence >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Concentration */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Concentration
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Concentration >= 80
-                    ? "High"
-                    : scores && scores.Concentration >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-
-              {/* Energy */}
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: "100px",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <EnergyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Energy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores && scores.Energy >= 80
-                    ? "High"
-                    : scores && scores.Energy >= 60
-                      ? "Medium"
-                      : "Low"}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* Updated Buttons - Now with all 4 buttons */}
-            <Box
-              sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
             >
-              {/* First row - Navigation buttons */}
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleBackToSimList}
-                  sx={{
-                    borderColor: "#E2E8F0",
-                    color: "#4A5568",
-                    "&:hover": {
-                      borderColor: "#CBD5E0",
-                      bgcolor: "#F7FAFC",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  Back to Sim List
-                </Button>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleGoToNextSim}
-                  disabled={!hasNextSimulation}
-                  sx={{
-                    bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
-                    "&:hover": {
-                      bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
-                    },
-                    "&.Mui-disabled": {
-                      color: "#718096",
-                      bgcolor: "#E2E8F0",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  {hasNextSimulation
-                    ? "Go to Next Simulation"
-                    : "Last Simulation"}
-                </Button>
-              </Box>
-
-              {/* Second row - Action buttons */}
-              <Box sx={{ display: "flex", gap: 2 }}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  onClick={handleRestartSim}
-                  sx={{
-                    borderColor: "#E2E8F0",
-                    color: "#4A5568",
-                    "&:hover": {
-                      borderColor: "#CBD5E0",
-                      bgcolor: "#F7FAFC",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  Restart Sim
-                </Button>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={handleViewPlayback}
-                  sx={{
-                    bgcolor: "#4299E1",
-                    "&:hover": {
-                      bgcolor: "#3182CE",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
-                >
-                  View Playback
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-        </Paper>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>
-      {/* Pause Overlay */}
-      <Modal
-        open={isPaused && isStarted}
-        onClose={togglePause}
-        closeAfterTransition
-        slotProps={{
-          backdrop: {
-            timeout: 500,
-          },
-        }}
-        sx={{
-          backdropFilter: "blur(5px)",
-        }}
-      >
-        <Fade in={isPaused && isStarted}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 400,
-              bgcolor: "background.paper",
-              borderRadius: 2,
-              boxShadow: 24,
-              p: 4,
-              textAlign: "center",
-            }}
-          >
-            <PlayArrow sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
-            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
-              Simulation Paused
+              Start Simulation
             </Typography>
-            <Typography variant="body1" sx={{ mb: 3 }}>
-              Click anywhere or press the play button to continue
+            <Typography sx={{ color: "#666", mb: 3 }}>
+              Press start to attempt the Visual Simulation
             </Typography>
             <Button
               variant="contained"
-              onClick={togglePause}
               startIcon={<PlayArrow />}
+              onClick={handleStart}
+              disabled={isStarting || !userId}
+              sx={{
+                bgcolor: "#0037ff",
+                color: "white",
+                px: 6,
+                py: 1.5,
+                borderRadius: 2,
+                textTransform: "none",
+                fontSize: "16px",
+                "&:hover": {
+                  bgcolor: "#002ed4",
+                },
+              }}
             >
-              Resume Simulation
+              {isStarting ? "Starting..." : "Start Simulation"}
+            </Button>
+            <Button
+              variant="text"
+              onClick={onBackToList}
+              sx={{
+                mt: 2,
+                color: "#666",
+                textTransform: "none",
+                border: "1px solid #DEE2FD",
+                px: 8,
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: "16px",
+              }}
+            >
+              Back to Sim List
             </Button>
           </Box>
-        </Fade>
-      </Modal>
-
-      {/* Header */}
-      <Box sx={{ maxWidth: "900px", mx: "auto", borderRadius: "16px", mt: 1 }}>
-        <Stack
-          direction="row"
-          sx={{
-            p: 1.5,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            backgroundColor: "#F9FAFB",
-            borderRadius: "16px",
-            gap: "20px",
-            justifyContent: "space-between",
-          }}
-        >
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{ borderRadius: "8px", padding: "4px 8px" }}
-          >
-            {simulationName}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {level}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            Sim Type: {simType}
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-            }}
-          >
-            {attemptType} Attempt
-          </Typography>
-          <Typography
-            variant="body2"
-            color="text.main"
-            sx={{
-              backgroundColor: "#ECEFF3",
-              borderRadius: "12px",
-              padding: "4px 8px",
-              ml: "auto",
-              color: "#0037ff",
-            }}
-          >
-            {formatTime(elapsedTime)}
-          </Typography>
-        </Stack>
-      </Box>
-
-      {!isStarted ? (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            minHeight: "360px",
-            width: "50%",
-            mx: "auto",
-            my: 6,
-            border: "1px solid #DEE2FD",
-            borderRadius: 4,
-          }}
-        >
+        ) : (
           <Box
             sx={{
-              bgcolor: "#f5f7ff",
-              borderRadius: "50%",
-              p: 2,
-              mb: 2,
-            }}
-          >
-            <VisibilityIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
-          </Box>
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 800, color: "#1a1a1a", mb: 1 }}
-          >
-            Start Simulation
-          </Typography>
-          <Typography sx={{ color: "#666", mb: 3 }}>
-            Press start to attempt the Visual Simulation
-          </Typography>
-          <Button
-            variant="contained"
-            startIcon={<PlayArrow />}
-            onClick={handleStart}
-            disabled={isStarting || !userId}
-            sx={{
-              bgcolor: "#0037ff",
-              color: "white",
-              px: 6,
-              py: 1.5,
-              borderRadius: 2,
-              textTransform: "none",
-              fontSize: "16px",
-              "&:hover": {
-                bgcolor: "#002ed4",
-              },
-            }}
-          >
-            {isStarting ? "Starting..." : "Start Simulation"}
-          </Button>
-          <Button
-            variant="text"
-            onClick={onBackToList}
-            sx={{
-              mt: 2,
-              color: "#666",
-              textTransform: "none",
-              border: "1px solid #DEE2FD",
-              px: 8,
-              py: 1.5,
-              borderRadius: 2,
-              fontSize: "16px",
-            }}
-          >
-            Back to Sim List
-          </Button>
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            height: "calc(100vh - 130px)",
-            bgcolor: "background.default",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {/* Main content - Modified to be more compact vertically */}
-          <Box
-            sx={{
-              flex: 1,
+              height: "calc(100vh - 130px)",
+              bgcolor: "background.default",
               display: "flex",
-              maxWidth: "1200px",
-              mx: "auto",
-              mt: 1,
+              flexDirection: "column",
             }}
           >
-            {/* Left side - Visual interface */}
-            <Box sx={{ flex: 1, p: 1 }} ref={imageContainerRef}>
-              <Box
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  position: "relative",
-                  bgcolor: "background.paper",
-                  borderRadius: 1,
-                  overflow: "hidden",
-                }}
-              >
-                {isLoadingVisuals ? (
-                  <Box sx={{ textAlign: "center", p: 4 }}>
-                    <CircularProgress size={40} sx={{ mb: 2 }} />
-                    <Typography>Loading simulation visuals...</Typography>
-                  </Box>
-                ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
-                  <Box sx={{ textAlign: "center", p: 4 }}>
-                    <Typography color="text.secondary">
-                      No visual content available
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Box sx={{ position: "relative" }}>
-                    <img
-                      ref={imageRef}
-                      src={slides.get(currentSlide.imageId)}
-                      alt={currentSlide.imageName || "Simulation slide"}
-                      style={{
-                        width: "100%",
-                        height: "auto",
-                        objectFit: "contain",
-                        display: "block",
-                        maxHeight: "calc(100vh - 180px)",
-                      }}
-                      onLoad={handleImageLoad}
-                    />
+            {/* Main content - Modified to be more compact vertically */}
+            <Box
+              sx={{
+                flex: 1,
+                display: "flex",
+                maxWidth: "1200px",
+                mx: "auto",
+                mt: 1,
+              }}
+            >
+              {/* Left side - Visual interface */}
+              <Box sx={{ flex: 1, p: 1 }} ref={imageContainerRef}>
+                <Box
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    position: "relative",
+                    bgcolor: "background.paper",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  {isLoadingVisuals ? (
+                    <Box sx={{ textAlign: "center", p: 4 }}>
+                      <CircularProgress size={40} sx={{ mb: 2 }} />
+                      <Typography>Loading simulation visuals...</Typography>
+                    </Box>
+                  ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
+                    <Box sx={{ textAlign: "center", p: 4 }}>
+                      <Typography color="text.secondary">
+                        No visual content available
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ position: "relative" }}>
+                      <img
+                        ref={imageRef}
+                        src={slides.get(currentSlide.imageId)}
+                        alt={currentSlide.imageName || "Simulation slide"}
+                        style={{
+                          width: "100%",
+                          height: "auto",
+                          objectFit: "contain",
+                          display: "block",
+                          maxHeight: "calc(100vh - 180px)",
+                        }}
+                        onLoad={handleImageLoad}
+                      />
 
-                    {/* Timeout indicator (simplified, without text) */}
-                    {timeoutActive &&
-                      currentItem?.type === "hotspot" &&
-                      currentItem.settings?.timeoutDuration &&
-                      !isPaused && (
-                        <Box
-                          sx={{
-                            position: "absolute",
-                            top: 10,
-                            right: 10,
-                            bgcolor: "rgba(0, 0, 0, 0.6)",
-                            color: "white",
-                            p: 1,
-                            borderRadius: 2,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 1,
-                            zIndex: 100,
-                          }}
-                        ></Box>
-                      )}
+                      {/* Timeout indicator (simplified, without text) */}
+                      {timeoutActive &&
+                        currentItem?.type === "hotspot" &&
+                        currentItem.settings?.timeoutDuration &&
+                        !isPaused && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 10,
+                              right: 10,
+                              bgcolor: "rgba(0, 0, 0, 0.6)",
+                              color: "white",
+                              p: 1,
+                              borderRadius: 2,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              zIndex: 100,
+                            }}
+                          ></Box>
+                        )}
 
-                    {/* Render hotspots directly on the image */}
-                    {imageLoaded &&
-                      currentItem?.type === "hotspot" &&
-                      currentItem.coordinates &&
-                      !shouldSkipHotspot() && (
-                        <>
-                          {/* Button hotspot */}
-                          {(currentItem.hotspotType === "button" ||
-                            !currentItem.hotspotType) && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.height
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <Button
-                                fullWidth
-                                variant="contained"
+                      {/* Render hotspots directly on the image */}
+                      {imageLoaded &&
+                        currentItem?.type === "hotspot" &&
+                        currentItem.coordinates &&
+                        !shouldSkipHotspot() && (
+                          <>
+                            {/* Button hotspot */}
+                            {(currentItem.hotspotType === "button" ||
+                              !currentItem.hotspotType) && (
+                              <Box
+                                onClick={handleHotspotClick}
                                 sx={{
-                                  height: "100%",
-                                  backgroundColor:
-                                    currentItem.settings?.buttonColor ||
-                                    "#444CE7",
-                                  color:
-                                    currentItem.settings?.textColor ||
-                                    "#FFFFFF",
-                                  "&:hover": {
+                                  position: "absolute",
+                                  cursor: "pointer",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  height: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.height
+                                  }px`,
+                                  zIndex: 10,
+                                }}
+                              >
+                                <Button
+                                  fullWidth
+                                  variant="contained"
+                                  sx={{
+                                    height: "100%",
                                     backgroundColor:
                                       currentItem.settings?.buttonColor ||
                                       "#444CE7",
-                                  },
-                                  boxShadow: highlightHotspot ? 4 : 0,
-                                  border: highlightHotspot
-                                    ? `2px solid ${getHighlightColor()}`
-                                    : "none",
-                                }}
-                              >
-                                {currentItem.name || "Click here"}
-                              </Button>
-                            </Box>
-                          )}
-
-                          {/* Dropdown hotspot */}
-                          {currentItem.hotspotType === "dropdown" && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <FormControl fullWidth>
-                                <Select
-                                  value={dropdownValue}
-                                  displayEmpty
-                                  onClick={handleHotspotClick}
-                                  open={dropdownOpen}
-                                  onClose={() => setDropdownOpen(false)}
-                                  sx={{
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    bgcolor: "white",
+                                    color:
+                                      currentItem.settings?.textColor ||
+                                      "#FFFFFF",
+                                    "&:hover": {
+                                      backgroundColor:
+                                        currentItem.settings?.buttonColor ||
+                                        "#444CE7",
+                                    },
+                                    boxShadow: highlightHotspot ? 4 : 0,
                                     border: highlightHotspot
                                       ? `2px solid ${getHighlightColor()}`
-                                      : "1px solid #ddd",
-                                    boxShadow: highlightHotspot ? 2 : 0,
+                                      : "none",
                                   }}
                                 >
-                                  <MenuItem value="" disabled>
-                                    {currentItem.settings?.placeholder ||
-                                      "Select an option"}
-                                  </MenuItem>
-                                  {(
-                                    currentItem.options || [
-                                      "Option 1",
-                                      "Option 2",
-                                      "Option 3",
-                                    ]
-                                  ).map((option, idx) => (
-                                    <MenuItem
-                                      key={idx}
-                                      value={option}
-                                      onClick={() =>
-                                        handleDropdownSelect(option)
-                                      }
-                                    >
-                                      {option}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
-                            </Box>
-                          )}
+                                  {currentItem.name || "Click here"}
+                                </Button>
+                              </Box>
+                            )}
 
-                          {/* Checkbox hotspot */}
-                          {currentItem.hotspotType === "checkbox" && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                zIndex: 10,
-                              }}
-                            >
-                              <Checkbox
-                                checked={checkboxChecked}
+                            {/* Dropdown hotspot */}
+                            {currentItem.hotspotType === "dropdown" && (
+                              <Box
                                 sx={{
-                                  padding: 0,
-                                  "& .MuiSvgIcon-root": {
-                                    fontSize: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                  },
-                                  color: highlightHotspot
-                                    ? getHighlightColor()
-                                    : "action.active",
-                                  "&.Mui-checked": {
-                                    color: "#444CE7",
-                                  },
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  zIndex: 10,
                                 }}
-                              />
-                              {currentItem.name && (
-                                <Typography
-                                  variant="body2"
-                                  sx={{ ml: 1, color: "text.primary" }}
-                                >
-                                  {currentItem.name}
-                                </Typography>
-                              )}
-                            </Box>
-                          )}
+                              >
+                                <FormControl fullWidth>
+                                  <Select
+                                    value={dropdownValue}
+                                    displayEmpty
+                                    onClick={handleHotspotClick}
+                                    open={dropdownOpen}
+                                    onClose={() => setDropdownOpen(false)}
+                                    sx={{
+                                      height: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                      bgcolor: "white",
+                                      border: highlightHotspot
+                                        ? `2px solid ${getHighlightColor()}`
+                                        : "1px solid #ddd",
+                                      boxShadow: highlightHotspot ? 2 : 0,
+                                    }}
+                                  >
+                                    <MenuItem value="" disabled>
+                                      {currentItem.settings?.placeholder ||
+                                        "Select an option"}
+                                    </MenuItem>
+                                    {(
+                                      currentItem.options || [
+                                        "Option 1",
+                                        "Option 2",
+                                        "Option 3",
+                                      ]
+                                    ).map((option, idx) => (
+                                      <MenuItem
+                                        key={idx}
+                                        value={option}
+                                        onClick={() =>
+                                          handleDropdownSelect(option)
+                                        }
+                                      >
+                                        {option}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                              </Box>
+                            )}
 
-                          {/* Text field hotspot */}
-                          {currentItem.hotspotType === "textfield" && (
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                zIndex: 10,
-                              }}
-                            >
-                              <TextField
-                                fullWidth
-                                value={textInputValue}
-                                onChange={(e) =>
-                                  setTextInputValue(e.target.value)
-                                }
-                                onKeyDown={handleTextInputSubmit}
-                                placeholder={
-                                  currentItem.settings?.placeholder ||
-                                  "Type and press Enter"
-                                }
-                                variant="outlined"
+                            {/* Checkbox hotspot */}
+                            {currentItem.hotspotType === "checkbox" && (
+                              <Box
+                                onClick={handleHotspotClick}
                                 sx={{
-                                  "& .MuiOutlinedInput-root": {
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  zIndex: 10,
+                                }}
+                              >
+                                <Checkbox
+                                  checked={checkboxChecked}
+                                  sx={{
+                                    padding: 0,
+                                    "& .MuiSvgIcon-root": {
+                                      fontSize: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                    },
+                                    color: highlightHotspot
+                                      ? getHighlightColor()
+                                      : "action.active",
+                                    "&.Mui-checked": {
+                                      color: "#444CE7",
+                                    },
+                                  }}
+                                />
+                                {currentItem.name && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ ml: 1, color: "text.primary" }}
+                                  >
+                                    {currentItem.name}
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+
+                            {/* Text field hotspot */}
+                            {currentItem.hotspotType === "textfield" && (
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  left: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.left
+                                  }px`,
+                                  top: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.top
+                                  }px`,
+                                  width: `${
+                                    scaleCoordinates(currentItem.coordinates)
+                                      ?.width
+                                  }px`,
+                                  zIndex: 10,
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  value={textInputValue}
+                                  onChange={(e) =>
+                                    setTextInputValue(e.target.value)
+                                  }
+                                  onKeyDown={handleTextInputSubmit}
+                                  placeholder={
+                                    currentItem.settings?.placeholder ||
+                                    "Type and press Enter"
+                                  }
+                                  variant="outlined"
+                                  sx={{
+                                    "& .MuiOutlinedInput-root": {
+                                      height: `${
+                                        scaleCoordinates(
+                                          currentItem.coordinates,
+                                        )?.height
+                                      }px`,
+                                      bgcolor: "white",
+                                      "& fieldset": {
+                                        borderColor: highlightHotspot
+                                          ? getHighlightColor()
+                                          : "rgba(0, 0, 0, 0.23)",
+                                        borderWidth: highlightHotspot ? 2 : 1,
+                                      },
+                                      "&:hover fieldset": {
+                                        borderColor: getHighlightColor(),
+                                      },
+                                      "&.Mui-focused fieldset": {
+                                        borderColor: getHighlightColor(),
+                                      },
+                                    },
+                                  }}
+                                  autoFocus
+                                />
+                              </Box>
+                            )}
+
+                            {/* Highlight hotspot - Only render if hideHighlights is false */}
+                            {currentItem.hotspotType === "highlight" &&
+                              !levelSettings.hideHighlights && (
+                                <Box
+                                  onClick={() => {
+                                    console.log("Highlight hotspot clicked");
+                                    handleHotspotClick();
+                                  }}
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.width
+                                    }px`,
                                     height: `${
                                       scaleCoordinates(currentItem.coordinates)
                                         ?.height
                                     }px`,
-                                    bgcolor: "white",
-                                    "& fieldset": {
-                                      borderColor: highlightHotspot
-                                        ? getHighlightColor()
-                                        : "rgba(0, 0, 0, 0.23)",
-                                      borderWidth: highlightHotspot ? 2 : 1,
-                                    },
-                                    "&:hover fieldset": {
-                                      borderColor: getHighlightColor(),
-                                    },
-                                    "&.Mui-focused fieldset": {
-                                      borderColor: getHighlightColor(),
-                                    },
-                                  },
-                                }}
-                                autoFocus
-                              />
-                            </Box>
-                          )}
+                                    border: "4px solid",
+                                    borderColor: getHighlightColor(),
+                                    boxShadow: highlightHotspot
+                                      ? `0 0 12px 3px ${getHighlightColor()}`
+                                      : "none",
+                                    borderRadius: "4px",
+                                    backgroundColor: "transparent",
+                                    transition: "box-shadow 0.3s",
+                                    zIndex: 10,
+                                  }}
+                                />
+                              )}
 
-                          {/* Highlight hotspot - Only render if hideHighlights is false */}
-                          {currentItem.hotspotType === "highlight" &&
-                            !levelSettings.hideHighlights && (
+                            {/* Coaching tip button */}
+                            {(currentItem.hotspotType === "coaching" ||
+                              currentItem.hotspotType === "coachingtip") && (
                               <Box
-                                onClick={() => {
-                                  console.log("Highlight hotspot clicked");
-                                  handleHotspotClick();
-                                }}
+                                onClick={handleHotspotClick}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -1774,247 +1428,213 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     scaleCoordinates(currentItem.coordinates)
                                       ?.height
                                   }px`,
-                                  border: "4px solid",
-                                  borderColor: getHighlightColor(),
-                                  boxShadow: highlightHotspot
-                                    ? `0 0 12px 3px ${getHighlightColor()}`
-                                    : "none",
-                                  borderRadius: "4px",
-                                  backgroundColor: "transparent",
-                                  transition: "box-shadow 0.3s",
-                                  zIndex: 10,
+                                  zIndex: 50,
                                 }}
-                              />
+                              >
+                                <Button
+                                  fullWidth
+                                  variant="contained"
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.width
+                                    }px`,
+                                    height: `${
+                                      scaleCoordinates(currentItem.coordinates)
+                                        ?.height
+                                    }px`,
+                                    border: "4px solid",
+                                    borderColor: getHighlightColor(),
+                                    boxShadow: highlightHotspot
+                                      ? `0 0 12px 3px ${getHighlightColor()}`
+                                      : "none",
+                                    borderRadius: "4px",
+                                    backgroundColor: "transparent",
+                                    transition: "box-shadow 0.3s",
+                                    zIndex: 10,
+                                  }}
+                                />
+                              </Box>
                             )}
+                          </>
+                        )}
 
-                          {/* Coaching tip button */}
-                          {(currentItem.hotspotType === "coaching" ||
-                            currentItem.hotspotType === "coachingtip") && (
-                            <Box
-                              onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(currentItem.coordinates)?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(currentItem.coordinates)
-                                    ?.height
-                                }px`,
-                                zIndex: 50,
-                              }}
-                            >
-                              <Button
-                                fullWidth
-                                variant="contained"
+                      {/* Render maskings directly on the image */}
+                      {imageLoaded &&
+                        currentMasking &&
+                        currentMasking.map(
+                          (item, index) =>
+                            item?.content && (
+                              <Box
+                                key={index}
+                                // onClick={handleHotspotClick}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
                                   left: `${
-                                    scaleCoordinates(currentItem.coordinates)
+                                    scaleCoordinates(item.content.coordinates)
                                       ?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(currentItem.coordinates)
+                                    scaleCoordinates(item.content.coordinates)
                                       ?.top
                                   }px`,
                                   width: `${
-                                    scaleCoordinates(currentItem.coordinates)
+                                    scaleCoordinates(item.content.coordinates)
                                       ?.width
                                   }px`,
                                   height: `${
-                                    scaleCoordinates(currentItem.coordinates)
+                                    scaleCoordinates(item.content.coordinates)
                                       ?.height
                                   }px`,
                                   border: "4px solid",
-                                  borderColor: getHighlightColor(),
-                                  boxShadow: highlightHotspot
-                                    ? `0 0 12px 3px ${getHighlightColor()}`
+                                  borderColor:
+                                    item.content.settings?.color ||
+                                    "rgba(68, 76, 231, 0.7)",
+                                  boxShadow: item.content.settings?.blur_mask
+                                    ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",
                                   borderRadius: "4px",
-                                  backgroundColor: "transparent",
+                                  backgroundColor: item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
+                                  filter: item.content.settings?.blur_mask
+                                    ? "blur(8px)"
+                                    : "none",
+                                  backdropFilter: item.content.settings
+                                    ?.blur_mask
+                                    ? "blur(8px)"
+                                    : "none",
                                 }}
                               />
-                            </Box>
-                          )}
-                        </>
-                      )}
-
-                    {/* Render maskings directly on the image */}
-                    {imageLoaded &&
-                      currentMasking &&
-                      currentMasking.map(
-                        (item, index) =>
-                          item?.content && (
-                            <Box
-                              key={index}
-                              // onClick={handleHotspotClick}
-                              sx={{
-                                position: "absolute",
-                                cursor: "pointer",
-                                left: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.left
-                                }px`,
-                                top: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.top
-                                }px`,
-                                width: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.width
-                                }px`,
-                                height: `${
-                                  scaleCoordinates(item.content.coordinates)
-                                    ?.height
-                                }px`,
-                                border: "4px solid",
-                                borderColor:
-                                  item.content.settings?.color ||
-                                  "rgba(68, 76, 231, 0.7)",
-                                boxShadow: item.content.settings?.blur_mask
-                                  ? `0 0 12px 3px ${item.content.settings?.color}`
-                                  : "none",
-                                borderRadius: "4px",
-                                backgroundColor: item.content.settings?.color,
-                                transition: "box-shadow 0.3s",
-                                zIndex: 10,
-                                filter: item.content.settings?.blur_mask
-                                  ? "blur(8px)"
-                                  : "none",
-                                backdropFilter: item.content.settings?.blur_mask
-                                  ? "blur(8px)"
-                                  : "none",
-                              }}
-                            />
-                          ),
-                      )}
-                  </Box>
-                )}
-              </Box>
-            </Box>
-
-            {/* Right side - Empty sidebar (to match layout of other components) */}
-            <Box
-              sx={{
-                width: 320,
-                borderLeft: 1,
-                borderColor: "divider",
-                bgcolor: "background.paper",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {/* Empty sidebar with status header to match other components */}
-              <Box
-                sx={{
-                  p: 1.5,
-                  borderBottom: 1,
-                  borderColor: "divider",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  height: "50px",
-                  flexShrink: 0,
-                }}
-              >
-                <Typography variant="subtitle2" color="text.secondary">
-                  Visual Mode ({simulationStatus})
-                </Typography>
-                <Box>
-                  <IconButton
-                    onClick={togglePause}
-                    sx={{ bgcolor: "grey.100", mr: 1 }}
-                    size="small"
-                  >
-                    {isPaused ? (
-                      <PlayArrow fontSize="small" />
-                    ) : (
-                      <Pause fontSize="small" />
-                    )}
-                  </IconButton>
-
-                  <IconButton
-                    onClick={handleEndSimulation}
-                    sx={{
-                      bgcolor: "error.main",
-                      color: "white",
-                      "&:hover": { bgcolor: "error.dark" },
-                    }}
-                    size="small"
-                  >
-                    <CallEnd fontSize="small" />
-                  </IconButton>
+                            ),
+                        )}
+                    </Box>
+                  )}
                 </Box>
               </Box>
 
-              {/* Empty content area - made more compact */}
+              {/* Right side - Empty sidebar (to match layout of other components) */}
               <Box
                 sx={{
-                  flex: 1,
+                  width: 320,
+                  borderLeft: 1,
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  p: 2,
-                  color: "text.secondary",
-                  textAlign: "center",
                 }}
               >
-                <VisibilityIcon
-                  sx={{ fontSize: 36, color: "grey.400", mb: 1 }}
-                />
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Visual Mode
-                </Typography>
-                <Typography variant="caption">
-                  Interact with the interface on the left to navigate through
-                  the simulation
-                </Typography>
+                {/* Empty sidebar with status header to match other components */}
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    height: "50px",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Visual Mode ({simulationStatus})
+                  </Typography>
+                  <Box>
+                    <IconButton
+                      onClick={togglePause}
+                      sx={{ bgcolor: "grey.100", mr: 1 }}
+                      size="small"
+                    >
+                      {isPaused ? (
+                        <PlayArrow fontSize="small" />
+                      ) : (
+                        <Pause fontSize="small" />
+                      )}
+                    </IconButton>
+
+                    <IconButton
+                      onClick={handleEndSimulation}
+                      sx={{
+                        bgcolor: "error.main",
+                        color: "white",
+                        "&:hover": { bgcolor: "error.dark" },
+                      }}
+                      size="small"
+                    >
+                      <CallEnd fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+
+                {/* Empty content area - made more compact */}
+                <Box
+                  sx={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    p: 2,
+                    color: "text.secondary",
+                    textAlign: "center",
+                  }}
+                >
+                  <VisibilityIcon
+                    sx={{ fontSize: 36, color: "grey.400", mb: 1 }}
+                  />
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Visual Mode
+                  </Typography>
+                  <Typography variant="caption">
+                    Interact with the interface on the left to navigate through
+                    the simulation
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           </Box>
-        </Box>
-      )}
+        )}
 
-      {/* Loading overlay for ending simulation */}
-      {isEndingSimulation && (
-        <Box
-          sx={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "rgba(255, 255, 255, 0.95)",
-            zIndex: 9999,
-          }}
-        >
-          <CircularProgress size={60} sx={{ mb: 2 }} />
-          <Typography variant="h6" sx={{ mb: 1 }}>
-            Analyzing Attempt
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Processing your interactions and calculating performance...
-          </Typography>
-        </Box>
-      )}
-    </Box>
+        {/* Loading overlay for ending simulation */}
+        {isEndingSimulation && (
+          <Box
+            sx={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(255, 255, 255, 0.95)",
+              zIndex: 9999,
+            }}
+          >
+            <CircularProgress size={60} sx={{ mb: 2 }} />
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Analyzing Attempt
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Processing your interactions and calculating performance...
+            </Typography>
+          </Box>
+        )}
+      </Box>
+    </>
   );
 };
 

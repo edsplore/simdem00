@@ -204,6 +204,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Add state for weightage validation
+  const [isWeightageValid, setIsWeightageValid] = useState(true);
+
   const { user, currentWorkspaceId } = useAuth();
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
@@ -440,13 +443,25 @@ const SettingTab: React.FC<SettingTabProps> = ({
     // Build validation error message if needed
     let errorMessage = null;
 
-    if (!isAnyLevelEnabled && !isEstimatedTimeValid) {
+    if (!isAnyLevelEnabled && !isEstimatedTimeValid && !isWeightageValid) {
+      errorMessage =
+        "At least one level must be enabled, estimated time must be specified, and score metric weightage must total 100% before publishing.";
+    } else if (!isAnyLevelEnabled && !isEstimatedTimeValid) {
       errorMessage =
         "At least one level must be enabled and estimated time must be specified before publishing.";
+    } else if (!isAnyLevelEnabled && !isWeightageValid) {
+      errorMessage =
+        "At least one level must be enabled and score metric weightage must total 100% before publishing.";
+    } else if (!isEstimatedTimeValid && !isWeightageValid) {
+      errorMessage =
+        "Estimated time must be specified and score metric weightage must total 100% before publishing.";
     } else if (!isAnyLevelEnabled) {
       errorMessage = "At least one level must be enabled before publishing.";
     } else if (!isEstimatedTimeValid) {
       errorMessage = "Estimated time must be specified before publishing.";
+    } else if (!isWeightageValid) {
+      errorMessage =
+        "Score metric weightage must total 100% before publishing.";
     }
 
     setValidationError(errorMessage);
@@ -468,12 +483,13 @@ const SettingTab: React.FC<SettingTabProps> = ({
       estimatedTime?.value &&
       estimatedTime.value.trim() !== "";
 
-    return !isAnyLevelEnabled || !isEstimatedTimeValid;
+    return !isAnyLevelEnabled || !isEstimatedTimeValid || !isWeightageValid;
   }, [
     isPublishing,
     simulationId,
     settingsState.advancedSettings?.levels?.simulationLevels,
     settingsState.advancedSettings?.estimatedTime,
+    isWeightageValid, // Add this dependency
   ]);
 
   // Save settings to localStorage when they change
@@ -526,6 +542,11 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const handlePromptChange = (newPrompt: string) => {
     console.log("Prompt updated:", newPrompt);
     setEditedPrompt(newPrompt);
+  };
+
+  // Add handler for weightage validation
+  const handleWeightageValidationChange = (isValid: boolean) => {
+    setIsWeightageValid(isValid);
   };
 
   // When returning from preview, restore settings
@@ -1154,7 +1175,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
             <Tooltip
               title={
                 isPublishDisabled
-                  ? "At least one level must be enabled and estimated time must be specified before publishing"
+                  ? "At least one level must be enabled, estimated time must be specified, and score metric weightage must total 100% before publishing"
                   : ""
               }
               arrow
@@ -1409,6 +1430,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               showVoiceSettings={showVoiceSettings}
               showPromptSettings={showPromptSettings}
               simulationType={simulationType} // Pass simulation type to control conditional rendering
+              onWeightageValidationChange={handleWeightageValidationChange} // Add this prop
             />
           </Box>
         </Box>

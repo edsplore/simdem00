@@ -49,6 +49,7 @@ interface VoiceScoreSettingProps {
   showVoiceSettings?: boolean;
   showPromptSettings?: boolean;
   simulationType?: string; // Add simulation type prop
+  onWeightageValidationChange?: (isValid: boolean) => void; // Add this new prop
 }
 
 interface ScoreMetricWeightage {
@@ -114,6 +115,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   showVoiceSettings = true,
   showPromptSettings = true,
   simulationType = "audio", // Default to audio
+  onWeightageValidationChange, // Add this prop
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>(
@@ -204,12 +206,19 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       parsePercentage(contextualAccuracy) +
       parsePercentage(sentimentMeasures);
 
-    if (weightageTotal !== 100) {
+    const isValid = weightageTotal === 100;
+
+    if (!isValid) {
       setWeightageError(
         `Total weightage is ${weightageTotal}%. Please adjust to total 100%.`,
       );
     } else {
       setWeightageError(null);
+    }
+
+    // Notify parent component about validation state
+    if (onWeightageValidationChange) {
+      onWeightageValidationChange(isValid);
     }
   }, [
     clickAccuracy,
@@ -217,6 +226,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     dataEntryAccuracy,
     contextualAccuracy,
     sentimentMeasures,
+    onWeightageValidationChange, // Add this dependency
   ]);
 
   // Log when component mounts and when settings change

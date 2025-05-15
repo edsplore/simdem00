@@ -1618,7 +1618,7 @@ const ManagerDashboard = () => {
       const workspaceId = params.get("workspace_id");
 
       // Fetch only users with Sim Creator and Manager roles for the creator dropdown
-      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager"]);
+      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager", "Instructional Designer", "anmol_test"]);
 
       console.log("Creators and Managers from fetchUsersSummary:", response);
 

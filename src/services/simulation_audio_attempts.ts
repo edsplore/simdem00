@@ -110,12 +110,12 @@ export interface EndAudioSimulationResponse {
  * @returns Promise with the audio simulation response
  */
 export const startAudioSimulation = async (
-  params: StartAudioSimulationRequest
+  params: StartAudioSimulationRequest,
 ): Promise<StartAudioSimulationResponse> => {
   try {
     const response = await apiClient.post<StartAudioSimulationResponse>(
       "/simulations/start-audio",
-      params
+      params,
     );
     return response.data;
   } catch (error) {
@@ -130,7 +130,7 @@ export const startAudioSimulation = async (
  * @returns Promise with the end audio simulation response including scores
  */
 export const endAudioSimulation = async (
-  params: EndAudioSimulationRequest
+  params: EndAudioSimulationRequest,
 ): Promise<EndAudioSimulationResponse> => {
   try {
     console.log("Executing end-audio API call with params:", params);
@@ -138,9 +138,6 @@ export const endAudioSimulation = async (
     const response = await apiClient.post<EndAudioSimulationResponse>(
       "/simulations/end-audio",
       params,
-      {
-        timeout: 10000, // 10 second timeout
-      }
     );
 
     console.log("End audio API success:", response.data);

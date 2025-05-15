@@ -91,7 +91,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Visual-specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null
+    null,
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -118,7 +118,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -248,7 +248,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     if (shouldSkipHotspot()) {
       console.log(
         "Skipping hotspot due to level settings:",
-        currentItem.hotspotType
+        currentItem.hotspotType,
       );
       // Skip to the next item
       moveToNextItem();
@@ -379,7 +379,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
@@ -408,7 +408,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex
+      currentSlideIndex,
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -454,7 +454,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id
+            (item) => item.id === currentItem.id,
           );
           if (existingItem) {
             return [
@@ -575,7 +575,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined
+    coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
@@ -626,7 +626,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id
+          (item) => item.id === currentItem.id,
         );
         if (existingItem) {
           return [
@@ -691,7 +691,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const response = await startVisualSimulation(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start visual simulation response:", response);
@@ -785,7 +785,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData
+        attemptSequenceData,
       );
 
       if (response && response.scores) {
@@ -1019,7 +1019,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -1084,8 +1084,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.Confidence >= 80
                     ? "High"
                     : scores && scores.Confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1119,8 +1119,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.Concentration >= 80
                     ? "High"
                     : scores && scores.Concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1154,8 +1154,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   {scores && scores.Energy >= 80
                     ? "High"
                     : scores && scores.Energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1898,7 +1898,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   : "none",
                               }}
                             />
-                          )
+                          ),
                       )}
                   </Box>
                 )}
@@ -1985,6 +1985,33 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               </Box>
             </Box>
           </Box>
+        </Box>
+      )}
+
+      {/* Loading overlay for ending simulation */}
+      {isEndingSimulation && (
+        <Box
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(255, 255, 255, 0.95)",
+            zIndex: 9999,
+          }}
+        >
+          <CircularProgress size={60} sx={{ mb: 2 }} />
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Analyzing Attempt
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Processing your interactions and calculating performance...
+          </Typography>
         </Box>
       )}
     </Box>

@@ -528,13 +528,13 @@ const SimulationAttemptPage = () => {
                         key: "Test",
                         icon: <SmartToyIcon />,
                         title: "Test",
-                        subtitle: "Subtitle goes here",
+                        subtitle: "Limited attempts with real-time coaching and scoring.",
                       },
                       {
                         key: "Practice",
                         icon: <PlayArrowIcon />,
                         title: "Practice",
-                        subtitle: "Subtitle goes here",
+                        subtitle: "Unlimited practice with real-time coaching and feedback.",
                         disabled: !isPracticeEnabled(),
                       },
                     ].map((option) => (

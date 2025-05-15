@@ -132,6 +132,7 @@ export interface EndVisualSimulationResponse {
     Confidence: number;
     Energy: number;
     Concentration: number;
+    FinalScore: number;
   };
   duration: number;
   transcript: string;
@@ -148,7 +149,7 @@ export interface EndVisualSimulationResponse {
 export const startVisualSimulation = async (
   userId: string,
   simulationId: string,
-  assignmentId: string
+  assignmentId: string,
 ): Promise<VisualSimulationResponse> => {
   try {
     const response = await apiClient.post<VisualSimulationResponse>(
@@ -157,7 +158,7 @@ export const startVisualSimulation = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      }
+      },
     );
 
     return response.data;
@@ -178,7 +179,7 @@ export const endVisualSimulation = async (
   userId: string,
   simulationId: string,
   simulationProgressId: string,
-  userAttemptSequence: AttemptInterface[]
+  userAttemptSequence: AttemptInterface[],
 ): Promise<EndVisualSimulationResponse> => {
   try {
     const response = await apiClient.post<EndVisualSimulationResponse>(
@@ -188,7 +189,7 @@ export const endVisualSimulation = async (
         simulation_id: simulationId,
         usersimulationprogress_id: simulationProgressId,
         userAttemptSequence: userAttemptSequence,
-      }
+      },
     );
 
     return response.data;

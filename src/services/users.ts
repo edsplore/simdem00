@@ -111,6 +111,7 @@ export const fetchReporteeUsers = async (
 
 export const fetchUsersSummary = async (
   workspaceId: string,
+  roleNames?: string[]
 ): Promise<User[]> => {
   try {
     // Directly encode the workspaceId since Axios handles its own URL encoding
@@ -118,7 +119,19 @@ export const fetchUsersSummary = async (
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
     console.log(`Encoded workspace: ${encodedWorkspaceId}`)
 
-    const response = await apiClient.get(`${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE&fields=(user_id,email,first_name,last_name)`, {
+    // Build the base URL with required parameters
+    let url = `${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE&fields=(user_id,email,first_name,last_name,class_id)`;
+
+    // Add role_names parameter if provided
+    if (roleNames && roleNames.length > 0) {
+      const encodedRoleNames = roleNames.map(role => encodeURIComponent(role)).join(',');
+      url += `&role_names=${encodedRoleNames}`;
+      console.log(`Added role names filter: ${roleNames.join(', ')}`);
+    }
+
+    console.log(`Final URL: ${url}`);
+
+    const response = await apiClient.get(url, {
       headers: {
         accept: "application/json",
       },

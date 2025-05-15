@@ -193,7 +193,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   >(null);
   const [showCompletionScreen, setShowCompletionScreen] = useState(false);
   const [scores, setScores] = useState<EndVisualChatResponse["scores"] | null>(
-    null
+    null,
   );
   const [duration, setDuration] = useState<number>(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -202,7 +202,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Visual-chat specific state
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
-    null
+    null,
   );
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -237,7 +237,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -389,7 +389,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       if (shouldSkipHotspot()) {
         console.log(
           "Skipping hotspot due to level settings:",
-          currentItem.hotspotType
+          currentItem.hotspotType,
         );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
@@ -431,7 +431,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           setWaitingForUserInput(true);
           // Store the expected trainee response for the hint
           setExpectedTraineeResponse(
-            currentItem.text?.replace(/<.*?>/g, "") || ""
+            currentItem.text?.replace(/<.*?>/g, "") || "",
           );
           setIsProcessing(false);
 
@@ -574,7 +574,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
@@ -603,7 +603,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
-      currentSlideIndex
+      currentSlideIndex,
     );
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
@@ -701,7 +701,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined
+    coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
@@ -751,7 +751,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       e.preventDefault();
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
-          (item) => item.id === currentItem.id
+          (item) => item.id === currentItem.id,
         );
         if (existingItem) {
           return [
@@ -860,7 +860,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const response = await startVisualChatAttempt(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start visual-chat response:", response);
@@ -952,7 +952,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData
+        attemptSequenceData,
       );
 
       if (response && response.scores) {
@@ -1031,7 +1031,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
-            (item) => item.id === currentItem.id
+            (item) => item.id === currentItem.id,
           );
           if (existingItem) {
             return [
@@ -1252,7 +1252,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -1317,8 +1317,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.Confidence >= 80
                     ? "High"
                     : scores && scores.Confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1352,8 +1352,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.Concentration >= 80
                     ? "High"
                     : scores && scores.Concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -1387,8 +1387,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   {scores && scores.Energy >= 80
                     ? "High"
                     : scores && scores.Energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -2196,7 +2196,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                   : "none",
                               }}
                             />
-                          )
+                          ),
                       )}
                   </Box>
                 )}
@@ -2578,16 +2578,16 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            bgcolor: "rgba(255, 255, 255, 0.8)",
+            bgcolor: "rgba(255, 255, 255, 0.95)",
             zIndex: 9999,
           }}
         >
           <CircularProgress size={60} sx={{ mb: 2 }} />
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Processing Simulation
+            Analyzing Attempt
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Calculating your performance scores...
+            Evaluating interactions and chat responses...
           </Typography>
         </Box>
       )}

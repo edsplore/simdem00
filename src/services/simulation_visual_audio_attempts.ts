@@ -129,6 +129,7 @@ export interface EndVisualAudioResponse {
     Confidence: number;
     Energy: number;
     Concentration: number;
+    FinalScore : number;
   };
   duration: number;
   transcript: string;

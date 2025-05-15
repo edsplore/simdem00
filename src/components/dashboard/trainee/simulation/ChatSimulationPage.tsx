@@ -87,7 +87,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   const inputContainerHeight = 70;
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -139,7 +139,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       const response = await startChatSimulation(
         userId,
         simulationId,
-        assignmentId
+        assignmentId,
       );
 
       console.log("Start chat response:", response);
@@ -152,7 +152,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
           simulationId,
           assignmentId,
           "",
-          response.id
+          response.id,
         );
 
         console.log("Initial message response:", initialResponse);
@@ -195,7 +195,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationId,
         assignmentId,
         inputMessage.trim(),
-        simulationProgressId
+        simulationProgressId,
       );
 
       console.log("Message response:", response);
@@ -245,7 +245,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        chatHistory
+        chatHistory,
       );
 
       console.log("End chat response:", response);
@@ -457,7 +457,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -522,8 +522,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.Confidence >= 80
                     ? "High"
                     : scores && scores.Confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -557,8 +557,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.Concentration >= 80
                     ? "High"
                     : scores && scores.Concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -592,8 +592,8 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
                   {scores && scores.Energy >= 80
                     ? "High"
                     : scores && scores.Energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -979,16 +979,16 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "rgba(255, 255, 255, 0.8)",
+              bgcolor: "rgba(255, 255, 255, 0.95)",
               zIndex: 10,
             }}
           >
             <CircularProgress size={60} sx={{ mb: 2 }} />
             <Typography variant="h6" sx={{ mb: 1 }}>
-              Processing Simulation
+              Analyzing Attempt
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Calculating your performance scores...
+              Evaluating your responses and calculating performance scores...
             </Typography>
           </Box>
         )}

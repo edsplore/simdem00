@@ -226,6 +226,52 @@ const mockData = {
   ],
 };
 
+const defaultAggDashboardData: ManagerDashboardAggregatedDataResponse = {
+  assignmentCounts: {
+    trainingPlans: {
+      total: 0,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      overdue: 0,
+    },
+    modules: {
+      total: 0,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      overdue: 0,
+    },
+    simulations: {
+      total: 0,
+      completed: 0,
+      inProgress: 0,
+      notStarted: 0,
+      overdue: 0,
+    },
+  },
+  completionRates: {
+    trainingPlans: 0,
+    modules: 0,
+    simulations: 0,
+  },
+  averageScores: {
+    trainingPlans: 0,
+    modules: 0,
+    simulations: 0,
+  },
+  adherenceRates: {
+    trainingPlans: 0,
+    modules: 0,
+    simulations: 0,
+  },
+  leaderBoards: {
+    completion: [],
+    averageScore: [],
+    adherence: [],
+  },
+};
+
 // CircularProgressWithLabel component
 const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
   return (
@@ -689,9 +735,9 @@ const TrainingPlanTable = ({
   rowsPerPage,
   onChangePage,
   onChangeRowsPerPage,
-  reporteeUserIdsMapToName,
+  allUserNamesMap,
+  allUserClassIdsMap,
   activeTab,
-  reporteeUserIdsMapToClassId,
   isTableLoading,
 }) => {
   const [expandedRows, setExpandedRows] = useState({});
@@ -768,8 +814,8 @@ const TrainingPlanTable = ({
     const csvRows = [headers.join(",")];
     trainingEntityData.trainees?.forEach((row: any) => {
       const rowData = [
-        reporteeUserIdsMapToName.get(row.name) || row.name,
-        reporteeUserIdsMapToClassId.get(row.name),
+        allUserNamesMap.get(row.name) || row.name,
+        allUserClassIdsMap.get(row.name) || '-',
         row.status,
         row.dueDate,
         row.avgScore,
@@ -1101,9 +1147,7 @@ const TrainingPlanTable = ({
                                       p: 2,
                                     }}
                                   >
-                                    {reporteeUserIdsMapToName.get(
-                                      trainee.name
-                                    ) || trainee.name}
+                                    {allUserNamesMap.get(trainee.name) || trainee.name}
                                   </TableCell>
                                   <TableCell
                                     sx={{
@@ -1112,9 +1156,7 @@ const TrainingPlanTable = ({
                                       fontSize: 16,
                                     }}
                                   >
-                                    {reporteeUserIdsMapToClassId.get(
-                                      trainee.name
-                                    ) || '-'}
+                                    {allUserClassIdsMap.get(trainee.name) || '-'}
                                   </TableCell>
                                   <TableCell>
                                     <Chip
@@ -1284,7 +1326,7 @@ const menuItemSx = {
 const ManagerDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] =
-    useState<ManagerDashboardAggregatedDataResponse | null>(null);
+    useState<ManagerDashboardAggregatedDataResponse | null>(defaultAggDashboardData);
   const [reporteeUser, setReporteeUser] = useState<[] | User[]>([]);
   const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<
     [] | string[]
@@ -1300,6 +1342,13 @@ const ManagerDashboard = () => {
   >(new Map());
   const [reporteeUserIdsMapToClassId, setReporteeUserIdsMapToClassId] =
     useState<Map<string, string>>(new Map());
+  // New comprehensive user maps using fetchUsersSummary
+  const [allUserNamesMap, setAllUserNamesMap] = useState<Map<string, string>>(
+    new Map()
+  );
+  const [allUserClassIdsMap, setAllUserClassIdsMap] = useState<Map<string, string>>(
+    new Map()
+  );
   const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
   const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<
     [] | string[]
@@ -1468,19 +1517,71 @@ const ManagerDashboard = () => {
     }
   };
 
+  // Updated function to load all platform users for the table (no role filtering)
+  const loadAllPlatformUsers = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const params = new URLSearchParams(location.search);
+      const workspaceId = params.get("workspace_id");
+
+      // Fetch ALL users without role filtering for the table
+      const response = await fetchUsersSummary(workspaceId || "");
+
+      console.log("All platform users from fetchUsersSummary (no role filter):", response);
+
+      // Create comprehensive maps for both names and class IDs
+      const comprehensiveUserNamesMap = new Map<string, string>();
+      const comprehensiveUserClassIdsMap = new Map<string, string>();
+
+      // First, add existing reportee user data
+      reporteeUserIdsMapToName.forEach((name, id) => {
+        comprehensiveUserNamesMap.set(id, name);
+      });
+      reporteeUserIdsMapToClassId.forEach((classId, id) => {
+        comprehensiveUserClassIdsMap.set(id, classId);
+      });
+
+      // Then, add all platform users from fetchUsersSummary
+      response?.forEach((user: any) => {
+        const fullName = `${user.first_name} ${user.last_name}`;
+        comprehensiveUserNamesMap.set(user.user_id, fullName);
+        comprehensiveUserClassIdsMap.set(user.user_id, user.class_id || '');
+      });
+
+      setAllUserNamesMap(comprehensiveUserNamesMap);
+      setAllUserClassIdsMap(comprehensiveUserClassIdsMap);
+
+      console.log("Updated comprehensive user names map:", comprehensiveUserNamesMap);
+      console.log("Updated comprehensive user class IDs map:", comprehensiveUserClassIdsMap);
+    } catch (error) {
+      console.error("Error loading all platform users:", error);
+      setError("Failed to load platform users");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Separate function to load creators with specific roles for the creator filter dropdown
   const loadCreators = async () => {
     try {
       setIsLoading(true);
       setError(null);
       const params = new URLSearchParams(location.search);
       const workspaceId = params.get("workspace_id");
-      const response = await fetchUsersSummary(workspaceId || "");
-      const creatorIdsList = response?.map((user: UserSummary) => user.user_id);
+
+      // Fetch only users with Sim Creator and Manager roles for the creator dropdown
+      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager", "anmol_test", "Instructional Designer", "Organizational Admin"]);
+
+      console.log("Creators and Managers from fetchUsersSummary:", response);
+
+      // Update creator maps for the creator dropdown
+      const creatorIdsList = response?.map((user: any) => user.user_id);
       if (creatorIdsList) {
         setAllCreatorIds(creatorIdsList);
       }
       const creatorMap = new Map(
-        response?.map((user) => [
+        response?.map((user: any) => [
           user.user_id,
           user.first_name + " " + user.last_name,
         ])
@@ -1489,10 +1590,25 @@ const ManagerDashboard = () => {
         setCreatorIdsMapToName(creatorMap);
       }
     } catch (error) {
-      console.error("Error loading reportee users:", error);
-      setError("Failed to load reportee users");
+      console.error("Error loading creators:", error);
+      setError("Failed to load creators");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Removed the old loadCreators function as it's now handled by loadAllPlatformUsers
+
+  const updateLeaderBoards = (obj: ManagerDashboardAggregatedDataResponse) => {
+    const { leaderBoards } = obj;
+
+    for (const key in leaderBoards) {
+      if (Array.isArray(leaderBoards[key])) {
+        leaderBoards[key] = leaderBoards[key].map(item => ({
+          ...item,
+          team: reporteeTeamIdsMapToName.get(item.team) || item.team
+        }));
+      }
     }
   };
 
@@ -1529,6 +1645,7 @@ const ManagerDashboard = () => {
           reportee_team_ids: filteredReporteeTeamIds,
           params,
         });
+        updateLeaderBoards(data);
         setDashboardData(data);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -1593,17 +1710,17 @@ const ManagerDashboard = () => {
       // }
 
       if (trainingEntityDateRange[0] && trainingEntityDateRange[1]) {
-        params.trainingEntityDateRange.startDate =
+        params.assignedDateRange.startDate =
           trainingEntityDateRange[0].format("YYYY-MM-DD");
-        params.trainingEntityDateRange.endDate =
+        params.assignedDateRange.endDate =
           trainingEntityDateRange[1].format("YYYY-MM-DD");
       } else if (trainingEntityDateRange[0]) {
-        params.trainingEntityDateRange.startDate =
+        params.assignedDateRange.startDate =
           trainingEntityDateRange[0].format("YYYY-MM-DD");
-        params.trainingEntityDateRange.endDate = null;
+        params.assignedDateRange.endDate = null;
       } else if (trainingEntityDateRange[1]) {
-        params.trainingEntityDateRange.startDate = null;
-        params.trainingEntityDateRange.endDate =
+        params.assignedDateRange.startDate = null;
+        params.assignedDateRange.endDate =
           trainingEntityDateRange[1].format("YYYY-MM-DD");
       }
       const pagination = {
@@ -1620,7 +1737,7 @@ const ManagerDashboard = () => {
           params,
           pagination,
         });
-  
+
         setTrainingEntityPagination(data.pagination);
         setTrainingEntityAttempts(data.training_entity);
         setError(null);
@@ -1663,8 +1780,18 @@ const ManagerDashboard = () => {
   useEffect(() => {
     loadReporteeUser();
     loadReporteeTeams();
+    // Load all platform users (no role filter) and creators separately
+    loadAllPlatformUsers();
     loadCreators();
   }, [user?.id]);
+
+  // Updated useEffect to call both functions when reportee data is loaded
+  useEffect(() => {
+    if (reporteeUserIdsMapToName.size > 0 && reporteeUserIdsMapToClassId.size > 0) {
+      loadAllPlatformUsers();
+      loadCreators();
+    }
+  }, [reporteeUserIdsMapToName, reporteeUserIdsMapToClassId]);
 
   useEffect(() => {
     if (
@@ -2512,9 +2639,9 @@ const ManagerDashboard = () => {
               rowsPerPage={rowsPerPage}
               onChangePage={handleChangePage}
               onChangeRowsPerPage={handleChangeRowsPerPage}
-              reporteeUserIdsMapToName={reporteeUserIdsMapToName}
+              allUserNamesMap={allUserNamesMap}
+              allUserClassIdsMap={allUserClassIdsMap}
               activeTab={activeTab}
-              reporteeUserIdsMapToClassId={reporteeUserIdsMapToClassId}
               isTableLoading={isTableLoading}
             />
           </Stack>

@@ -134,7 +134,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   const settingsInitializedRef = useRef(false);
 
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
 
   // Return the filtered messages based on the hide settings
   // This is a critical change - we filter the messages at render time, not when adding to state
@@ -160,7 +160,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     console.log("Simulation details available:", !!simulationDetails);
     console.log(
       "Settings previously initialized:",
-      settingsInitializedRef.current
+      settingsInitializedRef.current,
     );
 
     // Only update settings if we have simulation details
@@ -235,7 +235,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         console.log("Current hide settings from refs:");
         console.log(
           "- Hide agent (trainee) messages:",
-          hideAgentScriptRef.current
+          hideAgentScriptRef.current,
         );
         console.log("- Hide customer messages:", hideCustomerScriptRef.current);
 
@@ -256,7 +256,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                 isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"
               } says: "${newMsg.content.substring(0, 30)}${
                 newMsg.content.length > 30 ? "..." : ""
-              }"`
+              }"`,
             );
 
             // Always add the message to allMessages
@@ -523,7 +523,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
       "⚠️ RENDER: Hide settings - Agent:",
       hideAgentScriptRef.current,
       "Customer:",
-      hideCustomerScriptRef.current
+      hideCustomerScriptRef.current,
     );
   }, [visibleMessages, allMessages]);
 
@@ -702,7 +702,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   Sim Score
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {scores ? `${Math.round(scores.ContextualAccuracy)}%` : "86%"}
+                  {scores ? `${Math.round(scores.FinalScore)}%` : "86%"}
                 </Typography>
               </Box>
 
@@ -767,8 +767,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.Confidence >= 80
                     ? "High"
                     : scores && scores.Confidence >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -803,8 +803,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.Concentration >= 80
                     ? "High"
                     : scores && scores.Concentration >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
 
@@ -838,8 +838,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                   {scores && scores.Energy >= 80
                     ? "High"
                     : scores && scores.Energy >= 60
-                    ? "Medium"
-                    : "Low"}
+                      ? "Medium"
+                      : "Low"}
                 </Typography>
               </Box>
             </Box>
@@ -1223,16 +1223,16 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "#FFFFFF",
+              bgcolor: "rgba(255, 255, 255, 0.95)",
               zIndex: 10,
             }}
           >
             <CircularProgress size={60} sx={{ mb: 2 }} />
             <Typography variant="h6" sx={{ mb: 1 }}>
-              Processing Simulation
+              Analyzing Attempt
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Calculating your performance scores...
+              Processing your performance and calculating scores...
             </Typography>
           </Box>
         )}

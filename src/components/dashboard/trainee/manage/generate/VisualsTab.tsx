@@ -68,28 +68,6 @@ import {
   updateSimulationWithMasking,
 } from "../../../../../services/simulation_operations";
 
-// Utility function to strip HTML tags
-const stripHtmlTags = (html: string): string => {
-  if (!html) return "";
-
-  // Create a temporary DOM element to safely extract text content
-  if (typeof window !== "undefined") {
-    const temp = document.createElement("div");
-    temp.innerHTML = html;
-    return temp.textContent || temp.innerText || "";
-  }
-
-  // Fallback regex method for server-side or when DOM is not available
-  return html
-    .replace(/<\/?[^>]+(>|$)/g, "")
-    .replace(/&nbsp;/g, " ") // Replace non-breaking spaces
-    .replace(/&amp;/g, "&") // Replace escaped ampersands
-    .replace(/&lt;/g, "<") // Replace escaped less-than
-    .replace(/&gt;/g, ">") // Replace escaped greater-than
-    .replace(/&quot;/g, '"') // Replace escaped quotes
-    .trim();
-};
-
 interface Hotspot {
   id: string;
   name: string;
@@ -271,6 +249,16 @@ const processImageUrl = (imageData: string): string => {
     console.error("Failed to process binary image data");
     return "/api/placeholder/400/320";
   }
+};
+
+/**
+ * Strips HTML tags from a string
+ * Returns clean text content
+ */
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+  // This regex removes all HTML tags while preserving the text content
+  return html.replace(/<\/?[^>]+(>|$)/g, "");
 };
 
 const MaskPhiDialog = ({

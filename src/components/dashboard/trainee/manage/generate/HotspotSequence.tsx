@@ -28,6 +28,28 @@ import {
 
 import { CSS } from "@dnd-kit/utilities";
 
+// Utility function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+
+  // Create a temporary DOM element to safely extract text content
+  if (typeof window !== "undefined") {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || "";
+  }
+
+  // Fallback regex method for server-side or when DOM is not available
+  return html
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ") // Replace non-breaking spaces
+    .replace(/&amp;/g, "&") // Replace escaped ampersands
+    .replace(/&lt;/g, "<") // Replace escaped less-than
+    .replace(/&gt;/g, ">") // Replace escaped greater-than
+    .replace(/&quot;/g, '"') // Replace escaped quotes
+    .trim();
+};
+
 /** The shape of a single item in our combined sequence. */
 export interface SequenceItem {
   /** Unique ID, e.g. "hotspot-xxx" or "message-yyy". */
@@ -161,9 +183,6 @@ function SortableRow({
 
     const msg = item.content as ScriptMessage;
 
-    // Debug log removed to prevent console spam
-    // console.log("Message role in HotspotSequence:", msg.role);
-
     return (
       <Box
         ref={setNodeRef}
@@ -221,7 +240,7 @@ function SortableRow({
               pr: 1,
             }}
           >
-            {msg.text}
+            {stripHtmlTags(msg.text)}
           </Typography>
         </Stack>
       </Box>
@@ -320,7 +339,7 @@ function SortableRow({
                 overflowWrap: "break-word",
               }}
             >
-              {ht.text}
+              {stripHtmlTags(ht.text)}
             </Typography>
           )}
           {ht.hotkey && (

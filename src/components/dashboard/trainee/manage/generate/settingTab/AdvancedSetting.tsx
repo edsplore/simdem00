@@ -590,10 +590,23 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
               render={({ field }) => (
                 <FormControl sx={{ minWidth: 120, mt: 2 }}>
                   <InputLabel id="time-label">Time</InputLabel>
-                  <Select {...field} labelId="time-label" label="Time">
+                  <Select
+                    {...field}
+                    labelId="time-label"
+                    label="Time"
+                    disabled={!watch("estimatedTime.enabled")}
+                  >
                     <MenuItem value="10 mins">10 mins</MenuItem>
+                    <MenuItem value="15 mins">15 mins</MenuItem>
                     <MenuItem value="20 mins">20 mins</MenuItem>
+                    <MenuItem value="25 mins">25 mins</MenuItem>
                     <MenuItem value="30 mins">30 mins</MenuItem>
+                    <MenuItem value="35 mins">35 mins</MenuItem>
+                    <MenuItem value="40 mins">40 mins</MenuItem>
+                    <MenuItem value="45 mins">45 mins</MenuItem>
+                    <MenuItem value="50 mins">50 mins</MenuItem>
+                    <MenuItem value="55 mins">55 mins</MenuItem>
+                    <MenuItem value="60 mins">60 mins</MenuItem>
                   </Select>
                 </FormControl>
               )}
@@ -646,6 +659,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     rows={5}
                     fullWidth
                     variant="outlined"
+                    disabled={!watch("objectives.enabled")} // Disable when toggle is off
                     placeholder="Enter each objective on a separate line without numbering.
 Example:
 Learn basic customer service
@@ -655,69 +669,78 @@ Understand refund process"
                       backgroundColor: "#FFFFFF",
                       "& .MuiOutlinedInput-root": {
                         "&:hover fieldset": {
-                          borderColor: "#444CE7",
+                          borderColor: watch("objectives.enabled")
+                            ? "#444CE7"
+                            : "rgba(0, 0, 0, 0.12)",
                         },
                         "&.Mui-focused fieldset": {
-                          borderColor: "#444CE7",
+                          borderColor: watch("objectives.enabled")
+                            ? "#444CE7"
+                            : "rgba(0, 0, 0, 0.12)",
+                        },
+                        "&.Mui-disabled": {
+                          backgroundColor: "#f5f5f5",
                         },
                       },
                     }}
                   />
 
-                  {/* Preview section */}
-                  <Box
-                    sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      gutterBottom
+                  {/* Preview section - only show when enabled */}
+                  {watch("objectives.enabled") && (
+                    <Box
+                      sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
                     >
-                      Preview (how it will appear):
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      {field.value
-                        .split("\n")
-                        .filter((line) => line.trim())
-                        .map((line, index) => {
-                          // Remove any existing numbering pattern like "1:", "2:", etc.
-                          const cleanLine = line.replace(
-                            /^\d+[\s:.)-]*\s*/,
-                            "",
-                          );
-                          return (
-                            <Typography
-                              key={index}
-                              variant="body2"
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                mb: 0.5,
-                              }}
-                            >
-                              <Box
-                                component="span"
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Preview (how it will appear):
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {field.value
+                          .split("\n")
+                          .filter((line) => line.trim())
+                          .map((line, index) => {
+                            // Remove any existing numbering pattern like "1:", "2:", etc.
+                            const cleanLine = line.replace(
+                              /^\d+[\s:.)-]*\s*/,
+                              "",
+                            );
+                            return (
+                              <Typography
+                                key={index}
+                                variant="body2"
                                 sx={{
-                                  display: "inline-flex",
+                                  display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "center",
-                                  width: 24,
-                                  height: 24,
-                                  borderRadius: "50%",
-                                  bgcolor: "primary.main",
-                                  color: "white",
-                                  fontSize: "0.8rem",
-                                  mr: 1,
+                                  mb: 0.5,
                                 }}
                               >
-                                {index + 1}
-                              </Box>
-                              {cleanLine}
-                            </Typography>
-                          );
-                        })}
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: "50%",
+                                    bgcolor: "primary.main",
+                                    color: "white",
+                                    fontSize: "0.8rem",
+                                    mr: 1,
+                                  }}
+                                >
+                                  {index + 1}
+                                </Box>
+                                {cleanLine}
+                              </Typography>
+                            );
+                          })}
+                      </Box>
                     </Box>
-                  </Box>
+                  )}
                 </Box>
               )}
             />
@@ -784,6 +807,7 @@ Understand refund process"
                   fullWidth
                   variant="contained"
                   sx={{ bgcolor: "#444CE7" }}
+                  disabled={!watch("overviewVideo.enabled")}
                 >
                   Upload Video
                 </Button>
@@ -838,6 +862,7 @@ Understand refund process"
                     rows={5}
                     fullWidth
                     variant="outlined"
+                    disabled={!watch("quickTips.enabled")} // Disable when toggle is off
                     placeholder="Enter each tip on a separate line without numbering.
 Example:
 Listen to the customer carefully
@@ -848,69 +873,78 @@ Provide accurate information"
                       backgroundColor: "#FFFFFF",
                       "& .MuiOutlinedInput-root": {
                         "&:hover fieldset": {
-                          borderColor: "#444CE7",
+                          borderColor: watch("quickTips.enabled")
+                            ? "#444CE7"
+                            : "rgba(0, 0, 0, 0.12)",
                         },
                         "&.Mui-focused fieldset": {
-                          borderColor: "#444CE7",
+                          borderColor: watch("quickTips.enabled")
+                            ? "#444CE7"
+                            : "rgba(0, 0, 0, 0.12)",
+                        },
+                        "&.Mui-disabled": {
+                          backgroundColor: "#f5f5f5",
                         },
                       },
                     }}
                   />
 
-                  {/* Preview section */}
-                  <Box
-                    sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
-                  >
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      gutterBottom
+                  {/* Preview section - only show when enabled */}
+                  {watch("quickTips.enabled") && (
+                    <Box
+                      sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
                     >
-                      Preview (how it will appear):
-                    </Typography>
-                    <Box sx={{ mt: 1 }}>
-                      {field.value
-                        .split("\n")
-                        .filter((line) => line.trim())
-                        .map((line, index) => {
-                          // Remove any existing numbering pattern like "1:", "2:", etc.
-                          const cleanLine = line.replace(
-                            /^\d+[\s:.)-]*\s*/,
-                            "",
-                          );
-                          return (
-                            <Typography
-                              key={index}
-                              variant="body2"
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                mb: 0.5,
-                              }}
-                            >
-                              <Box
-                                component="span"
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        gutterBottom
+                      >
+                        Preview (how it will appear):
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        {field.value
+                          .split("\n")
+                          .filter((line) => line.trim())
+                          .map((line, index) => {
+                            // Remove any existing numbering pattern like "1:", "2:", etc.
+                            const cleanLine = line.replace(
+                              /^\d+[\s:.)-]*\s*/,
+                              "",
+                            );
+                            return (
+                              <Typography
+                                key={index}
+                                variant="body2"
                                 sx={{
-                                  display: "inline-flex",
+                                  display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "center",
-                                  width: 24,
-                                  height: 24,
-                                  borderRadius: "50%",
-                                  bgcolor: "primary.main",
-                                  color: "white",
-                                  fontSize: "0.8rem",
-                                  mr: 1,
+                                  mb: 0.5,
                                 }}
                               >
-                                {index + 1}
-                              </Box>
-                              {cleanLine}
-                            </Typography>
-                          );
-                        })}
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    width: 24,
+                                    height: 24,
+                                    borderRadius: "50%",
+                                    bgcolor: "primary.main",
+                                    color: "white",
+                                    fontSize: "0.8rem",
+                                    mr: 1,
+                                  }}
+                                >
+                                  {index + 1}
+                                </Box>
+                                {cleanLine}
+                              </Typography>
+                            );
+                          })}
+                      </Box>
                     </Box>
-                  </Box>
+                  )}
                 </Box>
               )}
             />

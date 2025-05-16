@@ -116,7 +116,7 @@ interface SettingTabProps {
       is_unlimited?: boolean;
       pre_requisite_limit?: number;
     };
-    minimum_passing_score?: number; // Add this new field
+    minimum_passing_score?: number;
   };
   isLoading?: boolean;
   onPublish?: () => void;
@@ -142,10 +142,10 @@ interface SimulationSettings {
     pointsPerKeyword?: string;
     pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
-    practiceLimit?: string; // Add this new field
+    practiceLimit?: string;
     repetitionsAllowed?: string;
     repetitionsNeeded?: string;
-    minimumPassingScore?: string; // Add this new field
+    minimumPassingScore?: string;
     scoringMetrics?: {
       enabled?: boolean;
       keywordScore?: string;
@@ -314,20 +314,28 @@ const SettingTab: React.FC<SettingTabProps> = ({
           : "15 mins",
     };
 
-    // Get objectives from key_objectives array
+    // FIXED: Properly handle objectives from API
+    // If the array is empty, it means it was disabled
+    // If it has content, it was enabled
+    const keyObjectives = simulationData?.key_objectives || [];
     const objectives = {
-      enabled: true,
+      enabled: keyObjectives.length > 0, // Enable only if there are actual objectives
       text:
-        simulationData?.key_objectives?.join("\n") ||
-        "Learn basic customer service\nUnderstand refund process",
+        keyObjectives.length > 0
+          ? keyObjectives.join("\n")
+          : "Learn basic customer service\nUnderstand refund process", // Default placeholder
     };
 
-    // Get quick tips
+    // FIXED: Properly handle quick tips from API
+    // If the array is empty, it means it was disabled
+    // If it has content, it was enabled
+    const quickTipsArray = simulationData?.quick_tips || [];
     const quickTips = {
-      enabled: true,
+      enabled: quickTipsArray.length > 0, // Enable only if there are actual tips
       text:
-        simulationData?.quick_tips?.join("\n") ||
-        "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
+        quickTipsArray.length > 0
+          ? quickTipsArray.join("\n")
+          : "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information", // Default placeholder
     };
 
     // Get overview video setting
@@ -372,13 +380,13 @@ const SettingTab: React.FC<SettingTabProps> = ({
           ? "unlimited"
           : "limited",
         practiceLimit:
-          simulationData?.sim_practice?.pre_requisite_limit?.toString() || "3", // Add this
+          simulationData?.sim_practice?.pre_requisite_limit?.toString() || "3",
         repetitionsAllowed:
           simulationData?.simulation_max_repetition?.toString() || "3",
         repetitionsNeeded:
           simulationData?.simulation_completion_repetition?.toString() || "2",
         minimumPassingScore:
-          simulationData?.minimum_passing_score?.toString() || "60", // Add this
+          simulationData?.minimum_passing_score?.toString() || "60",
         scoringMetrics: {
           enabled:
             simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
@@ -633,11 +641,11 @@ const SettingTab: React.FC<SettingTabProps> = ({
       value: "15 mins",
     };
     const objectivesSettings = advancedSettings?.objectives || {
-      enabled: true,
+      enabled: false,
       text: "",
     };
     const tipsSettings = advancedSettings?.quickTips || {
-      enabled: true,
+      enabled: false,
       text: "",
     };
     const voiceConfig = voiceSettings?.voice || {};
@@ -714,6 +722,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
       `- Assigned message IDs: ${Array.from(assignedScriptMessageIds).join(", ")}`,
     );
     console.log(`- Metric weightage:`, metricWeightage);
+    console.log(`- Objectives enabled: ${objectivesSettings.enabled}`);
+    console.log(`- Quick tips enabled: ${tipsSettings.enabled}`);
 
     // Create the payload with all the data
     const payload = {
@@ -769,17 +779,15 @@ const SettingTab: React.FC<SettingTabProps> = ({
       estimated_time_to_attempt_in_mins: timeSettings.enabled
         ? parseInt(timeValue)
         : 0,
+      // CRITICAL FIX: Only send objectives if enabled, otherwise send empty array
       key_objectives: objectivesSettings.enabled
         ? processTextToArray(objectivesSettings.text)
-        : ["Learn basic customer service", "Understand refund process"],
+        : [],
       overview_video: "https://example.com/overview.mp4",
+      // CRITICAL FIX: Only send quick tips if enabled, otherwise send empty array
       quick_tips: tipsSettings.enabled
         ? processTextToArray(tipsSettings.text)
-        : [
-            "Listen to the customer carefully",
-            "Be polite and empathetic",
-            "Provide accurate information",
-          ],
+        : [],
       voice_id: showVoiceSettings
         ? voiceConfig.voiceId || DEFAULT_VOICE_ID
         : "",
@@ -830,17 +838,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
         pre_requisite_limit:
           scoringConfig.practiceMode === "limited"
             ? parseInt(scoringConfig.practiceLimit || "3")
-            : undefined, // Add this field
+            : undefined,
       },
       minimum_passing_score: parseInt(
         scoringConfig.minimumPassingScore || "60",
-      ), // Add this field
+      ),
       is_locked: false,
       version: 1,
       script: transformedScript,
       slidesData: isAnyVisualType ? slidesData : undefined,
     };
 
+    console.log("Final payload objectives:", payload.key_objectives);
+    console.log("Final payload quick_tips:", payload.quick_tips);
     console.log("Created payload with latest script and visual data:", payload);
     return payload;
   };
@@ -1115,7 +1125,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     "Simulation Scoring Metrics",
     "Score Metric Weightage",
     "Sym Practice",
-    "Minimum Passing Score", // Add this new item
+    "Minimum Passing Score",
   ];
 
   return (
@@ -1196,8 +1206,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
               placement="top"
             >
               <span>
-                {" "}
-                {/* Span wrapper needed for disabled button tooltip */}
                 <Button
                   variant="contained"
                   onClick={handlePublish}
@@ -1445,6 +1453,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
               showPromptSettings={showPromptSettings}
               simulationType={simulationType} // Pass simulation type to control conditional rendering
               onWeightageValidationChange={handleWeightageValidationChange} // Add this prop
+              enabledLevels={
+                settingsState.advancedSettings?.levels?.simulationLevels
+              } // Pass enabled levels
             />
           </Box>
         </Box>

@@ -1041,7 +1041,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           ...prevData.filter((item) => item.id !== currentItem.id),
           {
             ...existingItem,
-            isClicked: true,
+            // isClicked: true,
             userInput: option,
           },
         ];
@@ -1050,7 +1050,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           ...prevData,
           {
             ...currentItem,
-            isClicked: true,
+            // isClicked: true,
             userInput: option,
           },
         ];
@@ -1075,7 +1075,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...prevData.filter((item) => item.id !== currentItem.id),
             {
               ...existingItem,
-              isClicked: true,
+              // isClicked: true,
               userInput: textInputValue,
             },
           ];
@@ -1084,7 +1084,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...prevData,
             {
               ...currentItem,
-              isClicked: true,
+              // isClicked: true,
               userInput: textInputValue,
             },
           ];

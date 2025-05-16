@@ -48,8 +48,14 @@ interface VoiceScoreSettingProps {
   activeSection?: string;
   showVoiceSettings?: boolean;
   showPromptSettings?: boolean;
-  simulationType?: string; // Add simulation type prop
-  onWeightageValidationChange?: (isValid: boolean) => void; // Add this new prop
+  simulationType?: string;
+  onWeightageValidationChange?: (isValid: boolean) => void;
+  // Add this prop to get enabled levels
+  enabledLevels?: {
+    lvl1: boolean;
+    lvl2: boolean;
+    lvl3: boolean;
+  };
 }
 
 interface ScoreMetricWeightage {
@@ -71,10 +77,10 @@ interface FormData {
   pointsPerKeyword: string;
   pointsPerClick: string;
   practiceMode: "unlimited" | "limited";
-  practiceLimit: string; // Add this new field
+  practiceLimit: string;
   repetitionsAllowed: string;
   repetitionsNeeded: string;
-  minimumPassingScore: string; // Add this new field
+  minimumPassingScore: string;
   scoringMetrics: {
     enabled: boolean;
     keywordScore: string;
@@ -108,6 +114,20 @@ const DEFAULT_PERCENTAGE_VALUES = [
   "100%",
 ];
 
+// Practice limit dropdown values
+const PRACTICE_LIMIT_VALUES = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+];
+
 const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   prompt,
   settings,
@@ -116,8 +136,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   activeSection,
   showVoiceSettings = true,
   showPromptSettings = true,
-  simulationType = "audio", // Default to audio
-  onWeightageValidationChange, // Add this prop
+  simulationType = "audio",
+  onWeightageValidationChange,
+  enabledLevels,
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>(
@@ -128,6 +149,13 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
   const [weightageError, setWeightageError] = useState<string | null>(null);
+
+  // Calculate number of enabled levels
+  const enabledLevelsCount = enabledLevels
+    ? (enabledLevels.lvl1 ? 1 : 0) +
+      (enabledLevels.lvl2 ? 1 : 0) +
+      (enabledLevels.lvl3 ? 1 : 0)
+    : 1; // Default to 1 if not provided
 
   // Check if simulation type is visual
   const isVisualOnly = simulationType === "visual";
@@ -152,10 +180,12 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         pointsPerKeyword: settings.scoring?.pointsPerKeyword || "1",
         pointsPerClick: settings.scoring?.pointsPerClick || "1",
         practiceMode: settings.scoring?.practiceMode || "limited",
-        practiceLimit: settings.scoring?.practiceLimit || "3", // Add default value
+        practiceLimit: settings.scoring?.practiceLimit || "3",
         repetitionsAllowed: settings.scoring?.repetitionsAllowed || "3",
-        repetitionsNeeded: settings.scoring?.repetitionsNeeded || "3",
-        minimumPassingScore: settings.scoring?.minimumPassingScore || "60", // Add default value
+        repetitionsNeeded:
+          settings.scoring?.repetitionsNeeded ||
+          Math.max(enabledLevelsCount, 1).toString(),
+        minimumPassingScore: settings.scoring?.minimumPassingScore || "60",
         scoringMetrics: {
           enabled: settings.scoring?.scoringMetrics?.enabled ?? true,
           keywordScore: settings.scoring?.scoringMetrics?.keywordScore ?? "20%",
@@ -189,8 +219,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const repetitionsAllowed = watch("repetitionsAllowed");
   const repetitionsNeeded = watch("repetitionsNeeded");
   const practiceMode = watch("practiceMode");
-  const practiceLimit = watch("practiceLimit"); // Add this
-  const minimumPassingScore = watch("minimumPassingScore"); // Add this
+  const practiceLimit = watch("practiceLimit");
+  const minimumPassingScore = watch("minimumPassingScore");
 
   // Watch weightage values to validate total
   const clickAccuracy = watch("metricWeightage.clickAccuracy");
@@ -198,6 +228,24 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const dataEntryAccuracy = watch("metricWeightage.dataEntryAccuracy");
   const contextualAccuracy = watch("metricWeightage.contextualAccuracy");
   const sentimentMeasures = watch("metricWeightage.sentimentMeasures");
+
+  // Create dynamic dropdown values based on enabled levels
+  const getRepetitionsNeededOptions = () => {
+    const options = [];
+    for (let i = enabledLevelsCount; i <= 5; i++) {
+      options.push(i.toString());
+    }
+    return options;
+  };
+
+  const getRepetitionsAllowedOptions = () => {
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
+    const options = [];
+    for (let i = currentRepetitionsNeeded; i <= 10; i++) {
+      options.push(i.toString());
+    }
+    return options;
+  };
 
   // Validate weightage totals
   useEffect(() => {
@@ -232,8 +280,25 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     dataEntryAccuracy,
     contextualAccuracy,
     sentimentMeasures,
-    onWeightageValidationChange, // Add this dependency
+    onWeightageValidationChange,
   ]);
+
+  // Update repetitions needed when enabled levels change
+  useEffect(() => {
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
+    if (currentRepetitionsNeeded < enabledLevelsCount) {
+      setValue("repetitionsNeeded", enabledLevelsCount.toString());
+    }
+  }, [enabledLevelsCount, repetitionsNeeded, setValue]);
+
+  // Update repetitions allowed when repetitions needed changes
+  useEffect(() => {
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
+    const currentRepetitionsAllowed = parseInt(repetitionsAllowed);
+    if (currentRepetitionsAllowed < currentRepetitionsNeeded) {
+      setValue("repetitionsAllowed", currentRepetitionsNeeded.toString());
+    }
+  }, [repetitionsNeeded, repetitionsAllowed, setValue]);
 
   // Log when component mounts and when settings change
   useEffect(() => {
@@ -273,10 +338,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             pointsPerKeyword: watch("pointsPerKeyword"),
             pointsPerClick: watch("pointsPerClick"),
             practiceMode,
-            practiceLimit, // Add this
+            practiceLimit,
             repetitionsAllowed,
             repetitionsNeeded,
-            minimumPassingScore, // Add this
+            minimumPassingScore,
             scoringMetrics: {
               enabled: watch("scoringMetrics.enabled"),
               keywordScore: watch("scoringMetrics.keywordScore"),
@@ -301,9 +366,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     repetitionsAllowed,
     repetitionsNeeded,
     practiceMode,
-    practiceLimit, // Add this
+    practiceLimit,
     selectedVoice,
-    minimumPassingScore, // Add this
+    minimumPassingScore,
     clickAccuracy,
     keywordAccuracy,
     dataEntryAccuracy,
@@ -456,10 +521,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         pointsPerKeyword: data.pointsPerKeyword,
         pointsPerClick: data.pointsPerClick,
         practiceMode: data.practiceMode,
-        practiceLimit: data.practiceLimit, // Add this
+        practiceLimit: data.practiceLimit,
         repetitionsAllowed: data.repetitionsAllowed,
         repetitionsNeeded: data.repetitionsNeeded,
-        minimumPassingScore: data.minimumPassingScore, // Add this
+        minimumPassingScore: data.minimumPassingScore,
         scoringMetrics: data.scoringMetrics,
         metricWeightage: data.metricWeightage,
       },
@@ -745,10 +810,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       field.onChange(e.target.value);
                     }}
                   >
-                    <MenuItem value="2">2x</MenuItem>
-                    <MenuItem value="3">3x</MenuItem>
-                    <MenuItem value="4">4x</MenuItem>
-                    <MenuItem value="5">5x</MenuItem>
+                    {getRepetitionsNeededOptions().map((value) => (
+                      <MenuItem key={value} value={value}>
+                        {value}x
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               )}
@@ -787,10 +853,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                       field.onChange(e.target.value);
                     }}
                   >
-                    <MenuItem value="3">3x</MenuItem>
-                    <MenuItem value="4">4x</MenuItem>
-                    <MenuItem value="5">5x</MenuItem>
-                    <MenuItem value="6">6x</MenuItem>
+                    {getRepetitionsAllowedOptions().map((value) => (
+                      <MenuItem key={value} value={value}>
+                        {value}x
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               )}
@@ -1000,7 +1067,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             </Box>
           </Box>
 
-          {/* New Score Metric Weightage section */}
+          {/* Score Metric Weightage section */}
           <Box sx={{ mb: 3 }} data-section="Score Metric Weightage">
             <Box
               sx={{
@@ -1195,29 +1262,28 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     Prerequisite Limited
                   </Button>
 
-                  {/* Conditional input field for practice limit */}
+                  {/* Changed from TextField to FormControl with Select */}
                   {practiceMode === "limited" && (
                     <Controller
                       name="practiceLimit"
                       control={control}
                       render={({ field: limitField }) => (
-                        <TextField
-                          {...limitField}
-                          label="Practice Limit"
-                          type="number"
-                          size="small"
-                          sx={{ width: 150, ml: 2 }}
-                          inputProps={{
-                            min: 1,
-                            max: 100,
-                          }}
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (!isNaN(value) && value > 0) {
-                              limitField.onChange(e.target.value);
-                            }
-                          }}
-                        />
+                        <FormControl sx={{ minWidth: 150, ml: 2 }}>
+                          <InputLabel>
+                            No. of practices required before starting test
+                          </InputLabel>
+                          <Select
+                            {...limitField}
+                            label="No. of practices required before starting test"
+                            size="small"
+                          >
+                            {PRACTICE_LIMIT_VALUES.map((value) => (
+                              <MenuItem key={value} value={value}>
+                                {value}x
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
                       )}
                     />
                   )}
@@ -1228,42 +1294,29 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
 
-          {/* New Minimum Passing Score section */}
+          {/* Changed Minimum Passing Score section to use dropdown */}
           <Box sx={{ mb: 3 }} data-section="Minimum Passing Score">
             <Typography variant="h6" gutterBottom>
               Minimum Passing Score
             </Typography>
             <Typography color="text.secondary" gutterBottom>
-              Set the minimum percentage score required to pass the simulation
+              Set min. score needed on the total scoring metrics for plan
+              success
             </Typography>
             <Controller
               name="minimumPassingScore"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Minimum Passing Score (%)"
-                  type="number"
-                  fullWidth
-                  sx={{ maxWidth: 200 }}
-                  inputProps={{
-                    min: 0,
-                    max: 100,
-                  }}
-                  onChange={(e) => {
-                    const value = parseInt(e.target.value);
-                    if (!isNaN(value) && value >= 0 && value <= 100) {
-                      field.onChange(e.target.value);
-                    }
-                  }}
-                  InputProps={{
-                    endAdornment: (
-                      <Typography sx={{ color: "text.secondary" }}>
-                        %
-                      </Typography>
-                    ),
-                  }}
-                />
+                <FormControl sx={{ minWidth: 200 }}>
+                  <InputLabel>Passing Score</InputLabel>
+                  <Select {...field} label="Passing Score">
+                    {DEFAULT_PERCENTAGE_VALUES.map((val) => (
+                      <MenuItem key={val} value={val.replace("%", "")}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               )}
             />
           </Box>

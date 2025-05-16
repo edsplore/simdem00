@@ -529,13 +529,15 @@ const SimulationAttemptPage = () => {
                         key: "Test",
                         icon: <SmartToyIcon />,
                         title: "Test",
-                        subtitle: "Limited attempts with real-time coaching and scoring.",
+                        subtitle:
+                          "Limited attempts with real-time coaching and scoring.",
                       },
                       {
                         key: "Practice",
                         icon: <PlayArrowIcon />,
                         title: "Practice",
-                        subtitle: "Unlimited practice with real-time coaching and feedback.",
+                        subtitle:
+                          "Unlimited practice with real-time coaching and feedback.",
                         disabled: !isPracticeEnabled(),
                       },
                     ].map((option) => (
@@ -594,37 +596,40 @@ const SimulationAttemptPage = () => {
                   </Stack>
                 </Box>
 
-                {/* Learning Objectives */}
-                <Box sx={{ mt: 3 }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ color: "#0F174F99" }}
-                    gutterBottom
-                  >
-                    You will learn
-                  </Typography>
-                  <Box
-                    sx={{
-                      border: "1px solid #0F174F99",
-                      borderRadius: "8px",
-                      p: 1,
-                      width: "28%",
-                    }}
-                  >
-                    <Stack spacing={0}>
-                      {simulation?.key_objectives?.map((objective, index) => (
-                        <Typography
-                          key={index}
-                          variant="body2"
-                          sx={{ fontSize: "13px" }}
-                          color="text.secondary"
-                        >
-                          {index + 1}. {objective}
-                        </Typography>
-                      ))}
-                    </Stack>
-                  </Box>
-                </Box>
+                {/* Learning Objectives - Only show if there are objectives */}
+                {simulation?.key_objectives &&
+                  simulation.key_objectives.length > 0 && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ color: "#0F174F99" }}
+                        gutterBottom
+                      >
+                        You will learn
+                      </Typography>
+                      <Box
+                        sx={{
+                          border: "1px solid #0F174F99",
+                          borderRadius: "8px",
+                          p: 1,
+                          width: "28%",
+                        }}
+                      >
+                        <Stack spacing={0}>
+                          {simulation.key_objectives.map((objective, index) => (
+                            <Typography
+                              key={index}
+                              variant="body2"
+                              sx={{ fontSize: "13px" }}
+                              color="text.secondary"
+                            >
+                              {index + 1}. {objective}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    </Box>
+                  )}
 
                 {/* Continue Button */}
                 <Button
@@ -651,36 +656,38 @@ const SimulationAttemptPage = () => {
                 </Button>
               </Box>
 
-              {/* Quick Tips */}
-              <Box sx={{ border: "1px solid grey", borderRadius: 3, p: 1.5 }}>
-                <Typography
-                  variant="subtitle1"
-                  gutterBottom
-                  sx={{
-                    bgcolor: "#F9FAFB",
-                    display: "flex",
-                    alignItems: "center",
-                    p: "4px 12px",
-                    width: "100%",
-                    mt: "-3px",
-                    borderRadius: "3px 3px 0 0",
-                  }}
-                >
-                  Quick Tips
-                </Typography>
-                <Stack spacing={0}>
-                  {simulation?.quick_tips?.map((tip, index) => (
-                    <Typography
-                      key={index}
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ fontSize: "13px" }}
-                    >
-                      {index + 1}. {tip}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Box>
+              {/* Quick Tips - Only show if there are tips */}
+              {simulation?.quick_tips && simulation.quick_tips.length > 0 && (
+                <Box sx={{ border: "1px solid grey", borderRadius: 3, p: 1.5 }}>
+                  <Typography
+                    variant="subtitle1"
+                    gutterBottom
+                    sx={{
+                      bgcolor: "#F9FAFB",
+                      display: "flex",
+                      alignItems: "center",
+                      p: "4px 12px",
+                      width: "100%",
+                      mt: "-3px",
+                      borderRadius: "3px 3px 0 0",
+                    }}
+                  >
+                    Quick Tips
+                  </Typography>
+                  <Stack spacing={0}>
+                    {simulation.quick_tips.map((tip, index) => (
+                      <Typography
+                        key={index}
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontSize: "13px" }}
+                      >
+                        {index + 1}. {tip}
+                      </Typography>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
             </Stack>
           </Box>
         </Card>

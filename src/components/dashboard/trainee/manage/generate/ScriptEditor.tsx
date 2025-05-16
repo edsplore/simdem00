@@ -205,7 +205,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   // We define which Quill formats are allowed
   const formats = useMemo(
     () => ["bold", "italic", "underline", "span", "keyword"],
-    []
+    [],
   );
 
   useEffect(() => {
@@ -478,13 +478,20 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       setShowKeywordPopper(false);
       return;
     }
+
+    // Only show keyword popper for Trainee messages
+    if (draftRole !== "Trainee") {
+      setShowKeywordPopper(false);
+      return;
+    }
+
     console.log("range", range);
     console.log("editor", editor);
     // If the user highlights text, we figure out if it's already a "keyword"
     const format = editor.getText(range.index, range.length);
 
     const selectedMessage = messages.find(
-      (message) => message.id === editingId
+      (message) => message.id === editingId,
     );
 
     let isKeyword = selectedMessage?.keywords.includes(format) || false;
@@ -495,25 +502,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setSelectionIndex(range.index);
     setSelectionLength(range.length);
 
-    // Let's get bounding rect of that selection to position a Popper
-    // const nativeRange = editor.getBounds(
-    //   range.index,
-    //   range.length
-    // );
-    // The editor container is offset in the page, so we get the container's position
-    // const quillEl = editor.editor.container.getBoundingClientRect();
-
-    // We'll create a Range to anchor the Popper in pure DOM
-    // const selectionRange = document.createRange();
-    // selectionRange.setStart(editor.scroll.domNode, 0); // minimal anchor
-    // setSelectionAnchor(selectionRange);
-
     // Now we show the popper
     setShowKeywordPopper(true);
-
-    // We'll position the popper near the selection
-    // We'll pass these offsets via style or store them in state
-    // so the popper can position above the text
   };
 
   //

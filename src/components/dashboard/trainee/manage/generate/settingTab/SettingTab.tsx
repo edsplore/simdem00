@@ -116,6 +116,7 @@ interface SettingTabProps {
       is_unlimited?: boolean;
       pre_requisite_limit?: number;
     };
+    minimum_passing_score?: number; // Add this new field
   };
   isLoading?: boolean;
   onPublish?: () => void;
@@ -141,8 +142,10 @@ interface SimulationSettings {
     pointsPerKeyword?: string;
     pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
+    practiceLimit?: string; // Add this new field
     repetitionsAllowed?: string;
     repetitionsNeeded?: string;
+    minimumPassingScore?: string; // Add this new field
     scoringMetrics?: {
       enabled?: boolean;
       keywordScore?: string;
@@ -368,10 +371,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
         practiceMode: simulationData?.sim_practice?.is_unlimited
           ? "unlimited"
           : "limited",
+        practiceLimit:
+          simulationData?.sim_practice?.pre_requisite_limit?.toString() || "3", // Add this
         repetitionsAllowed:
           simulationData?.simulation_max_repetition?.toString() || "3",
         repetitionsNeeded:
           simulationData?.simulation_completion_repetition?.toString() || "2",
+        minimumPassingScore:
+          simulationData?.minimum_passing_score?.toString() || "60", // Add this
         scoringMetrics: {
           enabled:
             simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
@@ -820,8 +827,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
       },
       sim_practice: {
         is_unlimited: scoringConfig.practiceMode === "unlimited",
-        pre_requisite_limit: parseInt(scoringConfig.repetitionsNeeded || "3"),
+        pre_requisite_limit:
+          scoringConfig.practiceMode === "limited"
+            ? parseInt(scoringConfig.practiceLimit || "3")
+            : undefined, // Add this field
       },
+      minimum_passing_score: parseInt(
+        scoringConfig.minimumPassingScore || "60",
+      ), // Add this field
       is_locked: false,
       version: 1,
       script: transformedScript,
@@ -1102,6 +1115,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     "Simulation Scoring Metrics",
     "Score Metric Weightage",
     "Sym Practice",
+    "Minimum Passing Score", // Add this new item
   ];
 
   return (

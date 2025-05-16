@@ -28,9 +28,27 @@ export type SimulationPayload = {
   };
   lvl2: {
     is_enabled: boolean;
+    enable_practice: boolean;
+    hide_agent_script: boolean;
+    hide_customer_script: boolean;
+    hide_keyword_scores: boolean;
+    hide_sentiment_scores: boolean;
+    hide_highlights: boolean;
+    hide_coaching_tips: boolean;
+    enable_post_simulation_survey: boolean;
+    ai_powered_pauses_and_feedback: boolean;
   };
   lvl3: {
     is_enabled: boolean;
+    enable_practice: boolean;
+    hide_agent_script: boolean;
+    hide_customer_script: boolean;
+    hide_keyword_scores: boolean;
+    hide_sentiment_scores: boolean;
+    hide_highlights: boolean;
+    hide_coaching_tips: boolean;
+    enable_post_simulation_survey: boolean;
+    ai_powered_pauses_and_feedback: boolean;
   };
   estimated_time_to_attempt_in_mins: number;
   key_objectives: string[];
@@ -40,6 +58,7 @@ export type SimulationPayload = {
   language: string;
   mood: string;
   voice_speed: string;
+  minimum_passing_score : number;
   prompt: string;
   simulation_completion_repetition: number;
   simulation_max_repetition: number;

@@ -71,8 +71,10 @@ interface FormData {
   pointsPerKeyword: string;
   pointsPerClick: string;
   practiceMode: "unlimited" | "limited";
+  practiceLimit: string; // Add this new field
   repetitionsAllowed: string;
   repetitionsNeeded: string;
+  minimumPassingScore: string; // Add this new field
   scoringMetrics: {
     enabled: boolean;
     keywordScore: string;
@@ -150,8 +152,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         pointsPerKeyword: settings.scoring?.pointsPerKeyword || "1",
         pointsPerClick: settings.scoring?.pointsPerClick || "1",
         practiceMode: settings.scoring?.practiceMode || "limited",
+        practiceLimit: settings.scoring?.practiceLimit || "3", // Add default value
         repetitionsAllowed: settings.scoring?.repetitionsAllowed || "3",
         repetitionsNeeded: settings.scoring?.repetitionsNeeded || "3",
+        minimumPassingScore: settings.scoring?.minimumPassingScore || "60", // Add default value
         scoringMetrics: {
           enabled: settings.scoring?.scoringMetrics?.enabled ?? true,
           keywordScore: settings.scoring?.scoringMetrics?.keywordScore ?? "20%",
@@ -185,6 +189,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const repetitionsAllowed = watch("repetitionsAllowed");
   const repetitionsNeeded = watch("repetitionsNeeded");
   const practiceMode = watch("practiceMode");
+  const practiceLimit = watch("practiceLimit"); // Add this
+  const minimumPassingScore = watch("minimumPassingScore"); // Add this
 
   // Watch weightage values to validate total
   const clickAccuracy = watch("metricWeightage.clickAccuracy");
@@ -246,6 +252,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
           repetitionsAllowed,
           repetitionsNeeded,
           practiceMode,
+          practiceLimit,
+          minimumPassingScore,
         });
 
         onSettingsChange({
@@ -265,8 +273,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             pointsPerKeyword: watch("pointsPerKeyword"),
             pointsPerClick: watch("pointsPerClick"),
             practiceMode,
+            practiceLimit, // Add this
             repetitionsAllowed,
             repetitionsNeeded,
+            minimumPassingScore, // Add this
             scoringMetrics: {
               enabled: watch("scoringMetrics.enabled"),
               keywordScore: watch("scoringMetrics.keywordScore"),
@@ -291,7 +301,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     repetitionsAllowed,
     repetitionsNeeded,
     practiceMode,
+    practiceLimit, // Add this
     selectedVoice,
+    minimumPassingScore, // Add this
     clickAccuracy,
     keywordAccuracy,
     dataEntryAccuracy,
@@ -444,8 +456,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         pointsPerKeyword: data.pointsPerKeyword,
         pointsPerClick: data.pointsPerClick,
         practiceMode: data.practiceMode,
+        practiceLimit: data.practiceLimit, // Add this
         repetitionsAllowed: data.repetitionsAllowed,
         repetitionsNeeded: data.repetitionsNeeded,
+        minimumPassingScore: data.minimumPassingScore, // Add this
         scoringMetrics: data.scoringMetrics,
         metricWeightage: data.metricWeightage,
       },
@@ -1126,7 +1140,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
 
           {/* Sym Practice */}
-          <Box data-section="Sym Practice">
+          <Box sx={{ mb: 3 }} data-section="Sym Practice">
             <Typography variant="h6" gutterBottom>
               Sym Practice
             </Typography>
@@ -1137,7 +1151,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               name="practiceMode"
               control={control}
               render={({ field }) => (
-                <Box sx={{ display: "flex", gap: 1 }}>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                   <Button
                     onClick={() => {
                       console.log("Setting practice mode to: unlimited");
@@ -1180,7 +1194,76 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                   >
                     Prerequisite Limited
                   </Button>
+
+                  {/* Conditional input field for practice limit */}
+                  {practiceMode === "limited" && (
+                    <Controller
+                      name="practiceLimit"
+                      control={control}
+                      render={({ field: limitField }) => (
+                        <TextField
+                          {...limitField}
+                          label="Practice Limit"
+                          type="number"
+                          size="small"
+                          sx={{ width: 150, ml: 2 }}
+                          inputProps={{
+                            min: 1,
+                            max: 100,
+                          }}
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              limitField.onChange(e.target.value);
+                            }
+                          }}
+                        />
+                      )}
+                    />
+                  )}
                 </Box>
+              )}
+            />
+          </Box>
+
+          <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
+
+          {/* New Minimum Passing Score section */}
+          <Box sx={{ mb: 3 }} data-section="Minimum Passing Score">
+            <Typography variant="h6" gutterBottom>
+              Minimum Passing Score
+            </Typography>
+            <Typography color="text.secondary" gutterBottom>
+              Set the minimum percentage score required to pass the simulation
+            </Typography>
+            <Controller
+              name="minimumPassingScore"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Minimum Passing Score (%)"
+                  type="number"
+                  fullWidth
+                  sx={{ maxWidth: 200 }}
+                  inputProps={{
+                    min: 0,
+                    max: 100,
+                  }}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value);
+                    if (!isNaN(value) && value >= 0 && value <= 100) {
+                      field.onChange(e.target.value);
+                    }
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <Typography sx={{ color: "text.secondary" }}>
+                        %
+                      </Typography>
+                    ),
+                  }}
+                />
               )}
             />
           </Box>

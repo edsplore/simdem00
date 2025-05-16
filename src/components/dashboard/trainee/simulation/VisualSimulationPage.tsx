@@ -53,10 +53,8 @@ interface VisualSimulationPageProps {
   onGoToNextSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
+  simulation?: any;
 }
-
-// Minimum passing score threshold
-const MIN_PASSING_SCORE = 85;
 
 const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   simulationId,
@@ -68,6 +66,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   onGoToNextSim,
   hasNextSimulation,
   assignmentId,
+  simulation,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -118,8 +117,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
+  const minPassingScore = simulation?.minimum_passing_score || 85;
+
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -855,7 +856,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         onRestartSim={handleRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
-        minPassingScore={MIN_PASSING_SCORE}
+        minPassingScore={minPassingScore}
       />
 
       <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>

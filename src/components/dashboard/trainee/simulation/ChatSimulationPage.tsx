@@ -48,10 +48,10 @@ interface ChatSimulationPageProps {
   onGoToNextSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
+  simulation?: any;
 }
 
-// Minimum passing score threshold
-const MIN_PASSING_SCORE = 85;
+
 
 const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   simulationId,
@@ -63,6 +63,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   onGoToNextSim,
   hasNextSimulation,
   assignmentId,
+  simulation,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -87,8 +88,10 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   // Input container height - used for spacing calculations
   const inputContainerHeight = 70;
 
+  const minPassingScore = simulation?.minimum_passing_score || 85;
+
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -294,7 +297,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         onRestartSim={undefined} // Chat doesn't have restart
         onViewPlayback={undefined} // Chat doesn't have playback
         hasNextSimulation={hasNextSimulation}
-        minPassingScore={MIN_PASSING_SCORE}
+        minPassingScore= {minPassingScore}
       />
 
       <Box

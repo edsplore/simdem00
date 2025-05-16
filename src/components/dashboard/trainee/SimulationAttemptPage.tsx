@@ -309,6 +309,7 @@ const SimulationAttemptPage = () => {
         onBackToList={handleBackToSimList}
         onGoToNextSim={handleGoToNextSim}
         hasNextSimulation={hasNextSimulation}
+        simulation={simulation}
       />
     );
   }

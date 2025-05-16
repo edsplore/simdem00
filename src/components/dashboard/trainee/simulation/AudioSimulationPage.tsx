@@ -51,6 +51,7 @@ interface AudioSimulationPageProps {
   onGoToNextSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
+  simulation?: any;
 }
 
 interface LevelSettings {
@@ -88,9 +89,6 @@ interface SimulationDetails {
 
 const webClient = new RetellWebClient();
 
-// Minimum passing score threshold
-const MIN_PASSING_SCORE = 85;
-
 const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   simulationId,
   simulationName,
@@ -101,6 +99,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   onGoToNextSim,
   hasNextSimulation,
   assignmentId,
+  simulation,
 }) => {
   // Get authenticated user using useAuth hook
   const { user } = useAuth();
@@ -134,8 +133,10 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   // Add a flag to track if settings have ever been properly initialized
   const settingsInitializedRef = useRef(false);
 
+  const minPassingScore = simulation?.minimum_passing_score || 85;
+
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
   // Return the filtered messages based on the hide settings
   // This is a critical change - we filter the messages at render time, not when adding to state
@@ -539,7 +540,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         onRestartSim={handleRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
-        minPassingScore={MIN_PASSING_SCORE}
+        minPassingScore={minPassingScore}
       />
 
       <Box sx={{ height: "100vh", bgcolor: "white", py: 0, px: 0 }}>

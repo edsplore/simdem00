@@ -379,10 +379,11 @@ const chartSetting = {
 };
 
 // LeaderBoard component
-const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
+const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false }) => {
   const [sortBy, setSortBy] = useState("High to Low");
 
   const handleSortChange = (event) => {
+    if (disabled) return; // Prevent sorting when disabled
     const newSortBy = event.target.value;
     setSortBy(newSortBy);
     if (onSortChange) {
@@ -409,6 +410,8 @@ const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
         border: "1px solid transparent",
         boxShadow: "0px 12px 24px -4px #919EAB1F",
         height: "fit-content",
+        opacity: disabled ? 0.5 : 1,
+        pointerEvents: disabled ? 'none' : 'auto',
       }}
     >
       <Stack justifyContent="space-between" height="100%">
@@ -437,6 +440,7 @@ const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
               <Select
                 value={sortBy}
                 onChange={handleSortChange}
+                disabled={disabled}
                 sx={{
                   fontSize: 12,
                   "& .MuiSelect-select": {
@@ -462,6 +466,14 @@ const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
           <BarChart
             dataset={sortedData}
             yAxis={[{ scaleType: "band", dataKey: "team" }]}
+            xAxis={[
+              {
+                min: 0,
+                max: 100,
+                tickMinStep: 20,
+                valueFormatter: (value) => `${value}%`,
+              },
+            ]}
             series={[
               {
                 dataKey: "score",
@@ -485,7 +497,6 @@ const LeaderBoard = ({ data, title, onSortChange, popupText }) => {
                 display: "none",
               },
             }}
-            {...chartSetting}
           />
         </Stack>
       </Stack>
@@ -2285,6 +2296,7 @@ const ManagerDashboard = () => {
                         title="Completion Rate Leader Board"
                         onSortChange={handleCompletionSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
+                        disabled={teamframe.length > 0}
                       />
                     )}
                   </Grid>
@@ -2339,6 +2351,7 @@ const ManagerDashboard = () => {
                         title="Average Score Leader Board"
                         onSortChange={handleAverageScoreSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
+                        disabled={teamframe.length > 0}
                       />
                     )}
                   </Grid>
@@ -2393,6 +2406,7 @@ const ManagerDashboard = () => {
                         title="Adherence Rate Leader Board"
                         onSortChange={handleAdherenceSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
+                        disabled={teamframe.length > 0}
                       />
                     )}
                   </Grid>

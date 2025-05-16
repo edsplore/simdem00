@@ -61,10 +61,8 @@ interface VisualAudioSimulationPageProps {
   onGoToNextSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
+  simulation?: any;
 }
-
-// Minimum passing score threshold
-const MIN_PASSING_SCORE = 85;
 
 const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   simulationId,
@@ -76,6 +74,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   onGoToNextSim,
   hasNextSimulation,
   assignmentId,
+  simulation,
 }) => {
   // Get authenticated user using useAuth hook
   const { user } = useAuth();
@@ -145,8 +144,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const speechSynthRef = useRef(window.speechSynthesis);
 
+  const minPassingScore = simulation?.minimum_passing_score || 85;
+
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.sim_accuracy >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -1695,7 +1696,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         onRestartSim={handleRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
-        minPassingScore={MIN_PASSING_SCORE}
+        minPassingScore={minPassingScore}
       />
 
       <Box

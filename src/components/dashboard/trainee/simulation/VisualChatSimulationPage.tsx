@@ -164,10 +164,9 @@ interface VisualChatSimulationPageProps {
   onGoToNextSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
+   simulation?: any;
 }
 
-// Minimum passing score threshold
-const MIN_PASSING_SCORE = 85;
 
 const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   simulationId,
@@ -179,6 +178,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   onGoToNextSim,
   hasNextSimulation,
   assignmentId,
+  simulation,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -237,8 +237,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  const minPassingScore = simulation?.minimum_passing_score || 85;
+
   // Check if simulation was passed based on scores
-  const isPassed = scores ? scores.FinalScore >= MIN_PASSING_SCORE : false;
+  const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -1088,7 +1090,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         onRestartSim={handleRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
-        minPassingScore={MIN_PASSING_SCORE}
+        minPassingScore={minPassingScore}
       />
 
       <Box

@@ -68,6 +68,28 @@ import {
   updateSimulationWithMasking,
 } from "../../../../../services/simulation_operations";
 
+// Utility function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+
+  // Create a temporary DOM element to safely extract text content
+  if (typeof window !== "undefined") {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || "";
+  }
+
+  // Fallback regex method for server-side or when DOM is not available
+  return html
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ") // Replace non-breaking spaces
+    .replace(/&amp;/g, "&") // Replace escaped ampersands
+    .replace(/&lt;/g, "<") // Replace escaped less-than
+    .replace(/&gt;/g, ">") // Replace escaped greater-than
+    .replace(/&quot;/g, '"') // Replace escaped quotes
+    .trim();
+};
+
 interface Hotspot {
   id: string;
   name: string;
@@ -204,7 +226,7 @@ const processImageUrl = (imageData: string): string => {
         ) {
           console.log(
             "Decoded blob URL from base64:",
-            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : "")
+            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : ""),
           );
           return decoded; // Return the decoded URL
         }
@@ -249,16 +271,6 @@ const processImageUrl = (imageData: string): string => {
     console.error("Failed to process binary image data");
     return "/api/placeholder/400/320";
   }
-};
-
-/**
- * Strips HTML tags from a string
- * Returns clean text content
- */
-const stripHtmlTags = (html: string): string => {
-  if (!html) return "";
-  // This regex removes all HTML tags while preserving the text content
-  return html.replace(/<\/?[^>]+(>|$)/g, "");
 };
 
 const MaskPhiDialog = ({
@@ -342,8 +354,8 @@ const MaskPhiDialog = ({
               textAlign={"center"}
               fontWeight={500}
             >
-              Do you want to mask Personal Identifiable information? You
-              can edit them later.
+              Do you want to mask Personal Identifiable information? You can
+              edit them later.
             </Typography>
           </Stack>
         </Stack>
@@ -418,7 +430,7 @@ export default function VisualsTab({
 
   // For the "Add Script Message" menu
   const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
-    null
+    null,
   );
   const [maskingPhi, setMaskingPhi] = useState<boolean>(false);
 
@@ -431,12 +443,12 @@ export default function VisualsTab({
   // Memoize the current sequence to prevent unnecessary recalculations
   const selectedImage = useMemo(
     () => visualImages.find((img) => img.id === selectedImageId),
-    [visualImages, selectedImageId]
+    [visualImages, selectedImageId],
   );
 
   const currentSequence: SequenceItem[] = useMemo(
     () => selectedImage?.sequence || [],
-    [selectedImage]
+    [selectedImage],
   );
 
   // Throttled container width update to prevent too frequent state changes
@@ -674,10 +686,10 @@ export default function VisualsTab({
             };
           }
           return img;
-        })
+        }),
       );
     },
-    []
+    [],
   );
 
   // Handle reordering of the sequence
@@ -694,10 +706,10 @@ export default function VisualsTab({
             };
           }
           return img;
-        })
+        }),
       );
     },
-    [selectedImageId]
+    [selectedImageId],
   );
 
   // Extract hotspots from the selected image for the ImageHotspot component
@@ -771,14 +783,14 @@ export default function VisualsTab({
         // Use the assignedScriptMessageIds Set to filter out already assigned messages
         return !assignedScriptMessageIds.has(msg.id);
       }),
-    [scriptData, assignedScriptMessageIds]
+    [scriptData, assignedScriptMessageIds],
   );
 
   const handleOpenScriptMenu = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       setScriptMenuAnchor(event.currentTarget);
     },
-    []
+    [],
   );
 
   const handleCloseScriptMenu = useCallback(() => {
@@ -819,7 +831,7 @@ export default function VisualsTab({
             };
           }
           return img;
-        })
+        }),
       );
 
       // Update assignedScriptMessageIds to include this message ID
@@ -831,7 +843,7 @@ export default function VisualsTab({
 
       handleCloseScriptMenu();
     },
-    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds]
+    [selectedImageId, handleCloseScriptMenu, setAssignedScriptMessageIds],
   );
 
   // For draggable thumbnails on the left
@@ -839,7 +851,7 @@ export default function VisualsTab({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleThumbnailsDragEnd = useCallback(
@@ -854,7 +866,7 @@ export default function VisualsTab({
       const newArr = arrayMove(visualImages, oldIndex, newIndex);
       setVisualImages(newArr);
     },
-    [visualImages]
+    [visualImages],
   );
 
   // Image Upload
@@ -903,7 +915,7 @@ export default function VisualsTab({
         setIsFileUploaded(true);
       }
     },
-    [handleFiles]
+    [handleFiles],
   );
   // const handleFileSelect = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -920,7 +932,7 @@ export default function VisualsTab({
       e.preventDefault();
       handleFiles(Array.from(e.dataTransfer.files));
     },
-    [handleFiles]
+    [handleFiles],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -937,7 +949,7 @@ export default function VisualsTab({
       // Always show confirmation dialog
       setShowDeleteConfirm(true);
     },
-    [visualImages.length]
+    [visualImages.length],
   );
 
   // Actual deletion function separated for clarity and improved with functional updates
@@ -957,7 +969,7 @@ export default function VisualsTab({
         if (messageIds.length > 0) {
           console.log(
             "Releasing message IDs back to unassigned pool:",
-            messageIds
+            messageIds,
           );
           setAssignedScriptMessageIds((prev) => {
             const newSet = new Set(prev);
@@ -991,7 +1003,7 @@ export default function VisualsTab({
       setEditingMasking(null);
       setIsEditing(false);
     },
-    [visualImages, setAssignedScriptMessageIds]
+    [visualImages, setAssignedScriptMessageIds],
   );
 
   // Clicking a thumbnail
@@ -1100,7 +1112,7 @@ export default function VisualsTab({
       // Call create/update simulation for all visual-related types
       if (createSimulation) {
         console.log(
-          `Updating simulation with slides for ${simulationType} type`
+          `Updating simulation with slides for ${simulationType} type`,
         );
 
         // Call the update function
@@ -1130,7 +1142,7 @@ export default function VisualsTab({
             setError(
               `Failed to update simulation. Server returned: ${
                 status || "unknown status"
-              }`
+              }`,
             );
           }
         } else {
@@ -1176,13 +1188,13 @@ export default function VisualsTab({
         } else {
           console.error("API returned empty response");
           setError(
-            "Failed to update masking in simulation. Empty response from server."
+            "Failed to update masking in simulation. Empty response from server.",
           );
         }
       } else {
         console.error("API returned empty response");
         setError(
-          "Failed to update masking in simulation. Empty response from server."
+          "Failed to update masking in simulation. Empty response from server.",
         );
       }
     } catch (error) {
@@ -1190,7 +1202,7 @@ export default function VisualsTab({
         setError(`Error updating masking in simulation: ${error.message}`);
       } else {
         setError(
-          "An unexpected error occurred while updating masking in the simulation."
+          "An unexpected error occurred while updating masking in the simulation.",
         );
       }
     }
@@ -1204,7 +1216,7 @@ export default function VisualsTab({
       setVisualImages((currentImages) => {
         // Find the current image
         const currentImageIndex = currentImages.findIndex(
-          (img) => img.id === imageId
+          (img) => img.id === imageId,
         );
         if (currentImageIndex === -1) return currentImages;
 
@@ -1212,23 +1224,25 @@ export default function VisualsTab({
 
         // Find all sequence items that are hotspots
         const currentHotspotItems = currentImage.sequence.filter(
-          (item) => item.type === "hotspot"
+          (item) => item.type === "hotspot",
         );
         const currentHotspots = currentHotspotItems.map(
-          (item) => item.content as Hotspot
+          (item) => item.content as Hotspot,
         );
 
         // Identify deleted hotspots
         const deletedHotspotIds = currentHotspots
           .filter(
             (oldHotspot) =>
-              !newHotspots.some((newHotspot) => newHotspot.id === oldHotspot.id)
+              !newHotspots.some(
+                (newHotspot) => newHotspot.id === oldHotspot.id,
+              ),
           )
           .map((hotspot) => hotspot.id);
 
         // Updated/added hotspots map for quick lookup
         const updatedHotspotsMap = new Map(
-          newHotspots.map((hotspot) => [hotspot.id, hotspot])
+          newHotspots.map((hotspot) => [hotspot.id, hotspot]),
         );
 
         // Process sequence in a single pass
@@ -1238,7 +1252,7 @@ export default function VisualsTab({
               !(
                 item.type === "hotspot" &&
                 deletedHotspotIds.includes((item.content as Hotspot).id)
-              )
+              ),
           )
           .map((item) => {
             if (item.type === "hotspot") {
@@ -1277,7 +1291,7 @@ export default function VisualsTab({
         return newImages;
       });
     },
-    []
+    [],
   );
   const updateImageMasking = useCallback(
     (imageId: string, newMaskings: Masking[]) => {
@@ -1286,7 +1300,7 @@ export default function VisualsTab({
       setVisualImages((currentImages) => {
         // Find the current image
         const currentImageIndex = currentImages.findIndex(
-          (img) => img.id === imageId
+          (img) => img.id === imageId,
         );
         if (currentImageIndex === -1) return currentImages;
 
@@ -1294,23 +1308,25 @@ export default function VisualsTab({
 
         // Find all sequence items that are masks
         const currentMaskingItems = currentImage.masking.filter(
-          (item) => item.type === "masking"
+          (item) => item.type === "masking",
         );
         const currentMaskings = currentMaskingItems.map(
-          (item) => item.content as Masking
+          (item) => item.content as Masking,
         );
 
         // Identify deleted masks
         const deletedMaskingIds = currentMaskings
           .filter(
             (oldMasking) =>
-              !newMaskings.some((newMasking) => newMasking.id === oldMasking.id)
+              !newMaskings.some(
+                (newMasking) => newMasking.id === oldMasking.id,
+              ),
           )
           .map((masking) => masking.id);
 
         // Updated/added masks map for quick lookup
         const updatedMaskingsMap = new Map(
-          newMaskings.map((masking) => [masking.id, masking])
+          newMaskings.map((masking) => [masking.id, masking]),
         );
 
         // Process sequence in a single pass
@@ -1320,7 +1336,7 @@ export default function VisualsTab({
               !(
                 item.type === "masking" &&
                 deletedMaskingIds.includes((item.content as Masking).id)
-              )
+              ),
           )
           .map((item) => {
             if (item.type === "masking") {
@@ -1359,7 +1375,7 @@ export default function VisualsTab({
         return newImages;
       });
     },
-    []
+    [],
   );
 
   // Edit / Delete a single hotspot or message from the sequence
@@ -1383,15 +1399,15 @@ export default function VisualsTab({
               ...img,
               sequence: img.sequence.filter(
                 (item) =>
-                  !(item.type === type && (item.content as any).id === id)
+                  !(item.type === type && (item.content as any).id === id),
               ),
             };
           }
           return img;
-        })
+        }),
       );
     },
-    [selectedImageId, setAssignedScriptMessageIds]
+    [selectedImageId, setAssignedScriptMessageIds],
   );
   const handleMaskingDelete = useCallback(
     (maskingId: string) => {
@@ -1411,15 +1427,15 @@ export default function VisualsTab({
                   !(
                     item.type === "masking" &&
                     (item.content as Masking).id === maskingId
-                  )
+                  ),
               ),
             };
           }
           return img;
-        })
+        }),
       );
     },
-    [selectedImageId, visualImages]
+    [selectedImageId, visualImages],
   );
 
   const handleEditItem = useCallback(
@@ -1429,13 +1445,13 @@ export default function VisualsTab({
       if (type === "hotspot") {
         // Find the hotspot in the sequence
         const selectedImage = visualImages.find(
-          (img) => img.id === selectedImageId
+          (img) => img.id === selectedImageId,
         );
         if (!selectedImage) return;
 
         const hotspotItem = selectedImage.sequence.find(
           (item) =>
-            item.type === "hotspot" && (item.content as Hotspot).id === id
+            item.type === "hotspot" && (item.content as Hotspot).id === id,
         );
 
         if (hotspotItem) {
@@ -1444,13 +1460,13 @@ export default function VisualsTab({
         }
       } else if (type === "masking") {
         const selectedImage = visualImages.find(
-          (img) => img.id === selectedImageId
+          (img) => img.id === selectedImageId,
         );
         if (!selectedImage) return;
         // Find the masking in the sequence
         const maskingItem = selectedImage.masking.find(
           (item) =>
-            item.type === "masking" && (item.content as Masking).id === id
+            item.type === "masking" && (item.content as Masking).id === id,
         );
 
         if (maskingItem) {
@@ -1462,7 +1478,7 @@ export default function VisualsTab({
         alert(`Editing message #${id} not implemented`);
       }
     },
-    [selectedImageId, visualImages]
+    [selectedImageId, visualImages],
   );
 
   const handleToggleEditMode = useCallback(() => {
@@ -1507,7 +1523,7 @@ export default function VisualsTab({
     for (let maskPhiResponse of response) {
       if (maskPhiResponse.id) {
         const visualImage = visualImages.find(
-          (image) => image.id === maskPhiResponse.id
+          (image) => image.id === maskPhiResponse.id,
         );
         if (visualImage) {
           // Update the visualImage with the masking information
@@ -1531,7 +1547,7 @@ export default function VisualsTab({
                   blur_mask: false,
                 },
               },
-            })
+            }),
           );
 
           visualImage.masking.push(...finalMasking);

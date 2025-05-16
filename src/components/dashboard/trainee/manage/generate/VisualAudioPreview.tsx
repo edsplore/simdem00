@@ -27,6 +27,28 @@ import {
   CheckCircle,
 } from "@mui/icons-material";
 
+// Utility function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+
+  // Create a temporary DOM element to safely extract text content
+  if (typeof window !== "undefined") {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || "";
+  }
+
+  // Fallback regex method for server-side or when DOM is not available
+  return html
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ") // Replace non-breaking spaces
+    .replace(/&amp;/g, "&") // Replace escaped ampersands
+    .replace(/&lt;/g, "<") // Replace escaped less-than
+    .replace(/&gt;/g, ">") // Replace escaped greater-than
+    .replace(/&quot;/g, '"') // Replace escaped quotes
+    .trim();
+};
+
 interface SimulationData {
   id: string;
   sim_name: string;
@@ -274,7 +296,9 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         console.log("Auto-speaking customer message");
         setSpeaking(true);
 
-        speakText(currentItem.text || "")
+        // Strip HTML before speaking
+        const cleanText = stripHtmlTags(currentItem.text || "");
+        speakText(cleanText)
           .then(() => {
             setAttemptSequenceData((prevState) => [
               ...prevState,
@@ -418,7 +442,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`
+        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
       );
     }
   };
@@ -446,55 +470,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       onEndSimulation();
     }
   };
-
-  // useEffect(() => {
-  //   if (currentItem.type !== "hotspot") return;
-
-  //   const handleClick = (event) => {
-  //     const x = event.clientX;
-  //     const y = event.clientY;
-  //     console.log(`Clicked at position: x=${x}, y=${y}`);
-  //     // You can update state or do something else with the coordinates
-  //   };
-
-  //   window.addEventListener("click", handleClick);
-
-  //   // Cleanup
-  //   return () => {
-  //     window.removeEventListener("click", handleClick);
-  //   };
-  // }, [currentItem.type]);
-
-  // useEffect(() => {
-  //   if (currentItem.type !== "hotspot") return;
-
-  //   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-  //     // Get position relative to the div
-  //     const rect = imageContainerRef.current?.getBoundingClientRect();
-  //     const x = rect ? event.clientX - rect.left : 0;
-  //     const y = rect ? event.clientY - rect.top : 0;
-  //     setAttemptSequenceData((prevData) => [
-  //       ...prevData,
-  //       {
-  //         type: "wrong_click",
-  //         x_cordinates: x,
-  //         y_cordinates: y,
-  //       },
-  //     ]);
-  //     console.log(`Clicked at x=${x}, y=${y} inside the image container`);
-  //   };
-
-  //   const container = imageContainerRef.current;
-  //   if (container) {
-  //     container.addEventListener("click", handleClick);
-  //   }
-
-  //   return () => {
-  //     if (container) {
-  //       container.removeEventListener("click", handleClick);
-  //     }
-  //   };
-  // }, [currentItem.type]);
 
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
@@ -594,7 +569,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
   // Updated to use both width and height scales
   const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined
+    coords: { x: number; y: number; width: number; height: number } | undefined,
   ) => {
     if (!coords) return null;
 
@@ -749,7 +724,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       }
     }
 
-    // If no hiding is required, render the original message
+    // If no hiding is required, render the original message BUT STRIP HTML TAGS
     return (
       <Paper
         elevation={0}
@@ -786,7 +761,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
           </Typography>
         </Stack>
         <Typography variant="body2" sx={{ mb: 1 }}>
-          {currentItem.text}
+          {stripHtmlTags(currentItem.text || "")}
         </Typography>
       </Paper>
     );
@@ -1168,43 +1143,49 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
               {imageLoaded &&
                 currentMasking &&
-                currentMasking.map((item, index) => (
-                  item?.content && (
-                    <Box
-                      key={index}
-                      // onClick={handleHotspotClick}
-                      sx={{
-                        position: "absolute",
-                        cursor: "pointer",
-                        left: `${
-                          scaleCoordinates(item.content.coordinates)?.left
-                        }px`,
-                        top: `${
-                          scaleCoordinates(item.content.coordinates)?.top
-                        }px`,
-                        width: `${
-                          scaleCoordinates(item.content.coordinates)?.width
-                        }px`,
-                        height: `${
-                          scaleCoordinates(item.content.coordinates)?.height
-                        }px`,
-                        border: "4px solid",
-                        borderColor:
-                        item.content.settings?.blur_mask ? "gray" :
-                          item.content.settings?.color ||
-                          "rgba(68, 76, 231, 0.7)",
-                          boxShadow:item.content.settings?.blur_mask ?  `0 0 12px 3px ${item.content.settings?.color}` : "none",
-                        borderRadius: "4px",
-                        backgroundColor: item.content.settings?.color,
-                        transition: "box-shadow 0.3s",
-                        zIndex: 10,
-                        filter: item.content.settings?.blur_mask
-                        ? "blur(8px)" : "none",
-                        backdropFilter: item.content.settings?.blur_mask ? "blur(8px)": "none",
-                      }}
-                    />
-                  )
-                ))}
+                currentMasking.map(
+                  (item, index) =>
+                    item?.content && (
+                      <Box
+                        key={index}
+                        // onClick={handleHotspotClick}
+                        sx={{
+                          position: "absolute",
+                          cursor: "pointer",
+                          left: `${
+                            scaleCoordinates(item.content.coordinates)?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(item.content.coordinates)?.top
+                          }px`,
+                          width: `${
+                            scaleCoordinates(item.content.coordinates)?.width
+                          }px`,
+                          height: `${
+                            scaleCoordinates(item.content.coordinates)?.height
+                          }px`,
+                          border: "4px solid",
+                          borderColor: item.content.settings?.blur_mask
+                            ? "gray"
+                            : item.content.settings?.color ||
+                              "rgba(68, 76, 231, 0.7)",
+                          boxShadow: item.content.settings?.blur_mask
+                            ? `0 0 12px 3px ${item.content.settings?.color}`
+                            : "none",
+                          borderRadius: "4px",
+                          backgroundColor: item.content.settings?.color,
+                          transition: "box-shadow 0.3s",
+                          zIndex: 10,
+                          filter: item.content.settings?.blur_mask
+                            ? "blur(8px)"
+                            : "none",
+                          backdropFilter: item.content.settings?.blur_mask
+                            ? "blur(8px)"
+                            : "none",
+                        }}
+                      />
+                    ),
+                )}
             </Box>
 
             {/* Coaching tip button - only render if not hidden by settings */}

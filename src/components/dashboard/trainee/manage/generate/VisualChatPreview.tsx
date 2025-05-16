@@ -33,6 +33,28 @@ import {
   Timer as TimerIcon,
 } from "@mui/icons-material";
 
+// Utility function to strip HTML tags
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+
+  // Create a temporary DOM element to safely extract text content
+  if (typeof window !== "undefined") {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || "";
+  }
+
+  // Fallback regex method for server-side or when DOM is not available
+  return html
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ") // Replace non-breaking spaces
+    .replace(/&amp;/g, "&") // Replace escaped ampersands
+    .replace(/&lt;/g, "<") // Replace escaped less-than
+    .replace(/&gt;/g, ">") // Replace escaped greater-than
+    .replace(/&quot;/g, '"') // Replace escaped quotes
+    .trim();
+};
+
 interface SimulationData {
   id: string;
   sim_name: string;
@@ -293,11 +315,11 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
           currentItem.role === "Customer" ||
           currentItem.role === "customer"
         ) {
-          // Add to chat history
+          // Add to chat history with stripped HTML
           const newMessage: ChatMessage = {
             id: Date.now().toString(),
             role: "customer",
-            text: currentItem.text || "",
+            text: stripHtmlTags(currentItem.text || ""),
             timestamp: new Date().toISOString(),
           };
 
@@ -312,8 +334,8 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         // For trainee messages, wait for user input and provide hint
         else {
           setWaitingForUserInput(true);
-          // Store the expected trainee response for the hint
-          setExpectedTraineeResponse(currentItem.text || "");
+          // Store the expected trainee response for the hint (strip HTML)
+          setExpectedTraineeResponse(stripHtmlTags(currentItem.text || ""));
           setIsProcessing(false);
         }
       } else if (currentItem.type === "hotspot") {
@@ -1008,45 +1030,50 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                       )}
                   </>
                 )}
-                {imageLoaded &&
+              {imageLoaded &&
                 currentMasking &&
-                currentMasking.map((item, index) => (
-                  item?.content && (
-                    <Box
-                      key={index}
-                      // onClick={handleHotspotClick}
-                      sx={{
-                        position: "absolute",
-                        cursor: "pointer",
-                        left: `${
-                          scaleCoordinates(item.content.coordinates)?.left
-                        }px`,
-                        top: `${
-                          scaleCoordinates(item.content.coordinates)?.top
-                        }px`,
-                        width: `${
-                          scaleCoordinates(item.content.coordinates)?.width
-                        }px`,
-                        height: `${
-                          scaleCoordinates(item.content.coordinates)?.height
-                        }px`,
-                        border: "4px solid",
-                        borderColor:
-                          item.content.settings?.color ||
-                          "rgba(68, 76, 231, 0.7)",
-                        boxShadow:item.content.settings?.blur_mask ?  `0 0 12px 3px ${item.content.settings?.color}` : "none",
-                        borderRadius: "4px",
-                        backgroundColor: item.content.settings?.color,
-                        transition: "box-shadow 0.3s",
-                        zIndex: 10,
-                        filter: item.content.settings?.blur_mask
-                        ? "blur(8px)" : "none",
-                        backdropFilter: item.content.settings?.blur_mask ? "blur(8px)": "none",
-                      }}
-                    />
-                  )
-                ))}
-
+                currentMasking.map(
+                  (item, index) =>
+                    item?.content && (
+                      <Box
+                        key={index}
+                        // onClick={handleHotspotClick}
+                        sx={{
+                          position: "absolute",
+                          cursor: "pointer",
+                          left: `${
+                            scaleCoordinates(item.content.coordinates)?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(item.content.coordinates)?.top
+                          }px`,
+                          width: `${
+                            scaleCoordinates(item.content.coordinates)?.width
+                          }px`,
+                          height: `${
+                            scaleCoordinates(item.content.coordinates)?.height
+                          }px`,
+                          border: "4px solid",
+                          borderColor:
+                            item.content.settings?.color ||
+                            "rgba(68, 76, 231, 0.7)",
+                          boxShadow: item.content.settings?.blur_mask
+                            ? `0 0 12px 3px ${item.content.settings?.color}`
+                            : "none",
+                          borderRadius: "4px",
+                          backgroundColor: item.content.settings?.color,
+                          transition: "box-shadow 0.3s",
+                          zIndex: 10,
+                          filter: item.content.settings?.blur_mask
+                            ? "blur(8px)"
+                            : "none",
+                          backdropFilter: item.content.settings?.blur_mask
+                            ? "blur(8px)"
+                            : "none",
+                        }}
+                      />
+                    ),
+                )}
             </Box>
           </Box>
         </Box>
@@ -1172,7 +1199,9 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                     },
                   }}
                 >
-                  <Typography variant="body2">{message.text}</Typography>
+                  <Typography variant="body2">
+                    {stripHtmlTags(message.text)}
+                  </Typography>
                   <Typography
                     className="timestamp"
                     variant="caption"
@@ -1350,7 +1379,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                     variant="body2"
                     sx={{ fontStyle: "italic", color: "text.secondary", mb: 1 }}
                   >
-                    {expectedTraineeResponse}
+                    {stripHtmlTags(expectedTraineeResponse)}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     Type this response (or your own variation) to proceed

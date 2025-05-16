@@ -879,6 +879,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   };
 
   // to  check if user is clicking outside the hubspot
+  // Check if user is clicking outside the hotspot
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
@@ -890,19 +891,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      const {
-        x: boxX,
-        y: boxY,
-        width,
-        height,
-      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
 
-      // Check if the click is outside the currentItem box
+      // Use scaled coordinates for comparison (matching the rendered hotspot position)
+      const scaledCoords = scaleCoordinates(currentItem.coordinates);
+      if (!scaledCoords) return;
+
+      const { left: boxX, top: boxY, width, height } = scaledCoords;
+
+      // Check if the click is outside the scaled hotspot box
       const isOutside =
         x < boxX || x > boxX + width || y < boxY || y > boxY + height;
 
       if (isOutside) {
-        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
+        console.log(`Clicked outside hotspot at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => {
           const existingItem = prevData.find(
             (item) => item.id === currentItem.id,
@@ -928,9 +929,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ];
           }
         });
-        // Your custom logic for outside click
       } else {
-        console.log("Clicked inside currentItem box — ignoring");
+        console.log("Clicked inside hotspot box — ignoring");
       }
     };
 
@@ -940,7 +940,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return () => {
       container?.removeEventListener("click", handleClick);
     };
-  }, [currentItem]);
+  }, [currentItem, imageScale]); 
 
   // Handle hotspot click based on type
   // const handleHotspotClick = () => {

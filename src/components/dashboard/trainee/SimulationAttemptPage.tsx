@@ -221,10 +221,13 @@ const SimulationAttemptPage = () => {
 
   // Handle navigation from simulation back to list
   const handleBackToSimList = () => {
-    setShowStartPage(false);
-    // Reset selection states
-    setSelectedLevel(null);
-    setSelectedAttempt(null);
+    // Navigate to the same route, causing a refresh
+    const workspaceParam = currentWorkspaceId
+      ? `?workspace_id=${currentWorkspaceId}`
+      : "";
+    navigate(
+      `/simulation/${simulationId}/${assignmentId}/attempt${workspaceParam}`,
+    );
   };
 
   // Handle navigation to next simulation
@@ -619,7 +622,8 @@ const SimulationAttemptPage = () => {
                               option.key === "Test" &&
                               !canStartTestState && (
                                 <Typography variant="caption" color="error">
-                                  Test not available at this time
+                                  Maximum repetitions for this simulation are
+                                  over
                                 </Typography>
                               )}
                             {option.disabled && option.key === "Practice" && (

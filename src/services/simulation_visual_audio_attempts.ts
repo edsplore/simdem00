@@ -103,6 +103,7 @@ export interface StartVisualAudioRequest {
   user_id: string;
   sim_id: string;
   assignment_id: string;
+  attempt_type: string; // "Test" or "Practice"
 }
 
 export interface StartVisualAudioResponse {
@@ -129,7 +130,7 @@ export interface EndVisualAudioResponse {
     Confidence: number;
     Energy: number;
     Concentration: number;
-    FinalScore : number;
+    FinalScore: number;
   };
   duration: number;
   transcript: string;
@@ -141,12 +142,14 @@ export interface EndVisualAudioResponse {
  * @param userId - The ID of the user making the attempt
  * @param simulationId - The ID of the simulation to attempt
  * @param assignmentId - The ID of the assignment (if applicable)
+ * @param attemptType - Type of attempt ("Test" or "Practice")
  * @returns A promise with the simulation data and images
  */
 export const startVisualAudioAttempt = async (
   userId: string,
   simulationId: string,
-  assignmentId: string
+  assignmentId: string,
+  attemptType: string,
 ): Promise<StartVisualAudioResponse> => {
   try {
     const response = await apiClient.post<StartVisualAudioResponse>(
@@ -155,7 +158,8 @@ export const startVisualAudioAttempt = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      }
+        attempt_type: attemptType,
+      },
     );
 
     return response.data;
@@ -178,7 +182,7 @@ export const endVisualAudioAttempt = async (
   simulationId: string,
   progressId: string,
   userAttemptSequence: AttemptInterface[],
-  modifiedSlidesData?: any[]
+  modifiedSlidesData?: any[],
 ): Promise<EndVisualAudioResponse> => {
   try {
     const response = await apiClient.post<EndVisualAudioResponse>(
@@ -189,7 +193,7 @@ export const endVisualAudioAttempt = async (
         usersimulationprogress_id: progressId,
         userAttemptSequence: userAttemptSequence,
         slides_data: modifiedSlidesData, // Include modified slides data in request
-      }
+      },
     );
 
     return response.data;

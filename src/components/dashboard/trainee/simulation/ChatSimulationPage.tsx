@@ -138,6 +138,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         userId,
         simulationId,
         assignmentId,
+        attemptType, // Pass the attemptType
       );
 
       console.log("Start chat response:", response);

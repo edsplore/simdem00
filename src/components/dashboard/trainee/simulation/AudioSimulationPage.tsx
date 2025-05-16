@@ -356,6 +356,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
+        attempt_type: attemptType, // Pass the attemptType
       });
 
       console.log("Start audio response:", response);

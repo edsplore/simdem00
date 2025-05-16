@@ -687,6 +687,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         userId,
         simulationId,
         assignmentId,
+        attemptType, // Pass the attemptType
       );
 
       console.log("Start visual simulation response:", response);

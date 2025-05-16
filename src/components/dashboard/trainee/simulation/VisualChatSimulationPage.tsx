@@ -857,6 +857,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         assignmentId,
+        attemptType, // Pass the attemptType
       );
 
       console.log("Start visual-chat response:", response);

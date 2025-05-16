@@ -89,6 +89,7 @@ export interface StartVisualChatRequest {
   user_id: string;
   sim_id: string;
   assignment_id: string;
+  attempt_type: string; // "Test" or "Practice"
 }
 
 export interface StartVisualChatResponse {
@@ -126,12 +127,14 @@ export interface EndVisualChatResponse {
  * @param userId - The ID of the user starting the simulation
  * @param simulationId - The ID of the simulation to start
  * @param assignmentId - The ID of the assignment
+ * @param attemptType - Type of attempt ("Test" or "Practice")
  * @returns A promise with the simulation start response
  */
 export const startVisualChatAttempt = async (
   userId: string,
   simulationId: string,
-  assignmentId: string
+  assignmentId: string,
+  attemptType: string,
 ): Promise<StartVisualChatResponse> => {
   try {
     const response = await apiClient.post<StartVisualChatResponse>(
@@ -140,7 +143,8 @@ export const startVisualChatAttempt = async (
         user_id: userId,
         sim_id: simulationId,
         assignment_id: assignmentId,
-      }
+        attempt_type: attemptType,
+      },
     );
 
     return response.data;
@@ -161,7 +165,7 @@ export const endVisualChatAttempt = async (
   userId: string,
   simulationId: string,
   simulationProgressId: string,
-  userAttemptSequence: AttemptInterface[]
+  userAttemptSequence: AttemptInterface[],
 ): Promise<EndVisualChatResponse> => {
   try {
     const response = await apiClient.post<EndVisualChatResponse>(
@@ -171,7 +175,7 @@ export const endVisualChatAttempt = async (
         simulation_id: simulationId,
         usersimulationprogress_id: simulationProgressId,
         userAttemptSequence: userAttemptSequence,
-      }
+      },
     );
 
     return response.data;

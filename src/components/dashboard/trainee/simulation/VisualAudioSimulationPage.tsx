@@ -1297,6 +1297,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         userId,
         simulationId,
         assignmentId,
+        attemptType, // Pass the attemptType
       );
 
       console.log("Start visual-audio response:", response);

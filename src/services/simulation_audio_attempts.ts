@@ -7,6 +7,7 @@ export interface StartAudioSimulationRequest {
   user_id: string;
   sim_id: string;
   assignment_id: string;
+  attempt_type: string; // "Test" or "Practice"
   message?: string;
   usersimulationprogress_id?: string;
 }

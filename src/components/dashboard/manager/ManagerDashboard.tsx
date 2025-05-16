@@ -391,8 +391,11 @@ const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false })
     }
   };
 
+  // Use empty data when disabled, otherwise use the provided data
+  const chartData = disabled ? [] : data;
+
   // Sort the data based on current selection
-  const sortedData = [...data].sort((a, b) => {
+  const sortedData = [...chartData].sort((a, b) => {
     if (sortBy === "High to Low") {
       return b.score - a.score;
     } else {
@@ -1947,6 +1950,12 @@ const ManagerDashboard = () => {
     setAdherenceSortBy(newSortBy);
   };
 
+  // Helper function to check if any individual users are selected
+  const hasUserSelections = () => {
+    // Check if any selected items are from the users list
+    return teamframe.some(selectedId => allUserIds.includes(selectedId));
+  };
+
   useEffect(() => {
     handleTrainingEntityTeamSelectedApply();
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
@@ -2296,7 +2305,7 @@ const ManagerDashboard = () => {
                         title="Completion Rate Leader Board"
                         onSortChange={handleCompletionSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
-                        disabled={teamframe.length > 0}
+                        disabled={hasUserSelections()}
                       />
                     )}
                   </Grid>
@@ -2351,7 +2360,7 @@ const ManagerDashboard = () => {
                         title="Average Score Leader Board"
                         onSortChange={handleAverageScoreSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
-                        disabled={teamframe.length > 0}
+                        disabled={hasUserSelections()}
                       />
                     )}
                   </Grid>
@@ -2406,7 +2415,7 @@ const ManagerDashboard = () => {
                         title="Adherence Rate Leader Board"
                         onSortChange={handleAdherenceSortChange}
                         popupText="On time completed test Sim / Total no. of test sims completed"
-                        disabled={teamframe.length > 0}
+                        disabled={hasUserSelections()}
                       />
                     )}
                   </Grid>

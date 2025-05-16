@@ -1,4 +1,4 @@
-import apiClient from './api/interceptors';
+import apiClient from "./api/interceptors";
 
 export type SimulationResponse = {
   id: string;
@@ -58,7 +58,7 @@ export type SimulationPayload = {
   language: string;
   mood: string;
   voice_speed: string;
-  minimum_passing_score : number;
+  minimum_passing_score: number;
   prompt: string;
   simulation_completion_repetition: number;
   simulation_max_repetition: number;
@@ -81,18 +81,40 @@ export type SimulationPayload = {
   }>;
 };
 
+export type CanStartTestResponse = {
+  can_start_test: boolean;
+};
+
 export const publishSimulation = async (
   simulationId: string,
-  payload: SimulationPayload
+  payload: SimulationPayload,
 ): Promise<SimulationResponse> => {
   try {
     const response = await apiClient.put(
       `/simulations/${simulationId}/update`,
-      payload
+      payload,
     );
     return response.data;
   } catch (error) {
-    console.error('Error publishing simulation:', error);
+    console.error("Error publishing simulation:", error);
+    throw error;
+  }
+};
+
+export const canStartTest = async (
+  userId: string,
+  simulationId: string,
+  assignmentId: string,
+): Promise<CanStartTestResponse> => {
+  try {
+    const response = await apiClient.post("/simulations/can-start-test", {
+      user_id: userId,
+      sim_id: simulationId,
+      assignment_id: assignmentId,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error checking if test can be started:", error);
     throw error;
   }
 };

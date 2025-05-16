@@ -943,7 +943,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   }, [currentItem]);
 
   // Handle hotspot click based on type
-  const handleHotspotClick = () => {
+  // const handleHotspotClick = () => {
+
+  const handleHotspotClick = (event?: React.MouseEvent) => {
+    // Prevent event bubbling to the container
+    event?.stopPropagation();
     if (
       !isCallActive ||
       !currentItem ||
@@ -1967,7 +1971,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {(currentItem.hotspotType === "button" ||
                               !currentItem.hotspotType) && (
                               <Box
-                                onClick={handleHotspotClick}
+                                onClick={(e) => handleHotspotClick(e)}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -2044,7 +2048,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   <Select
                                     value={dropdownValue}
                                     displayEmpty
-                                    onClick={handleHotspotClick}
+                                    onClick={(e) => handleHotspotClick(e)}
                                     open={dropdownOpen}
                                     onClose={() => setDropdownOpen(false)}
                                     sx={{
@@ -2092,7 +2096,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {/* Checkbox hotspot */}
                             {currentItem.hotspotType === "checkbox" && (
                               <Box
-                                onClick={handleHotspotClick}
+                                onClick={(e) => handleHotspotClick(e)}
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -2204,9 +2208,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {currentItem.hotspotType === "highlight" &&
                               !levelSettings?.hideHighlights && (
                                 <Box
-                                  onClick={() => {
+                                  onClick={(e) => {
                                     console.log("Highlight hotspot clicked");
-                                    handleHotspotClick();
+                                    handleHotspotClick(e);
                                   }}
                                   sx={{
                                     position: "absolute",
@@ -2246,7 +2250,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {(currentItem.hotspotType === "coaching" ||
                               currentItem.hotspotType === "coachingtip") && (
                               <Box
-                                onClick={handleHotspotClick}
+                                onClick={(e) => handleHotspotClick(e)}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -2326,7 +2330,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         levelSettings &&
                         !levelSettings.hideCoachingTips && (
                           <Box
-                            onClick={handleHotspotClick}
+                            onClick={(e) => handleHotspotClick(e)}
                             sx={{
                               position: "absolute",
                               cursor: "pointer",

@@ -25,6 +25,7 @@ import VisualAudioSimulationPage from "./simulation/VisualAudioSimulationPage";
 import VisualChatSimulationPage from "./simulation/VisualChatSimulationPage";
 import VisualSimulationPage from "./simulation/VisualSimulationPage";
 import { fetchSimulationById } from "../../../services/simulations";
+import { canStartTest } from "../../../services/simulation";
 import { fetchTrainingData } from "../../../services/training";
 import { useAuth } from "../../../context/AuthContext";
 import type { Simulation, TrainingData } from "../../../types/training";
@@ -55,6 +56,34 @@ const SimulationAttemptPage = () => {
   const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
   const [allSimulations, setAllSimulations] = useState<SimulationItem[]>([]);
   const [currentSimIndex, setCurrentSimIndex] = useState(0);
+  const [canStartTestState, setCanStartTestState] = useState<boolean>(true);
+  const [isCheckingTestAvailability, setIsCheckingTestAvailability] =
+    useState(false);
+
+  // Check if user can start test
+  useEffect(() => {
+    const checkTestAvailability = async () => {
+      if (!user?.id || !simulationId || !assignmentId) return;
+
+      try {
+        setIsCheckingTestAvailability(true);
+        const response = await canStartTest(
+          user.id,
+          simulationId,
+          assignmentId,
+        );
+        setCanStartTestState(response.can_start_test);
+      } catch (error) {
+        console.error("Error checking test availability:", error);
+        // If API fails, default to allowing test (you can change this behavior)
+        setCanStartTestState(true);
+      } finally {
+        setIsCheckingTestAvailability(false);
+      }
+    };
+
+    checkTestAvailability();
+  }, [user?.id, simulationId, assignmentId]);
 
   // Fetch training data and extract all simulations
   useEffect(() => {
@@ -531,6 +560,8 @@ const SimulationAttemptPage = () => {
                         title: "Test",
                         subtitle:
                           "Limited attempts with real-time coaching and scoring.",
+                        disabled:
+                          !canStartTestState || isCheckingTestAvailability,
                       },
                       {
                         key: "Practice",
@@ -584,11 +615,24 @@ const SimulationAttemptPage = () => {
                             <Typography variant="body2">
                               {option.subtitle}
                             </Typography>
-                            {option.disabled && (
+                            {option.disabled &&
+                              option.key === "Test" &&
+                              !canStartTestState && (
+                                <Typography variant="caption" color="error">
+                                  Test not available at this time
+                                </Typography>
+                              )}
+                            {option.disabled && option.key === "Practice" && (
                               <Typography variant="caption" color="error">
                                 Not available for this level
                               </Typography>
                             )}
+                            {option.key === "Test" &&
+                              isCheckingTestAvailability && (
+                                <Typography variant="caption" color="info">
+                                  Checking availability...
+                                </Typography>
+                              )}
                           </Stack>
                         </Stack>
                       </Card>

@@ -191,8 +191,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Skip coaching tip hotspots if hideCoachingTips is enabled
     if (
-      (currentItem.hotspotType === "coaching" ||
-        currentItem.hotspotType === "coachingtip") &&
+      currentItem.hotspotType === "coaching" &&
+      // || currentItem.hotspotType === "coachingtip"
       levelSettings.hideCoachingTips
     ) {
       return true;
@@ -296,8 +296,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     // Show coaching tip immediately if it's that type and not hidden by settings
     if (
       currentItem?.type === "hotspot" &&
-      (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip") &&
+      currentItem?.hotspotType === "coaching" &&
+      // || currentItem?.hotspotType === "coachingtip"
       levelSettings &&
       !levelSettings.hideCoachingTips
     ) {
@@ -598,23 +598,23 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       !isTranscribing // Don't auto-end if we're transcribing
     ) {
       // Only auto-end if the last item is NOT a trainee message
-      const lastItem = currentSequence[currentSequenceIndex];
-      const isLastItemTraineeMessage =
-        lastItem?.type === "message" &&
-        (lastItem.role === "Trainee" || lastItem.role === "assistant");
+      // const lastItem = currentSequence[currentSequenceIndex];
+      // const isLastItemTraineeMessage =
+      //   lastItem?.type === "message" &&
+      //   (lastItem.role === "Trainee" || lastItem.role === "assistant");
 
-      if (!isLastItemTraineeMessage) {
-        // We've reached the end of the last slide's sequence and it's not a trainee message
-        console.log("Reached end of simulation content");
-        // Wait a moment for any final animations/transitions
-        setTimeout(() => {
-          handleEndCall();
-        }, 1000);
-      } else {
-        console.log(
-          "Last item is a trainee message, waiting for user to click Next",
-        );
-      }
+      // if (!isLastItemTraineeMessage) {
+      //   // We've reached the end of the last slide's sequence and it's not a trainee message
+      //   console.log("Reached end of simulation content");
+      //   // Wait a moment for any final animations/transitions
+      //   setTimeout(() => {
+      //     handleEndCall();
+      //   }, 30000);
+      // } else {
+      //   console.log(
+      //     "Last item is a trainee message, waiting for user to click Next",
+      //   );
+      // }
     }
   }, [
     currentSlideIndex,
@@ -933,7 +933,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
-    // Prevent event bubbling to container (optional, but can help reduce duplicate processing)
+    // Prevent event bubbling to container
     event?.stopPropagation();
 
     if (
@@ -951,36 +951,59 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       hotspotTimeoutRef.current = null;
     }
 
-    // IMPORTANT: Find any existing item for this hotspot and clean up wrong clicks
-    setAttemptSequenceData((prevData) => {
-      // Find existing item
-      const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id,
-      );
-
-      if (existingItemIndex >= 0) {
-        // Create new array with modified item
-        const newData = [...prevData];
-        // Set isClicked true and clear wrong_clicks
-        newData[existingItemIndex] = {
-          ...newData[existingItemIndex],
-          isClicked: true,
-          wrong_clicks: [], // Clear any wrong clicks for this hotspot
-        };
-        return newData;
-      } else {
-        // Item doesn't exist yet, add it
-        return [
-          ...prevData,
-          {
-            ...currentItem,
-            isClicked: true,
-          },
-        ];
-      }
-    });
-
     const hotspotType = currentItem.hotspotType || "button";
+
+    // MODIFIED: Only set isClicked and handle wrong_clicks for specific hotspot types
+    if (["button", "highlight", "checkbox"].includes(hotspotType)) {
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (existingItemIndex >= 0) {
+          const newData = [...prevData];
+          newData[existingItemIndex] = {
+            ...newData[existingItemIndex],
+            isClicked: true,
+            wrong_clicks: newData[existingItemIndex].wrong_clicks.slice(0, -1),
+          };
+          return newData;
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+            },
+          ];
+        }
+      });
+    } else {
+      // For other hotspot types, set wrong_clicks to empty array and don't set isClicked
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (existingItemIndex >= 0) {
+          const newData = [...prevData];
+          newData[existingItemIndex] = {
+            ...newData[existingItemIndex],
+            wrong_clicks: [], // Set to empty array for other types
+          };
+          return newData;
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              wrong_clicks: [], // Set to empty array for other types
+            },
+          ];
+        }
+      });
+    }
+
     console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
@@ -1007,7 +1030,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         break;
 
       case "coaching":
-      case "coachingtip":
+        // case "coachingtip":
         // For coaching tips, clicking anywhere dismisses it
         setShowCoachingTip(false);
         moveToNextItem();
@@ -1078,8 +1101,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...prevData.filter((item) => item.id !== currentItem.id),
             {
               ...existingItem,
-              // isClicked: true,
+              // isClicked: true, // Correctly commented out
               userInput: textInputValue,
+              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
             },
           ];
         } else {
@@ -1087,8 +1111,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...prevData,
             {
               ...currentItem,
-              // isClicked: true,
+              // isClicked: true, // Correctly commented out
               userInput: textInputValue,
+              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
             },
           ];
         }
@@ -1556,7 +1581,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         if (item.isClicked) {
           return {
             ...item,
-            wrong_clicks: [], // Clear wrong clicks for successfully clicked items
+            // wrong_clicks: [], // Clear wrong clicks for successfully clicked items
           };
         }
         return item;
@@ -2262,90 +2287,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   }}
                                 />
                               )}
-
-                            {/* Coaching tip button */}
-                            {(currentItem.hotspotType === "coaching" ||
-                              currentItem.hotspotType === "coachingtip") && (
-                              <Box
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleHotspotClick(e);
-                                }}
-                                sx={{
-                                  position: "absolute",
-                                  cursor: "pointer",
-                                  left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
-                                  }px`,
-                                  top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
-                                  }px`,
-                                  width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
-                                  }px`,
-                                  height: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.height
-                                  }px`,
-                                  zIndex: 50,
-                                  border: highlightHotspot
-                                    ? `2px solid ${
-                                        currentItem.settings?.highlightColor ||
-                                        "#1e293b"
-                                      }`
-                                    : "none",
-                                  boxShadow: highlightHotspot ? 3 : 0,
-                                  transition: "all 0.3s ease",
-                                }}
-                              >
-                                <Button
-                                  fullWidth
-                                  variant="contained"
-                                  sx={{
-                                    position: "absolute",
-                                    cursor: "pointer",
-                                    left: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.left
-                                    }px`,
-                                    top: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.top
-                                    }px`,
-                                    width: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.width
-                                    }px`,
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    border: "4px solid",
-                                    borderColor:
-                                      currentItem.settings?.highlightColor ||
-                                      "rgba(68, 76, 231, 0.7)",
-                                    boxShadow: highlightHotspot
-                                      ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
-                                      : "none",
-                                    borderRadius: "4px",
-                                    backgroundColor: "transparent",
-                                    transition: "box-shadow 0.3s",
-                                    zIndex: 10,
-                                  }}
-                                />
-                              </Box>
-                            )}
                           </>
                         )}
 
                       {/* Coaching tip button - only render if not hidden by settings */}
                       {imageLoaded &&
                         currentItem?.type === "hotspot" &&
-                        (currentItem.hotspotType === "coaching" ||
-                          currentItem.hotspotType === "coachingtip") &&
+                        currentItem.hotspotType === "coaching" &&
+                        // || currentItem.hotspotType === "coachingtip"
                         currentItem.coordinates &&
                         levelSettings &&
                         !levelSettings.hideCoachingTips && (

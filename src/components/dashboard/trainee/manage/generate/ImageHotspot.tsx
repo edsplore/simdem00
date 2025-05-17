@@ -184,7 +184,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentHotspot, setCurrentHotspot] = useState<Partial<Hotspot> | null>(
-    null
+    null,
   );
   const [showSettings, setShowSettings] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -205,7 +205,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [optionsList, setOptionsList] = useState<string[]>([]);
   const [imageError, setImageError] = useState<string | null>(null);
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(
-    null
+    null,
   );
   const [timeoutError, setTimeoutError] = useState<string | null>(null);
 
@@ -226,6 +226,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
   // Add hover state for showing hotspot type tooltip
   const [hoveredHotspot, setHoveredHotspot] = useState<string | null>(null);
+
+  // Add states for draggable modal
+  const [isDraggingModal, setIsDraggingModal] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const commonColors: ColorOption[] = [
     { name: "Blue", value: "#1976D2" },
@@ -271,6 +275,32 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }
   }, [currentHotspot?.hotspotType, currentHotspot?.settings?.timeoutDuration]);
 
+  // Add effect to handle global mouse events for modal dragging
+  useEffect(() => {
+    if (isDraggingModal) {
+      const handleMouseMove = (e: MouseEvent) => {
+        setDialogPosition((prev) => ({
+          top: e.clientY - dragOffset.y,
+          left: e.clientX - dragOffset.x,
+        }));
+      };
+
+      const handleMouseUp = () => {
+        setIsDraggingModal(false);
+      };
+
+      // Add global event listeners
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+
+      // Clean up
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    }
+  }, [isDraggingModal, dragOffset]);
+
   // Parse RGBA color string to components
   const parseRgba = (rgbaStr: string) => {
     // Default fallback
@@ -279,7 +309,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     try {
       // Parse "rgba(r, g, b, a)" format
       const match = rgbaStr.match(
-        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/
+        /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)/,
       );
       if (match) {
         result = {
@@ -471,7 +501,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             });
 
             console.log(
-              `Image scales updated - width: ${widthScale}, height: ${heightScale}`
+              `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
             );
           }
         }
@@ -666,16 +696,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       0,
       Math.min(
         (e.clientX - moveStart.x - rect.left) / imageScale.width,
-        originalImageSize.width - hotspot.coordinates.width
-      )
+        originalImageSize.width - hotspot.coordinates.width,
+      ),
     );
 
     const newY = Math.max(
       0,
       Math.min(
         (e.clientY - moveStart.y - rect.top) / imageScale.height,
-        originalImageSize.height - hotspot.coordinates.height
-      )
+        originalImageSize.height - hotspot.coordinates.height,
+      ),
     );
 
     // Update all hotspots with the moved one
@@ -706,7 +736,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const handleStartResize = (
     e: React.MouseEvent,
     hotspotId: string,
-    handle: string
+    handle: string,
   ) => {
     e.stopPropagation();
     if (!imageElementRef.current) return;
@@ -769,11 +799,11 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top-left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX)
+          Math.max(0, resizeOriginal.x + deltaX),
         );
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY)
+          Math.max(0, resizeOriginal.y + deltaY),
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
@@ -781,7 +811,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top-right":
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY)
+          Math.max(0, resizeOriginal.y + deltaY),
         );
         newWidth = Math.max(5, resizeOriginal.width + deltaX);
         newWidth = Math.min(newWidth, originalImageSize.width - newX);
@@ -790,7 +820,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "bottom-left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX)
+          Math.max(0, resizeOriginal.x + deltaX),
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         newHeight = Math.max(5, resizeOriginal.height + deltaY);
@@ -805,7 +835,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "top":
         newY = Math.min(
           resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY)
+          Math.max(0, resizeOriginal.y + deltaY),
         );
         newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
         break;
@@ -820,7 +850,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       case "left":
         newX = Math.min(
           resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX)
+          Math.max(0, resizeOriginal.x + deltaX),
         );
         newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
         break;
@@ -873,7 +903,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setResizeOriginal(null);
   };
 
-  // Replace the existing calculateDialogPosition function with this improved version:
+  // Improved calculateDialogPosition function
   const calculateDialogPosition = (hotspot: Partial<Hotspot>) => {
     if (
       !containerRef.current ||
@@ -883,13 +913,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     )
       return;
 
-    const containerRect = containerRef.current.getBoundingClientRect();
     const img = imageElementRef.current;
     if (!img) return;
 
     const imgRect = img.getBoundingClientRect();
-    const dialogHeight = 480; // Reduced fixed dialog height
-    const dialogWidth = 320; // Fixed dialog width
+    const dialogHeight = 480; // Fixed dialog height
+    const dialogWidth = 400; // Fixed dialog width
     const padding = 16; // Padding from edges
 
     // Convert from original image coordinates to screen coordinates
@@ -898,124 +927,68 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     const width = hotspot.coordinates.width * imageScale.width;
     const height = hotspot.coordinates.height * imageScale.height;
 
-    // Get the most accurate viewport dimensions
-    const viewportWidth = Math.max(
-      document.documentElement.clientWidth,
-      window.innerWidth || 0
-    );
-    const viewportHeight = Math.max(
-      document.documentElement.clientHeight,
-      window.innerHeight || 0
-    );
+    // Get accurate viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
-    // Find the main content element (nearest scrollable container)
-    const findScrollContainer = (element: HTMLElement | null): HTMLElement => {
-      if (!element) return document.body;
+    // Calculate the center position of the hotspot
+    const hotspotCenterX = x + width / 2;
+    const hotspotCenterY = y + height / 2;
 
-      // Check if this element or any parent is scrollable
-      const isScrollable = (el: HTMLElement) => {
-        const style = window.getComputedStyle(el);
-        const overflowY = style.getPropertyValue("overflow-y");
-        return (
-          (overflowY === "auto" || overflowY === "scroll") &&
-          el.scrollHeight > el.clientHeight
-        );
-      };
+    // Start with centered position relative to hotspot
+    let left = hotspotCenterX - dialogWidth / 2;
+    let top = hotspotCenterY - dialogHeight / 2;
 
-      if (isScrollable(element)) return element;
+    // Ensure dialog is within viewport bounds
+    // Left edge
+    if (left < padding) {
+      left = padding;
+    }
+    // Right edge
+    if (left + dialogWidth > viewportWidth - padding) {
+      left = viewportWidth - dialogWidth - padding;
+    }
+    // Top edge
+    if (top < padding) {
+      top = padding;
+    }
+    // Bottom edge
+    if (top + dialogHeight > viewportHeight - padding) {
+      top = viewportHeight - dialogHeight - padding;
+    }
 
-      // Check parent
-      if (element.parentElement) {
-        return findScrollContainer(element.parentElement);
-      }
-
-      // Default to body
-      return document.body;
+    // If dialog would overlap with the hotspot too much, offset it
+    const overlap = {
+      left: Math.max(0, x + width - left),
+      right: Math.max(0, left + dialogWidth - x),
+      top: Math.max(0, y + height - top),
+      bottom: Math.max(0, top + dialogHeight - y),
     };
 
-    const scrollContainer = findScrollContainer(containerRef.current);
-    const scrollRect = scrollContainer.getBoundingClientRect();
+    const significantOverlap =
+      (overlap.left > width * 0.8 && overlap.right > width * 0.8) ||
+      (overlap.top > height * 0.8 && overlap.bottom > height * 0.8);
 
-    // Use the constraints of both the viewport and the scroll container
-    const effectiveRight = Math.min(viewportWidth, scrollRect.right);
-
-    const effectiveBottom = Math.min(viewportHeight, scrollRect.bottom);
-
-    // Calculate optimal position based on available space
-
-    // Check if there's enough space to the right
-    const rightSpace = effectiveRight - (x + width);
-    const leftSpace = x - scrollRect.left;
-
-    // Determine optimal horizontal position
-    let left;
-    if (rightSpace >= dialogWidth + padding) {
-      // Position to the right of the hotspot
-      left = x + width + padding;
-    } else if (leftSpace >= dialogWidth + padding) {
-      // Position to the left of the hotspot
-      left = x - dialogWidth - padding;
-    } else {
-      // Center it if neither side has enough space
-      // But ensure it doesn't go outside boundaries
-      left = Math.max(
-        padding + scrollRect.left,
-        Math.min(
-          x + width / 2 - dialogWidth / 2,
-          effectiveRight - dialogWidth - padding
-        )
-      );
-    }
-
-    // Get the distance from the top of the viewport to determine vertical space
-    const topSpace = y - scrollRect.top;
-    const bottomSpace = effectiveBottom - (y + height);
-
-    // Determine optimal vertical position
-    let top;
-    if (
-      dialogHeight <=
-      Math.min(viewportHeight - 2 * padding, scrollContainer.clientHeight)
-    ) {
-      // Dialog can fit in viewport height
-      if (topSpace >= dialogHeight / 2 && bottomSpace >= dialogHeight / 2) {
-        // Center it vertically relative to the hotspot
-        top = y + height / 2 - dialogHeight / 2;
-      } else if (bottomSpace >= dialogHeight) {
-        // Position below the hotspot
-        top = y + height + padding;
-      } else if (topSpace >= dialogHeight) {
-        // Position above the hotspot
-        top = y - dialogHeight - padding;
-      } else {
-        // Place it as high as possible while keeping it visible
-        top = Math.max(
-          scrollRect.top + padding,
-          Math.min(
-            y - dialogHeight / 2,
-            effectiveBottom - dialogHeight - padding
-          )
-        );
+    if (significantOverlap) {
+      // Try positioning to the right of the hotspot first
+      if (x + width + dialogWidth + padding <= viewportWidth) {
+        left = x + width + padding;
       }
-    } else {
-      // Dialog is taller than viewport - position at top with minimum padding
-      top = scrollRect.top + padding;
+      // Or to the left if there's more space
+      else if (x - dialogWidth - padding >= 0) {
+        left = x - dialogWidth - padding;
+      }
+      // Or below the hotspot
+      else if (y + height + dialogHeight + padding <= viewportHeight) {
+        top = y + height + padding;
+      }
+      // Or above if possible
+      else if (y - dialogHeight - padding >= 0) {
+        top = y - dialogHeight - padding;
+      }
     }
-
-    // Final boundary check
-    left = Math.max(
-      scrollRect.left + padding,
-      Math.min(left, effectiveRight - dialogWidth - padding)
-    );
-    top = Math.max(
-      scrollRect.top + padding,
-      Math.min(top, effectiveBottom - dialogHeight - padding)
-    );
 
     setDialogPosition({ top, left });
-
-    // Log position for debugging
-    console.log("Dialog positioned at:", { top, left });
   };
 
   // Also add this effect to recalculate positions when the container changes
@@ -1057,7 +1030,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   // Handle deleting option from dropdown
   const handleDeleteOption = (optionToDelete: string) => {
     const updatedOptions = optionsList.filter(
-      (option) => option !== optionToDelete
+      (option) => option !== optionToDelete,
     );
     setOptionsList(updatedOptions);
 
@@ -1086,7 +1059,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (!currentHotspot || !currentHotspot.coordinates) {
       console.error(
         "Cannot save hotspot - missing coordinates:",
-        currentHotspot
+        currentHotspot,
       );
       return;
     }
@@ -1100,7 +1073,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       (timeoutDuration === undefined || timeoutDuration <= 0)
     ) {
       setTimeoutError(
-        "Timeout duration is required for highlight and coaching hotspots"
+        "Timeout duration is required for highlight and coaching hotspots",
       );
       return;
     } else {
@@ -1360,8 +1333,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             borderColor: isEditing
               ? "#00AB55"
               : isMoving || isResizing
-              ? "#FF4785"
-              : "#444CE7",
+                ? "#FF4785"
+                : "#444CE7",
             backgroundColor: isHovered
               ? "rgba(68, 76, 231, 0.2)"
               : "rgba(68, 76, 231, 0.1)",
@@ -1399,8 +1372,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               backgroundColor: isEditing
                 ? "#00AB55"
                 : isMoving || isResizing
-                ? "#FF4785"
-                : "#444CE7",
+                  ? "#FF4785"
+                  : "#444CE7",
               cursor: "move",
               zIndex: 2,
               boxShadow: "0 0 4px rgba(0,0,0,0.3)",
@@ -1478,12 +1451,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             border: "2px solid #00AB55 ",
             backgroundColor: masking.settings?.color,
             cursor: "pointer",
-            filter: masking.settings?.blur_mask
-                  ? "blur(2px)"
-                  : "none",
-            backdropFilter:masking.settings?.blur_mask
-                ? "blur(2px)"
-                : "none", 
+            filter: masking.settings?.blur_mask ? "blur(2px)" : "none",
+            backdropFilter: masking.settings?.blur_mask ? "blur(2px)" : "none",
             transition: "background-color 0.2s ease",
           }}
         >
@@ -1568,7 +1537,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             onError={(e) => {
               console.error(
                 "Error loading processed image:",
-                processedImageUrl
+                processedImageUrl,
               );
               setImageError("Could not load image");
             }}
@@ -1630,20 +1599,14 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         )}
       </Box>
 
-      {/* Settings Dialog */}
+      {/* Settings Dialog - Now with draggable header */}
       {showSettings && (
         <Paper
           elevation={6}
           sx={{
             position: "fixed",
-            top: Math.max(
-              16,
-              Math.min(dialogPosition.top, viewportSize.height - 480 - 16)
-            ),
-            left: Math.max(
-              16,
-              Math.min(dialogPosition.left, viewportSize.width - 550 - 16)
-            ),
+            top: dialogPosition.top,
+            left: dialogPosition.left,
             maxWidth: 550,
             width: "100%",
             borderRadius: 2,
@@ -1654,11 +1617,29 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           }}
         >
           <Stack spacing={2} sx={{ p: 2 }}>
-            {/* Header */}
+            {/* Header - Now draggable */}
             <Stack
               direction="row"
               alignItems="center"
               justifyContent="space-between"
+              sx={{
+                cursor: "move",
+                bgcolor: "#F5F6FF",
+                py: 1,
+                px: 1,
+                borderTopLeftRadius: 2,
+                borderTopRightRadius: 2,
+                userSelect: "none", // Prevent text selection while dragging
+              }}
+              onMouseDown={(e) => {
+                // Start dragging
+                setIsDraggingModal(true);
+                setDragOffset({
+                  x: e.clientX - dialogPosition.left,
+                  y: e.clientY - dialogPosition.top,
+                });
+                e.preventDefault(); // Prevent text selection
+              }}
             >
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box
@@ -1833,7 +1814,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                       currentHotspot?.settings?.highlightColor ||
                       "rgba(255, 193, 7, 0.8)";
                     const match = rgba.match(
-                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/
+                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                     );
                     if (match) {
                       const r = parseInt(match[1])
@@ -1897,7 +1878,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                               currentHotspot?.settings?.highlightColor ||
                               "rgba(255, 193, 7, 0.8)";
                             const match = rgba.match(
-                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/
+                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                             );
                             if (match) {
                               const r = parseInt(match[1])
@@ -1925,7 +1906,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                             const rgba =
                               currentHotspot?.settings?.highlightColor || "";
                             const match = rgba.match(
-                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/
+                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
                             );
                             return match ? parseFloat(match[1]) : 1;
                           })();

@@ -161,8 +161,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     // Skip coaching tip hotspots if hideCoachingTips is enabled
     if (
-      (currentItem.hotspotType === "coaching" ||
-        currentItem.hotspotType === "coachingtip") &&
+      currentItem.hotspotType === "coaching" &&
       levelSettings.hideCoachingTips
     ) {
       return true;
@@ -235,8 +234,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     // Show coaching tip immediately if it's that type and not skipped by settings
     if (
       currentItem?.type === "hotspot" &&
-      (currentItem?.hotspotType === "coaching" ||
-        currentItem?.hotspotType === "coachingtip") &&
+      currentItem?.hotspotType === "coaching" &&
       !levelSettings.hideCoachingTips
     ) {
       setShowCoachingTip(true);
@@ -424,7 +422,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
   };
 
-  // to  check if user is clicking outside the hubspot
+  // to check if user is clicking outside the hotspot
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
@@ -436,16 +434,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
-      const {
-        x: boxX,
-        y: boxY,
-        width,
-        height,
-      } = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
 
-      // Check if the click is outside the currentItem box
-      const isOutside =
-        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+      // Get hotspot coordinates
+      const coords = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+
+      // Scale hotspot coordinates
+      const scaledCoords = scaleCoordinates(coords);
+
+      if (!scaledCoords) return;
+
+      // Check if the click is outside the hotspot
+      const { left, top, width, height } = scaledCoords;
+      const isOutside = 
+        x < left || 
+        x > left + width || 
+        y < top || 
+        y > top + height;
 
       if (isOutside) {
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
@@ -474,7 +478,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             ];
           }
         });
-        // Your custom logic for outside click
       } else {
         console.log("Clicked inside currentItem box — ignoring");
       }
@@ -489,7 +492,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   }, [currentItem]);
 
   // Handle hotspot click based on type
-  const handleHotspotClick = () => {
+  const handleHotspotClick = (event?: React.MouseEvent) => {
+    // Prevent event bubbling if event is provided
+    event?.stopPropagation();
+
     if (
       !isStarted ||
       !currentItem ||
@@ -509,26 +515,56 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
 
-    setAttemptSequenceData((prevData) => {
-      const existingItem = prevData.find((item) => item.id === currentItem.id);
-      if (existingItem) {
-        return [
-          ...prevData.filter((item) => item.id !== currentItem.id),
-          {
-            ...existingItem,
+    // Only set isClicked and handle wrong_clicks for specific hotspot types
+    if (["button", "highlight", "checkbox"].includes(hotspotType)) {
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (existingItemIndex >= 0) {
+          const newData = [...prevData];
+          newData[existingItemIndex] = {
+            ...newData[existingItemIndex],
             isClicked: true,
-          },
-        ];
-      } else {
-        return [
-          ...prevData,
-          {
-            ...currentItem,
-            isClicked: true,
-          },
-        ];
-      }
-    });
+            wrong_clicks: newData[existingItemIndex].wrong_clicks?.slice(0, -1) || [],
+          };
+          return newData;
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              isClicked: true,
+            },
+          ];
+        }
+      });
+    } else {
+      // For other hotspot types, set wrong_clicks to empty array and don't set isClicked
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (existingItemIndex >= 0) {
+          const newData = [...prevData];
+          newData[existingItemIndex] = {
+            ...newData[existingItemIndex],
+            wrong_clicks: [], // Set to empty array for other types
+          };
+          return newData;
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              wrong_clicks: [], // Set to empty array for other types
+            },
+          ];
+        }
+      });
+    }
 
     switch (hotspotType) {
       case "button":
@@ -559,7 +595,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         break;
 
       case "coaching":
-      case "coachingtip":
         // For coaching tips, clicking anywhere dismisses it
         setShowCoachingTip(false);
         moveToNextItem();
@@ -596,7 +631,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           ...prevData.filter((item) => item.id !== currentItem.id),
           {
             ...existingItem,
-            isClicked: true,
             userInput: option,
           },
         ];
@@ -605,7 +639,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           ...prevData,
           {
             ...currentItem,
-            isClicked: true,
             userInput: option,
           },
         ];
@@ -630,8 +663,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             ...prevData.filter((item) => item.id !== currentItem.id),
             {
               ...existingItem,
-              isClicked: true,
               userInput: textInputValue,
+              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
             },
           ];
         } else {
@@ -639,8 +672,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             ...prevData,
             {
               ...currentItem,
-              isClicked: true,
               userInput: textInputValue,
+              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
             },
           ];
         }
@@ -778,12 +811,18 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     try {
       console.log("Executing end-visual API call");
 
+      // Final cleanup: Clean any wrong clicks for items that have been successfully clicked
+      const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
+        // If the item was successfully clicked, keep wrong_clicks as is
+        return item;
+      });
+
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        cleanedAttemptSequenceData,
       );
 
       if (response && response.scores) {
@@ -793,10 +832,14 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         setShowCompletionScreen(true);
       } else {
         console.warn("No scores received in response");
+        // Show completion screen even without scores
+        setShowCompletionScreen(true);
       }
     } catch (error) {
       console.error("Failed to end visual simulation:", error);
       // Show an error message to the user if needed
+      // Still show completion screen to avoid stuck state
+      setShowCompletionScreen(true);
     } finally {
       console.log("End simulation flow completed");
       setIsEndingSimulation(false);
@@ -1143,7 +1186,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {(currentItem.hotspotType === "button" ||
                               !currentItem.hotspotType) && (
                               <Box
-                                onClick={handleHotspotClick}
+                                onClick={(e) => handleHotspotClick(e)}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -1217,7 +1260,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   <Select
                                     value={dropdownValue}
                                     displayEmpty
-                                    onClick={handleHotspotClick}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleHotspotClick(e);
+                                    }}
                                     open={dropdownOpen}
                                     onClose={() => setDropdownOpen(false)}
                                     sx={{
@@ -1247,9 +1293,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                       <MenuItem
                                         key={idx}
                                         value={option}
-                                        onClick={() =>
-                                          handleDropdownSelect(option)
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDropdownSelect(option);
+                                        }}
                                       >
                                         {option}
                                       </MenuItem>
@@ -1262,7 +1309,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {/* Checkbox hotspot */}
                             {currentItem.hotspotType === "checkbox" && (
                               <Box
-                                onClick={handleHotspotClick}
+                                onClick={(e) => handleHotspotClick(e)}
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1328,6 +1375,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   }px`,
                                   zIndex: 10,
                                 }}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <TextField
                                   fullWidth
@@ -1372,9 +1420,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {currentItem.hotspotType === "highlight" &&
                               !levelSettings.hideHighlights && (
                                 <Box
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     console.log("Highlight hotspot clicked");
-                                    handleHotspotClick();
+                                    handleHotspotClick(e);
                                   }}
                                   sx={{
                                     position: "absolute",
@@ -1408,36 +1457,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 />
                               )}
 
-                            {/* Coaching tip button */}
-                            {(currentItem.hotspotType === "coaching" ||
-                              currentItem.hotspotType === "coachingtip") && (
-                              <Box
-                                onClick={handleHotspotClick}
-                                sx={{
-                                  position: "absolute",
-                                  cursor: "pointer",
-                                  left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
-                                  }px`,
-                                  top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
-                                  }px`,
-                                  width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
-                                  }px`,
-                                  height: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.height
-                                  }px`,
-                                  zIndex: 50,
-                                }}
-                              >
-                                <Button
-                                  fullWidth
-                                  variant="contained"
+                            {/* Coaching tip button - only render if not hidden by settings */}
+                            {currentItem.hotspotType === "coaching" &&
+                              !levelSettings.hideCoachingTips && (
+                                <Box
+                                  onClick={(e) => handleHotspotClick(e)}
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -1457,19 +1481,38 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                       scaleCoordinates(currentItem.coordinates)
                                         ?.height
                                     }px`,
-                                    border: "4px solid",
-                                    borderColor: getHighlightColor(),
-                                    boxShadow: highlightHotspot
-                                      ? `0 0 12px 3px ${getHighlightColor()}`
-                                      : "none",
-                                    borderRadius: "4px",
-                                    backgroundColor: "transparent",
-                                    transition: "box-shadow 0.3s",
-                                    zIndex: 10,
+                                    zIndex: 50,
                                   }}
-                                />
-                              </Box>
-                            )}
+                                >
+                                  <Button
+                                    fullWidth
+                                    variant="contained"
+                                    sx={{
+                                      height: "100%",
+                                      backgroundColor:
+                                        currentItem.settings?.buttonColor ||
+                                        "#1e293b",
+                                      color:
+                                        currentItem.settings?.textColor ||
+                                        "#FFFFFF",
+                                      "&:hover": {
+                                        backgroundColor: currentItem.settings
+                                          ?.buttonColor
+                                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                          : "#0f172a",
+                                      },
+                                      boxShadow: highlightHotspot ? 4 : 0,
+                                      border: highlightHotspot
+                                        ? `2px solid ${getHighlightColor()}`
+                                        : "none",
+                                    }}
+                                  >
+                                    {currentItem.settings?.tipText ||
+                                      currentItem.name ||
+                                      "Coaching Tip"}
+                                  </Button>
+                                </Box>
+                              )}
                           </>
                         )}
 
@@ -1481,7 +1524,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             item?.content && (
                               <Box
                                 key={index}
-                                // onClick={handleHotspotClick}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",

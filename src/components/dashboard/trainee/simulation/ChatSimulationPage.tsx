@@ -46,12 +46,11 @@ interface ChatSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
+  onRestartSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
   simulation?: any;
 }
-
-
 
 const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   simulationId,
@@ -64,6 +63,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   hasNextSimulation,
   assignmentId,
   simulation,
+  onRestartSim,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -295,10 +295,10 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         isPassed={isPassed}
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
-        onRestartSim={undefined} // Chat doesn't have restart
+        onRestartSim={onRestartSim} // Chat doesn't have restart
         onViewPlayback={undefined} // Chat doesn't have playback
         hasNextSimulation={hasNextSimulation}
-        minPassingScore= {minPassingScore}
+        minPassingScore={minPassingScore}
       />
 
       <Box

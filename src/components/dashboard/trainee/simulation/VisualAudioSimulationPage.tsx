@@ -34,6 +34,7 @@ import {
   BatteryChargingFull as EnergyIcon,
   Visibility as VisibilityIcon,
 } from "@mui/icons-material";
+// Import useAuth hook from your context
 import { useAuth } from "../../../../context/AuthContext";
 import {
   startVisualAudioAttempt,
@@ -59,9 +60,23 @@ interface VisualAudioSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
+  onRestartSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
   simulation?: any;
+}
+
+interface LevelSettings {
+  isEnabled: boolean;
+  enablePractice: boolean;
+  hideAgentScript: boolean;
+  hideCustomerScript: boolean;
+  hideKeywordScores: boolean;
+  hideSentimentScores: boolean;
+  hideHighlights: boolean;
+  hideCoachingTips: boolean;
+  enablePostSimulationSurvey: boolean;
+  aiPoweredPausesAndFeedback: boolean;
 }
 
 const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
@@ -75,6 +90,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   hasNextSimulation,
   assignmentId,
   simulation,
+  onRestartSim,
 }) => {
   // Get authenticated user using useAuth hook
   const { user } = useAuth();
@@ -289,6 +305,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setRecordingTime(0);
     setHighlightHotspot(false);
     setCurrentTranscription("");
+    setHotspotClickTime(null); // Reset hotspot click time
 
     // Show coaching tip immediately if it's that type and not hidden by settings
     if (
@@ -878,8 +895,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // to  check if user is clicking outside the hubspot
-  // Check if user is clicking outside the hotspot
+  // Simplified approach: Record ALL clicks as wrong clicks, then clean them up when hotspot is clicked
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
@@ -892,46 +908,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Use scaled coordinates for comparison (matching the rendered hotspot position)
-      const scaledCoords = scaleCoordinates(currentItem.coordinates);
-      if (!scaledCoords) return;
-
-      const { left: boxX, top: boxY, width, height } = scaledCoords;
-
-      // Check if the click is outside the scaled hotspot box
-      const isOutside =
-        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
-
-      if (isOutside) {
-        console.log(`Clicked outside hotspot at x=${x}, y=${y}`);
-        setAttemptSequenceData((prevData) => {
-          const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
-          );
-          if (existingItem) {
-            return [
-              ...prevData.filter((item) => item.id !== currentItem.id),
-              {
-                ...existingItem,
-                wrong_clicks: [
-                  ...(existingItem.wrong_clicks || []),
-                  { x_cordinates: x, y_cordinates: y },
-                ],
-              },
-            ];
-          } else {
-            return [
-              ...prevData,
-              {
-                ...currentItem,
-                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
-              },
-            ];
-          }
-        });
-      } else {
-        console.log("Clicked inside hotspot box — ignoring");
-      }
+      // Record all clicks as wrong clicks
+      console.log(`Recording click at x=${x}, y=${y} as a wrong click`);
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id,
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              wrong_clicks: [
+                ...(existingItem.wrong_clicks || []),
+                { x_cordinates: x, y_cordinates: y },
+              ],
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+            },
+          ];
+        }
+      });
     };
 
     const container = imageContainerRef.current;
@@ -940,14 +943,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return () => {
       container?.removeEventListener("click", handleClick);
     };
-  }, [currentItem, imageScale]); 
+  }, [currentItem]);
 
   // Handle hotspot click based on type
-  // const handleHotspotClick = () => {
-
   const handleHotspotClick = (event?: React.MouseEvent) => {
-    // Prevent event bubbling to the container
+    // Prevent event bubbling to container (optional, but can help reduce duplicate processing)
     event?.stopPropagation();
+
     if (
       !isCallActive ||
       !currentItem ||
@@ -962,17 +964,26 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
+
+    // IMPORTANT: Find any existing item for this hotspot and clean up wrong clicks
     setAttemptSequenceData((prevData) => {
-      const existingItem = prevData.find((item) => item.id === currentItem.id);
-      if (existingItem) {
-        return [
-          ...prevData.filter((item) => item.id !== currentItem.id),
-          {
-            ...existingItem,
-            isClicked: true,
-          },
-        ];
+      // Find existing item
+      const existingItemIndex = prevData.findIndex(
+        (item) => item.id === currentItem.id,
+      );
+
+      if (existingItemIndex >= 0) {
+        // Create new array with modified item
+        const newData = [...prevData];
+        // Set isClicked true and clear wrong_clicks
+        newData[existingItemIndex] = {
+          ...newData[existingItemIndex],
+          isClicked: true,
+          wrong_clicks: [], // Clear any wrong clicks for this hotspot
+        };
+        return newData;
       } else {
+        // Item doesn't exist yet, add it
         return [
           ...prevData,
           {
@@ -982,8 +993,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         ];
       }
     });
+
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType);
+
     switch (hotspotType) {
       case "button":
       case "highlight":
@@ -1551,12 +1564,24 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
+      // Final cleanup: Clear any wrong clicks for items that have been successfully clicked
+      const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
+        // If the item was successfully clicked, remove any wrong clicks
+        if (item.isClicked) {
+          return {
+            ...item,
+            wrong_clicks: [], // Clear wrong clicks for successfully clicked items
+          };
+        }
+        return item;
+      });
+
       console.log("Executing end-visual-audio API call with modified data");
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        cleanedAttemptSequenceData, // Send cleaned data without wrong clicks for successfully clicked items
         modifiedSlidesData, // Send modified slides data with transcriptions
       );
 
@@ -1698,7 +1723,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         isPassed={isPassed}
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
-        onRestartSim={handleRestartSim}
+        onRestartSim={onRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
@@ -2048,7 +2073,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   <Select
                                     value={dropdownValue}
                                     displayEmpty
-                                    onClick={(e) => handleHotspotClick(e)}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleHotspotClick(e);
+                                    }}
                                     open={dropdownOpen}
                                     onClose={() => setDropdownOpen(false)}
                                     sx={{
@@ -2081,9 +2109,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                       <MenuItem
                                         key={idx}
                                         value={option}
-                                        onClick={() =>
-                                          handleDropdownSelect(option)
-                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDropdownSelect(option);
+                                        }}
                                       >
                                         {option}
                                       </MenuItem>
@@ -2163,6 +2192,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   }px`,
                                   zIndex: 10,
                                 }}
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <TextField
                                   fullWidth
@@ -2209,6 +2239,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               !levelSettings?.hideHighlights && (
                                 <Box
                                   onClick={(e) => {
+                                    e.stopPropagation();
                                     console.log("Highlight hotspot clicked");
                                     handleHotspotClick(e);
                                   }}
@@ -2250,7 +2281,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {(currentItem.hotspotType === "coaching" ||
                               currentItem.hotspotType === "coachingtip") && (
                               <Box
-                                onClick={(e) => handleHotspotClick(e)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleHotspotClick(e);
+                                }}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -2330,7 +2364,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         levelSettings &&
                         !levelSettings.hideCoachingTips && (
                           <Box
-                            onClick={(e) => handleHotspotClick(e)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleHotspotClick(e);
+                            }}
                             sx={{
                               position: "absolute",
                               cursor: "pointer",

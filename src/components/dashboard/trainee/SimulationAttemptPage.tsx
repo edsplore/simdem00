@@ -245,6 +245,32 @@ const SimulationAttemptPage = () => {
     }
   };
 
+  const handleRestartSim = async () => {
+    // Reset the simulation state if needed
+    setShowStartPage(false);
+
+    // Re-check test availability when restarting
+    if (user?.id && simulationId && assignmentId) {
+      try {
+        setIsCheckingTestAvailability(true);
+        const response = await canStartTest(
+          user.id,
+          simulationId,
+          assignmentId,
+        );
+        setCanStartTestState(response.can_start_test);
+      } catch (error) {
+        console.error("Error checking test availability:", error);
+        setCanStartTestState(true);
+      } finally {
+        setIsCheckingTestAvailability(false);
+      }
+    }
+
+    // After API check, immediately show start page again to restart
+    setShowStartPage(true);
+  };
+
   // Handle navigation to next simulation
   const handleGoToNextSim = () => {
     if (currentSimIndex < allSimulations.length - 1) {
@@ -357,6 +383,7 @@ const SimulationAttemptPage = () => {
         onGoToNextSim={handleGoToNextSim}
         hasNextSimulation={hasNextSimulation}
         simulation={simulation}
+        onRestartSim={handleRestartSim}
       />
     );
   }

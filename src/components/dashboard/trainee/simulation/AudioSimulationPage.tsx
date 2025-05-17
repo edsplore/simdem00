@@ -49,6 +49,7 @@ interface AudioSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
+  onRestartSim?: () => void
   hasNextSimulation?: boolean;
   assignmentId: string;
   simulation?: any;
@@ -97,6 +98,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   attemptType,
   onBackToList,
   onGoToNextSim,
+  onRestartSim,
   hasNextSimulation,
   assignmentId,
   simulation,
@@ -538,7 +540,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         isPassed={isPassed}
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
-        onRestartSim={handleRestartSim}
+        onRestartSim={onRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}

@@ -51,6 +51,7 @@ interface VisualSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
+  onRestartSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
   simulation?: any;
@@ -67,6 +68,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   hasNextSimulation,
   assignmentId,
   simulation,
+  onRestartSim,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -854,7 +856,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         isPassed={isPassed}
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
-        onRestartSim={handleRestartSim}
+        onRestartSim={onRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}

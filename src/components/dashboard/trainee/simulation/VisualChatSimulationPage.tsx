@@ -162,11 +162,11 @@ interface VisualChatSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
+  onRestartSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
-   simulation?: any;
+  simulation?: any;
 }
-
 
 const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   simulationId,
@@ -179,6 +179,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   hasNextSimulation,
   assignmentId,
   simulation,
+  onRestartSim,
 }) => {
   // Get authenticated user
   const { user } = useAuth();
@@ -1088,7 +1089,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         isPassed={isPassed}
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
-        onRestartSim={handleRestartSim}
+        onRestartSim={onRestartSim}
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}

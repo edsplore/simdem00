@@ -515,11 +515,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       !waitingForUserInput
     ) {
       // We've reached the end of the last slide's sequence
-      console.log("Reached end of simulation content");
-      // Wait a moment for any final animations/transitions
-      setTimeout(() => {
-        handleEndChat();
-      }, 1000);
+      // console.log("Reached end of simulation content");
+      // // Wait a moment for any final animations/transitions
+      // setTimeout(() => {
+      //   handleEndChat();
+      // }, 1000);
     }
     // Note: Similar to Visual Audio version, we're not auto-ending when waiting for user input
   }, [
@@ -614,7 +614,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // End of slideshow
       setHighlightHotspot(false);
       console.log("Simulation complete");
-      handleEndChat();
+
+      // Add a short delay to ensure state updates are processed
+      setTimeout(() => {
+        handleEndChat();
+      }, 300); // 300ms should be enough for state to update
+      
     }
   };
 

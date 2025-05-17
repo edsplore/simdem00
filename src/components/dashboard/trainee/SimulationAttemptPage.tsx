@@ -220,14 +220,29 @@ const SimulationAttemptPage = () => {
   };
 
   // Handle navigation from simulation back to list
-  const handleBackToSimList = () => {
-    // Navigate to the same route, causing a refresh
-    const workspaceParam = currentWorkspaceId
-      ? `?workspace_id=${currentWorkspaceId}`
-      : "";
-    navigate(
-      `/simulation/${simulationId}/${assignmentId}/attempt${workspaceParam}`,
-    );
+  const handleBackToSimList = async () => {
+    setShowStartPage(false);
+    // Reset selection states
+    setSelectedLevel(null);
+    setSelectedAttempt(null);
+
+    // Re-check test availability when returning to the list
+    if (user?.id && simulationId && assignmentId) {
+      try {
+        setIsCheckingTestAvailability(true);
+        const response = await canStartTest(
+          user.id,
+          simulationId,
+          assignmentId,
+        );
+        setCanStartTestState(response.can_start_test);
+      } catch (error) {
+        console.error("Error checking test availability:", error);
+        setCanStartTestState(true);
+      } finally {
+        setIsCheckingTestAvailability(false);
+      }
+    }
   };
 
   // Handle navigation to next simulation

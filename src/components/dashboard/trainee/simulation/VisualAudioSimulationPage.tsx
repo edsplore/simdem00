@@ -66,19 +66,6 @@ interface VisualAudioSimulationPageProps {
   simulation?: any;
 }
 
-interface LevelSettings {
-  isEnabled: boolean;
-  enablePractice: boolean;
-  hideAgentScript: boolean;
-  hideCustomerScript: boolean;
-  hideKeywordScores: boolean;
-  hideSentimentScores: boolean;
-  hideHighlights: boolean;
-  hideCoachingTips: boolean;
-  enablePostSimulationSurvey: boolean;
-  aiPoweredPausesAndFeedback: boolean;
-}
-
 const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   simulationId,
   simulationName,
@@ -305,7 +292,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setRecordingTime(0);
     setHighlightHotspot(false);
     setCurrentTranscription("");
-    setHotspotClickTime(null); // Reset hotspot click time
 
     // Show coaching tip immediately if it's that type and not hidden by settings
     if (

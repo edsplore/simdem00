@@ -49,6 +49,29 @@ import {
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
+// Utility function to remove any HTML tags from incoming text. This prevents
+// elements like <p>, <i> or header tags from showing up in the chat display.
+const stripHtmlTags = (html: string): string => {
+  if (!html) return "";
+
+  // If we have access to the DOM (browser environment) use it for more
+  // reliable sanitising of the text. Fall back to a simple regex otherwise.
+  if (typeof window !== "undefined") {
+    const temp = document.createElement("div");
+    temp.innerHTML = html;
+    return temp.textContent || temp.innerText || "";
+  }
+
+  return html
+    .replace(/<\/?[^>]+(>|$)/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .trim();
+};
+
 interface ChatMessage {
   id: string;
   role: "customer" | "trainee";
@@ -408,7 +431,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           const newMessage: ChatMessage = {
             id: Date.now().toString(),
             role: "customer",
-            text: currentItem.text || "",
+            text: stripHtmlTags(currentItem.text || ""),
             timestamp: new Date().toISOString(),
           };
 
@@ -432,9 +455,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         else {
           setWaitingForUserInput(true);
           // Store the expected trainee response for the hint
-          setExpectedTraineeResponse(
-            currentItem.text?.replace(/<.*?>/g, "") || "",
-          );
+          setExpectedTraineeResponse(stripHtmlTags(currentItem.text || ""));
           setIsProcessing(false);
 
           // Focus the input field
@@ -806,7 +827,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     const newMessage: ChatMessage = {
       id: Date.now().toString(),
       role: "trainee",
-      text: userInput,
+      text: stripHtmlTags(userInput),
       timestamp: new Date().toISOString(),
     };
 
@@ -1957,7 +1978,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                           },
                         }}
                       >
-                        <Typography variant="body2">{message.text}</Typography>
+                        <Typography variant="body2">
+                          {stripHtmlTags(message.text)}
+                        </Typography>
                         <Typography
                           className="timestamp"
                           variant="caption"

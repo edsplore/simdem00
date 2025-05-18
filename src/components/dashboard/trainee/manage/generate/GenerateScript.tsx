@@ -38,6 +38,22 @@ interface TabState {
   preview: boolean;
 }
 
+// Updated interface with percentage-based coordinates
+interface SimulationHotspotCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// New interface for percentage-based coordinates
+interface SimulationHotspotPercentageCoordinates {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
 interface SimulationData {
   id: string;
   name: string;
@@ -60,17 +76,33 @@ interface SimulationData {
       id: string;
       name?: string;
       hotspotType?: string;
-      coordinates?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
+      // Original absolute coordinates
+      coordinates?: SimulationHotspotCoordinates;
+      // New percentage-based coordinates
+      percentageCoordinates?: SimulationHotspotPercentageCoordinates;
       settings?: any;
       role?: string;
       text?: string;
       options?: string[];
       keywords: string[];
+    }>;
+    masking?: Array<{
+      id: string;
+      type: string;
+      content: {
+        id: string;
+        type: string;
+        // Original absolute coordinates
+        coordinates?: SimulationHotspotCoordinates;
+        // New percentage-based coordinates
+        percentageCoordinates?: SimulationHotspotPercentageCoordinates;
+        settings?: {
+          color: string;
+          solid_mask: boolean;
+          blur_mask: boolean;
+        };
+      };
+      timestamp?: number;
     }>;
   }>;
   status?: string;
@@ -274,6 +306,34 @@ const createBlobUrl = (binaryData: string, mimeType = "image/png"): string => {
   }
 };
 
+// New utility function to calculate percentage coordinates from absolute coordinates
+const calculatePercentageCoordinates = (
+  coordinates: SimulationHotspotCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): SimulationHotspotPercentageCoordinates => {
+  return {
+    xPercent: (coordinates.x / imageWidth) * 100,
+    yPercent: (coordinates.y / imageHeight) * 100,
+    widthPercent: (coordinates.width / imageWidth) * 100,
+    heightPercent: (coordinates.height / imageHeight) * 100,
+  };
+};
+
+// New utility function to calculate absolute coordinates from percentage coordinates
+const calculateAbsoluteCoordinates = (
+  percentageCoordinates: SimulationHotspotPercentageCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): SimulationHotspotCoordinates => {
+  return {
+    x: (percentageCoordinates.xPercent * imageWidth) / 100,
+    y: (percentageCoordinates.yPercent * imageHeight) / 100,
+    width: (percentageCoordinates.widthPercent * imageWidth) / 100,
+    height: (percentageCoordinates.heightPercent * imageHeight) / 100,
+  };
+};
+
 const GenerateScriptContent = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -406,7 +466,7 @@ const GenerateScriptContent = () => {
                 role: scriptItem.role === "assistant" ? "Trainee" : "Customer",
                 message: scriptItem.script_sentence || "",
                 keywords: scriptItem.keywords || [],
-              })
+              }),
             );
             setScriptData(transformedScript);
 
@@ -499,7 +559,7 @@ const GenerateScriptContent = () => {
               if (!blobUrl && slide.imageUrl) {
                 console.warn(
                   `Using fallback imageUrl for ${slide.imageId}:`,
-                  slide.imageUrl
+                  slide.imageUrl,
                 );
                 blobUrl = slide.imageUrl;
               }
@@ -514,7 +574,31 @@ const GenerateScriptContent = () => {
                 ? slide.sequence.map((item) => {
                     // For hotspot type items
                     if (item.type === "hotspot") {
-                      // Create a proper hotspot sequence item
+                      // Get the image dimensions from imageDataMap
+                      let naturalWidth = 800; // Default value
+                      let naturalHeight = 600; // Default value
+
+                      // Try to get image dimensions from the DOM if the image is already loaded
+                      const img = new Image();
+                      img.src = blobUrl;
+                      if (img.complete) {
+                        naturalWidth = img.naturalWidth;
+                        naturalHeight = img.naturalHeight;
+                      }
+
+                      // Calculate percentage coordinates if only absolute coordinates exist
+                      let percentageCoords;
+                      if (item.coordinates && !item.percentageCoordinates) {
+                        percentageCoords = calculatePercentageCoordinates(
+                          item.coordinates,
+                          naturalWidth,
+                          naturalHeight,
+                        );
+                      } else {
+                        percentageCoords = item.percentageCoordinates;
+                      }
+
+                      // Create a proper hotspot sequence item with both coordinate types
                       return {
                         id: `hotspot-${item.id}`,
                         type: "hotspot",
@@ -523,6 +607,7 @@ const GenerateScriptContent = () => {
                           name: item.name || "Untitled Hotspot",
                           type: "hotspot",
                           hotspotType: item.hotspotType || "button",
+                          // Include original coordinates
                           coordinates: item.coordinates
                             ? {
                                 x: Number(item.coordinates.x || 0),
@@ -531,6 +616,8 @@ const GenerateScriptContent = () => {
                                 height: Number(item.coordinates.height || 0),
                               }
                             : undefined,
+                          // Include percentage coordinates
+                          percentageCoordinates: percentageCoords,
                           settings: item.settings || {},
                           options: item.options || [],
                           text: item.text,
@@ -565,8 +652,51 @@ const GenerateScriptContent = () => {
                   })
                 : [];
 
-              const masking = Array.isArray(slide.masking)? slide.masking: []
-                // Add to processed images with validated data
+              // Process masking items if they exist
+              const masking = Array.isArray(slide.masking)
+                ? slide.masking.map((maskingItem) => {
+                    if (maskingItem.type === "masking" && maskingItem.content) {
+                      let naturalWidth = 800; // Default value
+                      let naturalHeight = 600; // Default value
+
+                      // Try to get image dimensions
+                      const img = new Image();
+                      img.src = blobUrl;
+                      if (img.complete) {
+                        naturalWidth = img.naturalWidth;
+                        naturalHeight = img.naturalHeight;
+                      }
+
+                      // Calculate percentage coordinates if only absolute coordinates exist
+                      let percentageCoords;
+                      if (
+                        maskingItem.content.coordinates &&
+                        !maskingItem.content.percentageCoordinates
+                      ) {
+                        percentageCoords = calculatePercentageCoordinates(
+                          maskingItem.content.coordinates,
+                          naturalWidth,
+                          naturalHeight,
+                        );
+                      } else {
+                        percentageCoords =
+                          maskingItem.content.percentageCoordinates;
+                      }
+
+                      // Return with both coordinate types
+                      return {
+                        ...maskingItem,
+                        content: {
+                          ...maskingItem.content,
+                          percentageCoordinates: percentageCoords,
+                        },
+                      };
+                    }
+                    return maskingItem;
+                  })
+                : [];
+
+              // Add to processed images with validated data
               processedImages.push({
                 id: slide.imageId,
                 url: blobUrl,
@@ -578,7 +708,7 @@ const GenerateScriptContent = () => {
 
               console.log(
                 `Processed image ${slide.imageId} with URL:`,
-                blobUrl
+                blobUrl,
               );
             }
           }
@@ -628,6 +758,7 @@ const GenerateScriptContent = () => {
                 url: blobUrl,
                 name: `Image ${index + 1}`,
                 sequence: [], // Empty sequence
+                masking: [], // Empty masking array
                 file: undefined,
               });
             }
@@ -639,7 +770,7 @@ const GenerateScriptContent = () => {
           ) {
             console.log(
               "Processing images from document wrapper:",
-              responseData.document.images
+              responseData.document.images,
             );
 
             // Process each image
@@ -688,6 +819,7 @@ const GenerateScriptContent = () => {
                 url: blobUrl,
                 name: `Image ${index + 1}`,
                 sequence: [], // Empty sequence
+                masking: [], // Empty masking array
                 file: undefined,
               });
             }
@@ -717,7 +849,7 @@ const GenerateScriptContent = () => {
         console.error("Error loading simulation:", error);
         // Only show error for complete API failure, not for missing fields
         setError(
-          "Failed to connect to the server. Please check your connection and try again."
+          "Failed to connect to the server. Please check your connection and try again.",
         );
       } finally {
         setInitialLoading(false);
@@ -822,8 +954,8 @@ const GenerateScriptContent = () => {
     const tabKeys = isVisualOnly
       ? ["visuals", "settings", "preview"]
       : isVisualAudioOrChat
-      ? ["script", "visuals", "settings", "preview"]
-      : ["script", "settings", "preview"];
+        ? ["script", "visuals", "settings", "preview"]
+        : ["script", "settings", "preview"];
 
     if (!enabledTabs[tabKeys[newValue]]) {
       return;
@@ -835,7 +967,7 @@ const GenerateScriptContent = () => {
     (script: Message[]) => {
       setScriptData(script);
     },
-    [setScriptData]
+    [setScriptData],
   );
 
   // Modified to handle different simulation types and move to settings tab before processing
@@ -915,7 +1047,7 @@ const GenerateScriptContent = () => {
 
         console.log(
           "Updated simulationResponse state with prompt:",
-          responsePrompt
+          responsePrompt,
         );
       }
     } catch (error) {
@@ -948,8 +1080,69 @@ const GenerateScriptContent = () => {
             return [entry[0], `File: ${(entry[1] as File).name}`];
           }
           return entry;
-        })
+        }),
       );
+
+      // Get slidesData from FormData and add percentage coordinates
+      const slidesDataEntry = formData.get("slidesData");
+      if (slidesDataEntry) {
+        try {
+          const slidesData = JSON.parse(slidesDataEntry.toString());
+
+          // Process slides to ensure all hotspots have percentage coordinates
+          for (const slide of slidesData) {
+            if (slide.sequence) {
+              for (const item of slide.sequence) {
+                if (
+                  item.type === "hotspot" &&
+                  item.coordinates &&
+                  !item.percentageCoordinates
+                ) {
+                  // Get image dimensions (this is an approximation - ideally would use actual image)
+                  const naturalWidth = 800; // Default fallback width
+                  const naturalHeight = 600; // Default fallback height
+
+                  // Calculate and add percentage coordinates
+                  item.percentageCoordinates = calculatePercentageCoordinates(
+                    item.coordinates,
+                    naturalWidth,
+                    naturalHeight,
+                  );
+                }
+              }
+            }
+
+            // Process masking items
+            if (slide.masking) {
+              for (const item of slide.masking) {
+                if (
+                  item.content &&
+                  item.content.coordinates &&
+                  !item.content.percentageCoordinates
+                ) {
+                  // Get image dimensions (this is an approximation)
+                  const naturalWidth = 800; // Default fallback width
+                  const naturalHeight = 600; // Default fallback height
+
+                  // Calculate and add percentage coordinates
+                  item.content.percentageCoordinates =
+                    calculatePercentageCoordinates(
+                      item.content.coordinates,
+                      naturalWidth,
+                      naturalHeight,
+                    );
+                }
+              }
+            }
+          }
+
+          // Replace the original slidesData with the updated version
+          formData.delete("slidesData");
+          formData.append("slidesData", JSON.stringify(slidesData));
+        } catch (e) {
+          console.error("Error processing slidesData:", e);
+        }
+      }
 
       // Transform script data to match API format if not visual-only type
       const formattedScript = !isVisualOnly
@@ -970,7 +1163,7 @@ const GenerateScriptContent = () => {
       formData.append("department_id", loadedSimulation.department || "");
       formData.append(
         "sim_type",
-        loadedSimulation.simulationType.toLowerCase()
+        loadedSimulation.simulationType.toLowerCase(),
       ); // Changed to sim_type
 
       // Only add script for non-visual types
@@ -1008,7 +1201,7 @@ const GenerateScriptContent = () => {
 
         console.log(
           "Updated simulationResponse state with prompt from slides update:",
-          responsePrompt
+          responsePrompt,
         );
         return response;
       }
@@ -1071,7 +1264,7 @@ const GenerateScriptContent = () => {
               if (visualImages.length > 0) {
                 // Move to settings tab
                 const settingsTabIndex = tabs.findIndex(
-                  (tab) => tab.label === "Settings"
+                  (tab) => tab.label === "Settings",
                 );
                 setTabValue(settingsTabIndex);
               }
@@ -1091,7 +1284,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview"
+                (tab) => tab.label === "Preview",
               );
               setTabValue(previewTabIndex);
             }}
@@ -1127,7 +1320,7 @@ const GenerateScriptContent = () => {
               if (visualImages.length > 0) {
                 // Move to settings tab
                 const settingsTabIndex = tabs.findIndex(
-                  (tab) => tab.label === "Settings"
+                  (tab) => tab.label === "Settings",
                 );
                 setTabValue(settingsTabIndex);
               }
@@ -1146,7 +1339,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview"
+                (tab) => tab.label === "Preview",
               );
               setTabValue(previewTabIndex);
             }}
@@ -1183,7 +1376,7 @@ const GenerateScriptContent = () => {
               setIsPublished(true);
               // Move to preview tab
               const previewTabIndex = tabs.findIndex(
-                (tab) => tab.label === "Preview"
+                (tab) => tab.label === "Preview",
               );
               setTabValue(previewTabIndex);
             }}

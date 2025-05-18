@@ -600,8 +600,8 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ width: 100 }}>
           v{row.version}
         </TableCell>
-        <TableCell>
-          <Stack direction="row" spacing={1}>
+        <TableCell sx={{ width: 160 }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
             {getEnabledLevels(row).map((lvl, i) => (
               <Chip
                 key={`${lvl}-${i}`}
@@ -610,9 +610,9 @@ const ManageSimulationsPage = () => {
                 sx={{ bgcolor: "#F2F4F7", color: "#344054" }}
               />
             ))}
-          </Stack>
+          </Box>
         </TableCell>
-        <TableCell sx={{ width: 120 }}>
+        <TableCell sx={{ width: 150 }}>
           <Chip
             label={row.sim_type}
             size="small"
@@ -1099,7 +1099,7 @@ const ManageSimulationsPage = () => {
                       sx={{
                         color: "#959697",
                         padding: "6px 16px",
-                        width: 100,
+                        width: 160,
                       }}
                     >
                       Level
@@ -1108,7 +1108,7 @@ const ManageSimulationsPage = () => {
                       sx={{
                         color: "#959697",
                         padding: "6px 16px",
-                        width: 120,
+                        width: 150,
                       }}
                     >
                       <TableSortLabel

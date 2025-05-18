@@ -494,6 +494,23 @@ const ManageSimulationsPage = () => {
     return userMap[userId] || userId;
   };
 
+  // Helper to gather enabled levels for display
+  const getEnabledLevels = (simulation: Simulation): string[] => {
+    const levels: string[] = [];
+
+    if (simulation.lvl1?.isEnabled) {
+      levels.push('Lvl 01');
+    }
+    if (simulation.lvl2?.isEnabled) {
+      levels.push('Lvl 02');
+    }
+    if (simulation.lvl3?.isEnabled) {
+      levels.push('Lvl 03');
+    }
+
+    return levels.length > 0 ? levels : ['N/A'];
+  };
+
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
     return users.filter(user => {
@@ -583,7 +600,18 @@ const ManageSimulationsPage = () => {
         <TableCell sx={{ width: 100 }}>
           v{row.version}
         </TableCell>
-        <TableCell>Lvl 02</TableCell>
+        <TableCell>
+          <Stack direction="row" spacing={1}>
+            {getEnabledLevels(row).map((lvl, i) => (
+              <Chip
+                key={`${lvl}-${i}`}
+                label={lvl}
+                size="small"
+                sx={{ bgcolor: "#F2F4F7", color: "#344054" }}
+              />
+            ))}
+          </Stack>
+        </TableCell>
         <TableCell sx={{ width: 120 }}>
           <Chip
             label={row.sim_type}

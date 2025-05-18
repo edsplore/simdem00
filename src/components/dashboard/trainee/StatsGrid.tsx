@@ -1,5 +1,13 @@
 import React from 'react';
-import { Stack, Grid, Typography, Card, CardContent, Box } from '@mui/material';
+import {
+  Stack,
+  Grid,
+  Typography,
+  Card,
+  CardContent,
+  Box,
+  Tooltip,
+} from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import type { TrainingStats } from '../../../types/training';
 import completionImage from '../../../assets/completion.svg';
@@ -64,22 +72,30 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       value: `${stats.simulation_completed.completed_simulations}/${stats.simulation_completed.total_simulations}`,
       subtitle: `Total ${stats.simulation_completed.total_simulations} Simulations`,
       progress: stats.simulation_completed.percentage,
+      tooltip:
+        'Number of simulations completed in test attempt / total number of simulations assigned across all training plans.',
     },
     {
       title: 'On Time Completion',
       value: `${stats.timely_completion.percentage}%`,
       subtitle: `${stats.timely_completion.completed_simulations} simulations`,
       backgroundIcon: "../../../src/assets/completion.svg",
+      tooltip:
+        'On-time completed test simulations / total number of test simulations completed.',
     },
     {
       title: 'Average Sim Score',
       value: `${stats.average_sim_score}%`,
       backgroundIcon: "../../../src/assets/average.svg",
+      tooltip:
+        'Average simulation score for all the completed simulations in test attempt.',
     },
     {
       title: 'Highest Sim Score',
       value: `${stats.highest_sim_score}%`,
       backgroundIcon: "../../../src/assets/highest.svg",
+      tooltip:
+        'Highest simulation score of all the completed simulations in test attempt.',
     },
   ];
 
@@ -135,18 +151,20 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
                 }}
               >
                 <Stack spacing={2} sx={{ flex: 1 }}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
+                  <Box
                     sx={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 1,
+                      justifyContent: 'space-between',
                     }}
                   >
-                    {stat.title}
-                    <InfoIcon sx={{ fontSize: 20 }} />
-                  </Typography>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {stat.title}
+                    </Typography>
+                    <Tooltip title={stat.tooltip} arrow>
+                      <InfoIcon sx={{ fontSize: 20 }} />
+                    </Tooltip>
+                  </Box>
 
                   {index === 0 ? (
                     <Stack direction="row" sx={{ width: '100%' }}>

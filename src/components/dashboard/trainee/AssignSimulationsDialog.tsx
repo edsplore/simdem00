@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import {
@@ -81,7 +81,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSimulationsList, setShowSimulationsList] = useState(false);
   const searchFieldRef = useRef<HTMLDivElement>(null);
-  const [selectedSimulation, setSelectedSimulation] =
+  const [selectedSimulation, setSelectedSimulation] = 
     useState<Simulation | null>(null);
   const [assignees, setAssignees] = useState<Assignee[]>([]);
   const [assigneeSearchQuery, setAssigneeSearchQuery] = useState("");
@@ -91,10 +91,11 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
   const {
     control,
     handleSubmit,
-    formState: { isValid },
+    formState: { isValid, errors },
     watch,
     setValue,
     reset,
+    trigger,
   } = useForm<CreateSimulationFormData>({
     mode: "onChange",
     defaultValues: {
@@ -210,6 +211,22 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
   }, [open, currentWorkspaceId]);
 
   const selectedAssignees = watch("assignTo");
+  const startDate = watch("startDate");
+  const dueDate = watch("dueDate");
+
+  // Add validation to ensure dueDate is after startDate
+  useEffect(() => {
+    if (startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+
+      if (due < start) {
+        setValue("dueDate", "");
+        trigger("dueDate");
+      }
+    }
+  }, [startDate, dueDate, setValue, trigger]);
+
   const filteredSimulations = simulations.filter((simulation) =>
     simulation.sim_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -220,7 +237,7 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
       (assignee.email &&
         assignee.email
           .toLowerCase()
-          .includes(assigneeSearchQuery.toLowerCase()))
+          .includes(assigneeSearchQuery.toLowerCase())),
   );
 
   const onSubmit = async (data: CreateSimulationFormData) => {
@@ -235,14 +252,14 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
 
       // Split assignees into teams and trainees
       const teamIds = data.assignTo.filter(
-        (id) => assignees.find((a) => a.id === id)?.type === "team"
+        (id) => assignees.find((a) => a.id === id)?.type === "team",
       );
       const trainees = data.assignTo.filter(
-        (id) => assignees.find((a) => a.id === id)?.type === "trainee"
+        (id) => assignees.find((a) => a.id === id)?.type === "trainee",
       );
 
       // Fetch detailed team information for each team
-      const teamDetailsPromises = teamIds.map((teamId) =>
+      const teamDetailsPromises = teamIds.map(teamId => 
         fetchTeamDetails(currentWorkspaceId, teamId)
       );
 
@@ -579,8 +596,16 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
                 <Controller
                   name="dueDate"
                   control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
+                  rules={{ 
+                    required: true,
+                    validate: value => {
+                      if (!startDate) return true;
+                      const start = new Date(startDate);
+                      const due = new Date(value);
+                      return due >= start || "Due date must be after start date";
+                    }
+                  }}
+                  render={({ field, fieldState }) => (
                     <TextField
                       {...field}
                       type="date"
@@ -588,6 +613,8 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
                       required
                       fullWidth
                       InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
                     />
                   )}
                 />

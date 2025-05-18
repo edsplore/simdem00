@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
-import { 
+import {
   fetchModules, 
   type Module, 
   type ModulePaginationParams 
@@ -89,10 +89,11 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   const {
     control,
     handleSubmit,
-    formState: { isValid },
+    formState: { isValid, errors },
     watch,
     setValue,
-    reset
+    reset,
+    trigger,
   } = useForm<CreateModuleFormData>({
     mode: "onChange",
     defaultValues: {
@@ -228,6 +229,21 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
   }, [open]);
 
   const selectedAssignees = watch("assignTo");
+  const startDate = watch("startDate");
+  const dueDate = watch("dueDate");
+
+  // Add validation to ensure dueDate is after startDate
+  useEffect(() => {
+    if (startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+
+      if (due < start) {
+        setValue("dueDate", "");
+        trigger("dueDate");
+      }
+    }
+  }, [startDate, dueDate, setValue, trigger]);
 
   // Filter modules based on search query
   const filteredModules = modules.filter((module) =>
@@ -638,8 +654,16 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                 <Controller
                   name="dueDate"
                   control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
+                  rules={{ 
+                    required: true,
+                    validate: value => {
+                      if (!startDate) return true;
+                      const start = new Date(startDate);
+                      const due = new Date(value);
+                      return due >= start || "Due date must be after start date";
+                    }
+                  }}
+                  render={({ field, fieldState }) => (
                     <TextField
                       {...field}
                       type="date"
@@ -647,6 +671,8 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                       required
                       fullWidth
                       InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
                     />
                   )}
                 />

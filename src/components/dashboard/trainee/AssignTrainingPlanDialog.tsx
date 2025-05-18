@@ -90,10 +90,11 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   const {
     control,
     handleSubmit,
-    formState: { isValid },
+    formState: { isValid, errors },
     watch,
     setValue,
-    reset
+    reset,
+    trigger,
   } = useForm<CreateTrainingPlanFormData>({
     mode: "onChange",
     defaultValues: {
@@ -219,6 +220,21 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
   }, [open, currentWorkspaceId]);
 
   const selectedAssignees = watch("assignTo");
+  const startDate = watch("startDate");
+  const dueDate = watch("dueDate");
+
+  // Add validation to ensure dueDate is after startDate
+  useEffect(() => {
+    if (startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+
+      if (due < start) {
+        setValue("dueDate", "");
+        trigger("dueDate");
+      }
+    }
+  }, [startDate, dueDate, setValue, trigger]);
 
   // Filter training plans based on search query
   const filteredPlans = trainingPlans.filter((plan) =>
@@ -640,8 +656,16 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                 <Controller
                   name="dueDate"
                   control={control}
-                  rules={{ required: true }}
-                  render={({ field }) => (
+                  rules={{ 
+                    required: true,
+                    validate: value => {
+                      if (!startDate) return true;
+                      const start = new Date(startDate);
+                      const due = new Date(value);
+                      return due >= start || "Due date must be after start date";
+                    }
+                  }}
+                  render={({ field, fieldState }) => (
                     <TextField
                       {...field}
                       type="date"
@@ -649,6 +673,8 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
                       required
                       fullWidth
                       InputLabelProps={{ shrink: true }}
+                      error={!!fieldState.error}
+                      helperText={fieldState.error?.message}
                     />
                   )}
                 />

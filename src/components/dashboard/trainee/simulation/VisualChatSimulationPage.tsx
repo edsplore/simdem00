@@ -515,11 +515,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       !waitingForUserInput
     ) {
       // We've reached the end of the last slide's sequence
-      console.log("Reached end of simulation content");
-      // Wait a moment for any final animations/transitions
-      setTimeout(() => {
-        handleEndChat();
-      }, 1000);
+      // console.log("Reached end of simulation content");
+      // // Wait a moment for any final animations/transitions
+      // setTimeout(() => {
+      //   handleEndChat();
+      // }, 1000);
     }
     // Note: Similar to Visual Audio version, we're not auto-ending when waiting for user input
   }, [
@@ -614,7 +614,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // End of slideshow
       setHighlightHotspot(false);
       console.log("Simulation complete");
-      handleEndChat();
+      // Add a short delay to ensure state updates are processed
+      setTimeout(() => {
+        handleEndChat();
+      }, 300); // 300ms should be enough for state to update
     }
   };
 
@@ -640,65 +643,55 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log("Hotspot clicked:", hotspotType);
+    console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
-    // Only set isClicked and handle wrong_clicks for specific hotspot types
-    if (["button", "highlight", "checkbox"].includes(hotspotType)) {
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+    // Simpler approach: find the item in our data and update its properties
+    setAttemptSequenceData((prevData) => {
+      // Find if this item already exists in our data
+      const existingItemIndex = prevData.findIndex(item => item.id === currentItem.id);
 
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
+      if (existingItemIndex >= 0) {
+        // Make a copy of the data
+        const newData = [...prevData];
+        const existingItem = newData[existingItemIndex];
+
+        // Set isClicked to true and remove the last wrong click (if any)
+        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+        if (updatedWrongClicks.length > 0) {
+          // Remove the last wrong click
+          updatedWrongClicks.pop();
+        }
+
+        // Update the item
+        newData[existingItemIndex] = {
+          ...existingItem,
+          isClicked: true,
+          wrong_clicks: updatedWrongClicks
+        };
+
+        console.log(`Updated hotspot ${currentItem.id}, removed last wrong click`, updatedWrongClicks);
+        return newData;
+      } else {
+        // If item doesn't exist yet, add it with isClicked=true
+        return [
+          ...prevData,
+          {
+            ...currentItem,
             isClicked: true,
-            wrong_clicks: newData[existingItemIndex].wrong_clicks?.slice(0, -1) || [],
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              isClicked: true,
-            },
-          ];
-        }
-      });
-    } else {
-      // For other hotspot types, set wrong_clicks to empty array and don't set isClicked
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
-
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
-            wrong_clicks: [], // Set to empty array for other types
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [], // Set to empty array for other types
-            },
-          ];
-        }
-      });
-    }
+            wrong_clicks: [] // Start with empty wrong_clicks
+          }
+        ];
+      }
+    });
 
     switch (hotspotType) {
       case "button":
       case "highlight":
-        // For button and highlight, simply advance
+        // For button and highlight, add delay before moving to next item
         setHighlightHotspot(false);
-        moveToNextItem();
+        setTimeout(() => {
+          moveToNextItem();
+        }, 100); // Small delay to allow state update
         break;
 
       case "dropdown":
@@ -975,19 +968,48 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     try {
       console.log("Executing end-visual-chat API call");
 
-      // Final cleanup: Clear any wrong clicks for items that have been successfully clicked
-      const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
-        // If the item was successfully clicked, keep wrong_clicks as is
-        // We're not clearing wrong_clicks as in the Visual Audio version
-        return item;
-      });
+      // Make a copy of the current data
+      let finalAttemptData = [...attemptSequenceData];
+
+      // Check if current item is a hotspot that should be marked as clicked
+      if (
+        currentItem && 
+        currentItem.type === "hotspot"
+      ) {
+        // Find if this item is already in our data
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
+
+        if (itemIndex >= 0) {
+          // Ensure it's marked as clicked and has the last wrong click removed
+          const existingItem = finalAttemptData[itemIndex];
+          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+          if (updatedWrongClicks.length > 0) {
+            // Remove the last wrong click (which would be the correct click on the hotspot)
+            updatedWrongClicks.pop();
+          }
+
+          finalAttemptData[itemIndex] = {
+            ...existingItem,
+            isClicked: true,
+            wrong_clicks: updatedWrongClicks
+          };
+          console.log("Final data updated for last hotspot:", finalAttemptData[itemIndex]);
+        } else {
+          // Add it if not found
+          finalAttemptData.push({
+            ...currentItem,
+            isClicked: true,
+            wrong_clicks: []
+          });
+        }
+      }
 
       // Use the endVisualChatAttempt function instead of direct axios call
       const response = await endVisualChatAttempt(
         userId,
         simulationId,
         simulationProgressId,
-        cleanedAttemptSequenceData,
+        finalAttemptData
       );
 
       if (response && response.scores) {
@@ -1010,6 +1032,57 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       setIsEndingChat(false);
     }
   };
+
+  // to check if user is clicking outside the hotspot
+  useEffect(() => {
+    if (currentItem?.type !== "hotspot") return;
+
+    const handleClick = (event: MouseEvent) => {
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Get click position relative to the container
+      const rect = container.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Record every click on the container 
+      // We'll remove it later if it turns out to be a correct click on the hotspot
+      console.log(`Recording click at x=${x}, y=${y}`);
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id,
+        );
+        if (existingItem) {
+          return [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            {
+              ...existingItem,
+              wrong_clicks: [
+                ...(existingItem.wrong_clicks || []),
+                { x_cordinates: x, y_cordinates: y },
+              ],
+            },
+          ];
+        } else {
+          return [
+            ...prevData,
+            {
+              ...currentItem,
+              wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+            },
+          ];
+        }
+      });
+    };
+
+    const container = imageContainerRef.current;
+    container?.addEventListener("click", handleClick);
+
+    return () => {
+      container?.removeEventListener("click", handleClick);
+    };
+  }, [currentItem]);
 
   // Original handlers (kept for existing functionality)
   const handleRestartSim = () => {
@@ -1042,75 +1115,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       onGoToNextSim();
     }
   };
-
-  // to check if user is clicking outside the hotspot
-  useEffect(() => {
-    if (currentItem?.type !== "hotspot") return;
-
-    const handleClick = (event: MouseEvent) => {
-      const container = imageContainerRef.current;
-      if (!container) return;
-
-      // Get click position relative to the container
-      const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-
-      // Get hotspot coordinates
-      const coords = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
-
-      // Scale hotspot coordinates
-      const scaledCoords = scaleCoordinates(coords);
-
-      if (!scaledCoords) return;
-
-      // Check if the click is outside the hotspot
-      const { left, top, width, height } = scaledCoords;
-      const isOutside = 
-        x < left || 
-        x > left + width || 
-        y < top || 
-        y > top + height;
-
-      if (isOutside) {
-        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
-        setAttemptSequenceData((prevData) => {
-          const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
-          );
-          if (existingItem) {
-            return [
-              ...prevData.filter((item) => item.id !== currentItem.id),
-              {
-                ...existingItem,
-                wrong_clicks: [
-                  ...(existingItem.wrong_clicks || []),
-                  { x_cordinates: x, y_cordinates: y },
-                ],
-              },
-            ];
-          } else {
-            return [
-              ...prevData,
-              {
-                ...currentItem,
-                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
-              },
-            ];
-          }
-        });
-      } else {
-        console.log("Clicked inside currentItem box — ignoring");
-      }
-    };
-
-    const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
-
-    return () => {
-      container?.removeEventListener("click", handleClick);
-    };
-  }, [currentItem]);
 
   // Cleanup object URLs when component unmounts
   useEffect(() => {
@@ -2064,7 +2068,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   }}
                 >
                   <Stack spacing={1.5}>
-                    {" "}
                     {/* Reduced from spacing: 2 */}
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <TextField

@@ -354,9 +354,9 @@ const GenerateScriptContent = () => {
             prompt: simulation.prompt || "",
             levels: mappedLevels,
             // Map all other fields from the API response
-            est_time: simulation.est_time || "15",
+            est_time: simulation.est_time || "",
             estimated_time_to_attempt_in_mins:
-              simulation.estimated_time_to_attempt_in_mins || 15,
+              simulation.estimated_time_to_attempt_in_mins,
             key_objectives: simulation.key_objectives || [
               "Learn basic customer service",
               "Understand refund process",

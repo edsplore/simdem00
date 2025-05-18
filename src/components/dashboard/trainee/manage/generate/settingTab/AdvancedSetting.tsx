@@ -218,7 +218,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       ),
       estimatedTime: {
         enabled: settings.estimatedTime?.enabled || false,
-        value: settings.estimatedTime?.value || "10 mins",
+        value: settings.estimatedTime?.value || "",
       },
       objectives: {
         enabled: settings.objectives?.enabled || false,

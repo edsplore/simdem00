@@ -272,6 +272,22 @@ const defaultAggDashboardData: ManagerDashboardAggregatedDataResponse = {
   },
 };
 
+// Tooltip text for various cards on the dashboard
+const TOOLTIP_ASSIGNMENTS =
+  "Total = Completed + In Progress + Not Started + Overdue. Overdue counts assignments past the due date.";
+const TOOLTIP_COMPLETION_RATE =
+  "Completion Rate = (Completed / Total assignments) × 100.";
+const TOOLTIP_AVERAGE_SCORE =
+  "Average of scores from completed attempts.";
+const TOOLTIP_ADHERENCE_RATE =
+  "Adherence Rate = (On-time completions / Total completions) × 100.";
+const TOOLTIP_COMPLETION_LEADERBOARD =
+  "Teams ranked by completion rate.";
+const TOOLTIP_AVERAGE_SCORE_LEADERBOARD =
+  "Teams ranked by average score.";
+const TOOLTIP_ADHERENCE_LEADERBOARD =
+  "Teams ranked by adherence rate.";
+
 // CircularProgressWithLabel component
 const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
   return (
@@ -2210,7 +2226,7 @@ const ManagerDashboard = () => {
                         overdue={
                           dashboardData.assignmentCounts.trainingPlans.overdue
                         }
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_ASSIGNMENTS}
                       />
                     )}
                   </Grid>
@@ -2229,7 +2245,7 @@ const ManagerDashboard = () => {
                           dashboardData.assignmentCounts.modules.notStarted
                         }
                         overdue={dashboardData.assignmentCounts.modules.overdue}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_ASSIGNMENTS}
                       />
                     )}
                   </Grid>
@@ -2250,7 +2266,7 @@ const ManagerDashboard = () => {
                         overdue={
                           dashboardData.assignmentCounts.simulations.overdue
                         }
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_ASSIGNMENTS}
                       />
                     )}
                   </Grid>
@@ -2273,7 +2289,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Training Plan"
                             value={dashboardData.completionRates.trainingPlans}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_COMPLETION_RATE}
                           />
                         )}
                       </Grid>
@@ -2282,7 +2298,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Modules"
                             value={dashboardData.completionRates.modules}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_COMPLETION_RATE}
                           />
                         )}
                       </Grid>
@@ -2291,7 +2307,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Simulation"
                             value={dashboardData.completionRates.simulations}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_COMPLETION_RATE}
                           />
                         )}
                       </Grid>
@@ -2304,7 +2320,7 @@ const ManagerDashboard = () => {
                         data={dashboardData.leaderBoards.completion}
                         title="Completion Rate Leader Board"
                         onSortChange={handleCompletionSortChange}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_COMPLETION_LEADERBOARD}
                         disabled={hasUserSelections()}
                       />
                     )}
@@ -2328,7 +2344,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Training Plan"
                             value={dashboardData.averageScores.trainingPlans}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_AVERAGE_SCORE}
                           />
                         )}
                       </Grid>
@@ -2337,7 +2353,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Modules"
                             value={dashboardData.averageScores.modules}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_AVERAGE_SCORE}
                           />
                         )}
                       </Grid>
@@ -2346,7 +2362,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Simulation"
                             value={dashboardData.averageScores.simulations}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_AVERAGE_SCORE}
                           />
                         )}
                       </Grid>
@@ -2359,7 +2375,7 @@ const ManagerDashboard = () => {
                         data={dashboardData.leaderBoards.averageScore}
                         title="Average Score Leader Board"
                         onSortChange={handleAverageScoreSortChange}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_AVERAGE_SCORE_LEADERBOARD}
                         disabled={hasUserSelections()}
                       />
                     )}
@@ -2383,7 +2399,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Training Plan"
                             value={dashboardData.adherenceRates.trainingPlans}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_ADHERENCE_RATE}
                           />
                         )}
                       </Grid>
@@ -2392,7 +2408,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Modules"
                             value={dashboardData.adherenceRates.modules}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_ADHERENCE_RATE}
                           />
                         )}
                       </Grid>
@@ -2401,7 +2417,7 @@ const ManagerDashboard = () => {
                           <CircularProgressCards
                             title="Simulation"
                             value={dashboardData.adherenceRates.simulations}
-                            popupText="On time completed test Sim / Total no. of test sims completed"
+                            popupText={TOOLTIP_ADHERENCE_RATE}
                           />
                         )}
                       </Grid>
@@ -2414,7 +2430,7 @@ const ManagerDashboard = () => {
                         data={dashboardData.leaderBoards.adherence}
                         title="Adherence Rate Leader Board"
                         onSortChange={handleAdherenceSortChange}
-                        popupText="On time completed test Sim / Total no. of test sims completed"
+                        popupText={TOOLTIP_ADHERENCE_LEADERBOARD}
                         disabled={hasUserSelections()}
                       />
                     )}

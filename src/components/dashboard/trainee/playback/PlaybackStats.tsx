@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Stack, Grid, Typography, Card, CardContent, Box } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
-import completionImage from "../../../../assets/completion.svg";
-import averageImage from "../../../../assets/average.svg";
-import highestImage from "../../../../assets/highest.svg";
+import completionImage from "../../../../assets/completion.svg?url";
+import averageImage from "../../../../assets/average.svg?url";
+import highestImage from "../../../../assets/highest.svg?url";
 import { useAuth } from "../../../../context/AuthContext";
 import {
   fetchPlaybackStats,
@@ -40,21 +40,21 @@ const stats: StatData[] = [
     value: "74%",
     subtitle: "16 simulations",
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: "/src/assets/completion.svg",
+    backgroundIcon: completionImage,
   },
   {
     title: "Average Sim Score",
     value: "89%",
     trend: { value: -4, label: "vs last week" },
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: "/src/assets/average.svg",
+    backgroundIcon: averageImage,
   },
   {
     title: "Highest Sim Score",
     value: "94%",
     trend: { value: 2, label: "vs last week" },
     icon: <InfoIcon sx={{ fontSize: 20 }} />,
-    backgroundIcon: "/src/assets/highest.svg",
+    backgroundIcon: highestImage,
   },
 ];
 
@@ -292,3 +292,4 @@ const PlaybackStats = ({ setGlobalLoading }: PlaybackStatsProps) => {
 };
 
 export default PlaybackStats;
+

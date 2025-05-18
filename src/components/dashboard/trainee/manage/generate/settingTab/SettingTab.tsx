@@ -306,12 +306,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
     // Get estimated time (convert from minutes to "X mins" format)
     const estimatedTime = {
-      enabled: true,
+      enabled:
+        simulationData?.estimated_time_to_attempt_in_mins !== undefined ||
+        simulationData?.est_time !== undefined,
       value: simulationData?.estimated_time_to_attempt_in_mins
         ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
         : simulationData?.est_time
           ? `${simulationData.est_time} mins`
-          : "15 mins",
+          : "",
     };
 
     // FIXED: Properly handle objectives from API
@@ -637,8 +639,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
     // Extract specific settings - ensure we're accessing the actual properties
     const levelSettings = advancedSettings?.levels || {};
     const timeSettings = advancedSettings?.estimatedTime || {
-      enabled: true,
-      value: "15 mins",
+      enabled: false,
+      value: "",
     };
     const objectivesSettings = advancedSettings?.objectives || {
       enabled: false,
@@ -653,7 +655,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
     // Parse time value to extract just the number
     const timeValue =
-      String(timeSettings.value || "15").match(/\d+/)?.[0] || "15";
+      String(timeSettings.value || "").match(/\d+/)?.[0] || "";
 
     // Check enabled levels from simulationLevels setting
     const lvl1Enabled = levelSettings.simulationLevels?.lvl1 !== false; // Default to true if undefined
@@ -776,9 +778,10 @@ const SettingTab: React.FC<SettingTabProps> = ({
         ai_powered_pauses_and_feedback:
           levelSettings.aiPoweredPauses?.lvl3 === true,
       },
-      estimated_time_to_attempt_in_mins: timeSettings.enabled
-        ? parseInt(timeValue)
-        : 0,
+      estimated_time_to_attempt_in_mins:
+        timeSettings.enabled && timeValue !== ""
+          ? parseInt(timeValue)
+          : 0,
       // CRITICAL FIX: Only send objectives if enabled, otherwise send empty array
       key_objectives: objectivesSettings.enabled
         ? processTextToArray(objectivesSettings.text)

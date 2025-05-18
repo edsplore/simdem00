@@ -24,6 +24,7 @@ export default defineConfig({
     // keep this block if you still want to add other dev-server options later
   },
   build: {
+    assetsInlineLimit: 0,
     rollupOptions: {
       output: {
         manualChunks: {

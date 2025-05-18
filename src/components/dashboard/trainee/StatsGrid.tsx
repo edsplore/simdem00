@@ -10,9 +10,9 @@ import {
 } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import type { TrainingStats } from '../../../types/training';
-import completionImage from '../../../assets/completion.svg';
-import averageImage from '../../../assets/average.svg';
-import highestImage from '../../../assets/highest.svg';
+import completionImage from '../../../assets/completion.svg?url';
+import averageImage from '../../../assets/average.svg?url';
+import highestImage from '../../../assets/highest.svg?url';
 
 interface StatsGridProps {
   stats: TrainingStats;
@@ -79,21 +79,21 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       title: 'On Time Completion',
       value: `${stats.timely_completion.percentage}%`,
       subtitle: `${stats.timely_completion.completed_simulations} simulations`,
-      backgroundIcon: "../../../src/assets/completion.svg",
+      backgroundIcon: completionImage,
       tooltip:
         'On-time completed test simulations / total number of test simulations completed.',
     },
     {
       title: 'Average Sim Score',
       value: `${stats.average_sim_score}%`,
-      backgroundIcon: "../../../src/assets/average.svg",
+      backgroundIcon: averageImage,
       tooltip:
         'Average simulation score for all the completed simulations in test attempt.',
     },
     {
       title: 'Highest Sim Score',
       value: `${stats.highest_sim_score}%`,
-      backgroundIcon: "../../../src/assets/highest.svg",
+      backgroundIcon: highestImage,
       tooltip:
         'Highest simulation score of all the completed simulations in test attempt.',
     },

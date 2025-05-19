@@ -2172,21 +2172,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
                       {message.role === "trainee" && (
                         <Avatar
-                          src={user?.profileImageUrl || undefined}
                           sx={{
                             width: 28, // Reduced from 32
                             height: 28, // Reduced from 32
-                            bgcolor: user?.profileImageUrl ? undefined : "success.light",
+                            bgcolor: "success.light",
                           }}
                         >
-                          {!user?.profileImageUrl &&
-                            (user?.name
-                              ? user.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                              : "T")}
+                          <PersonIcon fontSize="small" />
                         </Avatar>
                       )}
                     </Stack>

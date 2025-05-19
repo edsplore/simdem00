@@ -37,7 +37,6 @@ import {
   Send as SendIcon,
   Refresh as RefreshIcon,
 } from "@mui/icons-material";
-import { useAuth } from "../../../../../context/AuthContext";
 
 // Import the AudioRecorder component
 import AudioRecorder from "./AudioRecorder";
@@ -145,7 +144,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   onScriptUpdate,
 }) => {
   const theme = useTheme();
-  const { user } = useAuth();
 
   // ----------------------------
   //   State
@@ -902,18 +900,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                   {/* Trainee avatar on right */}
                   {msg.role === "Trainee" && (
                     <Avatar
-                      src={user?.profileImageUrl || undefined}
+                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
                       sx={{ width: 32, height: 32 }}
-                    >
-                      {!user?.profileImageUrl &&
-                        (user?.name
-                          ? user.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")
-                              .toUpperCase()
-                          : "T")}
-                    </Avatar>
+                    />
                   )}
                 </Stack>
               </DraggableMessage>

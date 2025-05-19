@@ -113,6 +113,12 @@ interface SimulationData {
         width: number;
         height: number;
       };
+      percentageCoordinates?: {
+        xPercent: number;
+        yPercent: number;
+        widthPercent: number;
+        heightPercent: number;
+      };
       settings?: any;
       role?: string;
       text?: string;
@@ -129,6 +135,12 @@ interface SimulationData {
           y: number;
           width: number;
           height: number;
+        };
+        percentageCoordinates?: {
+          xPercent: number;
+          yPercent: number;
+          widthPercent: number;
+          heightPercent: number;
         };
         settings?: {
           color: string;
@@ -164,7 +176,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
   // State for image handling
   const [imageLoaded, setImageLoaded] = useState(false);
-  // Update to track both width and height scales
+  // Update to track both width and height scales - used for backward compatibility
   const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -419,22 +431,32 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Updated to calculate both width and height scales
+  // Updated to use more reliable coordinate calculation
   const handleImageLoad = () => {
-    if (imageRef.current && imageContainerRef.current) {
-      const imageNaturalWidth = imageRef.current.naturalWidth;
-      const imageNaturalHeight = imageRef.current.naturalHeight;
+    if (!imageRef.current) return;
 
-      // Get the actual rendered dimensions of the image
-      const rect = imageRef.current.getBoundingClientRect();
+    // Use requestAnimationFrame to ensure the image is fully rendered
+    requestAnimationFrame(() => {
+      if (!imageRef.current) return;
+
+      const img = imageRef.current;
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      if (naturalWidth === 0 || naturalHeight === 0) {
+        console.warn("Image natural dimensions not available yet");
+        return;
+      }
+
+      // Get the rendered dimensions
+      const rect = img.getBoundingClientRect();
       const renderedWidth = rect.width;
       const renderedHeight = rect.height;
 
-      // Calculate the scale based on the actual rendered dimensions
-      const widthScale = renderedWidth / imageNaturalWidth;
-      const heightScale = renderedHeight / imageNaturalHeight;
+      // Calculate the scale for backward compatibility
+      const widthScale = renderedWidth / naturalWidth;
+      const heightScale = renderedHeight / naturalHeight;
 
-      // Store both scales for proper coordinate transformation
       setImageScale({
         width: widthScale,
         height: heightScale,
@@ -442,10 +464,68 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
       setImageLoaded(true);
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with dimensions ${naturalWidth}x${naturalHeight}, scaled to ${renderedWidth}x${renderedHeight}`,
       );
-    }
+      console.log(`Scale factors: width=${widthScale}, height=${heightScale}`);
+    });
   };
+
+  // Improved resize observer to update coordinates when container or image size changes
+  useEffect(() => {
+    if (!imageRef.current || !imageContainerRef.current) return;
+
+    // Function to update image scale factors
+    const updateImageScales = () => {
+      if (!imageRef.current) return;
+
+      const img = imageRef.current;
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+        return; // Image not fully loaded yet
+      }
+
+      const rect = img.getBoundingClientRect();
+      const renderedWidth = rect.width;
+      const renderedHeight = rect.height;
+
+      const widthScale = renderedWidth / img.naturalWidth;
+      const heightScale = renderedHeight / img.naturalHeight;
+
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
+      console.log(
+        `Updated scales - width: ${widthScale}, height: ${heightScale}`,
+      );
+    };
+
+    // Create resize observer for real-time updates
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Use requestAnimationFrame to batch updates
+      requestAnimationFrame(() => {
+        updateImageScales();
+      });
+    });
+
+    // Observe both container and image
+    resizeObserver.observe(imageContainerRef.current);
+    if (imageRef.current) {
+      resizeObserver.observe(imageRef.current);
+    }
+
+    // Also listen for window resize events
+    window.addEventListener("resize", updateImageScales);
+
+    // Initial update
+    updateImageScales();
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateImageScales);
+    };
+  }, [imageRef.current, imageContainerRef.current]);
 
   // Move to next item in sequence
   const moveToNextItem = () => {
@@ -483,11 +563,40 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const { x: boxX, y: boxY, width, height } = currentItem.coordinates;
+      // Get the coordinates for the current hotspot
+      let hotspotRect;
+      if (currentItem.percentageCoordinates && imageRef.current) {
+        const imgRect = imageRef.current.getBoundingClientRect();
+        hotspotRect = {
+          left:
+            (currentItem.percentageCoordinates.xPercent * imgRect.width) / 100,
+          top:
+            (currentItem.percentageCoordinates.yPercent * imgRect.height) / 100,
+          width:
+            (currentItem.percentageCoordinates.widthPercent * imgRect.width) /
+            100,
+          height:
+            (currentItem.percentageCoordinates.heightPercent * imgRect.height) /
+            100,
+        };
+      } else if (currentItem.coordinates) {
+        // Fallback to scaled coordinates
+        hotspotRect = {
+          left: currentItem.coordinates.x * imageScale.width,
+          top: currentItem.coordinates.y * imageScale.height,
+          width: currentItem.coordinates.width * imageScale.width,
+          height: currentItem.coordinates.height * imageScale.height,
+        };
+      } else {
+        return;
+      }
 
       // Check if the click is outside the currentItem box
       const isOutside =
-        x < boxX || x > boxX + width || y < boxY || y > boxY + height;
+        x < hotspotRect.left ||
+        x > hotspotRect.left + hotspotRect.width ||
+        y < hotspotRect.top ||
+        y > hotspotRect.top + hotspotRect.height;
 
       if (isOutside) {
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
@@ -511,7 +620,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     return () => {
       container?.removeEventListener("click", handleClick);
     };
-  }, [currentItem]);
+  }, [currentItem, imageScale]);
 
   // Handle hotspot click based on type
   const handleHotspotClick = () => {
@@ -567,20 +676,39 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     }
   };
 
-  // Updated to use both width and height scales
-  const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
-  ) => {
-    if (!coords) return null;
+  const scaleCoordinates = (coords) => {
+    if (!coords || !imageRef.current) return null;
 
-    return {
-      left: coords.x * imageScale.width,
-      top: coords.y * imageScale.height,
-      width: coords.width * imageScale.width,
-      height: coords.height * imageScale.height,
-    };
+    const img = imageRef.current;
+    // Use ONLY the image's bounding rectangle, NOT the container's
+    const imgRect = img.getBoundingClientRect();
+
+    // For percentage-based coordinates
+    if (coords.xPercent !== undefined) {
+      return {
+        // Apply percentages to the IMAGE dimensions only, not the container
+        left: (coords.xPercent * imgRect.width) / 100,
+        top: (coords.yPercent * imgRect.height) / 100,
+        width: (coords.widthPercent * imgRect.width) / 100,
+        height: (coords.heightPercent * imgRect.height) / 100,
+      };
+    }
+
+    // Similar approach for absolute coordinates
+    if (coords.x !== undefined) {
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      return {
+        left: (coords.x / naturalWidth) * imgRect.width,
+        top: (coords.y / naturalHeight) * imgRect.height,
+        width: (coords.width / naturalWidth) * imgRect.width,
+        height: (coords.height / naturalHeight) * imgRect.height,
+      };
+    }
+
+    return null;
   };
-
   // Handle dropdown option selection
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
@@ -899,7 +1027,8 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
-                currentItem.coordinates &&
+                (currentItem.coordinates ||
+                  currentItem.percentageCoordinates) &&
                 !shouldSkipHotspot() && (
                   <>
                     {/* Button hotspot */}
@@ -910,17 +1039,50 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         sx={{
                           position: "absolute",
                           cursor: "pointer",
+                          // Basic positioning remains the same
                           left: `${
-                            scaleCoordinates(currentItem.coordinates)?.left
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(currentItem.coordinates)?.top
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
                           }px`,
-                          width: `${
-                            scaleCoordinates(currentItem.coordinates)?.width
-                          }px`,
+
+                          // DIRECT FIX FOR WIDTH - explicitly calculate the width using percentages
+                          width: `${(() => {
+                            if (!imageRef.current) return 0;
+                            const img = imageRef.current;
+                            const imgRect = img.getBoundingClientRect();
+
+                            // Directly calculate width based on percentage of image width
+                            if (currentItem.percentageCoordinates) {
+                              return (
+                                (currentItem.percentageCoordinates
+                                  .widthPercent *
+                                  imgRect.width) /
+                                100
+                              );
+                            }
+                            // Fall back to absolute coordinates scaled by the ratio of rendered to natural width
+                            else if (currentItem.coordinates) {
+                              const scaleRatio =
+                                imgRect.width / img.naturalWidth;
+                              return currentItem.coordinates.width * scaleRatio;
+                            }
+                            return 0;
+                          })()}px`,
+
+                          // HEIGHT calculation remains the same as it's working correctly
                           height: `${
-                            scaleCoordinates(currentItem.coordinates)?.height
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.height
                           }px`,
                         }}
                       >
@@ -938,10 +1100,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                             },
                             boxShadow: highlightHotspot ? 4 : 0,
                             border: highlightHotspot
-                              ? `2px solid ${
-                                  currentItem.settings?.highlightColor ||
-                                  "white"
-                                }`
+                              ? `2px solid ${currentItem.settings?.highlightColor || "white"}`
                               : "none",
                           }}
                         >
@@ -956,13 +1115,22 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         sx={{
                           position: "absolute",
                           left: `${
-                            scaleCoordinates(currentItem.coordinates)?.left
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(currentItem.coordinates)?.top
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
                           }px`,
                           width: `${
-                            scaleCoordinates(currentItem.coordinates)?.width
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.width
                           }px`,
                           zIndex: 1,
                         }}
@@ -976,8 +1144,10 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                             onClose={() => setDropdownOpen(false)}
                             sx={{
                               height: `${
-                                scaleCoordinates(currentItem.coordinates)
-                                  ?.height
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
                               }px`,
                               bgcolor: "white",
                               border: highlightHotspot
@@ -1020,10 +1190,16 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         sx={{
                           position: "absolute",
                           left: `${
-                            scaleCoordinates(currentItem.coordinates)?.left
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(currentItem.coordinates)?.top
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
                           }px`,
                           cursor: "pointer",
                           display: "flex",
@@ -1036,8 +1212,10 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                             padding: 0,
                             "& .MuiSvgIcon-root": {
                               fontSize: `${
-                                scaleCoordinates(currentItem.coordinates)
-                                  ?.height
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
                               }px`,
                             },
                             color: highlightHotspot
@@ -1066,13 +1244,22 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         sx={{
                           position: "absolute",
                           left: `${
-                            scaleCoordinates(currentItem.coordinates)?.left
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(currentItem.coordinates)?.top
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
                           }px`,
                           width: `${
-                            scaleCoordinates(currentItem.coordinates)?.width
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.width
                           }px`,
                         }}
                       >
@@ -1089,8 +1276,10 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                           sx={{
                             "& .MuiOutlinedInput-root": {
                               height: `${
-                                scaleCoordinates(currentItem.coordinates)
-                                  ?.height
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
                               }px`,
                               bgcolor: "white",
                               "& fieldset": {
@@ -1121,10 +1310,30 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            left: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.left
+                            }px`,
+                            top: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.top
+                            }px`,
+                            width: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.width
+                            }px`,
+                            height: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.height
+                            }px`,
                             border: "4px solid",
                             borderColor:
                               currentItem.settings?.highlightColor ||
@@ -1145,24 +1354,37 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                 currentMasking &&
                 currentMasking.map(
                   (item, index) =>
-                    item?.content && (
+                    item?.content &&
+                    (item.content.coordinates ||
+                      item.content.percentageCoordinates) && (
                       <Box
                         key={index}
-                        // onClick={handleHotspotClick}
                         sx={{
                           position: "absolute",
                           cursor: "pointer",
                           left: `${
-                            scaleCoordinates(item.content.coordinates)?.left
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(item.content.coordinates)?.top
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.top
                           }px`,
                           width: `${
-                            scaleCoordinates(item.content.coordinates)?.width
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.width
                           }px`,
                           height: `${
-                            scaleCoordinates(item.content.coordinates)?.height
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.height
                           }px`,
                           border: "4px solid",
                           borderColor: item.content.settings?.blur_mask
@@ -1193,7 +1415,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
               currentItem?.type === "hotspot" &&
               (currentItem.hotspotType === "coaching" ||
                 currentItem.hotspotType === "coachingtip") &&
-              currentItem.coordinates &&
+              (currentItem.coordinates || currentItem.percentageCoordinates) &&
               !levelSettings?.hideCoachingTips && (
                 <Box
                   onClick={handleHotspotClick}
@@ -1201,14 +1423,28 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                     position: "absolute",
                     cursor: "pointer",
                     left: `${
-                      scaleCoordinates(currentItem.coordinates)?.left
+                      scaleCoordinates(
+                        currentItem.percentageCoordinates ||
+                          currentItem.coordinates,
+                      )?.left
                     }px`,
-                    top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                    top: `${
+                      scaleCoordinates(
+                        currentItem.percentageCoordinates ||
+                          currentItem.coordinates,
+                      )?.top
+                    }px`,
                     width: `${
-                      scaleCoordinates(currentItem.coordinates)?.width
+                      scaleCoordinates(
+                        currentItem.percentageCoordinates ||
+                          currentItem.coordinates,
+                      )?.width
                     }px`,
                     height: `${
-                      scaleCoordinates(currentItem.coordinates)?.height
+                      scaleCoordinates(
+                        currentItem.percentageCoordinates ||
+                          currentItem.coordinates,
+                      )?.height
                     }px`,
                     zIndex: 50,
                     border: highlightHotspot

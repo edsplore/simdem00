@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -46,6 +46,85 @@ import {
 import { convertAudioToText } from "../../../../services/simulation_script";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+
+// Utility interfaces for percentage-based coordinate system
+interface PercentageCoordinates {
+  xPercent: number; // 0-100% of image width
+  yPercent: number; // 0-100% of image height
+  widthPercent: number; // Width as percentage of image width
+  heightPercent: number; // Height as percentage of image height
+}
+
+interface AbsoluteCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Utility functions for coordinate conversions
+const absoluteToPercentage = (
+  coords: AbsoluteCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): PercentageCoordinates => {
+  return {
+    xPercent: (coords.x / imageWidth) * 100,
+    yPercent: (coords.y / imageHeight) * 100,
+    widthPercent: (coords.width / imageWidth) * 100,
+    heightPercent: (coords.height / imageHeight) * 100,
+  };
+};
+
+const percentageToAbsolute = (
+  coords: PercentageCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): AbsoluteCoordinates => {
+  return {
+    x: (coords.xPercent * imageWidth) / 100,
+    y: (coords.yPercent * imageHeight) / 100,
+    width: (coords.widthPercent * imageWidth) / 100,
+    height: (coords.heightPercent * imageHeight) / 100,
+  };
+};
+
+// Calculate rendered coordinates for display (with scaling)
+const calculateRenderedCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (!coords || !imageElement) return null;
+
+  // Get ONLY the image's bounding rectangle
+  const imgRect = imageElement.getBoundingClientRect();
+
+  // For percentage-based coordinates (preferred approach)
+  if (coords.xPercent !== undefined) {
+    return {
+      // Apply percentages to the IMAGE dimensions only
+      left: (coords.xPercent * imgRect.width) / 100,
+      top: (coords.yPercent * imgRect.height) / 100,
+      width: (coords.widthPercent * imgRect.width) / 100,
+      height: (coords.heightPercent * imgRect.height) / 100,
+    };
+  }
+
+  // For absolute coordinates (fallback for older data)
+  if (coords.x !== undefined) {
+    const naturalWidth = imageElement.naturalWidth || imgRect.width;
+    const naturalHeight = imageElement.naturalHeight || imgRect.height;
+
+    return {
+      left: (coords.x / naturalWidth) * imgRect.width,
+      top: (coords.y / naturalHeight) * imgRect.height,
+      width: (coords.width / naturalWidth) * imgRect.width,
+      height: (coords.height / naturalHeight) * imgRect.height,
+    };
+  }
+
+  return null;
+};
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -146,6 +225,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const speechSynthRef = useRef(window.speechSynthesis);
+  const originalImageSizeRef = useRef<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -192,7 +275,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     // Skip coaching tip hotspots if hideCoachingTips is enabled
     if (
       currentItem.hotspotType === "coaching" &&
-      // || currentItem.hotspotType === "coachingtip"
       levelSettings.hideCoachingTips
     ) {
       return true;
@@ -218,7 +300,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         currentSequenceIndex,
         currentSlide: currentSlide?.imageId || "none",
         currentSequenceLength: currentSequence?.length || 0,
-        // CHANGED: No longer tracking slides.size
       });
     }
   }, [
@@ -297,7 +378,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (
       currentItem?.type === "hotspot" &&
       currentItem?.hotspotType === "coaching" &&
-      // || currentItem?.hotspotType === "coachingtip"
       levelSettings &&
       !levelSettings.hideCoachingTips
     ) {
@@ -602,7 +682,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // const isLastItemTraineeMessage =
       //   lastItem?.type === "message" &&
       //   (lastItem.role === "Trainee" || lastItem.role === "assistant");
-
       // if (!isLastItemTraineeMessage) {
       //   // We've reached the end of the last slide's sequence and it's not a trainee message
       //   console.log("Reached end of simulation content");
@@ -809,31 +888,134 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     });
   };
 
-  // Updated to calculate both width and height scales
+  // Improved implementation for more accurate scaling
   const handleImageLoad = () => {
-    if (imageRef.current && imageContainerRef.current) {
-      const imageNaturalWidth = imageRef.current.naturalWidth;
-      const imageNaturalHeight = imageRef.current.naturalHeight;
+    if (!imageRef.current) return;
 
-      // Get the actual rendered dimensions of the image
-      const rect = imageRef.current.getBoundingClientRect();
-      const renderedWidth = rect.width;
-      const renderedHeight = rect.height;
+    // Use requestAnimationFrame to ensure image dimensions are available
+    requestAnimationFrame(() => {
+      if (!imageRef.current) return;
 
-      // Calculate the scale based on the actual rendered dimensions
-      const widthScale = renderedWidth / imageNaturalWidth;
-      const heightScale = renderedHeight / imageNaturalHeight;
+      const img = imageRef.current;
 
-      // Store both scales for proper coordinate transformation
-      setImageScale({
-        width: widthScale,
-        height: heightScale,
-      });
+      // Store original/natural image dimensions for future reference
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
+      // Store these values in a ref for access across renders
+      originalImageSizeRef.current = {
+        width: naturalWidth,
+        height: naturalHeight,
+      };
+
+      // Calculate and update scale factors
+      updateImageScales();
+
+      // Mark image as loaded
       setImageLoaded(true);
+
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
       );
+    });
+  };
+
+  // Function to update image scales based on current dimensions
+  const updateImageScales = useCallback(() => {
+    if (!imageRef.current) return;
+
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
+    // Get the rendered dimensions
+    const renderedWidth = rect.width;
+    const renderedHeight = rect.height;
+
+    // Get the natural dimensions (or use stored values if naturalWidth is not available)
+    const naturalWidth = img.naturalWidth || originalImageSizeRef.current.width;
+    const naturalHeight =
+      img.naturalHeight || originalImageSizeRef.current.height;
+
+    // Only update if we have valid dimensions to avoid division by zero
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const newScales = {
+        width: renderedWidth / naturalWidth,
+        height: renderedHeight / naturalHeight,
+      };
+
+      // Only update if scales have actually changed
+      if (
+        Math.abs(newScales.width - imageScale.width) > 0.001 ||
+        Math.abs(newScales.height - imageScale.height) > 0.001
+      ) {
+        setImageScale(newScales);
+        console.log(
+          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
+        );
+      }
+    }
+  }, [imageScale.width, imageScale.height]);
+
+  // Add a robust ResizeObserver implementation
+  useEffect(() => {
+    if (!imageRef.current || !imageContainerRef.current) return;
+
+    // Create resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      // Call update function when container or image size changes
+      updateImageScales();
+    });
+
+    // Observe both container and image element
+    resizeObserver.observe(imageContainerRef.current);
+    resizeObserver.observe(imageRef.current);
+
+    // Also listen for window resize events
+    window.addEventListener("resize", updateImageScales);
+
+    // Add a MutationObserver to detect DOM changes affecting layout
+    const mutationObserver = new MutationObserver(() => {
+      updateImageScales();
+    });
+
+    // Observe parent elements for attribute changes
+    if (imageContainerRef.current.parentElement) {
+      mutationObserver.observe(imageContainerRef.current.parentElement, {
+        attributes: true,
+        childList: false,
+        subtree: false,
+      });
+    }
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", updateImageScales);
+    };
+  }, [updateImageScales]);
+
+  // Improved and unified coordinate scaling function
+  const scaleCoordinates = (coords: any) => {
+    if (!coords || !imageRef.current) return null;
+
+    // Use the utility function for consistent scaling
+    try {
+      return calculateRenderedCoordinates(coords, imageRef.current);
+    } catch (error) {
+      console.error("Error scaling coordinates:", error);
+
+      // Fallback to old method if needed
+      if (coords.x !== undefined) {
+        return {
+          left: coords.x * imageScale.width,
+          top: coords.y * imageScale.height,
+          width: coords.width * imageScale.width,
+          height: coords.height * imageScale.height,
+        };
+      }
+
+      return { left: 0, top: 0, width: 0, height: 0 };
     }
   };
 
@@ -881,7 +1063,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // Simplified approach: Record ALL clicks as wrong clicks, then clean them up when hotspot is clicked
+  // Simplified approach: Record clicks for click tracking
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
@@ -894,8 +1076,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Record all clicks as wrong clicks
-      console.log(`Recording click at x=${x}, y=${y} as a wrong click`);
+      // Record all clicks as wrong clicks initially
+      console.log(`Recording click at x=${x}, y=${y}`);
+
+      // Convert to percentages for more stable storage
+      const xPercent = (x / rect.width) * 100;
+      const yPercent = (y / rect.height) * 100;
+
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
@@ -907,7 +1094,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               ...existingItem,
               wrong_clicks: [
                 ...(existingItem.wrong_clicks || []),
-                { x_cordinates: x, y_cordinates: y },
+                {
+                  x_cordinates: x,
+                  y_cordinates: y,
+                  x_percent: xPercent,
+                  y_percent: yPercent,
+                },
               ],
             },
           ];
@@ -916,7 +1108,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...prevData,
             {
               ...currentItem,
-              wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              wrong_clicks: [
+                {
+                  x_cordinates: x,
+                  y_cordinates: y,
+                  x_percent: xPercent,
+                  y_percent: yPercent,
+                },
+              ],
             },
           ];
         }
@@ -1030,7 +1229,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         break;
 
       case "coaching":
-        // case "coachingtip":
         // For coaching tips, clicking anywhere dismisses it
         setShowCoachingTip(false);
         moveToNextItem();
@@ -1039,20 +1237,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       default:
         console.log("Unknown hotspot type:", hotspotType);
     }
-  };
-
-  // Updated to use both width and height scales
-  const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
-  ) => {
-    if (!coords) return null;
-
-    return {
-      left: coords.x * imageScale.width,
-      top: coords.y * imageScale.height,
-      width: coords.width * imageScale.width,
-      height: coords.height * imageScale.height,
-    };
   };
 
   // Handle dropdown option selection
@@ -1577,13 +1761,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Final cleanup: Clear any wrong clicks for items that have been successfully clicked
       const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
-        // If the item was successfully clicked, remove any wrong clicks
-        if (item.isClicked) {
-          return {
-            ...item,
-            // wrong_clicks: [], // Clear wrong clicks for successfully clicked items
-          };
-        }
+        // If the item was successfully clicked, keep the current state
+        // We're not removing wrong_clicks anymore as we need to track all interactions
         return item;
       });
 
@@ -1592,7 +1771,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        cleanedAttemptSequenceData, // Send cleaned data without wrong clicks for successfully clicked items
+        cleanedAttemptSequenceData,
         modifiedSlidesData, // Send modified slides data with transcriptions
       );
 
@@ -1669,7 +1848,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // CHANGED: No longer cleanup object URLs when component unmounts (we don't have any)
+  // Cleanup when component unmounts
   useEffect(() => {
     return () => {
       // Stop any active recording
@@ -1683,8 +1862,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           track.stop();
         });
       }
+
+      // Revoke any blob URLs created for frames
+      if (frameUrl) {
+        URL.revokeObjectURL(frameUrl);
+      }
     };
-  }, [recordingInstance]);
+  }, [recordingInstance, frameUrl]);
 
   // Check for audio chunks to update live transcription
   useEffect(() => {
@@ -2294,7 +2478,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                       {imageLoaded &&
                         currentItem?.type === "hotspot" &&
                         currentItem.hotspotType === "coaching" &&
-                        // || currentItem.hotspotType === "coachingtip"
                         currentItem.coordinates &&
                         levelSettings &&
                         !levelSettings.hideCoachingTips && (

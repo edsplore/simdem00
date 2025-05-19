@@ -58,7 +58,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useSimulationWizard } from "../../../../../context/SimulationWizardContext";
 import SortableItem from "./SortableItem";
 import ImageHotspot from "./ImageHotspot";
-import HotspotSequence, { SequenceItem } from "./HotspotSequence";
+import HotspotSequence, { SequenceItem, Hotspot } from "./HotspotSequence";
 import MaskingPhi from "./MaskingPhi";
 import { useParams } from "react-router-dom";
 import {
@@ -67,23 +67,14 @@ import {
   UpdateImageMaskingObjectResponse,
   updateSimulationWithMasking,
 } from "../../../../../services/simulation_operations";
+import {
+  PercentageCoordinates,
+  AbsoluteCoordinates,
+  absoluteToPercentage,
+  percentageToAbsolute,
+  createImageResizeObserver,
+} from "./CoordinateUtils.ts";
 
-interface Hotspot {
-  id: string;
-  name: string;
-  type: string;
-  text?: string;
-  hotkey?: string;
-  hotspotType: string;
-  coordinates?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  settings?: any;
-  options?: string[];
-}
 export interface Masking {
   id: string;
   type: "masking";
@@ -93,6 +84,8 @@ export interface Masking {
     width: number;
     height: number;
   };
+  // Add percentage-based coordinates
+  percentageCoordinates?: PercentageCoordinates;
   settings?: {
     color: string;
     solid_mask: boolean;
@@ -415,6 +408,7 @@ export default function VisualsTab({
   const stableContainerWidth = useRef<number>(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const containerSizeObserver = useRef<ResizeObserver | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   // For the "Add Script Message" menu
   const [scriptMenuAnchor, setScriptMenuAnchor] = useState<null | HTMLElement>(
@@ -451,14 +445,6 @@ export default function VisualsTab({
       setContainerWidth(newWidth);
     }
   }, []);
-
-  // useEffect(() => {
-  //   setIsSubmitting(true);
-  //   setIsUploading(true);
-  //   setTimeout(() => {
-  //     setIsUploading(false);
-  //   }, 3000);
-  // }, []);
 
   // Update container width when ref is available, but with more stable behavior
   useEffect(() => {
@@ -536,18 +522,58 @@ export default function VisualsTab({
           ) {
             // For hotspots, ensure coordinates are properly formatted as numbers
             if (item.type === "hotspot" && item.content.coordinates) {
-              item.content.coordinates = {
-                x: Number(item.content.coordinates.x || 0),
-                y: Number(item.content.coordinates.y || 0),
-                width: Number(item.content.coordinates.width || 0),
-                height: Number(item.content.coordinates.height || 0),
+              const coords = item.content.coordinates;
+
+              // Convert to proper numeric values
+              const absoluteCoords = {
+                x: Number(coords.x || 0),
+                y: Number(coords.y || 0),
+                width: Number(coords.width || 0),
+                height: Number(coords.height || 0),
               };
+
+              // Generate percentage coordinates if not already present
+              if (!item.content.percentageCoordinates) {
+                // We need original image dimensions, but since we don't have the actual image loaded yet,
+                // we'll need to update these later
+                const percentageCoords = {
+                  xPercent: 0, // Placeholder values
+                  yPercent: 0,
+                  widthPercent: 0,
+                  heightPercent: 0,
+                };
+
+                // Add both coordinate types to the content
+                item.content.coordinates = absoluteCoords;
+                item.content.percentageCoordinates = percentageCoords;
+              }
             }
             return item;
           }
 
           // Case 2: Item is from API format and needs conversion
           else if (item.type === "hotspot") {
+            // Process coordinates if they exist
+            let absoluteCoords = undefined;
+            let percentageCoords = undefined;
+
+            if (item.coordinates) {
+              absoluteCoords = {
+                x: Number(item.coordinates.x || 0),
+                y: Number(item.coordinates.y || 0),
+                width: Number(item.coordinates.width || 0),
+                height: Number(item.coordinates.height || 0),
+              };
+
+              // Placeholder percentage coordinates
+              percentageCoords = {
+                xPercent: 0,
+                yPercent: 0,
+                widthPercent: 0,
+                heightPercent: 0,
+              };
+            }
+
             return {
               id: `hotspot-${item.id || Date.now()}`,
               type: "hotspot",
@@ -556,14 +582,8 @@ export default function VisualsTab({
                 name: item.name || "Untitled Hotspot",
                 type: "hotspot",
                 hotspotType: item.hotspotType || "button",
-                coordinates: item.coordinates
-                  ? {
-                      x: Number(item.coordinates.x || 0),
-                      y: Number(item.coordinates.y || 0),
-                      width: Number(item.coordinates.width || 0),
-                      height: Number(item.coordinates.height || 0),
-                    }
-                  : undefined,
+                coordinates: absoluteCoords,
+                percentageCoordinates: percentageCoords,
                 settings: item.settings || {},
                 options: item.options || [],
                 text: item.text,
@@ -600,12 +620,24 @@ export default function VisualsTab({
             item.content &&
             item.content.coordinates
           ) {
-            item.content.coordinates = {
-              x: Number(item.content.coordinates.x || 0),
-              y: Number(item.content.coordinates.y || 0),
-              width: Number(item.content.coordinates.width || 0),
-              height: Number(item.content.coordinates.height || 0),
+            const coords = item.content.coordinates;
+            const absoluteCoords = {
+              x: Number(coords.x || 0),
+              y: Number(coords.y || 0),
+              width: Number(coords.width || 0),
+              height: Number(coords.height || 0),
             };
+
+            // Add placeholder percentage coordinates
+            const percentageCoords = {
+              xPercent: 0,
+              yPercent: 0,
+              widthPercent: 0,
+              heightPercent: 0,
+            };
+
+            item.content.coordinates = absoluteCoords;
+            item.content.percentageCoordinates = percentageCoords;
           }
           return item;
         });
@@ -652,6 +684,82 @@ export default function VisualsTab({
       didInitializeRef.current = true;
     }
   }, [images, selectedImageId]);
+
+  // Effect to calculate percentage coordinates once images are loaded
+  useEffect(() => {
+    if (!imageRef.current || !selectedImageId) return;
+
+    // Only update for the selected image
+    setVisualImages((prevImages) => {
+      return prevImages.map((img) => {
+        if (img.id !== selectedImageId) return img;
+
+        // Make a copy of the image to modify
+        const updatedImage = { ...img };
+
+        // Get the original image dimensions
+        const imageElement = imageRef.current;
+        if (
+          !imageElement ||
+          !imageElement.complete ||
+          !imageElement.naturalWidth
+        ) {
+          return img; // Image not fully loaded yet
+        }
+
+        const originalWidth = imageElement.naturalWidth;
+        const originalHeight = imageElement.naturalHeight;
+
+        // Update sequence items
+        updatedImage.sequence = updatedImage.sequence.map((item) => {
+          if (item.type === "hotspot" && item.content.coordinates) {
+            const hotspot = { ...item.content };
+            const coords = hotspot.coordinates;
+
+            // Calculate percentage coordinates
+            hotspot.percentageCoordinates = absoluteToPercentage(
+              coords,
+              originalWidth,
+              originalHeight,
+            );
+
+            return {
+              ...item,
+              content: hotspot,
+            };
+          }
+          return item;
+        });
+
+        // Update masking items
+        updatedImage.masking = updatedImage.masking.map((item) => {
+          if (item.type === "masking" && item.content.coordinates) {
+            const masking = { ...item.content };
+            const coords = masking.coordinates;
+
+            // Calculate percentage coordinates
+            masking.percentageCoordinates = absoluteToPercentage(
+              coords,
+              originalWidth,
+              originalHeight,
+            );
+
+            return {
+              ...item,
+              content: masking,
+            };
+          }
+          return item;
+        });
+
+        return updatedImage;
+      });
+    });
+  }, [
+    selectedImageId,
+    imageRef.current?.naturalWidth,
+    imageRef.current?.naturalHeight,
+  ]);
 
   /** Helper: add a hotspot to the selected image's sequence. */
   const addHotspotToSequence = useCallback(
@@ -708,16 +816,31 @@ export default function VisualsTab({
       .filter((item) => item.type === "hotspot" && item.content)
       .map((item) => {
         // Ensure the content is properly formatted as a Hotspot
-        const hotspot = item.content as Hotspot;
+        const hotspot = { ...(item.content as Hotspot) };
 
-        // Ensure coordinates are properly formatted as numbers
-        if (hotspot.coordinates) {
-          hotspot.coordinates = {
-            x: Number(hotspot.coordinates.x || 0),
-            y: Number(hotspot.coordinates.y || 0),
-            width: Number(hotspot.coordinates.width || 0),
-            height: Number(hotspot.coordinates.height || 0),
-          };
+        // Make sure both coordinate systems are present
+        if (
+          hotspot.coordinates &&
+          !hotspot.percentageCoordinates &&
+          imageRef.current
+        ) {
+          // Calculate percentage coordinates
+          hotspot.percentageCoordinates = absoluteToPercentage(
+            hotspot.coordinates,
+            imageRef.current.naturalWidth,
+            imageRef.current.naturalHeight,
+          );
+        } else if (
+          hotspot.percentageCoordinates &&
+          !hotspot.coordinates &&
+          imageRef.current
+        ) {
+          // Calculate absolute coordinates
+          hotspot.coordinates = percentageToAbsolute(
+            hotspot.percentageCoordinates,
+            imageRef.current.naturalWidth,
+            imageRef.current.naturalHeight,
+          );
         }
 
         // Return the properly formatted hotspot
@@ -730,28 +853,43 @@ export default function VisualsTab({
           settings: hotspot.settings || {},
         };
       });
-  }, [selectedImage]);
+  }, [selectedImage, imageRef.current]);
 
   const getMaskingForImage = useCallback(() => {
     if (!selectedImage || !selectedImage.masking) return [];
-    console.log(selectedImage, "selectedImagemasking");
+
     return selectedImage.masking
       .filter((item) => item.type === "masking" && item.content)
       .map((item) => {
-        // Ensure the content is properly formatted as a Hotspot
-        const masking = item.content as Masking;
+        // Ensure the content is properly formatted as a Masking
+        const masking = { ...(item.content as Masking) };
 
-        // Ensure coordinates are properly formatted as numbers
-        if (masking.coordinates) {
-          masking.coordinates = {
-            x: Number(masking.coordinates.x || 0),
-            y: Number(masking.coordinates.y || 0),
-            width: Number(masking.coordinates.width || 0),
-            height: Number(masking.coordinates.height || 0),
-          };
+        // Make sure both coordinate systems are present
+        if (
+          masking.coordinates &&
+          !masking.percentageCoordinates &&
+          imageRef.current
+        ) {
+          // Calculate percentage coordinates
+          masking.percentageCoordinates = absoluteToPercentage(
+            masking.coordinates,
+            imageRef.current.naturalWidth,
+            imageRef.current.naturalHeight,
+          );
+        } else if (
+          masking.percentageCoordinates &&
+          !masking.coordinates &&
+          imageRef.current
+        ) {
+          // Calculate absolute coordinates
+          masking.coordinates = percentageToAbsolute(
+            masking.percentageCoordinates,
+            imageRef.current.naturalWidth,
+            imageRef.current.naturalHeight,
+          );
         }
 
-        // Return the properly formatted hotspot
+        // Return the properly formatted masking
         return {
           ...masking,
           id: masking.id || String(Date.now()),
@@ -759,7 +897,7 @@ export default function VisualsTab({
           settings: masking.settings || {},
         };
       });
-  }, [selectedImage]);
+  }, [selectedImage, imageRef.current]);
 
   // For the "Add Script Message" menu
   // Filter out messages that have already been assigned to a visual
@@ -857,22 +995,12 @@ export default function VisualsTab({
     [visualImages],
   );
 
-  // Image Upload
-  // const handleFiles = useCallback((files: File[]) => {
-  //   const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-  //   const newImages = imageFiles.map((file) => ({
-  //     id: Math.random().toString(36).substr(2, 9),
-  //     url: URL.createObjectURL(file),
-  //     name: file.name,
-  //     file: file, // Store the actual File reference
-  //     sequence: [], // Initialize with empty sequence
-  //     masking: [],
-  //   }));
-  //   setVisualImages((prev) => [...prev, ...newImages]);
-  // }, []);
+  // Modified image handler that processes images with percentage coordinates
   const handleFiles = useCallback(async (files: File[]) => {
     return new Promise<void>((resolve) => {
       const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+
+      // Create image objects with file references
       const newImages = imageFiles.map((file) => ({
         id: Math.random().toString(36).substr(2, 9),
         url: URL.createObjectURL(file),
@@ -891,7 +1019,6 @@ export default function VisualsTab({
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files) return;
 
-      // setIsSubmitting(true);
       setIsUploading(true);
 
       try {
@@ -905,15 +1032,6 @@ export default function VisualsTab({
     },
     [handleFiles],
   );
-  // const handleFileSelect = useCallback(
-  //   (e: React.ChangeEvent<HTMLInputElement>) => {
-  //     if (!e.target.files) return;
-  //     setIsSubmitting(true);
-  //     handleFiles(Array.from(e.target.files));
-  //     setIsSubmitting(false);
-  //   },
-  //   [handleFiles]
-  // );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -986,6 +1104,11 @@ export default function VisualsTab({
         return nextImages;
       });
 
+      // Clean up any blob URLs for this image
+      if (imageToDelete?.url?.startsWith("blob:")) {
+        URL.revokeObjectURL(imageToDelete.url);
+      }
+
       // Clear edit state regardless
       setEditingHotspot(null);
       setEditingMasking(null);
@@ -1027,6 +1150,7 @@ export default function VisualsTab({
               id: hotspot.id,
               name: hotspot.name,
               hotspotType: hotspot.hotspotType,
+              // Include both coordinate systems for maximum compatibility
               coordinates: hotspot.coordinates
                 ? {
                     // Ensure we explicitly access and use numbers for each coordinate
@@ -1036,6 +1160,7 @@ export default function VisualsTab({
                     height: Number(hotspot.coordinates.height || 0),
                   }
                 : undefined,
+              percentageCoordinates: hotspot.percentageCoordinates,
               settings: hotspot.settings || {},
             };
 
@@ -1058,6 +1183,7 @@ export default function VisualsTab({
         });
 
         const masking = Array.isArray(img.masking) ? img.masking : [];
+
         // Create a clean image URL that doesn't include any base64 data
         // The server will use the uploaded file or existing server-side image
         let cleanImageUrl = "";
@@ -1196,10 +1322,37 @@ export default function VisualsTab({
     }
   };
 
-  // Update hotspots in the sequence - optimized to minimize state updates
+  // Update hotspots in the sequence with proper percentage coordinates
   const updateImageHotspots = useCallback(
     (imageId: string, newHotspots: Hotspot[]) => {
-      if (!imageId) return;
+      if (!imageId || !imageRef.current) return;
+
+      // Get image dimensions for coordinate conversion
+      const imageElement = imageRef.current;
+      const originalWidth = imageElement.naturalWidth;
+      const originalHeight = imageElement.naturalHeight;
+
+      // Ensure all hotspots have both coordinate systems
+      const processedHotspots = newHotspots.map((hotspot) => {
+        const result = { ...hotspot };
+
+        // Make sure we have both coordinate systems
+        if (result.coordinates && !result.percentageCoordinates) {
+          result.percentageCoordinates = absoluteToPercentage(
+            result.coordinates,
+            originalWidth,
+            originalHeight,
+          );
+        } else if (result.percentageCoordinates && !result.coordinates) {
+          result.coordinates = percentageToAbsolute(
+            result.percentageCoordinates,
+            originalWidth,
+            originalHeight,
+          );
+        }
+
+        return result;
+      });
 
       setVisualImages((currentImages) => {
         // Find the current image
@@ -1222,7 +1375,7 @@ export default function VisualsTab({
         const deletedHotspotIds = currentHotspots
           .filter(
             (oldHotspot) =>
-              !newHotspots.some(
+              !processedHotspots.some(
                 (newHotspot) => newHotspot.id === oldHotspot.id,
               ),
           )
@@ -1230,7 +1383,7 @@ export default function VisualsTab({
 
         // Updated/added hotspots map for quick lookup
         const updatedHotspotsMap = new Map(
-          newHotspots.map((hotspot) => [hotspot.id, hotspot]),
+          processedHotspots.map((hotspot) => [hotspot.id, hotspot]),
         );
 
         // Process sequence in a single pass
@@ -1279,11 +1432,40 @@ export default function VisualsTab({
         return newImages;
       });
     },
-    [],
+    [imageRef],
   );
+
+  // Update masking with proper percentage coordinates
   const updateImageMasking = useCallback(
     (imageId: string, newMaskings: Masking[]) => {
-      if (!imageId) return;
+      if (!imageId || !imageRef.current) return;
+
+      // Get image dimensions for coordinate conversion
+      const imageElement = imageRef.current;
+      const originalWidth = imageElement.naturalWidth;
+      const originalHeight = imageElement.naturalHeight;
+
+      // Ensure all maskings have both coordinate systems
+      const processedMaskings = newMaskings.map((masking) => {
+        const result = { ...masking };
+
+        // Make sure we have both coordinate systems
+        if (result.coordinates && !result.percentageCoordinates) {
+          result.percentageCoordinates = absoluteToPercentage(
+            result.coordinates,
+            originalWidth,
+            originalHeight,
+          );
+        } else if (result.percentageCoordinates && !result.coordinates) {
+          result.coordinates = percentageToAbsolute(
+            result.percentageCoordinates,
+            originalWidth,
+            originalHeight,
+          );
+        }
+
+        return result;
+      });
 
       setVisualImages((currentImages) => {
         // Find the current image
@@ -1294,7 +1476,7 @@ export default function VisualsTab({
 
         const currentImage = currentImages[currentImageIndex];
 
-        // Find all sequence items that are masks
+        // Find all masking items
         const currentMaskingItems = currentImage.masking.filter(
           (item) => item.type === "masking",
         );
@@ -1302,19 +1484,19 @@ export default function VisualsTab({
           (item) => item.content as Masking,
         );
 
-        // Identify deleted masks
+        // Identify deleted maskings
         const deletedMaskingIds = currentMaskings
           .filter(
             (oldMasking) =>
-              !newMaskings.some(
+              !processedMaskings.some(
                 (newMasking) => newMasking.id === oldMasking.id,
               ),
           )
           .map((masking) => masking.id);
 
-        // Updated/added masks map for quick lookup
+        // Updated/added maskings map for quick lookup
         const updatedMaskingsMap = new Map(
-          newMaskings.map((masking) => [masking.id, masking]),
+          processedMaskings.map((masking) => [masking.id, masking]),
         );
 
         // Process sequence in a single pass
@@ -1363,7 +1545,7 @@ export default function VisualsTab({
         return newImages;
       });
     },
-    [],
+    [imageRef],
   );
 
   // Edit / Delete a single hotspot or message from the sequence
@@ -1397,14 +1579,11 @@ export default function VisualsTab({
     },
     [selectedImageId, setAssignedScriptMessageIds],
   );
+
   const handleMaskingDelete = useCallback(
     (maskingId: string) => {
       if (!selectedImageId) return;
-      // Find the masking in the sequence
-      // const maskingItem = selectedImage.masking.find(
-      //   (item) => item.type === "masking" && (item.content as Masking).id === maskingId
-      // );
-      // if (!maskingItem) return;
+
       setVisualImages((currentImages) =>
         currentImages.map((img) => {
           if (img.id === selectedImageId) {
@@ -1423,7 +1602,7 @@ export default function VisualsTab({
         }),
       );
     },
-    [selectedImageId, visualImages],
+    [selectedImageId],
   );
 
   const handleEditItem = useCallback(
@@ -1496,6 +1675,8 @@ export default function VisualsTab({
   const closeMaskPhiDialog = () => {
     setIsFileUploaded(false);
   };
+
+  // In VisualsTab.tsx
   const handleClickMaskPhi = async () => {
     // Process PHI masking
     const formData = new FormData();
@@ -1515,27 +1696,44 @@ export default function VisualsTab({
         );
         if (visualImage) {
           // Update the visualImage with the masking information
-
           const finalMasking = maskPhiResponse.masking.rectangles.map(
-            (rectangle) => ({
-              id: maskPhiResponse.id,
-              type: "masking",
-              content: {
-                id: rectangle.id,
+            (rectangle) => {
+              // Create a coordinates object with both absolute and percentage values if available
+              const maskingCoordinates: any = {
+                x: parseInt(rectangle.x),
+                y: parseInt(rectangle.y),
+                width: parseInt(rectangle.width),
+                height: parseInt(rectangle.height),
+              };
+
+              // Include percentage coordinates if they exist in the response
+              if (
+                rectangle.xPercent !== undefined &&
+                rectangle.yPercent !== undefined &&
+                rectangle.widthPercent !== undefined &&
+                rectangle.heightPercent !== undefined
+              ) {
+                maskingCoordinates.xPercent = rectangle.xPercent;
+                maskingCoordinates.yPercent = rectangle.yPercent;
+                maskingCoordinates.widthPercent = rectangle.widthPercent;
+                maskingCoordinates.heightPercent = rectangle.heightPercent;
+              }
+
+              return {
+                id: maskPhiResponse.id,
                 type: "masking",
-                coordinates: {
-                  x: parseInt(rectangle.x),
-                  y: parseInt(rectangle.y),
-                  width: parseInt(rectangle.width),
-                  height: parseInt(rectangle.height),
+                content: {
+                  id: rectangle.id,
+                  type: "masking",
+                  coordinates: maskingCoordinates,
+                  settings: {
+                    color: "#000000",
+                    solid_mask: true,
+                    blur_mask: false,
+                  },
                 },
-                settings: {
-                  color: "#000000",
-                  solid_mask: true,
-                  blur_mask: false,
-                },
-              },
-            }),
+              };
+            },
           );
 
           visualImage.masking.push(...finalMasking);
@@ -1551,6 +1749,19 @@ export default function VisualsTab({
 
   const handleApplyMaskingPhi = () => {
     setMaskingPhi(true);
+  };
+
+  // Add a reference to capture the image element for coordinate calculations
+  const captureImageRef = (imgElement: HTMLImageElement | null) => {
+    if (imgElement && imgElement !== imageRef.current) {
+      imageRef.current = imgElement;
+
+      // If the image is already loaded, trigger an update to calculate percentage coordinates
+      if (imgElement.complete && imgElement.naturalWidth > 0) {
+        // Force a re-render to update percentage coordinates
+        setVisualImages((prev) => [...prev]);
+      }
+    }
   };
 
   return (
@@ -1932,9 +2143,9 @@ export default function VisualsTab({
                       imageUrl={selectedImage?.url || ""}
                       maskings={getMaskingForImage()}
                       editingMasking={editingMasking}
-                      onMaskingsChange={(newHs) => {
+                      onMaskingsChange={(newMs) => {
                         if (!selectedImageId) return;
-                        updateImageMasking(selectedImageId, newHs);
+                        updateImageMasking(selectedImageId, newMs);
                         setEditingMasking(null);
                       }}
                       onEditMasking={(msk) => setEditingMasking(msk)}
@@ -1954,6 +2165,32 @@ export default function VisualsTab({
                       }}
                       onEditHotspot={(ht) => setEditingHotspot(ht)}
                       containerWidth={containerWidth}
+                    />
+                  )}
+
+                  {/* Hidden image ref for getting dimensions */}
+                  {selectedImage?.url && (
+                    <img
+                      src={selectedImage.url}
+                      ref={captureImageRef}
+                      style={{
+                        position: "absolute",
+                        width: "1px",
+                        height: "1px",
+                        opacity: 0,
+                        pointerEvents: "none",
+                        left: "-9999px",
+                      }}
+                      onLoad={() => {
+                        console.log(
+                          "Hidden reference image loaded, dimensions:",
+                          {
+                            width: imageRef.current?.naturalWidth,
+                            height: imageRef.current?.naturalHeight,
+                          },
+                        );
+                      }}
+                      alt=""
                     />
                   )}
                 </Box>

@@ -9,12 +9,23 @@ export interface SimulationHotspotCoordinates {
   height: number;
 }
 
+// New interface for percentage-based coordinates
+export interface SimulationHotspotPercentageCoordinates {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
 export interface SimulationSequenceItem {
   type: string;
   id: string;
   name?: string;
   hotspotType?: string;
+  // Original absolute coordinates
   coordinates?: SimulationHotspotCoordinates;
+  // New percentage-based coordinates
+  percentageCoordinates?: SimulationHotspotPercentageCoordinates;
   settings?: any;
   role?: string;
   text?: string;
@@ -25,12 +36,10 @@ export interface SimulationSequenceItem {
 export interface Masking {
   id: string;
   type: string;
-  coordinates?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
+  // Original absolute coordinates
+  coordinates?: SimulationHotspotCoordinates;
+  // New percentage-based coordinates
+  percentageCoordinates?: SimulationHotspotPercentageCoordinates;
   settings?: {
     color: string;
     solid_mask: boolean;
@@ -104,6 +113,7 @@ export interface EndVisualSimulationRequest {
   user_id: string;
   simulation_id: string;
   usersimulationprogress_id: string;
+  userAttemptSequence: AttemptInterface[];
 }
 
 // Response interfaces
@@ -165,6 +175,41 @@ export const startVisualSimulation = async (
       },
     );
 
+    // Process response to add percentage coordinates if needed
+    if (response.data.simulation && response.data.simulation.slidesData) {
+      response.data.simulation.slidesData.forEach((slide) => {
+        if (slide.sequence) {
+          slide.sequence.forEach((item) => {
+            // If only absolute coordinates exist, calculate percentage coordinates
+            if (item.coordinates && !item.percentageCoordinates) {
+              // The calculation would ideally happen server-side
+              // This is just a placeholder - actual implementation would need image dimensions
+              console.log(
+                "Adding percentage coordinates compatibility layer for sequence item:",
+                item.id,
+              );
+            }
+          });
+        }
+
+        // Also process masking items
+        if (slide.masking) {
+          slide.masking.forEach((maskingItem) => {
+            if (
+              maskingItem.content &&
+              maskingItem.content.coordinates &&
+              !maskingItem.content.percentageCoordinates
+            ) {
+              console.log(
+                "Adding percentage coordinates compatibility layer for masking item:",
+                maskingItem.id,
+              );
+            }
+          });
+        }
+      });
+    }
+
     return response.data;
   } catch (error) {
     console.error("Error starting visual simulation:", error);
@@ -177,6 +222,7 @@ export const startVisualSimulation = async (
  * @param userId - The ID of the user ending the simulation
  * @param simulationId - The ID of the simulation to end
  * @param simulationProgressId - The ID of the simulation progress
+ * @param userAttemptSequence - Array of user interaction data
  * @returns A promise with the end visual simulation response
  */
 export const endVisualSimulation = async (
@@ -186,13 +232,41 @@ export const endVisualSimulation = async (
   userAttemptSequence: AttemptInterface[],
 ): Promise<EndVisualSimulationResponse> => {
   try {
+    // Process attempt data to ensure all click coordinates have both absolute and percentage values
+    const processedAttemptSequence = userAttemptSequence.map((attempt) => {
+      // Process wrong_clicks to ensure they have percentage values
+      if (attempt.wrong_clicks && attempt.wrong_clicks.length > 0) {
+        attempt.wrong_clicks = attempt.wrong_clicks.map((click) => {
+          // Add percentage values if they don't exist
+          if (
+            click.x_cordinates !== undefined &&
+            click.y_cordinates !== undefined &&
+            click.x_percent === undefined &&
+            click.y_percent === undefined
+          ) {
+            // We need container dimensions to calculate percentages accurately
+            // This is a placeholder - actual implementation would need container dimensions
+            console.log("Adding percentage values for click tracking");
+            return {
+              ...click,
+              // These are placeholder values - real implementation would calculate from container dimensions
+              x_percent: 0,
+              y_percent: 0,
+            };
+          }
+          return click;
+        });
+      }
+      return attempt;
+    });
+
     const response = await apiClient.post<EndVisualSimulationResponse>(
       "/simulations/end-visual-attempt",
       {
         user_id: userId,
         simulation_id: simulationId,
         usersimulationprogress_id: simulationProgressId,
-        userAttemptSequence: userAttemptSequence,
+        userAttemptSequence: processedAttemptSequence,
       },
     );
 

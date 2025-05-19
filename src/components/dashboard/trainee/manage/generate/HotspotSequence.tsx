@@ -1,20 +1,21 @@
-import React, { useState } from "react";
-import { Box, Typography, IconButton, Stack } from "@mui/material";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
-  DragIndicator as DragIndicatorIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  ChatBubble as ChatBubbleIcon,
-  Lightbulb as LightbulbIcon,
-  Highlight as HighlightIcon,
-  Person as PersonIcon,
-  SupportAgent as SupportAgentIcon,
-  ChevronRight as ChevronRightIcon,
-} from "@mui/icons-material";
-
+  Box,
+  Typography,
+  Stack,
+  Button,
+  IconButton,
+  Card,
+  styled,
+  Divider,
+  Menu,
+  MenuItem,
+  Tooltip,
+} from "@mui/material";
 import {
   DndContext,
   closestCenter,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -27,6 +28,20 @@ import {
 } from "@dnd-kit/sortable";
 
 import { CSS } from "@dnd-kit/utilities";
+import {
+  DragIndicator as DragIndicatorIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Description as DescriptionIcon,
+  ChevronRight as ChevronRightIcon,
+  Message as MessageIcon,
+  ChatBubble as ChatBubbleIcon,
+  Lightbulb as LightbulbIcon,
+  Highlight as HighlightIcon,
+  Person as PersonIcon,
+  SupportAgent as SupportAgentIcon,
+} from "@mui/icons-material";
+import { PercentageCoordinates } from "./CoordinateUtils.ts";
 
 // Utility function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -83,6 +98,8 @@ export interface Hotspot {
     width: number;
     height: number;
   };
+  // Add percentage-based coordinates
+  percentageCoordinates?: PercentageCoordinates;
   settings?: any;
   options?: string[];
 }
@@ -284,6 +301,22 @@ function SortableRow({
       }
     }
 
+    // Find available coordinates information to display
+    const getCoordinatesInfo = (hotspot: Hotspot): string => {
+      // Prefer percentage coordinates for display
+      if (hotspot.percentageCoordinates) {
+        const pc = hotspot.percentageCoordinates;
+        return `W: ${pc.widthPercent.toFixed(1)}%, H: ${pc.heightPercent.toFixed(1)}%`;
+      }
+      // Fall back to absolute coordinates
+      else if (hotspot.coordinates) {
+        const c = hotspot.coordinates;
+        return `W: ${Math.round(c.width)}, H: ${Math.round(c.height)}`;
+      }
+
+      return "No coordinates";
+    };
+
     return (
       <Box
         ref={setNodeRef}
@@ -342,6 +375,15 @@ function SortableRow({
               {stripHtmlTags(ht.text)}
             </Typography>
           )}
+
+          {/* Display coordinates information with proper formatting */}
+          <Typography
+            variant="caption"
+            sx={{ pl: 5, pr: 1, color: "text.secondary", display: "block" }}
+          >
+            {getCoordinatesInfo(ht)}
+          </Typography>
+
           {ht.hotkey && (
             <Typography
               variant="caption"

@@ -40,6 +40,10 @@ export interface Masking {
     y: number;
     width: number;
     height: number;
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
   };
   settings?: {
     color: string;
@@ -62,6 +66,55 @@ interface MaskingPhiProps {
   onDeleteMasking?: (id: string, type: "masking") => void | undefined;
   containerWidth: number;
 }
+
+// Improved function to calculate rendered coordinates consistently across all components
+const getScaledCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement | null,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (!imageElement || !coords) return null;
+
+  // Get the actual rendered position and dimensions of the image
+  const rect = imageElement.getBoundingClientRect();
+
+  // Get container dimensions (important for centering offset calculations)
+  const containerElement = imageElement.parentElement;
+  let containerRect = containerElement?.getBoundingClientRect();
+
+  // If no container found, use the image rect as fallback
+  if (!containerRect) {
+    containerRect = rect;
+  }
+
+  // Calculate the offset of the image within its container (for centering)
+  const offsetX = rect.left - containerRect.left;
+  const offsetY = rect.top - containerRect.top;
+
+  // Use percentage-based coordinates if available
+  if (coords.xPercent !== undefined) {
+    return {
+      left: (coords.xPercent * rect.width) / 100 + offsetX,
+      top: (coords.yPercent * rect.height) / 100 + offsetY,
+      width: (coords.widthPercent * rect.width) / 100,
+      height: (coords.heightPercent * rect.height) / 100,
+    };
+  }
+
+  // Otherwise use absolute coordinates with proper scaling
+  if (coords.x !== undefined) {
+    const naturalWidth = imageElement.naturalWidth || 1;
+    const naturalHeight = imageElement.naturalHeight || 1;
+
+    return {
+      left: (coords.x / naturalWidth) * rect.width + offsetX,
+      top: (coords.y / naturalHeight) * rect.height + offsetY,
+      width: (coords.width / naturalWidth) * rect.width,
+      height: (coords.height / naturalHeight) * rect.height,
+    };
+  }
+
+  return null;
+};
 
 /**
  * Detects image type from binary data
@@ -158,7 +211,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [currentMasking, setCurrentMasking] = useState<Partial<Masking> | null>(
-    null
+    null,
   );
   const [showSettings, setShowSettings] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -179,9 +232,8 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   const [processedImageUrl, setProcessedImageUrl] = useState<string | null>(
     null,
   );
-  const [value, setValue] = React.useState('Solid');
+  const [value, setValue] = React.useState("Solid");
   const [prevMasking, setPrevMasking] = useState<Masking | null>(null);
-
 
   // Add state for moving maskings
   const [movingMasking, setMovingMasking] = useState<string | null>(null);
@@ -196,6 +248,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     y: number;
     width: number;
     height: number;
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
   } | null>(null);
 
   // Add hover state for showing masking type tooltip
@@ -219,7 +275,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   const [colorPickerAnchorEl, setColorPickerAnchorEl] =
     useState<HTMLElement | null>(null);
   // Convert RGBA components to string
-
 
   // Process image URL using the EXACT same method from VisualAudioPreview
   const processImageData = useCallback(() => {
@@ -290,7 +345,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
   const handleChange = (event: React.SyntheticEvent, newValue: string) => {
     setValue(newValue);
   };
-
 
   // Process image data when imageUrl changes
   useEffect(() => {
@@ -377,12 +431,15 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     // Observe both the container and the window
     resizeObserver.observe(containerRef.current);
 
+    // Also handle window resize events
+    window.addEventListener("resize", updateImageSizeAndScale);
+
     // Cleanup
     return () => {
       resizeObserver.disconnect();
+      window.removeEventListener("resize", updateImageSizeAndScale);
     };
   }, [containerRef, originalImageSize, containerWidth, processedImageUrl]);
-
 
   // Update maskings when editing masking changes
   useEffect(() => {
@@ -444,11 +501,15 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Store coordinates relative to ORIGINAL image size (not the rendered size)
-    // This is the key to making maskings work correctly at any scale
-    const x = (e.clientX - rect.left) / imageScale.width;
-    const y = (e.clientY - rect.top) / imageScale.height;
+    // Calculate offset of the image within its container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
+
+    // Store coordinates relative to the image's actual position and size
+    const x = ((e.clientX - rect.left) / rect.width) * originalImageSize.width;
+    const y = ((e.clientY - rect.top) / rect.height) * originalImageSize.height;
 
     setIsDrawing(true);
     setStartPos({ x, y });
@@ -461,13 +522,17 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Get the current mouse position in original image coordinates
-    const x = (e.clientX - rect.left) / imageScale.width;
-    const y = (e.clientY - rect.top) / imageScale.height;
+    // Calculate offset of the image within its container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
 
-    // Create a properly structured coordinates object that stores positions
-    // in the original image coordinate system
+    // Get the current mouse position relative to the image
+    const x = ((e.clientX - rect.left) / rect.width) * originalImageSize.width;
+    const y = ((e.clientY - rect.top) / rect.height) * originalImageSize.height;
+
+    // Calculate both absolute and percentage coordinates
     const coordinates = {
       x: Math.min(startPos.x, x),
       y: Math.min(startPos.y, y),
@@ -475,8 +540,20 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
       height: Math.abs(y - startPos.y),
     };
 
+    // Calculate percentage coordinates based on original image size
+    const xPercent = (coordinates.x / originalImageSize.width) * 100;
+    const yPercent = (coordinates.y / originalImageSize.height) * 100;
+    const widthPercent = (coordinates.width / originalImageSize.width) * 100;
+    const heightPercent = (coordinates.height / originalImageSize.height) * 100;
+
     setCurrentMasking({
-      coordinates: coordinates,
+      coordinates: {
+        ...coordinates,
+        xPercent,
+        yPercent,
+        widthPercent,
+        heightPercent,
+      },
     });
   };
 
@@ -504,12 +581,22 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const masking = maskings.find((h) => h.id === maskingId);
     if (!masking || !masking.coordinates) return;
 
-    const rect = imageElementRef.current.getBoundingClientRect();
     setPrevMasking({ ...masking });
-    // Store starting mouse position in screen coordinates
+
+    // Get rendered coordinates using our improved function
+    const renderedCoords = getScaledCoordinates(
+      masking.coordinates,
+      imageElementRef.current,
+    );
+
+    if (!renderedCoords) return;
+
+    const rect = imageElementRef.current.getBoundingClientRect();
+
+    // Store start position relative to the mouse position
     setMoveStart({
-      x: e.clientX - (masking.coordinates.x * imageScale.width + rect.left),
-      y: e.clientY - (masking.coordinates.y * imageScale.height + rect.top),
+      x: e.clientX - rect.left - renderedCoords.left,
+      y: e.clientY - rect.top - renderedCoords.top,
     });
 
     setMovingMasking(maskingId);
@@ -522,24 +609,53 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const masking = maskings.find((h) => h.id === movingMasking);
     if (!masking || !masking.coordinates) return;
 
-    const rect = imageElementRef.current.getBoundingClientRect();
+    const img = imageElementRef.current;
+    const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Calculate new position in original image coordinates
-    const newX = Math.max(
+    // Calculate offset of image within container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
+
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+
+    // Calculate new position in percentage of the image, accounting for offset
+    const newXPercent = Math.max(
       0,
       Math.min(
-        (e.clientX - moveStart.x - rect.left) / imageScale.width,
-        originalImageSize.width - masking.coordinates.width,
+        ((e.clientX - moveStart.x - rect.left) / rect.width) * 100,
+        100 -
+          (masking.coordinates.xPercent !== undefined
+            ? masking.coordinates.xPercent
+            : (masking.coordinates.width / naturalWidth) * 100),
       ),
     );
 
-    const newY = Math.max(
+    const newYPercent = Math.max(
       0,
       Math.min(
-        (e.clientY - moveStart.y - rect.top) / imageScale.height,
-        originalImageSize.height - masking.coordinates.height,
+        ((e.clientY - moveStart.y - rect.top) / rect.height) * 100,
+        100 -
+          (masking.coordinates.yPercent !== undefined
+            ? masking.coordinates.yPercent
+            : (masking.coordinates.height / naturalHeight) * 100),
       ),
     );
+
+    // Calculate new absolute coordinates from percentages
+    const newX = (newXPercent * naturalWidth) / 100;
+    const newY = (newYPercent * naturalHeight) / 100;
+
+    // Get the width and height (either from percentage or absolute coordinates)
+    const widthPercent =
+      masking.coordinates.widthPercent ||
+      (masking.coordinates.width / naturalWidth) * 100;
+    const heightPercent =
+      masking.coordinates.heightPercent ||
+      (masking.coordinates.height / naturalHeight) * 100;
+    const width = (widthPercent * naturalWidth) / 100;
+    const height = (heightPercent * naturalHeight) / 100;
 
     // Update all maskings with the moved one
     const updatedMaskings = maskings.map((h) => {
@@ -547,9 +663,14 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
         return {
           ...h,
           coordinates: {
-            ...h.coordinates,
             x: newX,
             y: newY,
+            width,
+            height,
+            xPercent: newXPercent,
+            yPercent: newYPercent,
+            widthPercent,
+            heightPercent,
           },
         };
       }
@@ -578,31 +699,63 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const masking = maskings.find((h) => h.id === maskingId);
     if (!masking || !masking.coordinates) return;
     setPrevMasking({ ...masking });
-    // Store starting mouse position in screen coordinates
+
+    // Store starting mouse position
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
     });
 
-    // Store original masking coordinates for reference during resize
-    setResizeOriginal({
-      x: masking.coordinates.x,
-      y: masking.coordinates.y,
-      width: masking.coordinates.width,
-      height: masking.coordinates.height,
-    });
+    // Store both absolute and percentage coordinates
+    const originalCoords: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      xPercent?: number;
+      yPercent?: number;
+      widthPercent?: number;
+      heightPercent?: number;
+    } = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+    };
 
+    // First set absolute coordinates
+    if (masking.coordinates) {
+      originalCoords.x = masking.coordinates.x;
+      originalCoords.y = masking.coordinates.y;
+      originalCoords.width = masking.coordinates.width;
+      originalCoords.height = masking.coordinates.height;
+    }
+
+    // Then set percentage coordinates
+    if (masking.coordinates.xPercent !== undefined) {
+      originalCoords.xPercent = masking.coordinates.xPercent;
+      originalCoords.yPercent = masking.coordinates.yPercent;
+      originalCoords.widthPercent = masking.coordinates.widthPercent;
+      originalCoords.heightPercent = masking.coordinates.heightPercent;
+    }
+    // Or calculate percentage coordinates from absolute
+    else if (masking.coordinates && imageElementRef.current) {
+      const naturalWidth = imageElementRef.current.naturalWidth;
+      const naturalHeight = imageElementRef.current.naturalHeight;
+      originalCoords.xPercent = (masking.coordinates.x / naturalWidth) * 100;
+      originalCoords.yPercent = (masking.coordinates.y / naturalHeight) * 100;
+      originalCoords.widthPercent =
+        (masking.coordinates.width / naturalWidth) * 100;
+      originalCoords.heightPercent =
+        (masking.coordinates.height / naturalHeight) * 100;
+    }
+
+    setResizeOriginal(originalCoords);
     setResizingMasking(maskingId);
     setResizeHandle(handle);
-
-    // Important: DON'T set editingMasking to null here to keep the selected state
-    // This allows the resizing to be reflected in the currently edited masking
-    if (editingMasking?.id !== maskingId) {
-      // setEditingMasking(null);
-    }
   };
 
-  // Handle mouse movement during resize
+  // Handle resize masking - updated for percentage coordinates
   const handleResizeMasking = (e: React.MouseEvent) => {
     if (
       !resizingMasking ||
@@ -615,81 +768,131 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const masking = maskings.find((h) => h.id === resizingMasking);
     if (!masking || !masking.coordinates) return;
 
-    // Calculate mouse movement in original image coordinates
-    const deltaX = (e.clientX - resizeStart.x) / imageScale.width;
-    const deltaY = (e.clientY - resizeStart.y) / imageScale.height;
+    const img = imageElementRef.current;
+    const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Initialize new coordinates with original values
-    let newX = resizeOriginal.x;
-    let newY = resizeOriginal.y;
-    let newWidth = resizeOriginal.width;
-    let newHeight = resizeOriginal.height;
+    // Calculate offset of image within container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
+
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+
+    // Calculate mouse movement in percentage of the image
+    const deltaXPercent = ((e.clientX - resizeStart.x) / rect.width) * 100;
+    const deltaYPercent = ((e.clientY - resizeStart.y) / rect.height) * 100;
+
+    // Use percentage coordinates from resizeOriginal if available
+    if (
+      !resizeOriginal.xPercent ||
+      !resizeOriginal.yPercent ||
+      !resizeOriginal.widthPercent ||
+      !resizeOriginal.heightPercent
+    ) {
+      return;
+    }
+
+    // Initialize new percentage coordinates
+    let newXPercent = resizeOriginal.xPercent;
+    let newYPercent = resizeOriginal.yPercent;
+    let newWidthPercent = resizeOriginal.widthPercent;
+    let newHeightPercent = resizeOriginal.heightPercent;
 
     // Update coordinates based on which handle is being dragged
     switch (resizeHandle) {
       case "top-left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 0.5,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
         );
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 0.5,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newWidthPercent =
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent);
+        newHeightPercent =
+          resizeOriginal.heightPercent -
+          (newYPercent - resizeOriginal.yPercent);
         break;
       case "top-right":
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 0.5,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newWidthPercent = Math.max(
+          0.5,
+          resizeOriginal.widthPercent + deltaXPercent,
+        );
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
+        newHeightPercent =
+          resizeOriginal.heightPercent -
+          (newYPercent - resizeOriginal.yPercent);
         break;
       case "bottom-left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 0.5,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        newWidthPercent =
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent);
+        newHeightPercent = Math.max(
+          0.5,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
         break;
       case "bottom-right":
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        newWidthPercent = Math.max(
+          0.5,
+          resizeOriginal.widthPercent + deltaXPercent,
+        );
+        newHeightPercent = Math.max(
+          0.5,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
         break;
       case "top":
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 0.5,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newHeightPercent =
+          resizeOriginal.heightPercent -
+          (newYPercent - resizeOriginal.yPercent);
         break;
       case "right":
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
+        newWidthPercent = Math.max(
+          0.5,
+          resizeOriginal.widthPercent + deltaXPercent,
+        );
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
         break;
       case "bottom":
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        newHeightPercent = Math.max(
+          0.5,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
         break;
       case "left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 0.5,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
+        newWidthPercent =
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent);
         break;
     }
 
-    // Ensure minimum size
-    newWidth = Math.max(5, newWidth);
-    newHeight = Math.max(5, newHeight);
+    // Calculate absolute coordinates from percentages
+    const newX = (newXPercent * naturalWidth) / 100;
+    const newY = (newYPercent * naturalHeight) / 100;
+    const newWidth = (newWidthPercent * naturalWidth) / 100;
+    const newHeight = (newHeightPercent * naturalHeight) / 100;
 
     // Update all maskings with the resized one
     const updatedMaskings = maskings.map((h) => {
@@ -701,6 +904,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             y: newY,
             width: newWidth,
             height: newHeight,
+            xPercent: newXPercent,
+            yPercent: newYPercent,
+            widthPercent: newWidthPercent,
+            heightPercent: newHeightPercent,
           },
         };
       }
@@ -721,6 +928,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             y: newY,
             width: newWidth,
             height: newHeight,
+            xPercent: newXPercent,
+            yPercent: newYPercent,
+            widthPercent: newWidthPercent,
+            heightPercent: newHeightPercent,
           },
         };
       });
@@ -734,7 +945,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     setResizeOriginal(null);
   };
 
-  // Replace the existing calculateDialogPosition function with this improved version:
+  // Improved calculateDialogPosition function
   const calculateDialogPosition = (masking: Partial<Masking>) => {
     if (
       !containerRef.current ||
@@ -752,13 +963,11 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const dialogWidth = 320; // Fixed dialog width
     const padding = 16; // Padding from edges
 
-    // Convert from original image coordinates to screen coordinates
-    const x = masking.coordinates.x * imageScale.width + imgRect.left;
-    const y = masking.coordinates.y * imageScale.height + imgRect.top;
-    const width = masking.coordinates.width * imageScale.width;
-    const height = masking.coordinates.height * imageScale.height;
+    // Use our improved scaled coordinates function for consistency
+    const renderedCoords = getScaledCoordinates(masking.coordinates, img);
+    if (!renderedCoords) return;
 
-    // Get the most accurate viewport dimensions
+    // Get accurate viewport dimensions
     const viewportWidth = Math.max(
       document.documentElement.clientWidth,
       window.innerWidth || 0,
@@ -798,38 +1007,42 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
 
     // Use the constraints of both the viewport and the scroll container
     const effectiveRight = Math.min(viewportWidth, scrollRect.right);
-
     const effectiveBottom = Math.min(viewportHeight, scrollRect.bottom);
 
-    // Calculate optimal position based on available space
+    // Calculate absolute position including the image offset
+    const maskingLeft = imgRect.left + renderedCoords.left;
+    const maskingTop = imgRect.top + renderedCoords.top;
+    const maskingRight = maskingLeft + renderedCoords.width;
+    const maskingBottom = maskingTop + renderedCoords.height;
 
+    // Calculate optimal position based on available space
     // Check if there's enough space to the right
-    const rightSpace = effectiveRight - (x + width);
-    const leftSpace = x - scrollRect.left;
+    const rightSpace = effectiveRight - maskingRight;
+    const leftSpace = maskingLeft - scrollRect.left;
 
     // Determine optimal horizontal position
     let left;
     if (rightSpace >= dialogWidth + padding) {
       // Position to the right of the masking
-      left = x + width + padding;
+      left = maskingRight + padding;
     } else if (leftSpace >= dialogWidth + padding) {
       // Position to the left of the masking
-      left = x - dialogWidth - padding;
+      left = maskingLeft - dialogWidth - padding;
     } else {
       // Center it if neither side has enough space
       // But ensure it doesn't go outside boundaries
       left = Math.max(
         padding + scrollRect.left,
         Math.min(
-          x + width / 2 - dialogWidth / 2,
+          maskingLeft + renderedCoords.width / 2 - dialogWidth / 2,
           effectiveRight - dialogWidth - padding,
         ),
       );
     }
 
     // Get the distance from the top of the viewport to determine vertical space
-    const topSpace = y - scrollRect.top;
-    const bottomSpace = effectiveBottom - (y + height);
+    const topSpace = maskingTop - scrollRect.top;
+    const bottomSpace = effectiveBottom - maskingBottom;
 
     // Determine optimal vertical position
     let top;
@@ -840,19 +1053,19 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
       // Dialog can fit in viewport height
       if (topSpace >= dialogHeight / 2 && bottomSpace >= dialogHeight / 2) {
         // Center it vertically relative to the masking
-        top = y + height / 2 - dialogHeight / 2;
+        top = maskingTop + renderedCoords.height / 2 - dialogHeight / 2;
       } else if (bottomSpace >= dialogHeight) {
         // Position below the masking
-        top = y + height + padding;
+        top = maskingBottom + padding;
       } else if (topSpace >= dialogHeight) {
         // Position above the masking
-        top = y - dialogHeight - padding;
+        top = maskingTop - dialogHeight - padding;
       } else {
         // Place it as high as possible while keeping it visible
         top = Math.max(
           scrollRect.top + padding,
           Math.min(
-            y - dialogHeight / 2,
+            maskingTop - dialogHeight / 2,
             effectiveBottom - dialogHeight - padding,
           ),
         );
@@ -873,9 +1086,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     );
 
     setDialogPosition({ top, left });
-
-    // Log position for debugging
-    console.log("Dialog positioned at:", { top, left });
   };
 
   // Also add this effect to recalculate positions when the container changes
@@ -900,7 +1110,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     }
   }, [showSettings, currentMasking]);
 
-
   const handleSettingsSave = (settings: Partial<Masking>) => {
     // Ensure currentMasking and coordinates exist
     if (!currentMasking || !currentMasking.coordinates) {
@@ -911,34 +1120,22 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
       return;
     }
 
-
     const id = editMode ? editingId : Date.now().toString();
 
     // Common settings for all masking types
     const commonSettings = {
       color: settings.settings?.color || "#ffc107", // Default highlight color
-      solid_mask: settings.settings?.solid_mask,
-      blur_mask: settings.settings?.blur_mask,
+      solid_mask: settings.settings?.solid_mask || value === "Solid",
+      blur_mask: settings.settings?.blur_mask || value === "Blur",
     };
-
-    // Initialize type-specific settings based on maskingType
-    let maskingSettings: any = { ...commonSettings };
-
 
     // Create a complete masking with coordinates relative to original image
     const masking: Masking = {
       id,
       type: "masking",
-      coordinates: {
-        // Use coordinates from currentMasking, which may have been updated via resizing
-        x: Number(currentMasking.coordinates.x),
-        y: Number(currentMasking.coordinates.y),
-        width: Number(currentMasking.coordinates.width),
-        height: Number(currentMasking.coordinates.height),
-      },
-      settings: maskingSettings,
+      coordinates: currentMasking.coordinates,
+      settings: commonSettings,
     };
-
 
     // Update existing masking or add new one
     const newMaskings = editMode
@@ -960,7 +1157,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     setEditingId(null);
     if (prevMasking) {
       const updatedMaskings = maskings.map((masking) =>
-        masking.id === prevMasking.id ? prevMasking : masking
+        masking.id === prevMasking.id ? prevMasking : masking,
       );
 
       onMaskingsChange?.(updatedMaskings);
@@ -1043,17 +1240,16 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     });
   };
 
-  // Helper function to render maskings on the image - converts from original image coordinates to rendered coordinates
+  // Helper function to render maskings on the image using our improved coordinates function
   const renderMasking = (masking: Masking) => {
     if (!masking.coordinates || !imageElementRef.current) return null;
 
-    // Convert coordinates from original image coordinates to rendered coordinates
-    const scaledCoords = {
-      left: masking.coordinates.x * imageScale.width,
-      top: masking.coordinates.y * imageScale.height,
-      width: masking.coordinates.width * imageScale.width,
-      height: masking.coordinates.height * imageScale.height,
-    };
+    // Use our improved scaled coordinates function
+    const renderedCoords = getScaledCoordinates(
+      masking.coordinates,
+      imageElementRef.current,
+    );
+    if (!renderedCoords) return null;
 
     // Determine states for visual styling
     const isMoving = movingMasking === masking.id;
@@ -1061,16 +1257,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
     const isEditing = editingId === masking.id;
     const isHovered = hoveredMasking === masking.id;
 
-    // Get tooltip text for masking
-    const tooltipText = `${getMaskingTypeName(masking.type)}: masking`;
-
-    // Get the icon for the masking type
-    const maskingIcon = getMaskingTypeIcon(masking.type);
-
     return (
       <Tooltip
         key={masking.id}
-        title={tooltipText}
+        title={"Masking"}
         arrow
         placement="top"
         PopperProps={{
@@ -1093,25 +1283,21 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             p: 0.5,
             flexWrap: "wrap",
             justifyContent: "space-between",
-            left: `${scaledCoords.left}px`,
-            top: `${scaledCoords.top}px`,
-            width: `${scaledCoords.width}px`,
-            height: `${scaledCoords.height}px`,
+            left: `${renderedCoords.left}px`,
+            top: `${renderedCoords.top}px`,
+            width: `${renderedCoords.width}px`,
+            height: `${renderedCoords.height}px`,
             border: "2px solid",
             borderColor: isEditing
               ? "#00AB55"
               : isMoving || isResizing
-              ? "#FF4785"
-              : "#444CE7",
-            backgroundColor:masking.settings?.color,
+                ? "#FF4785"
+                : "#444CE7",
+            backgroundColor: masking.settings?.color,
             transition: "box-shadow 0.3s",
             zIndex: 0,
-            filter: masking.settings?.blur_mask
-                  ? "blur(5px)"
-                  : "none",
-            backdropFilter:masking.settings?.blur_mask
-                ? "blur(5px)"
-                : "none",  
+            filter: masking.settings?.blur_mask ? "blur(5px)" : "none",
+            backdropFilter: masking.settings?.blur_mask ? "blur(5px)" : "none",
             cursor: isMoving ? "move" : "pointer",
             // Add masking label for better identification
             "&::after": isHovered
@@ -1145,8 +1331,8 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               backgroundColor: isEditing
                 ? "#00AB55"
                 : isMoving || isResizing
-                ? "#FF4785"
-                : "#444CE7",
+                  ? "#FF4785"
+                  : "#444CE7",
               cursor: "move",
               zIndex: 2,
               boxShadow: "0 0 4px rgba(0,0,0,0.3)",
@@ -1181,13 +1367,12 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             </Box>
           )}
 
-
           {isHovered && (
             <Box
               sx={{
                 position: "absolute",
                 // Conditionally position based on width
-                ...(scaledCoords.width < 50
+                ...(renderedCoords.width < 50
                   ? { bottom: "-24px", right: "4px" } // Position at bottom when width < 50px
                   : { top: "4px", right: "4px" }), // Default position at top
                 color: "#444CE7",
@@ -1213,7 +1398,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               />
             </Box>
           )}
-
 
           {/* Add resize handles when masking is being edited */}
           {renderResizeHandles(masking)}
@@ -1243,6 +1427,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
           position: "relative",
           width: "100%",
           height: "100%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          overflow: "hidden",
           cursor: isDrawing
             ? "crosshair"
             : "url(\"data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='10' fill='black'/%3E%3Cpath d='M12 7V17M7 12H17' stroke='white' stroke-width='2'/%3E%3C/svg%3E\") 12 12, auto",
@@ -1299,9 +1487,10 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               setImageError("Could not load image");
             }}
             sx={{
-              width: "100%",
-              height: "100%",
+              maxWidth: "100%",
+              maxHeight: "100%",
               objectFit: "contain",
+              display: "block",
             }}
           />
         ) : imageError ? (
@@ -1341,12 +1530,12 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
           <Box
             sx={{
               position: "absolute",
-              left: `${currentMasking.coordinates.x * imageScale.width}px`,
-              top: `${currentMasking.coordinates.y * imageScale.height}px`,
-              width: `${currentMasking.coordinates.width * imageScale.width}px`,
-              height: `${currentMasking.coordinates.height * imageScale.height}px`,
+              left: `${getScaledCoordinates(currentMasking.coordinates, imageElementRef.current)?.left || 0}px`,
+              top: `${getScaledCoordinates(currentMasking.coordinates, imageElementRef.current)?.top || 0}px`,
+              width: `${getScaledCoordinates(currentMasking.coordinates, imageElementRef.current)?.width || 0}px`,
+              height: `${getScaledCoordinates(currentMasking.coordinates, imageElementRef.current)?.height || 0}px`,
               border: "2px solid #444CE7",
-              backgroundColor: currentMasking?.settings?.color,
+              backgroundColor: "#ffc10733",
               pointerEvents: "none",
             }}
           />
@@ -1427,31 +1616,43 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             <Stack spacing={2} width="100%">
               <Tabs
                 sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                width: '100%',
-                border: '1px solid #0000000A',
-                borderRadius: '8px',
-                p:'4px',"& .MuiTabs-indicator": {
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  width: "100%",
+                  border: "1px solid #0000000A",
+                  borderRadius: "8px",
+                  p: "4px",
+                  "& .MuiTabs-indicator": {
                     backgroundColor: "transparent",
                     height: 3,
                   },
-              }}value={value} onChange={handleChange}>
-                <Tab sx={{
-                  width: '50%',
-                  bgcolor: value === "Solid" ? '#001EEE0A' : 'white',
-                  color: value === "Solid" ? '#001EEE' : '#00000099',
-                  fontWeight:500,
-                   borderRadius: '8px', 
-                }} label="Solid Masking" value="Solid" />
-                <Tab  sx={{
-                  width: '50%',
-                  bgcolor: value === "Blur" ?  '#001EEE0A' : 'white',
-                  color: value === "Blur" ? '#001EEE' : '#00000099',
-                  fontWeight:500,
-                   borderRadius: '8px', 
-                }} label="Blur Masking" value="Blur" />
+                }}
+                value={value}
+                onChange={handleChange}
+              >
+                <Tab
+                  sx={{
+                    width: "50%",
+                    bgcolor: value === "Solid" ? "#001EEE0A" : "white",
+                    color: value === "Solid" ? "#001EEE" : "#00000099",
+                    fontWeight: 500,
+                    borderRadius: "8px",
+                  }}
+                  label="Solid Masking"
+                  value="Solid"
+                />
+                <Tab
+                  sx={{
+                    width: "50%",
+                    bgcolor: value === "Blur" ? "#001EEE0A" : "white",
+                    color: value === "Blur" ? "#001EEE" : "#00000099",
+                    fontWeight: 500,
+                    borderRadius: "8px",
+                  }}
+                  label="Blur Masking"
+                  value="Blur"
+                />
               </Tabs>
               {/* Highlight color setting for all masking types */}
               {value === "Solid" && (
@@ -1463,10 +1664,9 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                     value={
                       // Show hex value to user
                       (() => {
-                    const rgba =
-                      currentMasking?.settings?.color;
+                        const rgba = currentMasking?.settings?.color;
                         const match = rgba?.match(
-                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                          /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                         );
                         if (match) {
                           const r = parseInt(match[1])
@@ -1534,7 +1734,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                                   currentMasking?.settings?.color ||
                                   "rgba(255, 193, 7, 0.8)";
                                 const match = rgba.match(
-                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                                  /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                                 );
                                 if (match) {
                                   const r = parseInt(match[1])
@@ -1562,7 +1762,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                                 const rgba =
                                   currentMasking?.settings?.color || "";
                                 const match = rgba.match(
-                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
+                                  /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
                                 );
                                 return match ? parseFloat(match[1]) : 1;
                               })();
@@ -1612,7 +1812,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                           const b = parseInt(hexColor.slice(5, 7), 16);
                           const rgba = `rgba(${r}, ${g}, ${b}, 1)`;
 
-
                           setCurrentMasking((prev) => ({
                             ...prev,
                             settings: {
@@ -1652,10 +1851,9 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                     value={
                       // Show hex value to user
                       (() => {
-                    const rgba =
-                      currentMasking?.settings?.color;
+                        const rgba = currentMasking?.settings?.color;
                         const match = rgba?.match(
-                      /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                          /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                         );
                         if (match) {
                           const r = parseInt(match[1])
@@ -1704,12 +1902,11 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                             sx={{
                               width: 24,
                               height: 24,
-                          bgcolor:
-                            currentMasking?.settings?.color,
+                              bgcolor: currentMasking?.settings?.color,
                               borderRadius: 0.5,
                               border: "1px solid ",
                               borderColor: currentMasking?.settings?.color,
-                          filter:  `blur(${10}px)`,
+                              filter: `blur(${10}px)`,
                             }}
                           />
                         </InputAdornment>
@@ -1721,10 +1918,9 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                             value={
                               // Convert RGBA to hex for the color input
                               (() => {
-                            const rgba =
-                              currentMasking?.settings?.color;
+                                const rgba = currentMasking?.settings?.color;
                                 const match = rgba?.match(
-                              /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
+                                  /rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*/,
                                 );
                                 if (match) {
                                   const r = parseInt(match[1])
@@ -1752,7 +1948,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                                 const rgba =
                                   currentMasking?.settings?.color || "";
                                 const match = rgba.match(
-                              /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
+                                  /rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*([\d.]+)\s*\)/,
                                 );
                                 return match ? parseFloat(match[1]) : 1;
                               })();
@@ -1842,9 +2038,14 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
                 size="large"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleSettingsCancel()
+                  handleSettingsCancel();
                 }}
-                sx={{ textTransform: "none", py: 1, border: '1px solid #00000033', color: '#00000099' }}
+                sx={{
+                  textTransform: "none",
+                  py: 1,
+                  border: "1px solid #00000033",
+                  color: "#00000099",
+                }}
               >
                 Cancel
               </Button>

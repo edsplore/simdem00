@@ -223,18 +223,46 @@ export interface UpdateImageMaskingObjectResponse {
   message?: string;
 }
 
+export interface MaskingItem {
+  id: string;
+  type: "masking";
+  content: {
+    id: string;
+    type: "masking";
+    coordinates?: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+    percentageCoordinates?: {
+      xPercent: number;
+      yPercent: number;
+      widthPercent: number;
+      heightPercent: number;
+    };
+    settings?: {
+      color: string;
+      solid_mask: boolean;
+      blur_mask: boolean;
+    };
+  };
+  timestamp?: number;
+}
+
 export interface DetectMaskPHIResponse {
   id: string;
   masking: {
-    imageWidth: string;
-    imageHeight: string;
-    rectangles: {
+    imageWidth: number;
+    imageHeight: number;
+    rectangles: Array<{
       id: string;
-      x: string;
-      y: string;
-      width: string;
-      height: string;
-    }[];
+      x: string | number;
+      y: string | number;
+      width: string | number;
+      height: string | number;
+      text?: string;
+    }>;
   };
 }
 
@@ -353,26 +381,39 @@ export const updateSimulationWithFormData = async (
 export const updateSimulationWithMasking = async (
   simulationId: string,
   imageId: string,
-  maskingData: any,
-): Promise<UpdateImageMaskingObjectResponse> => {
+  maskingData: MaskingItem[],
+) => {
   try {
-    const response = await apiClient.put<UpdateImageMaskingObjectResponse>(
-      `/simulations/update-image-mask`,
-      {
-        image_id: imageId,
-        masking_list: maskingData,
-        sim_id: simulationId,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
+    // Convert masking data to the right format for the backend
+    const processedMaskingData = maskingData.map((item) => {
+      const masking = item.content;
+
+      // Ensure we have the right properties
+      return {
+        id: item.id,
+        type: item.type,
+        content: {
+          id: masking.id,
+          type: masking.type,
+          // Include both coordinate formats
+          coordinates: masking.coordinates,
+          percentageCoordinates: masking.percentageCoordinates,
+          settings: masking.settings,
         },
+      };
+    });
+
+    // Make the API call
+    const response = await api.post(
+      `/simulations/${simulationId}/images/${imageId}/masking`,
+      {
+        masking: processedMaskingData,
       },
     );
 
     return response.data;
   } catch (error) {
-    console.error("Error updating simulation with masking:", error);
+    console.error("Error updating simulation masking:", error);
     throw error;
   }
 };

@@ -8,12 +8,23 @@ export interface SimulationHotspotCoordinates {
   height: number;
 }
 
+// New interface for percentage-based coordinates
+export interface SimulationHotspotPercentageCoordinates {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
 export interface SimulationSequenceItem {
   type: string;
   id: string;
   name?: string;
   hotspotType?: string;
+  // Original absolute coordinates
   coordinates?: SimulationHotspotCoordinates;
+  // New percentage-based coordinates
+  percentageCoordinates?: SimulationHotspotPercentageCoordinates;
   settings?: any;
   role?: string;
   text?: string;
@@ -27,6 +38,24 @@ export interface SimulationSlide {
   imageName: string;
   imageUrl: string;
   sequence: SimulationSequenceItem[];
+  masking?: Array<{
+    id: string;
+    type: string;
+    content: {
+      id: string;
+      type: string;
+      // Original absolute coordinates
+      coordinates?: SimulationHotspotCoordinates;
+      // New percentage-based coordinates
+      percentageCoordinates?: SimulationHotspotPercentageCoordinates;
+      settings?: {
+        color: string;
+        solid_mask: boolean;
+        blur_mask: boolean;
+      };
+    };
+    timestamp?: number;
+  }>;
 }
 
 export interface SimulationScriptItem {
@@ -229,6 +258,24 @@ export const startVisualAudioPreview = async (
         sim_id: simulationId,
       },
     );
+
+    // Process response to convert coordinates to percentage-based if needed
+    if (response.data.simulation && response.data.simulation.slidesData) {
+      response.data.simulation.slidesData.forEach((slide) => {
+        if (slide.sequence) {
+          slide.sequence.forEach((item) => {
+            // If only absolute coordinates exist, calculate percentage coordinates when image dimensions are known
+            if (item.coordinates && !item.percentageCoordinates) {
+              // This calculation would ideally happen server-side
+              // But we can handle it here for backward compatibility
+              console.log(
+                "Converting absolute coordinates to percentage-based in response",
+              );
+            }
+          });
+        }
+      });
+    }
 
     return response.data;
   } catch (error) {

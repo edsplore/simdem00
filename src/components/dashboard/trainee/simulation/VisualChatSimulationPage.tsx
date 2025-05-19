@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -48,6 +48,84 @@ import {
 } from "../../../../services/simulation_visual_chat_attempts";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+
+// Utility interfaces for percentage-based coordinate system
+interface PercentageCoordinates {
+  xPercent: number; // 0-100% of image width
+  yPercent: number; // 0-100% of image height
+  widthPercent: number; // Width as percentage of image width
+  heightPercent: number; // Height as percentage of image height
+}
+
+interface AbsoluteCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Utility functions for coordinate conversions
+const absoluteToPercentage = (
+  coords: AbsoluteCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): PercentageCoordinates => {
+  return {
+    xPercent: (coords.x / imageWidth) * 100,
+    yPercent: (coords.y / imageHeight) * 100,
+    widthPercent: (coords.width / imageWidth) * 100,
+    heightPercent: (coords.height / imageHeight) * 100,
+  };
+};
+
+const percentageToAbsolute = (
+  coords: PercentageCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): AbsoluteCoordinates => {
+  return {
+    x: (coords.xPercent * imageWidth) / 100,
+    y: (coords.yPercent * imageHeight) / 100,
+    width: (coords.widthPercent * imageWidth) / 100,
+    height: (coords.heightPercent * imageHeight) / 100,
+  };
+};
+
+// Calculate rendered coordinates for display (with scaling)
+const calculateRenderedCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement,
+): { left: number; top: number; width: number; height: number } => {
+  // Get the rendered dimensions of the image
+  const rect = imageElement.getBoundingClientRect();
+  const renderedWidth = rect.width;
+  const renderedHeight = rect.height;
+
+  // Check if we have percentage-based coordinates
+  if (coords.xPercent !== undefined) {
+    // Use percentage-based calculation
+    return {
+      left: (coords.xPercent * renderedWidth) / 100,
+      top: (coords.yPercent * renderedHeight) / 100,
+      width: (coords.widthPercent * renderedWidth) / 100,
+      height: (coords.heightPercent * renderedHeight) / 100,
+    };
+  } else if (coords.x !== undefined) {
+    // Use natural dimensions for scaling absolute coordinates
+    const naturalWidth = imageElement.naturalWidth || renderedWidth;
+    const naturalHeight = imageElement.naturalHeight || renderedHeight;
+
+    return {
+      left: (coords.x / naturalWidth) * renderedWidth,
+      top: (coords.y / naturalHeight) * renderedHeight,
+      width: (coords.width / naturalWidth) * renderedWidth,
+      height: (coords.height / naturalHeight) * renderedHeight,
+    };
+  }
+
+  // Fallback in case no valid coordinates
+  return { left: 0, top: 0, width: 0, height: 0 };
+};
 
 // Utility function to remove any HTML tags from incoming text. This prevents
 // elements like <p>, <i> or header tags from showing up in the chat display.
@@ -260,6 +338,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const originalImageSizeRef = useRef<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -568,31 +650,134 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Updated to calculate both width and height scales
+  // Improved implementation for more accurate scaling
   const handleImageLoad = () => {
-    if (imageRef.current && imageContainerRef.current) {
-      const imageNaturalWidth = imageRef.current.naturalWidth;
-      const imageNaturalHeight = imageRef.current.naturalHeight;
+    if (!imageRef.current) return;
 
-      // Get the actual rendered dimensions of the image
-      const rect = imageRef.current.getBoundingClientRect();
-      const renderedWidth = rect.width;
-      const renderedHeight = rect.height;
+    // Use requestAnimationFrame to ensure image dimensions are available
+    requestAnimationFrame(() => {
+      if (!imageRef.current) return;
 
-      // Calculate the scale based on the actual rendered dimensions
-      const widthScale = renderedWidth / imageNaturalWidth;
-      const heightScale = renderedHeight / imageNaturalHeight;
+      const img = imageRef.current;
 
-      // Store both scales for proper coordinate transformation
-      setImageScale({
-        width: widthScale,
-        height: heightScale,
-      });
+      // Store original/natural image dimensions for future reference
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
+      // Store these values in a ref for access across renders
+      originalImageSizeRef.current = {
+        width: naturalWidth,
+        height: naturalHeight,
+      };
+
+      // Calculate and update scale factors
+      updateImageScales();
+
+      // Mark image as loaded
       setImageLoaded(true);
+
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
       );
+    });
+  };
+
+  // Function to update image scales based on current dimensions
+  const updateImageScales = useCallback(() => {
+    if (!imageRef.current) return;
+
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
+    // Get the rendered dimensions
+    const renderedWidth = rect.width;
+    const renderedHeight = rect.height;
+
+    // Get the natural dimensions (or use stored values if naturalWidth is not available)
+    const naturalWidth = img.naturalWidth || originalImageSizeRef.current.width;
+    const naturalHeight =
+      img.naturalHeight || originalImageSizeRef.current.height;
+
+    // Only update if we have valid dimensions to avoid division by zero
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const newScales = {
+        width: renderedWidth / naturalWidth,
+        height: renderedHeight / naturalHeight,
+      };
+
+      // Only update if scales have actually changed
+      if (
+        Math.abs(newScales.width - imageScale.width) > 0.001 ||
+        Math.abs(newScales.height - imageScale.height) > 0.001
+      ) {
+        setImageScale(newScales);
+        console.log(
+          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
+        );
+      }
+    }
+  }, [imageScale.width, imageScale.height]);
+
+  // Add a robust ResizeObserver implementation
+  useEffect(() => {
+    if (!imageRef.current || !imageContainerRef.current) return;
+
+    // Create resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      // Call update function when container or image size changes
+      updateImageScales();
+    });
+
+    // Observe both container and image element
+    resizeObserver.observe(imageContainerRef.current);
+    resizeObserver.observe(imageRef.current);
+
+    // Also listen for window resize events
+    window.addEventListener("resize", updateImageScales);
+
+    // Add a MutationObserver to detect DOM changes affecting layout
+    const mutationObserver = new MutationObserver(() => {
+      updateImageScales();
+    });
+
+    // Observe parent elements for attribute changes
+    if (imageContainerRef.current.parentElement) {
+      mutationObserver.observe(imageContainerRef.current.parentElement, {
+        attributes: true,
+        childList: false,
+        subtree: false,
+      });
+    }
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", updateImageScales);
+    };
+  }, [updateImageScales]);
+
+  // Improved and unified coordinate scaling function
+  const scaleCoordinates = (coords: any) => {
+    if (!coords || !imageRef.current) return null;
+
+    // Use the utility function for consistent scaling
+    try {
+      return calculateRenderedCoordinates(coords, imageRef.current);
+    } catch (error) {
+      console.error("Error scaling coordinates:", error);
+
+      // Fallback to old method if needed
+      if (coords.x !== undefined) {
+        return {
+          left: coords.x * imageScale.width,
+          top: coords.y * imageScale.height,
+          width: coords.width * imageScale.width,
+          height: coords.height * imageScale.height,
+        };
+      }
+
+      return { left: 0, top: 0, width: 0, height: 0 };
     }
   };
 
@@ -669,7 +854,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     // Simpler approach: find the item in our data and update its properties
     setAttemptSequenceData((prevData) => {
       // Find if this item already exists in our data
-      const existingItemIndex = prevData.findIndex(item => item.id === currentItem.id);
+      const existingItemIndex = prevData.findIndex(
+        (item) => item.id === currentItem.id,
+      );
 
       if (existingItemIndex >= 0) {
         // Make a copy of the data
@@ -687,10 +874,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         newData[existingItemIndex] = {
           ...existingItem,
           isClicked: true,
-          wrong_clicks: updatedWrongClicks
+          wrong_clicks: updatedWrongClicks,
         };
 
-        console.log(`Updated hotspot ${currentItem.id}, removed last wrong click`, updatedWrongClicks);
+        console.log(
+          `Updated hotspot ${currentItem.id}, removed last wrong click`,
+          updatedWrongClicks,
+        );
         return newData;
       } else {
         // If item doesn't exist yet, add it with isClicked=true
@@ -699,8 +889,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           {
             ...currentItem,
             isClicked: true,
-            wrong_clicks: [] // Start with empty wrong_clicks
-          }
+            wrong_clicks: [], // Start with empty wrong_clicks
+          },
         ];
       }
     });
@@ -739,20 +929,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       default:
         console.log("Unknown hotspot type:", hotspotType);
     }
-  };
-
-  // Updated to use both width and height scales
-  const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
-  ) => {
-    if (!coords) return null;
-
-    return {
-      left: coords.x * imageScale.width,
-      top: coords.y * imageScale.height,
-      width: coords.width * imageScale.width,
-      height: coords.height * imageScale.height,
-    };
   };
 
   // Handle dropdown option selection
@@ -993,12 +1169,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       let finalAttemptData = [...attemptSequenceData];
 
       // Check if current item is a hotspot that should be marked as clicked
-      if (
-        currentItem && 
-        currentItem.type === "hotspot"
-      ) {
+      if (currentItem && currentItem.type === "hotspot") {
         // Find if this item is already in our data
-        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
 
         if (itemIndex >= 0) {
           // Ensure it's marked as clicked and has the last wrong click removed
@@ -1012,15 +1187,18 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           finalAttemptData[itemIndex] = {
             ...existingItem,
             isClicked: true,
-            wrong_clicks: updatedWrongClicks
+            wrong_clicks: updatedWrongClicks,
           };
-          console.log("Final data updated for last hotspot:", finalAttemptData[itemIndex]);
+          console.log(
+            "Final data updated for last hotspot:",
+            finalAttemptData[itemIndex],
+          );
         } else {
           // Add it if not found
           finalAttemptData.push({
             ...currentItem,
             isClicked: true,
-            wrong_clicks: []
+            wrong_clicks: [],
           });
         }
       }
@@ -1030,7 +1208,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         userId,
         simulationId,
         simulationProgressId,
-        finalAttemptData
+        finalAttemptData,
       );
 
       if (response && response.scores) {
@@ -1067,9 +1245,14 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Record every click on the container 
+      // Record every click on the container
       // We'll remove it later if it turns out to be a correct click on the hotspot
       console.log(`Recording click at x=${x}, y=${y}`);
+
+      // Convert to percentages for more stable storage
+      const xPercent = (x / rect.width) * 100;
+      const yPercent = (y / rect.height) * 100;
+
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
@@ -1081,7 +1264,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               ...existingItem,
               wrong_clicks: [
                 ...(existingItem.wrong_clicks || []),
-                { x_cordinates: x, y_cordinates: y },
+                {
+                  x_cordinates: x,
+                  y_cordinates: y,
+                  x_percent: xPercent,
+                  y_percent: yPercent,
+                },
               ],
             },
           ];
@@ -1090,7 +1278,14 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             ...prevData,
             {
               ...currentItem,
-              wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+              wrong_clicks: [
+                {
+                  x_cordinates: x,
+                  y_cordinates: y,
+                  x_percent: xPercent,
+                  y_percent: yPercent,
+                },
+              ],
             },
           ];
         }
@@ -1386,9 +1581,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     bgcolor: "background.paper",
                     borderRadius: 1,
                     overflow: "hidden",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                   }}
                 >
                   {isLoadingVisuals ? (
@@ -1403,22 +1595,16 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       </Typography>
                     </Box>
                   ) : (
-                    <Box
-                      sx={{
-                        position: "relative",
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                      }}
-                    >
+                    <Box sx={{ position: "relative" }}>
                       <img
                         ref={imageRef}
                         src={slides.get(currentSlide.imageId)}
                         alt={currentSlide.imageName || "Simulation slide"}
                         style={{
-                          maxWidth: "100%",
-                          maxHeight: "calc(100vh - 150px)",
+                          width: "100%",
+                          height: "auto",
+                          objectFit: "contain",
                           display: "block",
-                          margin: "0 auto",
                         }}
                         onLoad={handleImageLoad}
                       />

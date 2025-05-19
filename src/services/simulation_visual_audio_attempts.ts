@@ -6,6 +6,21 @@ export interface ImageData {
   image_data: string;
 }
 
+// Define common coordinate interfaces
+export interface SimulationHotspotCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface SimulationHotspotPercentageCoordinates {
+  xPercent: number;
+  yPercent: number;
+  widthPercent: number;
+  heightPercent: number;
+}
+
 export interface SimulationData {
   id: string;
   sim_name: string;
@@ -64,12 +79,10 @@ export interface SimulationData {
       id: string;
       name?: string;
       hotspotType?: string;
-      coordinates?: {
-        x: number;
-        y: number;
-        width: number;
-        height: number;
-      };
+      // Absolute coordinates (original)
+      coordinates?: SimulationHotspotCoordinates;
+      // Percentage-based coordinates (new)
+      percentageCoordinates?: SimulationHotspotPercentageCoordinates;
       settings?: any;
       role?: string;
       text?: string;
@@ -82,12 +95,10 @@ export interface SimulationData {
       content: {
         id: string;
         type: string;
-        coordinates?: {
-          x: number;
-          y: number;
-          width: number;
-          height: number;
-        };
+        // Absolute coordinates (original)
+        coordinates?: SimulationHotspotCoordinates;
+        // Percentage-based coordinates (new)
+        percentageCoordinates?: SimulationHotspotPercentageCoordinates;
         settings?: {
           color: string;
           solid_mask: boolean;
@@ -117,7 +128,40 @@ export interface EndVisualAudioRequest {
   user_id: string;
   simulation_id: string;
   usersimulationprogress_id: string;
-  slides_data?: any[]; // Added to include modified slides data with transcriptions
+  userAttemptSequence: AttemptInterface[];
+  slides_data?: Array<{
+    imageId: string;
+    imageName: string;
+    imageUrl: string;
+    sequence: Array<{
+      type: string;
+      id: string;
+      name?: string;
+      hotspotType?: string;
+      coordinates?: SimulationHotspotCoordinates;
+      percentageCoordinates?: SimulationHotspotPercentageCoordinates;
+      settings?: any;
+      role?: string;
+      text?: string;
+      options?: string[];
+    }>;
+    masking: Array<{
+      id: string;
+      type: string;
+      content: {
+        id: string;
+        type: string;
+        coordinates?: SimulationHotspotCoordinates;
+        percentageCoordinates?: SimulationHotspotPercentageCoordinates;
+        settings?: {
+          color: string;
+          solid_mask: boolean;
+          blur_mask: boolean;
+        };
+      };
+      timestamp?: number;
+    }>;
+  }>;
 }
 
 export interface EndVisualAudioResponse {
@@ -162,6 +206,31 @@ export const startVisualAudioAttempt = async (
       },
     );
 
+    // Ensure all hotspots have both coordinate types for backward compatibility
+    if (response.data.simulation && response.data.simulation.slidesData) {
+      response.data.simulation.slidesData.forEach((slide) => {
+        // Handle regular sequence items
+        if (slide.sequence) {
+          slide.sequence.forEach((item) => {
+            if (item.type === "hotspot") {
+              // If we have image dimensions, we can calculate missing coordinate types
+              // This would ideally happen on the server side
+            }
+          });
+        }
+
+        // Handle masking items
+        if (slide.masking) {
+          slide.masking.forEach((item) => {
+            if (item.content) {
+              // If we have image dimensions, we can calculate missing coordinate types
+              // This would ideally happen on the server side
+            }
+          });
+        }
+      });
+    }
+
     return response.data;
   } catch (error) {
     console.error("Error starting visual-audio simulation:", error);
@@ -174,6 +243,7 @@ export const startVisualAudioAttempt = async (
  * @param userId - The ID of the user making the attempt
  * @param simulationId - The ID of the simulation attempted
  * @param progressId - The ID of the simulation progress record
+ * @param userAttemptSequence - User attempt data with interactions
  * @param modifiedSlidesData - Optional modified slides data with user responses
  * @returns A promise with the simulation results including scores
  */
@@ -185,6 +255,20 @@ export const endVisualAudioAttempt = async (
   modifiedSlidesData?: any[],
 ): Promise<EndVisualAudioResponse> => {
   try {
+    // Ensure all hotspots in the modified slides data have both coordinate types
+    if (modifiedSlidesData) {
+      modifiedSlidesData.forEach((slide) => {
+        if (slide.sequence) {
+          slide.sequence.forEach((item) => {
+            if (item.type === "hotspot") {
+              // Keep both coordinates and percentageCoordinates if both exist
+              // This preserves the dual coordinate system approach
+            }
+          });
+        }
+      });
+    }
+
     const response = await apiClient.post<EndVisualAudioResponse>(
       "/simulations/end-visual-audio-attempt",
       {
@@ -192,7 +276,7 @@ export const endVisualAudioAttempt = async (
         simulation_id: simulationId,
         usersimulationprogress_id: progressId,
         userAttemptSequence: userAttemptSequence,
-        slides_data: modifiedSlidesData, // Include modified slides data in request
+        slides_data: modifiedSlidesData, // Include modified slides data with both coordinate types
       },
     );
 

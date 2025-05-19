@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -32,6 +32,85 @@ import {
   Chat as ChatIcon,
   Timer as TimerIcon,
 } from "@mui/icons-material";
+
+// Utility interfaces for percentage-based coordinate system
+interface PercentageCoordinates {
+  xPercent: number; // 0-100% of image width
+  yPercent: number; // 0-100% of image height
+  widthPercent: number; // Width as percentage of image width
+  heightPercent: number; // Height as percentage of image height
+}
+
+interface AbsoluteCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Utility functions for coordinate conversions
+const absoluteToPercentage = (
+  coords: AbsoluteCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): PercentageCoordinates => {
+  return {
+    xPercent: (coords.x / imageWidth) * 100,
+    yPercent: (coords.y / imageHeight) * 100,
+    widthPercent: (coords.width / imageWidth) * 100,
+    heightPercent: (coords.height / imageHeight) * 100,
+  };
+};
+
+const percentageToAbsolute = (
+  coords: PercentageCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): AbsoluteCoordinates => {
+  return {
+    x: (coords.xPercent * imageWidth) / 100,
+    y: (coords.yPercent * imageHeight) / 100,
+    width: (coords.widthPercent * imageWidth) / 100,
+    height: (coords.heightPercent * imageHeight) / 100,
+  };
+};
+
+// Calculate rendered coordinates for display (with scaling)
+const calculateRenderedCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (!coords || !imageElement) return null;
+
+  // Get ONLY the image's bounding rectangle
+  const imgRect = imageElement.getBoundingClientRect();
+
+  // For percentage-based coordinates (preferred approach)
+  if (coords.xPercent !== undefined) {
+    return {
+      // Apply percentages to the IMAGE dimensions only
+      left: (coords.xPercent * imgRect.width) / 100,
+      top: (coords.yPercent * imgRect.height) / 100,
+      width: (coords.widthPercent * imgRect.width) / 100,
+      height: (coords.heightPercent * imgRect.height) / 100,
+    };
+  }
+
+  // For absolute coordinates (fallback for older data)
+  if (coords.x !== undefined) {
+    const naturalWidth = imageElement.naturalWidth || imgRect.width;
+    const naturalHeight = imageElement.naturalHeight || imgRect.height;
+
+    return {
+      left: (coords.x / naturalWidth) * imgRect.width,
+      top: (coords.y / naturalHeight) * imgRect.height,
+      width: (coords.width / naturalWidth) * imgRect.width,
+      height: (coords.height / naturalHeight) * imgRect.height,
+    };
+  }
+
+  return null;
+};
 
 // Utility function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -119,6 +198,12 @@ interface SimulationData {
         width: number;
         height: number;
       };
+      percentageCoordinates?: {
+        xPercent: number;
+        yPercent: number;
+        widthPercent: number;
+        heightPercent: number;
+      };
       settings?: any;
       role?: string;
       text?: string;
@@ -136,6 +221,12 @@ interface SimulationData {
           y: number;
           width: number;
           height: number;
+        };
+        percentageCoordinates?: {
+          xPercent: number;
+          yPercent: number;
+          widthPercent: number;
+          heightPercent: number;
         };
         settings?: {
           color: string;
@@ -202,6 +293,10 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
   const imageRef = useRef<HTMLImageElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const originalImageSizeRef = useRef<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   // Get current slide and sequence data
   const slidesData = simulationData?.slidesData || [];
@@ -402,31 +497,134 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Updated handleImageLoad to calculate both width and height scales
+  // Improved implementation for more accurate scaling
   const handleImageLoad = () => {
-    if (imageRef.current && imageContainerRef.current) {
-      const imageNaturalWidth = imageRef.current.naturalWidth;
-      const imageNaturalHeight = imageRef.current.naturalHeight;
+    if (!imageRef.current) return;
 
-      // Get the actual rendered dimensions of the image
-      const rect = imageRef.current.getBoundingClientRect();
-      const renderedWidth = rect.width;
-      const renderedHeight = rect.height;
+    // Use requestAnimationFrame to ensure image dimensions are available
+    requestAnimationFrame(() => {
+      if (!imageRef.current) return;
 
-      // Calculate the scale based on the actual rendered dimensions
-      const widthScale = renderedWidth / imageNaturalWidth;
-      const heightScale = renderedHeight / imageNaturalHeight;
+      const img = imageRef.current;
 
-      // Store both scales for proper coordinate transformation
-      setImageScale({
-        width: widthScale,
-        height: heightScale,
-      });
+      // Store original/natural image dimensions for future reference
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
+      // Store these values in a ref for access across renders
+      originalImageSizeRef.current = {
+        width: naturalWidth,
+        height: naturalHeight,
+      };
+
+      // Calculate and update scale factors
+      updateImageScales();
+
+      // Mark image as loaded
       setImageLoaded(true);
+
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
       );
+    });
+  };
+
+  // Function to update image scales based on current dimensions
+  const updateImageScales = useCallback(() => {
+    if (!imageRef.current) return;
+
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
+    // Get the rendered dimensions
+    const renderedWidth = rect.width;
+    const renderedHeight = rect.height;
+
+    // Get the natural dimensions (or use stored values if naturalWidth is not available)
+    const naturalWidth = img.naturalWidth || originalImageSizeRef.current.width;
+    const naturalHeight =
+      img.naturalHeight || originalImageSizeRef.current.height;
+
+    // Only update if we have valid dimensions to avoid division by zero
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const newScales = {
+        width: renderedWidth / naturalWidth,
+        height: renderedHeight / naturalHeight,
+      };
+
+      // Only update if scales have actually changed
+      if (
+        Math.abs(newScales.width - imageScale.width) > 0.001 ||
+        Math.abs(newScales.height - imageScale.height) > 0.001
+      ) {
+        setImageScale(newScales);
+        console.log(
+          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
+        );
+      }
+    }
+  }, [imageScale.width, imageScale.height]);
+
+  // Add a robust ResizeObserver implementation
+  useEffect(() => {
+    if (!imageRef.current || !imageContainerRef.current) return;
+
+    // Create resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      // Call update function when container or image size changes
+      updateImageScales();
+    });
+
+    // Observe both container and image element
+    resizeObserver.observe(imageContainerRef.current);
+    resizeObserver.observe(imageRef.current);
+
+    // Also listen for window resize events
+    window.addEventListener("resize", updateImageScales);
+
+    // Add a MutationObserver to detect DOM changes affecting layout
+    const mutationObserver = new MutationObserver(() => {
+      updateImageScales();
+    });
+
+    // Observe parent elements for attribute changes
+    if (imageContainerRef.current.parentElement) {
+      mutationObserver.observe(imageContainerRef.current.parentElement, {
+        attributes: true,
+        childList: false,
+        subtree: false,
+      });
+    }
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", updateImageScales);
+    };
+  }, [updateImageScales]);
+
+  // Improved and unified coordinate scaling function
+  const scaleCoordinates = (coords: any) => {
+    if (!coords || !imageRef.current) return null;
+
+    // Use the utility function for consistent scaling
+    try {
+      return calculateRenderedCoordinates(coords, imageRef.current);
+    } catch (error) {
+      console.error("Error scaling coordinates:", error);
+
+      // Fallback to old method if needed
+      if (coords.x !== undefined) {
+        return {
+          left: coords.x * imageScale.width,
+          top: coords.y * imageScale.height,
+          width: coords.width * imageScale.width,
+          height: coords.height * imageScale.height,
+        };
+      }
+
+      return { left: 0, top: 0, width: 0, height: 0 };
     }
   };
 
@@ -518,20 +716,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
       default:
         console.log("Unknown hotspot type:", hotspotType);
     }
-  };
-
-  // Updated scaleCoordinates to use both width and height scales
-  const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
-  ) => {
-    if (!coords) return null;
-
-    return {
-      left: coords.x * imageScale.width,
-      top: coords.y * imageScale.height,
-      width: coords.width * imageScale.width,
-      height: coords.height * imageScale.height,
-    };
   };
 
   // Handle dropdown option selection
@@ -782,7 +966,8 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
               {/* Render hotspots directly on the image */}
               {imageLoaded &&
                 currentItem?.type === "hotspot" &&
-                currentItem.coordinates &&
+                (currentItem.coordinates ||
+                  currentItem.percentageCoordinates) &&
                 !shouldSkipHotspot() && (
                   <>
                     {/* Button hotspot */}
@@ -793,10 +978,30 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                         sx={{
                           position: "absolute",
                           cursor: "pointer",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                          height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                          left: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
+                          }px`,
+                          width: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.width
+                          }px`,
+                          height: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.height
+                          }px`,
                         }}
                       >
                         <Button
@@ -827,9 +1032,24 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                       <Box
                         sx={{
                           position: "absolute",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                          left: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
+                          }px`,
+                          width: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.width
+                          }px`,
                           zIndex: 1,
                         }}
                       >
@@ -841,7 +1061,12 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                             open={dropdownOpen}
                             onClose={() => setDropdownOpen(false)}
                             sx={{
-                              height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                              height: `${
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
+                              }px`,
                               bgcolor: "white",
                               border: highlightHotspot
                                 ? `2px solid ${getHighlightColor()}`
@@ -879,8 +1104,18 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                         onClick={handleHotspotClick}
                         sx={{
                           position: "absolute",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                          left: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
+                          }px`,
                           cursor: "pointer",
                           display: "flex",
                           alignItems: "center",
@@ -892,8 +1127,10 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                             padding: 0,
                             "& .MuiSvgIcon-root": {
                               fontSize: `${
-                                scaleCoordinates(currentItem.coordinates)
-                                  ?.height
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
                               }px`,
                             },
                             color: highlightHotspot
@@ -920,9 +1157,24 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                       <Box
                         sx={{
                           position: "absolute",
-                          left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                          top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                          width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                          left: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.left
+                          }px`,
+                          top: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.top
+                          }px`,
+                          width: `${
+                            scaleCoordinates(
+                              currentItem.percentageCoordinates ||
+                                currentItem.coordinates,
+                            )?.width
+                          }px`,
                         }}
                       >
                         <TextField
@@ -938,8 +1190,10 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           sx={{
                             "& .MuiOutlinedInput-root": {
                               height: `${
-                                scaleCoordinates(currentItem.coordinates)
-                                  ?.height
+                                scaleCoordinates(
+                                  currentItem.percentageCoordinates ||
+                                    currentItem.coordinates,
+                                )?.height
                               }px`,
                               bgcolor: "white",
                               "& fieldset": {
@@ -969,10 +1223,30 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            left: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.left
+                            }px`,
+                            top: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.top
+                            }px`,
+                            width: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.width
+                            }px`,
+                            height: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.height
+                            }px`,
                             border: "4px solid",
                             borderColor: getHighlightColor(),
                             boxShadow: highlightHotspot
@@ -994,10 +1268,30 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
-                            top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
-                            width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
-                            height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                            left: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.left
+                            }px`,
+                            top: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.top
+                            }px`,
+                            width: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.width
+                            }px`,
+                            height: `${
+                              scaleCoordinates(
+                                currentItem.percentageCoordinates ||
+                                  currentItem.coordinates,
+                              )?.height
+                            }px`,
                             zIndex: 50,
                           }}
                         >
@@ -1042,16 +1336,28 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           position: "absolute",
                           cursor: "pointer",
                           left: `${
-                            scaleCoordinates(item.content.coordinates)?.left
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.left
                           }px`,
                           top: `${
-                            scaleCoordinates(item.content.coordinates)?.top
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.top
                           }px`,
                           width: `${
-                            scaleCoordinates(item.content.coordinates)?.width
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.width
                           }px`,
                           height: `${
-                            scaleCoordinates(item.content.coordinates)?.height
+                            scaleCoordinates(
+                              item.content.percentageCoordinates ||
+                                item.content.coordinates,
+                            )?.height
                           }px`,
                           border: "4px solid",
                           borderColor:

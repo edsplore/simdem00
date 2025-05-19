@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -42,6 +42,85 @@ import {
 } from "../../../../services/simulation_visual_attempts";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+
+// Utility interfaces for percentage-based coordinate system
+interface PercentageCoordinates {
+  xPercent: number; // 0-100% of image width
+  yPercent: number; // 0-100% of image height
+  widthPercent: number; // Width as percentage of image width
+  heightPercent: number; // Height as percentage of image height
+}
+
+interface AbsoluteCoordinates {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Utility functions for coordinate conversions
+const absoluteToPercentage = (
+  coords: AbsoluteCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): PercentageCoordinates => {
+  return {
+    xPercent: (coords.x / imageWidth) * 100,
+    yPercent: (coords.y / imageHeight) * 100,
+    widthPercent: (coords.width / imageWidth) * 100,
+    heightPercent: (coords.height / imageHeight) * 100,
+  };
+};
+
+const percentageToAbsolute = (
+  coords: PercentageCoordinates,
+  imageWidth: number,
+  imageHeight: number,
+): AbsoluteCoordinates => {
+  return {
+    x: (coords.xPercent * imageWidth) / 100,
+    y: (coords.yPercent * imageHeight) / 100,
+    width: (coords.widthPercent * imageWidth) / 100,
+    height: (coords.heightPercent * imageHeight) / 100,
+  };
+};
+
+// Calculate rendered coordinates for display (with scaling)
+const calculateRenderedCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (!coords || !imageElement) return null;
+
+  // Get ONLY the image's bounding rectangle
+  const imgRect = imageElement.getBoundingClientRect();
+
+  // For percentage-based coordinates (preferred approach)
+  if (coords.xPercent !== undefined) {
+    return {
+      // Apply percentages to the IMAGE dimensions only
+      left: (coords.xPercent * imgRect.width) / 100,
+      top: (coords.yPercent * imgRect.height) / 100,
+      width: (coords.widthPercent * imgRect.width) / 100,
+      height: (coords.heightPercent * imgRect.height) / 100,
+    };
+  }
+
+  // For absolute coordinates (fallback for older data)
+  if (coords.x !== undefined) {
+    const naturalWidth = imageElement.naturalWidth || imgRect.width;
+    const naturalHeight = imageElement.naturalHeight || imgRect.height;
+
+    return {
+      left: (coords.x / naturalWidth) * imgRect.width,
+      top: (coords.y / naturalHeight) * imgRect.height,
+      width: (coords.width / naturalWidth) * imgRect.width,
+      height: (coords.height / naturalHeight) * imgRect.height,
+    };
+  }
+
+  return null;
+};
 
 interface VisualSimulationPageProps {
   simulationId: string;
@@ -95,11 +174,16 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
     null,
   );
-  const [slides, setSlides] = useState<Map<string, string>>(new Map());
+  // NEW: Keep raw image data instead of blob URLs
+  const slideDataRef = useRef<Record<string, string>>({});
+  // NEW: Current slide URL state (created just-in-time)
+  const [frameUrl, setFrameUrl] = useState<string>("");
+
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
   const [imageLoaded, setImageLoaded] = useState(false);
-  // Update to track both width and height scales
+
+  // Track both width and height scales
   const [imageScale, setImageScale] = useState({ width: 1, height: 1 });
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingVisuals, setIsLoadingVisuals] = useState(false);
@@ -118,6 +202,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const originalImageSizeRef = useRef<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  });
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -179,6 +267,30 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     console.log("attempt Simulation page ------- ", attemptSequenceData);
   }, [attemptSequenceData]);
 
+  // Create just-in-time URL for current slide
+  useEffect(() => {
+    if (!currentSlide?.imageId) {
+      setFrameUrl("");
+      return;
+    }
+
+    const b64 = slideDataRef.current[currentSlide.imageId];
+    if (!b64) {
+      setFrameUrl("");
+      return;
+    }
+
+    // Convert base64 to blob URL just-in-time
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+    setFrameUrl(url);
+
+    // Clean up URL when we leave this slide
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [currentSlideIndex, currentSlide?.imageId]);
+
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
@@ -188,7 +300,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         currentSequenceIndex,
         currentSlide: currentSlide?.imageId || "none",
         currentSequenceLength: currentSequence?.length || 0,
-        slidesMapSize: slides.size,
       });
     }
   }, [
@@ -197,7 +308,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     currentSequenceIndex,
     currentSlide,
     currentSequence,
-    slides.size,
   ]);
 
   // Initialize timer for simulation
@@ -314,8 +424,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         clearTimeout(hotspotTimeoutRef.current);
         hotspotTimeoutRef.current = null;
       }
+
+      // Clean up any blob URLs
+      if (frameUrl) {
+        URL.revokeObjectURL(frameUrl);
+      }
     };
-  }, []);
+  }, [frameUrl]);
 
   // Check for end of simulation
   useEffect(() => {
@@ -351,74 +466,134 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Updated to calculate both width and height scales
+  // Improved implementation for more accurate scaling
   const handleImageLoad = () => {
-    if (imageRef.current && imageContainerRef.current) {
-      const imageNaturalWidth = imageRef.current.naturalWidth;
-      const imageNaturalHeight = imageRef.current.naturalHeight;
+    if (!imageRef.current) return;
 
-      // Get the actual rendered dimensions of the image
-      const rect = imageRef.current.getBoundingClientRect();
-      const renderedWidth = rect.width;
-      const renderedHeight = rect.height;
+    // Use requestAnimationFrame to ensure image dimensions are available
+    requestAnimationFrame(() => {
+      if (!imageRef.current) return;
 
-      // Calculate the scale based on the actual rendered dimensions
-      const widthScale = renderedWidth / imageNaturalWidth;
-      const heightScale = renderedHeight / imageNaturalHeight;
+      const img = imageRef.current;
 
-      // Store both scales for proper coordinate transformation
-      setImageScale({
-        width: widthScale,
-        height: heightScale,
-      });
+      // Store original/natural image dimensions for future reference
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
+      // Store these values in a ref for access across renders
+      originalImageSizeRef.current = {
+        width: naturalWidth,
+        height: naturalHeight,
+      };
+
+      // Calculate and update scale factors
+      updateImageScales();
+
+      // Mark image as loaded
       setImageLoaded(true);
+
       console.log(
-        `Image loaded with scales - width: ${widthScale}, height: ${heightScale}`,
+        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
       );
-    }
+    });
   };
 
-  // Get highlight color from settings or use default
-  const getHighlightColor = () => {
-    if (
-      currentItem?.type === "hotspot" &&
-      currentItem.settings?.highlightColor
-    ) {
-      return currentItem.settings.highlightColor;
-    }
-    return "rgba(68, 76, 231, 0.7)"; // Default color
-  };
+  // Function to update image scales based on current dimensions
+  const updateImageScales = useCallback(() => {
+    if (!imageRef.current) return;
 
-  // Move to next item in sequence
-  const moveToNextItem = () => {
-    // Clear any active timeout when manually moving to next item
-    if (hotspotTimeoutRef.current) {
-      clearTimeout(hotspotTimeoutRef.current);
-      hotspotTimeoutRef.current = null;
-    }
-    setTimeoutActive(false);
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
 
-    console.log(
-      "Moving to next item from",
-      currentSequenceIndex,
-      "in slide",
-      currentSlideIndex,
-    );
-    if (currentSequenceIndex < currentSequence.length - 1) {
-      // Next item in current slide
-      setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
-    } else if (currentSlideIndex < slidesData.length - 1) {
-      // First item in next slide
-      setCurrentSlideIndex((prevIndex) => prevIndex + 1);
-      setCurrentSequenceIndex(0);
-      console.log("Moving to next slide:", currentSlideIndex + 1);
-      setImageLoaded(false);
-    } else {
-      // End of slideshow
-      setHighlightHotspot(false);
-      console.log("Simulation complete");
-      handleEndSimulation();
+    // Get the rendered dimensions
+    const renderedWidth = rect.width;
+    const renderedHeight = rect.height;
+
+    // Get the natural dimensions (or use stored values if naturalWidth is not available)
+    const naturalWidth = img.naturalWidth || originalImageSizeRef.current.width;
+    const naturalHeight =
+      img.naturalHeight || originalImageSizeRef.current.height;
+
+    // Only update if we have valid dimensions to avoid division by zero
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const newScales = {
+        width: renderedWidth / naturalWidth,
+        height: renderedHeight / naturalHeight,
+      };
+
+      // Only update if scales have actually changed
+      if (
+        Math.abs(newScales.width - imageScale.width) > 0.001 ||
+        Math.abs(newScales.height - imageScale.height) > 0.001
+      ) {
+        setImageScale(newScales);
+        console.log(
+          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
+        );
+      }
+    }
+  }, [imageScale.width, imageScale.height]);
+
+  // Add a robust ResizeObserver implementation
+  useEffect(() => {
+    if (!imageRef.current || !imageContainerRef.current) return;
+
+    // Create resize observer
+    const resizeObserver = new ResizeObserver(() => {
+      // Call update function when container or image size changes
+      updateImageScales();
+    });
+
+    // Observe both container and image element
+    resizeObserver.observe(imageContainerRef.current);
+    resizeObserver.observe(imageRef.current);
+
+    // Also listen for window resize events
+    window.addEventListener("resize", updateImageScales);
+
+    // Add a MutationObserver to detect DOM changes affecting layout
+    const mutationObserver = new MutationObserver(() => {
+      updateImageScales();
+    });
+
+    // Observe parent elements for attribute changes
+    if (imageContainerRef.current.parentElement) {
+      mutationObserver.observe(imageContainerRef.current.parentElement, {
+        attributes: true,
+        childList: false,
+        subtree: false,
+      });
+    }
+
+    // Cleanup
+    return () => {
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+      window.removeEventListener("resize", updateImageScales);
+    };
+  }, [updateImageScales]);
+
+  // Improved and unified coordinate scaling function
+  const scaleCoordinates = (coords: any) => {
+    if (!coords || !imageRef.current) return null;
+
+    // Use the utility function for consistent scaling
+    try {
+      return calculateRenderedCoordinates(coords, imageRef.current);
+    } catch (error) {
+      console.error("Error scaling coordinates:", error);
+
+      // Fallback to old method if needed
+      if (coords.x !== undefined) {
+        return {
+          left: coords.x * imageScale.width,
+          top: coords.y * imageScale.height,
+          width: coords.width * imageScale.width,
+          height: coords.height * imageScale.height,
+        };
+      }
+
+      return { left: 0, top: 0, width: 0, height: 0 };
     }
   };
 
@@ -435,8 +610,18 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
+      // Convert to percentages for more stable storage
+      const xPercent = (x / rect.width) * 100;
+      const yPercent = (y / rect.height) * 100;
+
       // Get hotspot coordinates
-      const coords = currentItem.coordinates || { x: 0, y: 0, width: 0, height: 0 };
+      const coords = currentItem.coordinates ||
+        currentItem.percentageCoordinates || {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+        };
 
       // Scale hotspot coordinates
       const scaledCoords = scaleCoordinates(coords);
@@ -445,11 +630,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       // Check if the click is outside the hotspot
       const { left, top, width, height } = scaledCoords;
-      const isOutside = 
-        x < left || 
-        x > left + width || 
-        y < top || 
-        y > top + height;
+      const isOutside =
+        x < left || x > left + width || y < top || y > top + height;
 
       if (isOutside) {
         console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
@@ -464,7 +646,12 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                 ...existingItem,
                 wrong_clicks: [
                   ...(existingItem.wrong_clicks || []),
-                  { x_cordinates: x, y_cordinates: y },
+                  {
+                    x_cordinates: x,
+                    y_cordinates: y,
+                    x_percent: xPercent,
+                    y_percent: yPercent,
+                  },
                 ],
               },
             ];
@@ -473,7 +660,14 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               ...prevData,
               {
                 ...currentItem,
-                wrong_clicks: [{ x_cordinates: x, y_cordinates: y }],
+                wrong_clicks: [
+                  {
+                    x_cordinates: x,
+                    y_cordinates: y,
+                    x_percent: xPercent,
+                    y_percent: yPercent,
+                  },
+                ],
               },
             ];
           }
@@ -513,7 +707,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log("Hotspot clicked:", hotspotType);
 
     // Only set isClicked and handle wrong_clicks for specific hotspot types
     if (["button", "highlight", "checkbox"].includes(hotspotType)) {
@@ -527,7 +720,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           newData[existingItemIndex] = {
             ...newData[existingItemIndex],
             isClicked: true,
-            wrong_clicks: newData[existingItemIndex].wrong_clicks?.slice(0, -1) || [],
+            wrong_clicks:
+              newData[existingItemIndex].wrong_clicks?.slice(0, -1) || [],
           };
           return newData;
         } else {
@@ -603,20 +797,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       default:
         console.log("Unknown hotspot type:", hotspotType);
     }
-  };
-
-  // Updated to use both width and height scales
-  const scaleCoordinates = (
-    coords: { x: number; y: number; width: number; height: number } | undefined,
-  ) => {
-    if (!coords) return null;
-
-    return {
-      left: coords.x * imageScale.width,
-      top: coords.y * imageScale.height,
-      width: coords.width * imageScale.width,
-      height: coords.height * imageScale.height,
-    };
   };
 
   // Handle dropdown option selection
@@ -734,27 +914,15 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         setSimulationStatus("Active");
       }
 
-      // Process image data
+      // Process image data - store raw base64 for just-in-time URL creation
       if (response.images && response.images.length > 0) {
-        const newSlides = new Map();
         console.log(`Processing ${response.images.length} images`);
         for (const image of response.images) {
-          // Convert base64 string to Uint8Array
-          const binaryString = atob(image.image_data);
-          const len = binaryString.length;
-          const bytes = new Uint8Array(len);
-          for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-
-          // Create blob from Uint8Array
-          const blob = new Blob([bytes], { type: "image/png" });
-          const blobUrl = URL.createObjectURL(blob);
-          console.log(`Created blob URL for image ${image.image_id}`);
-          newSlides.set(image.image_id, blobUrl);
+          // Store raw base64 data in the ref
+          slideDataRef.current[image.image_id] = image.image_data;
+          console.log(`Stored base64 data for image ${image.image_id}`);
         }
-        setSlides(newSlides);
-        console.log(`Set ${newSlides.size} slides`);
+        console.log(`Stored ${response.images.length} image data items`);
       }
     } catch (error) {
       console.error("Error starting visual simulation:", error);
@@ -763,6 +931,38 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     } finally {
       setIsStarting(false);
       setIsLoadingVisuals(false);
+    }
+  };
+
+  // Move to next item in sequence
+  const moveToNextItem = () => {
+    // Clear any active timeout when manually moving to next item
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
+    console.log(
+      "Moving to next item from",
+      currentSequenceIndex,
+      "in slide",
+      currentSlideIndex,
+    );
+    if (currentSequenceIndex < currentSequence.length - 1) {
+      // Next item in current slide
+      setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
+    } else if (currentSlideIndex < slidesData.length - 1) {
+      // First item in next slide
+      setCurrentSlideIndex((prevIndex) => prevIndex + 1);
+      setCurrentSequenceIndex(0);
+      console.log("Moving to next slide:", currentSlideIndex + 1);
+      setImageLoaded(false);
+    } else {
+      // End of slideshow
+      setHighlightHotspot(false);
+      console.log("Simulation complete");
+      handleEndSimulation();
     }
   };
 
@@ -875,15 +1075,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
-
-  // Cleanup object URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      slides.forEach((blobUrl) => {
-        URL.revokeObjectURL(blobUrl);
-      });
-    };
-  }, [slides]);
 
   return (
     <>
@@ -1132,7 +1323,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                       <CircularProgress size={40} sx={{ mb: 2 }} />
                       <Typography>Loading simulation visuals...</Typography>
                     </Box>
-                  ) : !currentSlide || !slides.get(currentSlide.imageId) ? (
+                  ) : !currentSlide || !frameUrl ? (
                     <Box sx={{ textAlign: "center", p: 4 }}>
                       <Typography color="text.secondary">
                         No visual content available
@@ -1142,7 +1333,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                     <Box sx={{ position: "relative" }}>
                       <img
                         ref={imageRef}
-                        src={slides.get(currentSlide.imageId)}
+                        src={frameUrl}
                         alt={currentSlide.imageName || "Simulation slide"}
                         style={{
                           width: "100%",
@@ -1179,7 +1370,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                       {/* Render hotspots directly on the image */}
                       {imageLoaded &&
                         currentItem?.type === "hotspot" &&
-                        currentItem.coordinates &&
+                        (currentItem.coordinates ||
+                          currentItem.percentageCoordinates) &&
                         !shouldSkipHotspot() && (
                           <>
                             {/* Button hotspot */}
@@ -1191,20 +1383,28 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   position: "absolute",
                                   cursor: "pointer",
                                   left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.top
                                   }px`,
                                   width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.width
                                   }px`,
                                   height: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.height
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.height
                                   }px`,
                                   zIndex: 10,
                                 }}
@@ -1242,16 +1442,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 sx={{
                                   position: "absolute",
                                   left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.top
                                   }px`,
                                   width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.width
                                   }px`,
                                   zIndex: 10,
                                 }}
@@ -1269,7 +1475,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     sx={{
                                       height: `${
                                         scaleCoordinates(
-                                          currentItem.coordinates,
+                                          currentItem.percentageCoordinates ||
+                                            currentItem.coordinates,
                                         )?.height
                                       }px`,
                                       bgcolor: "white",
@@ -1313,12 +1520,16 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 sx={{
                                   position: "absolute",
                                   left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.top
                                   }px`,
                                   cursor: "pointer",
                                   display: "flex",
@@ -1333,7 +1544,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     "& .MuiSvgIcon-root": {
                                       fontSize: `${
                                         scaleCoordinates(
-                                          currentItem.coordinates,
+                                          currentItem.percentageCoordinates ||
+                                            currentItem.coordinates,
                                         )?.height
                                       }px`,
                                     },
@@ -1362,16 +1574,22 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                 sx={{
                                   position: "absolute",
                                   left: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.left
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.top
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.top
                                   }px`,
                                   width: `${
-                                    scaleCoordinates(currentItem.coordinates)
-                                      ?.width
+                                    scaleCoordinates(
+                                      currentItem.percentageCoordinates ||
+                                        currentItem.coordinates,
+                                    )?.width
                                   }px`,
                                   zIndex: 10,
                                 }}
@@ -1393,7 +1611,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     "& .MuiOutlinedInput-root": {
                                       height: `${
                                         scaleCoordinates(
-                                          currentItem.coordinates,
+                                          currentItem.percentageCoordinates ||
+                                            currentItem.coordinates,
                                         )?.height
                                       }px`,
                                       bgcolor: "white",
@@ -1429,20 +1648,28 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     position: "absolute",
                                     cursor: "pointer",
                                     left: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.left
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.left
                                     }px`,
                                     top: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.top
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.top
                                     }px`,
                                     width: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.width
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.width
                                     }px`,
                                     height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.height
                                     }px`,
                                     border: "4px solid",
                                     borderColor: getHighlightColor(),
@@ -1456,63 +1683,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   }}
                                 />
                               )}
-
-                            {/* Coaching tip button - only render if not hidden by settings */}
-                            {currentItem.hotspotType === "coaching" &&
-                              !levelSettings.hideCoachingTips && (
-                                <Box
-                                  onClick={(e) => handleHotspotClick(e)}
-                                  sx={{
-                                    position: "absolute",
-                                    cursor: "pointer",
-                                    left: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.left
-                                    }px`,
-                                    top: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.top
-                                    }px`,
-                                    width: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.width
-                                    }px`,
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    zIndex: 50,
-                                  }}
-                                >
-                                  <Button
-                                    fullWidth
-                                    variant="contained"
-                                    sx={{
-                                      height: "100%",
-                                      backgroundColor:
-                                        currentItem.settings?.buttonColor ||
-                                        "#1e293b",
-                                      color:
-                                        currentItem.settings?.textColor ||
-                                        "#FFFFFF",
-                                      "&:hover": {
-                                        backgroundColor: currentItem.settings
-                                          ?.buttonColor
-                                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                                          : "#0f172a",
-                                      },
-                                      boxShadow: highlightHotspot ? 4 : 0,
-                                      border: highlightHotspot
-                                        ? `2px solid ${getHighlightColor()}`
-                                        : "none",
-                                    }}
-                                  >
-                                    {currentItem.settings?.tipText ||
-                                      currentItem.name ||
-                                      "Coaching Tip"}
-                                  </Button>
-                                </Box>
-                              )}
                           </>
                         )}
 
@@ -1521,27 +1691,37 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                         currentMasking &&
                         currentMasking.map(
                           (item, index) =>
-                            item?.content && (
+                            item?.content &&
+                            (item.content.coordinates ||
+                              item.content.percentageCoordinates) && (
                               <Box
                                 key={index}
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
                                   left: `${
-                                    scaleCoordinates(item.content.coordinates)
-                                      ?.left
+                                    scaleCoordinates(
+                                      item.content.percentageCoordinates ||
+                                        item.content.coordinates,
+                                    )?.left
                                   }px`,
                                   top: `${
-                                    scaleCoordinates(item.content.coordinates)
-                                      ?.top
+                                    scaleCoordinates(
+                                      item.content.percentageCoordinates ||
+                                        item.content.coordinates,
+                                    )?.top
                                   }px`,
                                   width: `${
-                                    scaleCoordinates(item.content.coordinates)
-                                      ?.width
+                                    scaleCoordinates(
+                                      item.content.percentageCoordinates ||
+                                        item.content.coordinates,
+                                    )?.width
                                   }px`,
                                   height: `${
-                                    scaleCoordinates(item.content.coordinates)
-                                      ?.height
+                                    scaleCoordinates(
+                                      item.content.percentageCoordinates ||
+                                        item.content.coordinates,
+                                    )?.height
                                   }px`,
                                   border: "4px solid",
                                   borderColor:
@@ -1569,6 +1749,78 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   )}
                 </Box>
               </Box>
+
+              {/* Coaching tip button - only render if not hidden by settings */}
+              {imageLoaded &&
+                currentItem?.type === "hotspot" &&
+                currentItem.hotspotType === "coaching" &&
+                (currentItem.coordinates ||
+                  currentItem.percentageCoordinates) &&
+                !levelSettings.hideCoachingTips && (
+                  <Box
+                    onClick={(e) => handleHotspotClick(e)}
+                    sx={{
+                      position: "absolute",
+                      cursor: "pointer",
+                      left: `${
+                        scaleCoordinates(
+                          currentItem.percentageCoordinates ||
+                            currentItem.coordinates,
+                        )?.left
+                      }px`,
+                      top: `${
+                        scaleCoordinates(
+                          currentItem.percentageCoordinates ||
+                            currentItem.coordinates,
+                        )?.top
+                      }px`,
+                      width: `${
+                        scaleCoordinates(
+                          currentItem.percentageCoordinates ||
+                            currentItem.coordinates,
+                        )?.width
+                      }px`,
+                      height: `${
+                        scaleCoordinates(
+                          currentItem.percentageCoordinates ||
+                            currentItem.coordinates,
+                        )?.height
+                      }px`,
+                      zIndex: 50,
+                      border: highlightHotspot
+                        ? `2px solid ${
+                            currentItem.settings?.highlightColor || "#1e293b"
+                          }`
+                        : "none",
+                      boxShadow: highlightHotspot ? 3 : 0,
+                      transition: "all 0.3s ease",
+                    }}
+                  >
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      sx={{
+                        height: "100%",
+                        backgroundColor:
+                          currentItem.settings?.buttonColor || "#1e293b",
+                        color: currentItem.settings?.textColor || "#FFFFFF",
+                        "&:hover": {
+                          backgroundColor: currentItem.settings?.buttonColor
+                            ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                            : "#0f172a",
+                        },
+                        boxShadow: highlightHotspot ? 4 : 0,
+                        border: highlightHotspot
+                          ? `2px solid ${getHighlightColor()}`
+                          : "none",
+                      }}
+                    >
+                      {currentItem.settings?.tipText ||
+                        currentItem.name ||
+                        "Coaching Tip"}
+                    </Button>
+                  </Box>
+                )}
 
               {/* Right side - Empty sidebar (to match layout of other components) */}
               <Box
@@ -1682,6 +1934,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       </Box>
     </>
   );
+};
+
+// Get highlight color from settings or use default
+const getHighlightColor = () => {
+  return "rgba(68, 76, 231, 0.7)"; // Default color
 };
 
 export default VisualSimulationPage;

@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  useMemo,
+} from "react";
 import {
   Box,
   Dialog,
@@ -55,6 +61,13 @@ interface Hotspot {
     width: number;
     height: number;
   };
+  // Add percentage-based coordinates
+  percentageCoordinates?: {
+    xPercent: number;
+    yPercent: number;
+    widthPercent: number;
+    heightPercent: number;
+  };
   settings?: {
     placeholder?: string;
     advanceOnSelect?: boolean;
@@ -88,6 +101,55 @@ interface ImageHotspotProps {
   editingHotspot?: Hotspot | null;
   containerWidth: number;
 }
+
+// Improved function to calculate rendered coordinates consistently across all components
+const getScaledCoordinates = (
+  coords: any,
+  imageElement: HTMLImageElement | null,
+): { left: number; top: number; width: number; height: number } | null => {
+  if (!imageElement || !coords) return null;
+
+  // Get the actual rendered position and dimensions of the image
+  const rect = imageElement.getBoundingClientRect();
+
+  // Get container dimensions (important for centering offset calculations)
+  const containerElement = imageElement.parentElement;
+  let containerRect = containerElement?.getBoundingClientRect();
+
+  // If no container found, use the image rect as fallback
+  if (!containerRect) {
+    containerRect = rect;
+  }
+
+  // Calculate the offset of the image within its container (for centering)
+  const offsetX = rect.left - containerRect.left;
+  const offsetY = rect.top - containerRect.top;
+
+  // Use percentage-based coordinates if available
+  if (coords.xPercent !== undefined) {
+    return {
+      left: (coords.xPercent * rect.width) / 100 + offsetX,
+      top: (coords.yPercent * rect.height) / 100 + offsetY,
+      width: (coords.widthPercent * rect.width) / 100,
+      height: (coords.heightPercent * rect.height) / 100,
+    };
+  }
+
+  // Otherwise use absolute coordinates with proper scaling
+  if (coords.x !== undefined) {
+    const naturalWidth = imageElement.naturalWidth || 1;
+    const naturalHeight = imageElement.naturalHeight || 1;
+
+    return {
+      left: (coords.x / naturalWidth) * rect.width + offsetX,
+      top: (coords.y / naturalHeight) * rect.height + offsetY,
+      width: (coords.width / naturalWidth) * rect.width,
+      height: (coords.height / naturalHeight) * rect.height,
+    };
+  }
+
+  return null;
+};
 
 /**
  * Detects image type from binary data
@@ -182,7 +244,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   containerWidth,
 }) => {
   const [isDrawing, setIsDrawing] = useState(false);
-  const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+  const [startPos, setStartPos] = useState({ xPercent: 0, yPercent: 0 }); // Updated for percentage-based coordinates
   const [currentHotspot, setCurrentHotspot] = useState<Partial<Hotspot> | null>(
     null,
   );
@@ -222,6 +284,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     y: number;
     width: number;
     height: number;
+    xPercent?: number;
+    yPercent?: number;
+    widthPercent?: number;
+    heightPercent?: number;
   } | null>(null);
 
   // Add hover state for showing hotspot type tooltip
@@ -473,55 +539,67 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     return () => window.removeEventListener("resize", updateViewportSize);
   }, []);
 
-  // Track image size and scale changes - crucial for accurate hotspot positioning
+  // Improved image size and scale tracking with ResizeObserver
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !imageElementRef.current) return;
 
     const updateImageSizeAndScale = () => {
-      if (containerRef.current && imageElementRef.current) {
-        const img = imageElementRef.current;
-        if (img) {
-          // Get the actual rendered dimensions
-          const rect = img.getBoundingClientRect();
+      if (!imageElementRef.current) return;
 
-          // Store current rendered dimensions
-          setImageSize({
-            width: rect.width,
-            height: rect.height,
-          });
+      const img = imageElementRef.current;
+      // Get the actual rendered dimensions
+      const rect = img.getBoundingClientRect();
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
 
-          // Calculate scales based on original image dimensions
-          if (originalImageSize.width > 0 && originalImageSize.height > 0) {
-            const widthScale = rect.width / originalImageSize.width;
-            const heightScale = rect.height / originalImageSize.height;
-
-            setImageScale({
-              width: widthScale,
-              height: heightScale,
-            });
-
-            console.log(
-              `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
-            );
-          }
-        }
+      if (naturalWidth === 0 || naturalHeight === 0) {
+        console.log("Image not fully loaded, waiting...");
+        return;
       }
+
+      // Store current rendered dimensions
+      setImageSize({
+        width: rect.width,
+        height: rect.height,
+      });
+
+      // Calculate scales based on original image dimensions
+      const widthScale = rect.width / naturalWidth;
+      const heightScale = rect.height / naturalHeight;
+
+      setImageScale({
+        width: widthScale,
+        height: heightScale,
+      });
+
+      console.log(
+        `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
+      );
     };
 
     // Initial update
     updateImageSizeAndScale();
 
-    // Create observer to track container size changes
+    // Create observer to track container and image size changes
     const resizeObserver = new ResizeObserver(() => {
-      updateImageSizeAndScale();
+      requestAnimationFrame(() => {
+        updateImageSizeAndScale();
+      });
     });
 
-    // Observe both the container and the window
+    // Observe both the container and the image
     resizeObserver.observe(containerRef.current);
+    if (imageElementRef.current) {
+      resizeObserver.observe(imageElementRef.current);
+    }
+
+    // Also handle window resize events
+    window.addEventListener("resize", updateImageSizeAndScale);
 
     // Cleanup
     return () => {
       resizeObserver.disconnect();
+      window.removeEventListener("resize", updateImageSizeAndScale);
     };
   }, [containerRef, originalImageSize, containerWidth, processedImageUrl]);
 
@@ -591,6 +669,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     }
   }, [resizingHotspot]);
 
+  // Updated to use percentage-based coordinates
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current || !imageElementRef.current) return;
 
@@ -598,16 +677,22 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Store coordinates relative to ORIGINAL image size (not the rendered size)
-    // This is the key to making hotspots work correctly at any scale
-    const x = (e.clientX - rect.left) / imageScale.width;
-    const y = (e.clientY - rect.top) / imageScale.height;
+    // Calculate offset of the image within its container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
+
+    // Calculate coordinates as percentages of the image dimensions
+    // Adjust by the offset to get coordinates relative to the image
+    const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
 
     setIsDrawing(true);
-    setStartPos({ x, y });
+    setStartPos({ xPercent, yPercent });
   };
 
+  // Updated to use percentage-based coordinates
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDrawing || !containerRef.current || !imageElementRef.current) return;
 
@@ -615,22 +700,39 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (!img) return;
 
     const rect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
 
-    // Get the current mouse position in original image coordinates
-    const x = (e.clientX - rect.left) / imageScale.width;
-    const y = (e.clientY - rect.top) / imageScale.height;
+    // Calculate offset of the image within its container
+    const offsetX = rect.left - containerRect.left;
+    const offsetY = rect.top - containerRect.top;
 
-    // Create a properly structured coordinates object that stores positions
-    // in the original image coordinate system
+    // Calculate current position as percentages
+    // Adjust by the offset to get coordinates relative to the image
+    const xPercent = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPercent = ((e.clientY - rect.top) / rect.height) * 100;
+
+    // Create percentage-based coordinates
+    const percentageCoordinates = {
+      xPercent: Math.min(startPos.xPercent, xPercent),
+      yPercent: Math.min(startPos.yPercent, yPercent),
+      widthPercent: Math.abs(xPercent - startPos.xPercent),
+      heightPercent: Math.abs(yPercent - startPos.yPercent),
+    };
+
+    // Also calculate absolute coordinates based on natural image dimensions
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+
     const coordinates = {
-      x: Math.min(startPos.x, x),
-      y: Math.min(startPos.y, y),
-      width: Math.abs(x - startPos.x),
-      height: Math.abs(y - startPos.y),
+      x: (percentageCoordinates.xPercent * naturalWidth) / 100,
+      y: (percentageCoordinates.yPercent * naturalHeight) / 100,
+      width: (percentageCoordinates.widthPercent * naturalWidth) / 100,
+      height: (percentageCoordinates.heightPercent * naturalHeight) / 100,
     };
 
     setCurrentHotspot({
-      coordinates: coordinates,
+      coordinates,
+      percentageCoordinates,
       // Initialize with button hotspot type and settings
       hotspotType: "button",
       settings: {
@@ -647,66 +749,93 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   };
 
   const handleMouseUp = () => {
-    if (!isDrawing || !currentHotspot || !currentHotspot.coordinates) return;
+    if (
+      !isDrawing ||
+      !currentHotspot ||
+      (!currentHotspot.coordinates && !currentHotspot.percentageCoordinates)
+    )
+      return;
+
     setIsDrawing(false);
 
     // Only calculate dialog position and show settings if the rectangle has some size
-    if (
-      currentHotspot.coordinates &&
-      (currentHotspot.coordinates.width > 5 ||
-        currentHotspot.coordinates.height > 5)
-    ) {
+    const hasSize = currentHotspot.percentageCoordinates
+      ? currentHotspot.percentageCoordinates.widthPercent > 0.5 &&
+        currentHotspot.percentageCoordinates.heightPercent > 0.5
+      : currentHotspot.coordinates &&
+        (currentHotspot.coordinates.width > 5 ||
+          currentHotspot.coordinates.height > 5);
+
+    if (hasSize) {
       calculateDialogPosition(currentHotspot);
       setShowSettings(true);
     }
   };
 
-  // Start moving a hotspot
+  // Start moving a hotspot - updated for percentage coordinates
   const handleStartMove = (e: React.MouseEvent, hotspotId: string) => {
     e.stopPropagation();
     if (!imageElementRef.current) return;
 
     // Find the hotspot
     const hotspot = hotspots.find((h) => h.id === hotspotId);
-    if (!hotspot || !hotspot.coordinates) return;
+    if (!hotspot) return;
 
-    const rect = imageElementRef.current.getBoundingClientRect();
-
-    // Store starting mouse position in screen coordinates
+    // Store the original mouse position and original hotspot percentages
+    // This approach avoids position calculation errors
     setMoveStart({
-      x: e.clientX - (hotspot.coordinates.x * imageScale.width + rect.left),
-      y: e.clientY - (hotspot.coordinates.y * imageScale.height + rect.top),
+      x: e.clientX,
+      y: e.clientY,
     });
 
+    // Record this hotspot is being moved
     setMovingHotspot(hotspotId);
     setEditingHotspot(null); // Cancel any active editing
   };
 
-  // Handle mouse movement during the move
+  // Handle moving hotspot - completely redesigned
   const handleMoveHotspot = (e: React.MouseEvent) => {
     if (!movingHotspot || !imageElementRef.current) return;
 
     const hotspot = hotspots.find((h) => h.id === movingHotspot);
-    if (!hotspot || !hotspot.coordinates) return;
+    if (!hotspot || !hotspot.percentageCoordinates) return;
 
-    const rect = imageElementRef.current.getBoundingClientRect();
+    const img = imageElementRef.current;
+    const rect = img.getBoundingClientRect();
 
-    // Calculate new position in original image coordinates
-    const newX = Math.max(
+    // Calculate the mouse movement delta since drag started
+    const deltaX = e.clientX - moveStart.x;
+    const deltaY = e.clientY - moveStart.y;
+
+    // Convert delta to percentage of image dimensions
+    const deltaXPercent = (deltaX / rect.width) * 100;
+    const deltaYPercent = (deltaY / rect.height) * 100;
+
+    // Calculate new position by adding delta to the original position
+    const newXPercent = hotspot.percentageCoordinates.xPercent + deltaXPercent;
+    const newYPercent = hotspot.percentageCoordinates.yPercent + deltaYPercent;
+
+    // Apply boundary constraints
+    const constrainedXPercent = Math.max(
       0,
-      Math.min(
-        (e.clientX - moveStart.x - rect.left) / imageScale.width,
-        originalImageSize.width - hotspot.coordinates.width,
-      ),
+      Math.min(newXPercent, 100 - hotspot.percentageCoordinates.widthPercent),
+    );
+    const constrainedYPercent = Math.max(
+      0,
+      Math.min(newYPercent, 100 - hotspot.percentageCoordinates.heightPercent),
     );
 
-    const newY = Math.max(
-      0,
-      Math.min(
-        (e.clientY - moveStart.y - rect.top) / imageScale.height,
-        originalImageSize.height - hotspot.coordinates.height,
-      ),
-    );
+    // Get width and height values
+    const widthPercent = hotspot.percentageCoordinates.widthPercent;
+    const heightPercent = hotspot.percentageCoordinates.heightPercent;
+
+    // Calculate absolute coordinates from percentages
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    const newX = (constrainedXPercent * naturalWidth) / 100;
+    const newY = (constrainedYPercent * naturalHeight) / 100;
+    const width = (widthPercent * naturalWidth) / 100;
+    const height = (heightPercent * naturalHeight) / 100;
 
     // Update all hotspots with the moved one
     const updatedHotspots = hotspots.map((h) => {
@@ -714,9 +843,16 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         return {
           ...h,
           coordinates: {
-            ...h.coordinates,
             x: newX,
             y: newY,
+            width,
+            height,
+          },
+          percentageCoordinates: {
+            xPercent: constrainedXPercent,
+            yPercent: constrainedYPercent,
+            widthPercent,
+            heightPercent,
           },
         };
       }
@@ -725,6 +861,13 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
     // Update parent with the new positions
     onHotspotsChange?.(updatedHotspots);
+
+    // Update the movement start position for the next frame
+    // This is critical for continuous dragging
+    setMoveStart({
+      x: e.clientX,
+      y: e.clientY,
+    });
   };
 
   // End the move operation
@@ -732,44 +875,77 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setMovingHotspot(null);
   };
 
-  // Start resizing a hotspot
+  // Start resizing a hotspot - updated for percentage coordinates
   const handleStartResize = (
     e: React.MouseEvent,
     hotspotId: string,
     handle: string,
   ) => {
     e.stopPropagation();
+    e.preventDefault(); // Prevent text selection during resize
     if (!imageElementRef.current) return;
 
     // Find the hotspot
     const hotspot = hotspots.find((h) => h.id === hotspotId);
-    if (!hotspot || !hotspot.coordinates) return;
+    if (!hotspot) return;
 
-    // Store starting mouse position in screen coordinates
+    // Store starting mouse position
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
     });
 
-    // Store original hotspot coordinates for reference during resize
-    setResizeOriginal({
-      x: hotspot.coordinates.x,
-      y: hotspot.coordinates.y,
-      width: hotspot.coordinates.width,
-      height: hotspot.coordinates.height,
-    });
+    // Create a deep copy of the original coordinates to prevent reference issues
+    const originalCoords = {
+      x: 0,
+      y: 0,
+      width: 0,
+      height: 0,
+      xPercent: 0,
+      yPercent: 0,
+      widthPercent: 0,
+      heightPercent: 0,
+    };
 
+    // Copy absolute coordinates if available
+    if (hotspot.coordinates) {
+      originalCoords.x = hotspot.coordinates.x;
+      originalCoords.y = hotspot.coordinates.y;
+      originalCoords.width = hotspot.coordinates.width;
+      originalCoords.height = hotspot.coordinates.height;
+    }
+
+    // Copy percentage coordinates if available
+    if (hotspot.percentageCoordinates) {
+      originalCoords.xPercent = hotspot.percentageCoordinates.xPercent;
+      originalCoords.yPercent = hotspot.percentageCoordinates.yPercent;
+      originalCoords.widthPercent = hotspot.percentageCoordinates.widthPercent;
+      originalCoords.heightPercent =
+        hotspot.percentageCoordinates.heightPercent;
+    }
+    // Or calculate percentage coordinates from absolute coordinates
+    else if (hotspot.coordinates && imageElementRef.current) {
+      const naturalWidth = imageElementRef.current.naturalWidth;
+      const naturalHeight = imageElementRef.current.naturalHeight;
+      originalCoords.xPercent = (hotspot.coordinates.x / naturalWidth) * 100;
+      originalCoords.yPercent = (hotspot.coordinates.y / naturalHeight) * 100;
+      originalCoords.widthPercent =
+        (hotspot.coordinates.width / naturalWidth) * 100;
+      originalCoords.heightPercent =
+        (hotspot.coordinates.height / naturalHeight) * 100;
+    }
+
+    setResizeOriginal(originalCoords);
     setResizingHotspot(hotspotId);
     setResizeHandle(handle);
 
-    // Important: DON'T set editingHotspot to null here to keep the selected state
-    // This allows the resizing to be reflected in the currently edited hotspot
+    // Keep the edited hotspot state if it's the one being resized
     if (editingHotspot?.id !== hotspotId) {
       setEditingHotspot(null);
     }
   };
 
-  // Handle mouse movement during resize
+  // Handle resize hotspot - updated for percentage coordinates
   const handleResizeHotspot = (e: React.MouseEvent) => {
     if (
       !resizingHotspot ||
@@ -780,85 +956,150 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       return;
 
     const hotspot = hotspots.find((h) => h.id === resizingHotspot);
-    if (!hotspot || !hotspot.coordinates) return;
+    if (!hotspot) return;
 
-    const rect = imageElementRef.current.getBoundingClientRect();
+    const img = imageElementRef.current;
+    const rect = img.getBoundingClientRect();
 
-    // Calculate mouse movement in original image coordinates
-    const deltaX = (e.clientX - resizeStart.x) / imageScale.width;
-    const deltaY = (e.clientY - resizeStart.y) / imageScale.height;
+    // Calculate mouse movement in pixels
+    const deltaX = e.clientX - resizeStart.x;
+    const deltaY = e.clientY - resizeStart.y;
+
+    // Convert to percentage of image dimensions
+    const deltaXPercent = (deltaX / rect.width) * 100;
+    const deltaYPercent = (deltaY / rect.height) * 100;
+
+    // Get natural dimensions for absolute coordinate calculations
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
 
     // Initialize new coordinates with original values
-    let newX = resizeOriginal.x;
-    let newY = resizeOriginal.y;
-    let newWidth = resizeOriginal.width;
-    let newHeight = resizeOriginal.height;
+    let newXPercent = resizeOriginal.xPercent;
+    let newYPercent = resizeOriginal.yPercent;
+    let newWidthPercent = resizeOriginal.widthPercent;
+    let newHeightPercent = resizeOriginal.heightPercent;
 
-    // Update coordinates based on which handle is being dragged
+    // Adjust coordinates based on which handle is being dragged
     switch (resizeHandle) {
       case "top-left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        // Adjust x, y, width, height
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 1,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
         );
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 1,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent),
+        );
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent -
+            (newYPercent - resizeOriginal.yPercent),
+        );
         break;
+
       case "top-right":
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        // Adjust y, width, height
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 1,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent + deltaXPercent,
+        );
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent -
+            (newYPercent - resizeOriginal.yPercent),
+        );
         break;
+
       case "bottom-left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        // Adjust x, width, height
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 1,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent),
+        );
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
         break;
+
       case "bottom-right":
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
+        // Adjust width, height
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent + deltaXPercent,
+        );
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
         break;
+
       case "top":
-        newY = Math.min(
-          resizeOriginal.y + resizeOriginal.height - 5,
-          Math.max(0, resizeOriginal.y + deltaY),
+        // Adjust y, height
+        newYPercent = Math.min(
+          resizeOriginal.yPercent + resizeOriginal.heightPercent - 1,
+          Math.max(0, resizeOriginal.yPercent + deltaYPercent),
         );
-        newHeight = resizeOriginal.height - (newY - resizeOriginal.y);
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent -
+            (newYPercent - resizeOriginal.yPercent),
+        );
         break;
+
       case "right":
-        newWidth = Math.max(5, resizeOriginal.width + deltaX);
-        newWidth = Math.min(newWidth, originalImageSize.width - newX);
-        break;
-      case "bottom":
-        newHeight = Math.max(5, resizeOriginal.height + deltaY);
-        newHeight = Math.min(newHeight, originalImageSize.height - newY);
-        break;
-      case "left":
-        newX = Math.min(
-          resizeOriginal.x + resizeOriginal.width - 5,
-          Math.max(0, resizeOriginal.x + deltaX),
+        // Adjust width
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent + deltaXPercent,
         );
-        newWidth = resizeOriginal.width - (newX - resizeOriginal.x);
+        newWidthPercent = Math.min(newWidthPercent, 100 - newXPercent);
+        break;
+
+      case "bottom":
+        // Adjust height
+        newHeightPercent = Math.max(
+          1,
+          resizeOriginal.heightPercent + deltaYPercent,
+        );
+        newHeightPercent = Math.min(newHeightPercent, 100 - newYPercent);
+        break;
+
+      case "left":
+        // Adjust x, width
+        newXPercent = Math.min(
+          resizeOriginal.xPercent + resizeOriginal.widthPercent - 1,
+          Math.max(0, resizeOriginal.xPercent + deltaXPercent),
+        );
+        newWidthPercent = Math.max(
+          1,
+          resizeOriginal.widthPercent - (newXPercent - resizeOriginal.xPercent),
+        );
         break;
     }
 
-    // Ensure minimum size
-    newWidth = Math.max(5, newWidth);
-    newHeight = Math.max(5, newHeight);
+    // Calculate absolute coordinates from percentages
+    const newX = (newXPercent * naturalWidth) / 100;
+    const newY = (newYPercent * naturalHeight) / 100;
+    const newWidth = (newWidthPercent * naturalWidth) / 100;
+    const newHeight = (newHeightPercent * naturalHeight) / 100;
 
     // Update all hotspots with the resized one
     const updatedHotspots = hotspots.map((h) => {
@@ -870,6 +1111,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             y: newY,
             width: newWidth,
             height: newHeight,
+          },
+          percentageCoordinates: {
+            xPercent: newXPercent,
+            yPercent: newYPercent,
+            widthPercent: newWidthPercent,
+            heightPercent: newHeightPercent,
           },
         };
       }
@@ -891,6 +1138,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             width: newWidth,
             height: newHeight,
           },
+          percentageCoordinates: {
+            xPercent: newXPercent,
+            yPercent: newYPercent,
+            widthPercent: newWidthPercent,
+            heightPercent: newHeightPercent,
+          },
         };
       });
     }
@@ -908,7 +1161,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (
       !containerRef.current ||
       !hotspot ||
-      !hotspot.coordinates ||
+      (!hotspot.coordinates && !hotspot.percentageCoordinates) ||
       !imageElementRef.current
     )
       return;
@@ -917,27 +1170,35 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (!img) return;
 
     const imgRect = img.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+
+    // Calculate offset of image within container
+    const offsetX = imgRect.left - containerRect.left;
+    const offsetY = imgRect.top - containerRect.top;
+
     const dialogHeight = 480; // Fixed dialog height
     const dialogWidth = 400; // Fixed dialog width
     const padding = 16; // Padding from edges
 
-    // Convert from original image coordinates to screen coordinates
-    const x = hotspot.coordinates.x * imageScale.width + imgRect.left;
-    const y = hotspot.coordinates.y * imageScale.height + imgRect.top;
-    const width = hotspot.coordinates.width * imageScale.width;
-    const height = hotspot.coordinates.height * imageScale.height;
+    // Use getScaledCoordinates for consistent coordinate handling
+    const renderedCoords = getScaledCoordinates(
+      hotspot.percentageCoordinates || hotspot.coordinates,
+      img,
+    );
+
+    if (!renderedCoords) return;
 
     // Get accurate viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
     // Calculate the center position of the hotspot
-    const hotspotCenterX = x + width / 2;
-    const hotspotCenterY = y + height / 2;
+    const hotspotCenterX = renderedCoords.left + renderedCoords.width / 2;
+    const hotspotCenterY = renderedCoords.top + renderedCoords.height / 2;
 
     // Start with centered position relative to hotspot
-    let left = hotspotCenterX - dialogWidth / 2;
-    let top = hotspotCenterY - dialogHeight / 2;
+    let left = containerRect.left + hotspotCenterX - dialogWidth / 2;
+    let top = containerRect.top + hotspotCenterY - dialogHeight / 2;
 
     // Ensure dialog is within viewport bounds
     // Left edge
@@ -959,32 +1220,74 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
     // If dialog would overlap with the hotspot too much, offset it
     const overlap = {
-      left: Math.max(0, x + width - left),
-      right: Math.max(0, left + dialogWidth - x),
-      top: Math.max(0, y + height - top),
-      bottom: Math.max(0, top + dialogHeight - y),
+      left: Math.max(
+        0,
+        containerRect.left + renderedCoords.left + renderedCoords.width - left,
+      ),
+      right: Math.max(
+        0,
+        left + dialogWidth - (containerRect.left + renderedCoords.left),
+      ),
+      top: Math.max(
+        0,
+        containerRect.top + renderedCoords.top + renderedCoords.height - top,
+      ),
+      bottom: Math.max(
+        0,
+        top + dialogHeight - (containerRect.top + renderedCoords.top),
+      ),
     };
 
     const significantOverlap =
-      (overlap.left > width * 0.8 && overlap.right > width * 0.8) ||
-      (overlap.top > height * 0.8 && overlap.bottom > height * 0.8);
+      (overlap.left > renderedCoords.width * 0.8 &&
+        overlap.right > renderedCoords.width * 0.8) ||
+      (overlap.top > renderedCoords.height * 0.8 &&
+        overlap.bottom > renderedCoords.height * 0.8);
 
     if (significantOverlap) {
       // Try positioning to the right of the hotspot first
-      if (x + width + dialogWidth + padding <= viewportWidth) {
-        left = x + width + padding;
+      if (
+        containerRect.left +
+          renderedCoords.left +
+          renderedCoords.width +
+          dialogWidth +
+          padding <=
+        viewportWidth
+      ) {
+        left =
+          containerRect.left +
+          renderedCoords.left +
+          renderedCoords.width +
+          padding;
       }
       // Or to the left if there's more space
-      else if (x - dialogWidth - padding >= 0) {
-        left = x - dialogWidth - padding;
+      else if (
+        containerRect.left + renderedCoords.left - dialogWidth - padding >=
+        0
+      ) {
+        left = containerRect.left + renderedCoords.left - dialogWidth - padding;
       }
       // Or below the hotspot
-      else if (y + height + dialogHeight + padding <= viewportHeight) {
-        top = y + height + padding;
+      else if (
+        containerRect.top +
+          renderedCoords.top +
+          renderedCoords.height +
+          dialogHeight +
+          padding <=
+        viewportHeight
+      ) {
+        top =
+          containerRect.top +
+          renderedCoords.top +
+          renderedCoords.height +
+          padding;
       }
       // Or above if possible
-      else if (y - dialogHeight - padding >= 0) {
-        top = y - dialogHeight - padding;
+      else if (
+        containerRect.top + renderedCoords.top - dialogHeight - padding >=
+        0
+      ) {
+        top = containerRect.top + renderedCoords.top - dialogHeight - padding;
       }
     }
 
@@ -1054,9 +1357,13 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     return true;
   };
 
+  // Updated handleSettingsSave to save both coordinate types
   const handleSettingsSave = (settings: Partial<Hotspot>) => {
     // Ensure currentHotspot and coordinates exist
-    if (!currentHotspot || !currentHotspot.coordinates) {
+    if (
+      !currentHotspot ||
+      (!currentHotspot.coordinates && !currentHotspot.percentageCoordinates)
+    ) {
       console.error(
         "Cannot save hotspot - missing coordinates:",
         currentHotspot,
@@ -1168,19 +1475,48 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         break;
     }
 
+    // Ensure we have both coordinate types
+    let finalCoordinates = currentHotspot.coordinates;
+    let finalPercentageCoordinates = currentHotspot.percentageCoordinates;
+
+    // If we only have one type, calculate the other
+    if (
+      finalCoordinates &&
+      !finalPercentageCoordinates &&
+      imageElementRef.current
+    ) {
+      const naturalWidth = imageElementRef.current.naturalWidth;
+      const naturalHeight = imageElementRef.current.naturalHeight;
+      finalPercentageCoordinates = {
+        xPercent: (finalCoordinates.x / naturalWidth) * 100,
+        yPercent: (finalCoordinates.y / naturalHeight) * 100,
+        widthPercent: (finalCoordinates.width / naturalWidth) * 100,
+        heightPercent: (finalCoordinates.height / naturalHeight) * 100,
+      };
+    } else if (
+      finalPercentageCoordinates &&
+      !finalCoordinates &&
+      imageElementRef.current
+    ) {
+      const naturalWidth = imageElementRef.current.naturalWidth;
+      const naturalHeight = imageElementRef.current.naturalHeight;
+      finalCoordinates = {
+        x: (finalPercentageCoordinates.xPercent * naturalWidth) / 100,
+        y: (finalPercentageCoordinates.yPercent * naturalHeight) / 100,
+        width: (finalPercentageCoordinates.widthPercent * naturalWidth) / 100,
+        height:
+          (finalPercentageCoordinates.heightPercent * naturalHeight) / 100,
+      };
+    }
+
     // Create a complete hotspot with coordinates relative to original image
     const hotspot: Hotspot = {
       id,
       name: settings.name || "Untitled hotspot",
       type: "hotspot",
       hotspotType,
-      coordinates: {
-        // Use coordinates from currentHotspot, which may have been updated via resizing
-        x: Number(currentHotspot.coordinates.x),
-        y: Number(currentHotspot.coordinates.y),
-        width: Number(currentHotspot.coordinates.width),
-        height: Number(currentHotspot.coordinates.height),
-      },
+      coordinates: finalCoordinates,
+      percentageCoordinates: finalPercentageCoordinates,
       settings: hotspotSettings,
     };
 
@@ -1203,63 +1539,67 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
   // Helper function to render resize handles for a hotspot
   const renderResizeHandles = (hotspot: Hotspot) => {
-    if (!hotspot.coordinates || !imageElementRef.current) return null;
+    if (
+      (!hotspot.coordinates && !hotspot.percentageCoordinates) ||
+      !imageElementRef.current
+    )
+      return null;
 
     const isEditing =
       editingId === hotspot.id || resizingHotspot === hotspot.id;
 
     if (!isEditing) return null;
 
-    // Create resize handles for the hotspot
+    // Create resize handles with more reliable positions and sizing
     return resizeHandles.map((handle) => {
       let handleStyle: React.CSSProperties = {
         position: "absolute",
-        width: "12px",
-        height: "12px",
+        width: "16px", // Larger for easier targeting
+        height: "16px", // Larger for easier targeting
         backgroundColor: "#444CE7",
         borderRadius: "50%",
         cursor: handle.cursor,
-        zIndex: 3,
+        zIndex: 10, // Higher z-index to ensure it's on top
         border: "2px solid white",
-        boxShadow: "0 0 4px rgba(0,0,0,0.3)",
+        boxShadow: "0 0 4px rgba(0,0,0,0.5)",
       };
 
       // Position the handle based on its position name
       switch (handle.position) {
         case "top-left":
-          handleStyle.top = "-6px";
-          handleStyle.left = "-6px";
+          handleStyle.top = "-8px";
+          handleStyle.left = "-8px";
           break;
         case "top-right":
-          handleStyle.top = "-6px";
-          handleStyle.right = "-6px";
+          handleStyle.top = "-8px";
+          handleStyle.right = "-8px";
           break;
         case "bottom-left":
-          handleStyle.bottom = "-6px";
-          handleStyle.left = "-6px";
+          handleStyle.bottom = "-8px";
+          handleStyle.left = "-8px";
           break;
         case "bottom-right":
-          handleStyle.bottom = "-6px";
-          handleStyle.right = "-6px";
+          handleStyle.bottom = "-8px";
+          handleStyle.right = "-8px";
           break;
         case "top":
-          handleStyle.top = "-6px";
+          handleStyle.top = "-8px";
           handleStyle.left = "50%";
           handleStyle.transform = "translateX(-50%)";
           break;
         case "right":
           handleStyle.top = "50%";
-          handleStyle.right = "-6px";
+          handleStyle.right = "-8px";
           handleStyle.transform = "translateY(-50%)";
           break;
         case "bottom":
-          handleStyle.bottom = "-6px";
+          handleStyle.bottom = "-8px";
           handleStyle.left = "50%";
           handleStyle.transform = "translateX(-50%)";
           break;
         case "left":
           handleStyle.top = "50%";
-          handleStyle.left = "-6px";
+          handleStyle.left = "-8px";
           handleStyle.transform = "translateY(-50%)";
           break;
       }
@@ -1270,6 +1610,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           style={handleStyle}
           onMouseDown={(e) => {
             e.stopPropagation();
+            e.preventDefault(); // Prevent default to avoid text selection
             handleStartResize(e, hotspot.id, handle.position);
           }}
         />
@@ -1277,17 +1618,21 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     });
   };
 
-  // Helper function to render hotspots on the image - converts from original image coordinates to rendered coordinates
+  // Helper function to render hotspots on the image - updated to use proper coordinate scaling
   const renderHotspot = (hotspot: Hotspot) => {
-    if (!hotspot.coordinates || !imageElementRef.current) return null;
+    if (
+      (!hotspot.coordinates && !hotspot.percentageCoordinates) ||
+      !imageElementRef.current
+    )
+      return null;
 
-    // Convert coordinates from original image coordinates to rendered coordinates
-    const scaledCoords = {
-      left: hotspot.coordinates.x * imageScale.width,
-      top: hotspot.coordinates.y * imageScale.height,
-      width: hotspot.coordinates.width * imageScale.width,
-      height: hotspot.coordinates.height * imageScale.height,
-    };
+    // Get scaled coordinates using our improved function
+    const renderedCoords = getScaledCoordinates(
+      hotspot.percentageCoordinates || hotspot.coordinates,
+      imageElementRef.current,
+    );
+
+    if (!renderedCoords) return null;
 
     // Determine states for visual styling
     const isMoving = movingHotspot === hotspot.id;
@@ -1325,10 +1670,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           onMouseLeave={() => setHoveredHotspot(null)}
           sx={{
             position: "absolute",
-            left: `${scaledCoords.left}px`,
-            top: `${scaledCoords.top}px`,
-            width: `${scaledCoords.width}px`,
-            height: `${scaledCoords.height}px`,
+            left: `${renderedCoords.left}px`,
+            top: `${renderedCoords.top}px`,
+            width: `${renderedCoords.width}px`,
+            height: `${renderedCoords.height}px`,
             border: "2px solid",
             borderColor: isEditing
               ? "#00AB55"
@@ -1417,16 +1762,21 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       </Tooltip>
     );
   };
-  const renderMasking = (masking: Masking) => {
-    if (!masking.coordinates || !imageElementRef.current) return null;
 
-    // Convert coordinates from original image coordinates to rendered coordinates
-    const scaledCoords = {
-      left: masking.coordinates.x * imageScale.width,
-      top: masking.coordinates.y * imageScale.height,
-      width: masking.coordinates.width * imageScale.width,
-      height: masking.coordinates.height * imageScale.height,
-    };
+  const renderMasking = (masking: Masking) => {
+    if (
+      (!masking.coordinates && !masking.percentageCoordinates) ||
+      !imageElementRef.current
+    )
+      return null;
+
+    // Get scaled coordinates using our improved function
+    const renderedCoords = getScaledCoordinates(
+      masking.percentageCoordinates || masking.coordinates,
+      imageElementRef.current,
+    );
+
+    if (!renderedCoords) return null;
 
     return (
       <Tooltip
@@ -1444,10 +1794,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           }}
           sx={{
             position: "absolute",
-            left: `${scaledCoords.left}px`,
-            top: `${scaledCoords.top}px`,
-            width: `${scaledCoords.width}px`,
-            height: `${scaledCoords.height}px`,
+            left: `${renderedCoords.left}px`,
+            top: `${renderedCoords.top}px`,
+            width: `${renderedCoords.width}px`,
+            height: `${renderedCoords.height}px`,
             border: "2px solid #00AB55 ",
             backgroundColor: masking.settings?.color,
             cursor: "pointer",
@@ -1456,9 +1806,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             transition: "background-color 0.2s ease",
           }}
         >
-          {" "}
           {/* Add resize handles when masking is being edited */}
-          {renderResizeHandles(masking)}
+          {/* renderResizeHandles would need to be adapted for masking */}
         </Box>
       </Tooltip>
     );
@@ -1486,6 +1835,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           position: "relative",
           width: "100%",
           height: "100%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          overflow: "hidden",
           cursor: isDrawing
             ? "crosshair"
             : "url(\"data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='10' fill='black'/%3E%3Cpath d='M12 7V17M7 12H17' stroke='white' stroke-width='2'/%3E%3C/svg%3E\") 12 12, auto",
@@ -1542,9 +1895,10 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
               setImageError("Could not load image");
             }}
             sx={{
-              width: "100%",
-              height: "100%",
+              maxWidth: "100%",
+              maxHeight: "100%",
               objectFit: "contain",
+              display: "block",
             }}
           />
         ) : imageError ? (
@@ -1581,22 +1935,47 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         {Array.isArray(maskings) && maskings.map(renderMasking)}
 
         {/* Currently drawing hotspot */}
-        {currentHotspot && currentHotspot.coordinates && !showSettings && (
-          <Box
-            sx={{
-              position: "absolute",
-              left: `${currentHotspot.coordinates.x * imageScale.width}px`,
-              top: `${currentHotspot.coordinates.y * imageScale.height}px`,
-              width: `${currentHotspot.coordinates.width * imageScale.width}px`,
-              height: `${
-                currentHotspot.coordinates.height * imageScale.height
-              }px`,
-              border: "2px solid #444CE7",
-              backgroundColor: "rgba(68, 76, 231, 0.1)",
-              pointerEvents: "none",
-            }}
-          />
-        )}
+        {currentHotspot &&
+          (currentHotspot.coordinates ||
+            currentHotspot.percentageCoordinates) &&
+          !showSettings && (
+            <Box
+              sx={{
+                position: "absolute",
+                left: `${
+                  getScaledCoordinates(
+                    currentHotspot.percentageCoordinates ||
+                      currentHotspot.coordinates,
+                    imageElementRef.current,
+                  )?.left || 0
+                }px`,
+                top: `${
+                  getScaledCoordinates(
+                    currentHotspot.percentageCoordinates ||
+                      currentHotspot.coordinates,
+                    imageElementRef.current,
+                  )?.top || 0
+                }px`,
+                width: `${
+                  getScaledCoordinates(
+                    currentHotspot.percentageCoordinates ||
+                      currentHotspot.coordinates,
+                    imageElementRef.current,
+                  )?.width || 0
+                }px`,
+                height: `${
+                  getScaledCoordinates(
+                    currentHotspot.percentageCoordinates ||
+                      currentHotspot.coordinates,
+                    imageElementRef.current,
+                  )?.height || 0
+                }px`,
+                border: "2px solid #444CE7",
+                backgroundColor: "rgba(68, 76, 231, 0.1)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
       </Box>
 
       {/* Settings Dialog - Now with draggable header */}

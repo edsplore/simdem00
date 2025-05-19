@@ -17,6 +17,7 @@ import {
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
+import { useAuth } from '../../../../../../context/AuthContext';
 import { RetellWebClient } from 'retell-client-js-sdk';
 
 interface Message {
@@ -37,6 +38,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
   const [isStarting, setIsStarting] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
   const previousTranscriptRef = useRef<{ role: string; content: string }[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -308,9 +310,18 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
                       </Box>
                       {message.speaker === 'trainee' && (
                         <Avatar
-                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                          src={user?.profileImageUrl || undefined}
                           sx={{ width: 32, height: 32 }}
-                        />
+                        >
+                          {!user?.profileImageUrl &&
+                            (user?.name
+                              ? user.name
+                                  .split(' ')
+                                  .map((n) => n[0])
+                                  .join('')
+                                  .toUpperCase()
+                              : 'T')}
+                        </Avatar>
                       )}
                     </Stack>
                   ))}

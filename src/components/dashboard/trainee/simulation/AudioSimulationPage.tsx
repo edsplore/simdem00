@@ -762,9 +762,18 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                       </Box>
                       {message.speaker === "trainee" && (
                         <Avatar
-                          src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
+                          src={user?.profileImageUrl || undefined}
                           sx={{ width: 32, height: 32 }}
-                        />
+                        >
+                          {!user?.profileImageUrl &&
+                            (user?.name
+                              ? user.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                              : "T")}
+                        </Avatar>
                       )}
                     </Stack>
                   ))}

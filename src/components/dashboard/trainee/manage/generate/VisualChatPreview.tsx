@@ -1140,15 +1140,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                               color: "#444CE7",
                             },
                           }}
-                        />
-                        {currentItem.name && (
-                          <Typography
-                            variant="body2"
-                            sx={{ ml: 1, color: "text.primary" }}
-                          >
-                            {currentItem.name}
-                          </Typography>
-                        )}
+                        />                      
                       </Box>
                     )}
 

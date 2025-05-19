@@ -8,6 +8,7 @@ import {
   Chip,
   Divider,
 } from "@mui/material";
+import { useAuth } from "../../../../../context/AuthContext";
 import PlaybackControls from "./PlaybackControls";
 
 interface Message {
@@ -56,6 +57,7 @@ interface PlaybackChatProps {
 }
 
 const PlaybackChat = ({ messages }: PlaybackChatProps) => {
+  const { user } = useAuth();
   useEffect(() => {
     console.log("messages ----playbck-", messages);
   }, [messages]);
@@ -230,9 +232,18 @@ const PlaybackChat = ({ messages }: PlaybackChatProps) => {
               </Box>
               {message.type === "agent" && (
                 <Avatar
-                  src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=256&h=256&q=80"
+                  src={user?.profileImageUrl || undefined}
                   sx={{ width: 32, height: 32 }}
-                />
+                >
+                  {!user?.profileImageUrl &&
+                    (user?.name
+                      ? user.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                      : "T")}
+                </Avatar>
               )}
             </Stack>
           ))}

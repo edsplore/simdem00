@@ -1223,38 +1223,17 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.left
-                            }px`,
-                            top: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.top
-                            }px`,
-                            width: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.width
-                            }px`,
-                            height: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.height
-                            }px`,
-                            border: "4px solid",
-                            borderColor: getHighlightColor(),
+                            left: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.height}px`,
+                            border: "8px solid", // INCREASED from 4px
+                            borderColor: getHighlightColor(), // Use original color function
                             boxShadow: highlightHotspot
-                              ? `0 0 12px 3px ${getHighlightColor()}`
+                              ? `0 0 18px 9px ${getHighlightColor()}` // Same user-defined color
                               : "none",
-                            borderRadius: "4px",
-                            backgroundColor: "transparent",
-                            transition: "box-shadow 0.3s",
+                            borderRadius: "5px", // Slightly increased
+                            transition: "box-shadow 0.4s",
                           }}
                         />
                       )}

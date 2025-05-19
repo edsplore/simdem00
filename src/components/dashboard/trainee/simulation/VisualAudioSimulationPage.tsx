@@ -2441,31 +2441,18 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
-                                    left: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.left
-                                    }px`,
-                                    top: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.top
-                                    }px`,
-                                    width: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.width
-                                    }px`,
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    border: "4px solid",
+                                    left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                                    top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                    width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    border: "8px solid", // INCREASED from 4px to 8px
                                     borderColor:
                                       currentItem.settings?.highlightColor ||
-                                      "rgba(68, 76, 231, 0.7)",
+                                      "rgba(68, 76, 231, 0.7)", // Keep original color
                                     boxShadow: highlightHotspot
-                                      ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                                      ? `0 0 15px 8px ${currentItem.settings?.highlightColor || "rgba(68, 76, 231, 0.7)"}` // Use same color
                                       : "none",
                                     borderRadius: "4px",
-                                    backgroundColor: "transparent",
                                     transition: "box-shadow 0.3s",
                                     zIndex: 10,
                                   }}

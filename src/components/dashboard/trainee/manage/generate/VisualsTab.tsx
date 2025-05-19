@@ -390,6 +390,7 @@ export default function VisualsTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isFileUploaded, setIsFileUploaded] = useState(false);
+  const [isMaskPhiLoading, setIsMaskPhiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -1687,17 +1688,22 @@ export default function VisualsTab({
         formData.append(`${image.id}`, image.file, image.name);
       }
     });
-    const response: DetectMaskPHIResponse[] = await detectMaskAreas(formData);
 
-    for (let maskPhiResponse of response) {
-      if (maskPhiResponse.id) {
-        const visualImage = visualImages.find(
-          (image) => image.id === maskPhiResponse.id,
-        );
-        if (visualImage) {
-          // Update the visualImage with the masking information
-          const finalMasking = maskPhiResponse.masking.rectangles.map(
-            (rectangle) => {
+    setIsMaskPhiLoading(true);
+    setIsFileUploaded(false);
+
+    try {
+      const response: DetectMaskPHIResponse[] = await detectMaskAreas(formData);
+
+      for (let maskPhiResponse of response) {
+        if (maskPhiResponse.id) {
+          const visualImage = visualImages.find(
+            (image) => image.id === maskPhiResponse.id,
+          );
+          if (visualImage) {
+            // Update the visualImage with the masking information
+            const finalMasking = maskPhiResponse.masking.rectangles.map(
+              (rectangle) => {
               // Create a coordinates object with both absolute and percentage values if available
               const maskingCoordinates: any = {
                 x: parseInt(rectangle.x),
@@ -1740,7 +1746,12 @@ export default function VisualsTab({
         }
       }
     }
-    setIsFileUploaded(false);
+    } catch (err) {
+      console.error("Error detecting PHI:", err);
+      setError("Failed to mask PHI");
+    } finally {
+      setIsMaskPhiLoading(false);
+    }
   };
 
   const cancelMaskPhi = () => {
@@ -1799,6 +1810,37 @@ export default function VisualsTab({
               sx={{ color: "white", mt: 1, fontSize: 16, fontWeight: 600 }}
             >
               Processing Visuals...
+            </Typography>
+          </Stack>
+        </Stack>
+      )}
+      {isMaskPhiLoading && (
+        <Stack
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            zIndex: 1400, // higher than typical material components
+            backgroundColor: "#00000099",
+            backdropFilter: "blur(100px)", // applies the blur effect behind
+            WebkitBackdropFilter: "blur(16px)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Stack>
+            <CircularProgress
+              thickness={5}
+              size={100}
+              sx={{ color: "white" }}
+            />
+            <Typography
+              sx={{ color: "white", mt: 1, fontSize: 16, fontWeight: 600 }}
+            >
+              Masking PHI...
             </Typography>
           </Stack>
         </Stack>

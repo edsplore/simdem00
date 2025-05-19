@@ -1639,45 +1639,20 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {currentItem.hotspotType === "highlight" &&
                               !levelSettings.hideHighlights && (
                                 <Box
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log("Highlight hotspot clicked");
-                                    handleHotspotClick(e);
-                                  }}
+                                  onClick={handleHotspotClick}
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
-                                    left: `${
-                                      scaleCoordinates(
-                                        currentItem.percentageCoordinates ||
-                                          currentItem.coordinates,
-                                      )?.left
-                                    }px`,
-                                    top: `${
-                                      scaleCoordinates(
-                                        currentItem.percentageCoordinates ||
-                                          currentItem.coordinates,
-                                      )?.top
-                                    }px`,
-                                    width: `${
-                                      scaleCoordinates(
-                                        currentItem.percentageCoordinates ||
-                                          currentItem.coordinates,
-                                      )?.width
-                                    }px`,
-                                    height: `${
-                                      scaleCoordinates(
-                                        currentItem.percentageCoordinates ||
-                                          currentItem.coordinates,
-                                      )?.height
-                                    }px`,
-                                    border: "4px solid",
-                                    borderColor: getHighlightColor(),
+                                    left: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.left}px`,
+                                    top: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.top}px`,
+                                    width: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.width}px`,
+                                    height: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.height}px`,
+                                    border: "7px solid", // INCREASED from 4px
+                                    borderColor: getHighlightColor(), // Maintain user color
                                     boxShadow: highlightHotspot
-                                      ? `0 0 12px 3px ${getHighlightColor()}`
+                                      ? `0 0 16px 8px ${getHighlightColor()}` // Use same color for shadow
                                       : "none",
-                                    borderRadius: "4px",
-                                    backgroundColor: "transparent",
+                                    borderRadius: "5px", // Slightly increased
                                     transition: "box-shadow 0.3s",
                                     zIndex: 10,
                                   }}

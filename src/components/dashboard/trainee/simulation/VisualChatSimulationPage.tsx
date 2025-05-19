@@ -1883,30 +1883,17 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
-                                    left: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.left
-                                    }px`,
-                                    top: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.top
-                                    }px`,
-                                    width: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.width
-                                    }px`,
-                                    height: `${
-                                      scaleCoordinates(currentItem.coordinates)
-                                        ?.height
-                                    }px`,
-                                    border: "4px solid",
-                                    borderColor: getHighlightColor(),
+                                    left: `${scaleCoordinates(currentItem.coordinates)?.left}px`,
+                                    top: `${scaleCoordinates(currentItem.coordinates)?.top}px`,
+                                    width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
+                                    height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
+                                    border: "8px solid", // INCREASED from 4px to 8px
+                                    borderColor: getHighlightColor(), // Use the function already defined that respects user settings
                                     boxShadow: highlightHotspot
-                                      ? `0 0 12px 3px ${getHighlightColor()}`
+                                      ? `0 0 18px 8px ${getHighlightColor()}` // Use same user-defined color
                                       : "none",
-                                    borderRadius: "4px",
-                                    backgroundColor: "transparent",
-                                    transition: "box-shadow 0.3s",
+                                    borderRadius: "6px", // Slightly increased
+                                    transition: "all 0.3s ease",
                                     zIndex: 10,
                                   }}
                                 />
@@ -2185,21 +2172,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
                       {message.role === "trainee" && (
                         <Avatar
-                          src={user?.profileImageUrl || undefined}
                           sx={{
                             width: 28, // Reduced from 32
                             height: 28, // Reduced from 32
-                            bgcolor: user?.profileImageUrl ? undefined : "success.light",
+                            bgcolor: "success.light",
                           }}
                         >
-                          {!user?.profileImageUrl &&
-                            (user?.name
-                              ? user.name
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()
-                              : "T")}
+                          <PersonIcon fontSize="small" />
                         </Avatar>
                       )}
                     </Stack>

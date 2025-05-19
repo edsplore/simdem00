@@ -1310,39 +1310,18 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                           sx={{
                             position: "absolute",
                             cursor: "pointer",
-                            left: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.left
-                            }px`,
-                            top: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.top
-                            }px`,
-                            width: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.width
-                            }px`,
-                            height: `${
-                              scaleCoordinates(
-                                currentItem.percentageCoordinates ||
-                                  currentItem.coordinates,
-                              )?.height
-                            }px`,
-                            border: "4px solid",
+                            left: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.left}px`,
+                            top: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.top}px`,
+                            width: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.width}px`,
+                            height: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.height}px`,
+                            border: "7px solid", // INCREASED from 4px
                             borderColor:
                               currentItem.settings?.highlightColor ||
-                              "rgba(68, 76, 231, 0.7)",
+                              "rgba(68, 76, 231, 0.7)", // Keep original color intact
                             boxShadow: highlightHotspot
-                              ? "0 0 12px 3px rgba(68, 76, 231, 0.6)"
+                              ? `0 0 18px 10px ${currentItem.settings?.highlightColor || "rgba(68, 76, 231, 0.7)"}` // Same color as border
                               : "none",
-                            borderRadius: "4px",
-                            backgroundColor: "transparent",
+                            borderRadius: "5px", // Slightly increased
                             transition: "box-shadow 0.3s",
                           }}
                         />

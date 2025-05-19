@@ -12,7 +12,6 @@ import {
   Fade,
   CircularProgress,
 } from "@mui/material";
-import { useAuth } from "../../../../../context/AuthContext";
 import {
   HeadsetMic,
   PlayArrow,
@@ -167,7 +166,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   const [simulationData, setSimulationData] = useState<SimulationData | null>(
     null,
   );
-  const { user } = useAuth();
   const [slides, setSlides] = useState<Map<string, string>>(new Map());
   const [isCallActive, setIsCallActive] = useState(false);
   const [allMessages, setAllMessages] = useState<Message[]>([]);
@@ -858,18 +856,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
                     </Box>
                     {message.speaker === "trainee" && (
                       <Avatar
-                        src={user?.profileImageUrl || undefined}
+                        src="https://images.unsplash.com/photo-1494790108377-be9c29b29330"
                         sx={{ width: 32, height: 32 }}
-                      >
-                        {!user?.profileImageUrl &&
-                          (user?.name
-                            ? user.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")
-                                .toUpperCase()
-                            : "T")}
-                      </Avatar>
+                      />
                     )}
                   </Stack>
                 ))}

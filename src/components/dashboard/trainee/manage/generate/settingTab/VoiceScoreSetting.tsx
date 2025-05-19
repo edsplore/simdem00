@@ -27,6 +27,7 @@ import {
   listVoices,
   filterVoices,
 } from "../../../../../../services/simulation_voices";
+import { useAuth } from "../../../../../../context/AuthContext";
 
 interface Voice {
   voice_id: string;
@@ -141,6 +142,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   enabledLevels,
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
+  const { user } = useAuth();
   const [selectedVoice, setSelectedVoice] = useState<string>(
     settings.voice?.voiceId || "",
   );
@@ -379,7 +381,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   const fetchVoices = async () => {
     try {
-      const response = await listVoices("user123");
+      const response = await listVoices({ user_id: user?.id || "user123" });
       console.log("API response - voices:", response);
       if (response.voices && Array.isArray(response.voices)) {
         setVoices(response.voices);
@@ -390,10 +392,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   };
 
   useEffect(() => {
-    if (showVoiceSettings) {
+    if (showVoiceSettings && simulationType !== "visual-audio") {
       fetchVoices();
     }
-  }, [showVoiceSettings]);
+  }, [showVoiceSettings, simulationType]);
 
   useEffect(() => {
     // If we have a voice ID from settings, select it
@@ -483,10 +485,33 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   };
 
   const handleProcessVoice = async () => {
+    if (simulationType !== "visual-audio") {
+      setIsProcessing(true);
+      try {
+        // Preserve existing behavior for non visual-audio simulations
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } finally {
+        setIsProcessing(false);
+      }
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // Simulate some processing
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const request = {
+        user_id: user?.id || "user123",
+        simulation_type: simulationType,
+        gender: getValues("gender"),
+        age: getValues("ageGroup"),
+        accent: getValues("accent"),
+        language: getValues("language"),
+      };
+      const response = await listVoices(request);
+      if (response.voices && Array.isArray(response.voices)) {
+        setVoices(response.voices);
+      }
+    } catch (error) {
+      console.error("Error processing base voice:", error);
     } finally {
       setIsProcessing(false);
     }

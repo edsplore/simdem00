@@ -22,6 +22,11 @@ export interface Voice {
  */
 export interface ListVoicesRequest {
   user_id: string;
+  simulation_type?: string;
+  gender?: string;
+  accent?: string;
+  language?: string;
+  age?: string;
 }
 
 /**
@@ -29,22 +34,24 @@ export interface ListVoicesRequest {
  */
 export interface ListVoicesResponse {
   voices: Voice[];
+  has_more?: boolean;
+  total_count?: number;
   status?: string;
   [key: string]: any;
 }
 
 /**
  * Fetches available voices for simulations
- * @param userId - The ID of the user making the request
+ * @param request - Parameters for listing voices
  * @returns A promise with the list of available voices
  */
-export const listVoices = async (userId: string,): Promise<ListVoicesResponse> => {
+export const listVoices = async (
+  request: ListVoicesRequest,
+): Promise<ListVoicesResponse> => {
   try {
     const response = await apiClient.post<ListVoicesResponse>(
-      "/list-voices", 
-      {
-      user_id: userId,
-      }
+      "/list-voices",
+      request,
     );
 
     return response.data;

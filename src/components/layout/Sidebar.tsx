@@ -94,9 +94,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isCollapsed }) => {
     { path: getDashboardPath(), icon: BarChartIcon, label: 'Dashboard', permission: hasTraineeDashboardAccess || hasManagerDashboardAccess || hasAdminDashboardAccess ? true : false },
     { path: '/training', icon: MenuBookIcon, label: 'Training Plan', permission: 'training-plan' },
     { path: '/playback', icon: PlayCircleIcon, label: 'Playback', permission: 'playback' },
-    { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations', permission: 'assign-simulations' },
     { path: '/manage-simulations', icon: SmartToyIcon, label: 'Manage Simulations', permission: 'manage-simulations' },
-    { path: '/manage-training-plan', icon: BookIcon, label: 'Manage Training Plan', permission: 'manage-training-plan', divider: true },
+    { path: '/manage-training-plan', icon: BookIcon, label: 'Manage Training Plan', permission: 'manage-training-plan' },
+    { path: '/assign-simulations', icon: AssignmentIcon, label: 'Assign Simulations', permission: 'assign-simulations', divider: true  },
     { path: '/settings', icon: SettingsIcon, label: 'Settings', permission: null },
     { path: '/support', icon: HelpIcon, label: 'Help & Support', permission: null },
     { path: '/feedback', icon: FeedbackIcon, label: 'Feedback', permission: null }

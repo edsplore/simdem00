@@ -123,6 +123,55 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     return `${mins}:${secs}`;
   };
 
+  // const handleStart = async () => {
+  //   if (!userId) {
+  //     console.error("Error: User ID is required to start simulation");
+  //     return;
+  //   }
+
+  //   setIsStarted(true);
+  //   try {
+  //     console.log("Starting chat simulation...");
+
+  //     // Use the startChatSimulation function instead of direct axios call
+  //     const response = await startChatSimulation(
+  //       userId,
+  //       simulationId,
+  //       assignmentId,
+  //       attemptType, // Pass the attemptType
+  //     );
+
+  //     console.log("Start chat response:", response);
+
+  //     if (response.id) {
+  //       setSimulationProgressId(response.id);
+  //       // Wait for initial response
+  //       const initialResponse = await sendChatMessage(
+  //         userId,
+  //         simulationId,
+  //         assignmentId,
+  //         "",
+  //         response.id,
+  //       );
+
+  //       console.log("Initial message response:", initialResponse);
+
+  //       if (initialResponse.response) {
+  //         setMessages([
+  //           {
+  //             speaker: "customer",
+  //             text: initialResponse.response,
+  //             timestamp: new Date(),
+  //           },
+  //         ]);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error starting chat:", error);
+  //     setIsStarted(false);
+  //   }
+  // };
+
   const handleStart = async () => {
     if (!userId) {
       console.error("Error: User ID is required to start simulation");
@@ -133,34 +182,25 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     try {
       console.log("Starting chat simulation...");
 
-      // Use the startChatSimulation function instead of direct axios call
+      // Make a single API call to start the simulation
       const response = await startChatSimulation(
         userId,
         simulationId,
         assignmentId,
-        attemptType, // Pass the attemptType
+        attemptType,
       );
 
       console.log("Start chat response:", response);
 
       if (response.id) {
         setSimulationProgressId(response.id);
-        // Wait for initial response
-        const initialResponse = await sendChatMessage(
-          userId,
-          simulationId,
-          assignmentId,
-          "",
-          response.id,
-        );
 
-        console.log("Initial message response:", initialResponse);
-
-        if (initialResponse.response) {
+        // If there's an initial response, add it to messages
+        if (response.response) {
           setMessages([
             {
               speaker: "customer",
-              text: initialResponse.response,
+              text: response.response,
               timestamp: new Date(),
             },
           ]);

@@ -852,6 +852,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         if (itemIndex >= 0) {
           const existingItem = finalAttemptData[itemIndex];
+          const { isClicked: _prevClicked, ...restExisting } = existingItem;
           let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
           if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
             // Remove the last wrong click (which would be the correct click on the hotspot)
@@ -859,7 +860,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           }
 
           finalAttemptData[itemIndex] = {
-            ...existingItem,
+            ...restExisting,
             ...(shouldSetIsClicked ? { isClicked: true } : {}),
             wrong_clicks: updatedWrongClicks,
           };
@@ -868,10 +869,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           );
         } else {
           // Add it if not found
+          const { isClicked: _clicked, ...restCurrent } = currentItem;
           finalAttemptData.push(
             shouldSetIsClicked
-              ? { ...currentItem, isClicked: true, wrong_clicks: [] }
-              : { ...currentItem, wrong_clicks: [] },
+              ? { ...restCurrent, isClicked: true, wrong_clicks: [] }
+              : { ...restCurrent, wrong_clicks: [] },
           );
         }
       }
@@ -1253,6 +1255,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Make a copy of the data
         const newData = [...prevData];
         const existingItem = newData[existingItemIndex];
+        // Remove any previous isClicked flag when not applicable
+        const { isClicked: _prevClicked, ...restExisting } = existingItem;
 
         // Only update wrong_clicks for clickable hotspots
         let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
@@ -1263,7 +1267,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         // Update the item, only setting isClicked for appropriate types
         newData[existingItemIndex] = {
-          ...existingItem,
+          ...restExisting,
           ...(shouldSetIsClicked ? { isClicked: true } : {}),
           wrong_clicks: updatedWrongClicks,
         };
@@ -1274,10 +1278,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         return newData;
       } else {
         // If item doesn't exist yet, add it with appropriate properties
+        // Remove isClicked from currentItem if present
+        const { isClicked: _clicked, ...restCurrent } = currentItem;
         return [
           ...prevData,
           {
-            ...currentItem,
+            ...restCurrent,
             ...(shouldSetIsClicked ? { isClicked: true } : {}),
             wrong_clicks: [], // Start with empty wrong_clicks
           },
@@ -1331,10 +1337,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setAttemptSequenceData((prevData) => {
       const existingItem = prevData.find((item) => item.id === currentItem.id);
       if (existingItem) {
+        const { isClicked: _prevClicked, ...restExisting } = existingItem;
         return [
           ...prevData.filter((item) => item.id !== currentItem.id),
           {
-            ...existingItem,
+            ...restExisting,
             // Do NOT set isClicked for dropdown
             userInput: option,
             // Clear any wrong_clicks for dropdown
@@ -1342,10 +1349,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           },
         ];
       } else {
+        const { isClicked: _clicked, ...restCurrent } = currentItem;
         return [
           ...prevData,
           {
-            ...currentItem,
+            ...restCurrent,
             // Do NOT set isClicked for dropdown
             userInput: option,
             wrong_clicks: [],
@@ -1886,6 +1894,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         if (itemIndex >= 0) {
           // Update the item based on its type
           const existingItem = finalAttemptData[itemIndex];
+          const { isClicked: _prevClicked, ...restExisting } = existingItem;
 
           // For clickable hotspots, update isClicked and clean wrong_clicks
           if (shouldSetIsClicked) {
@@ -1896,14 +1905,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             }
 
             finalAttemptData[itemIndex] = {
-              ...existingItem,
+              ...restExisting,
               isClicked: true,
               wrong_clicks: updatedWrongClicks,
             };
           } else {
             // For dropdown and textfield, don't set isClicked but clear wrong_clicks
             finalAttemptData[itemIndex] = {
-              ...existingItem,
+              ...restExisting,
               wrong_clicks: [],
             };
           }
@@ -1913,15 +1922,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           );
         } else {
           // Add it if not found, with proper properties based on type
+          const { isClicked: _clicked, ...restCurrent } = currentItem;
           finalAttemptData.push(
-            shouldSetIsClicked 
+            shouldSetIsClicked
               ? {
-                  ...currentItem,
+                  ...restCurrent,
                   isClicked: true,
                   wrong_clicks: [],
                 }
               : {
-                  ...currentItem,
+                  ...restCurrent,
                   wrong_clicks: [],
                 }
           );

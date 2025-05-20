@@ -44,6 +44,7 @@ import {
   EndVisualAudioResponse,
 } from "../../../../services/simulation_visual_audio_attempts";
 import { convertAudioToText } from "../../../../services/simulation_script";
+import { textToSpeech } from "../../../../services/text_to_speech";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
 
@@ -224,7 +225,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const speechSynthRef = useRef(window.speechSynthesis);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const originalImageSizeRef = useRef<{ width: number; height: number }>({
     width: 0,
     height: 0,
@@ -346,7 +347,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      speechSynthRef.current.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
     };
   }, [isPaused, isCallActive]);
 
@@ -746,8 +751,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       console.log("Timer stopped");
     }
 
-    // Cancel any ongoing speech
-    speechSynthRef.current.cancel();
+      // Cancel any ongoing speech
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
 
     // Stop recording if active
     if (recordingTimerRef.current) {
@@ -859,33 +868,38 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return `${mins}:${secs}`;
   };
 
-  // Function to speak text
-  const speakText = (text: string) => {
-    return new Promise((resolve, reject) => {
-      try {
-        // Ensure any ongoing speech is cancelled
-        speechSynthRef.current.cancel();
+  // Function to speak text using backend text-to-speech
+  const speakText = async (text: string) => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
 
-        // Create a new utterance
-        const utterance = new SpeechSynthesisUtterance(text);
+      const blob = await textToSpeech({ text });
+      const url = URL.createObjectURL(blob);
 
-        utterance.onend = () => {
-          speechSynthRef.current.cancel();
+      return new Promise<boolean>((resolve, reject) => {
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
           resolve(true);
         };
-
-        utterance.onerror = (error) => {
-          console.error("Speech synthesis error:", error);
-          speechSynthRef.current.cancel();
-          reject(error);
+        audio.onerror = (e) => {
+          console.error("Audio playback error", e);
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
+          reject(e);
         };
-
-        speechSynthRef.current.speak(utterance);
-      } catch (error) {
-        console.error("Failed to initialize speech:", error);
-        reject(error);
-      }
-    });
+        audio.play().catch(reject);
+      });
+    } catch (error) {
+      console.error("Failed to play speech:", error);
+      return Promise.reject(error);
+    }
   };
 
   // Improved implementation for more accurate scaling
@@ -1317,9 +1331,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     if (speaking && !isPaused) {
-      speechSynthRef.current.pause();
+      audioRef.current?.pause();
     } else if (speaking && isPaused) {
-      speechSynthRef.current.resume();
+      audioRef.current?.play();
     }
 
     // Also handle pausing of recording
@@ -1693,8 +1707,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       console.log("Timer stopped");
     }
 
-    // Cancel any ongoing speech
-    speechSynthRef.current.cancel();
+      // Cancel any ongoing speech
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
 
     // Stop recording if active
     if (recordingTimerRef.current) {
@@ -2763,7 +2781,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               currentItem.role === "Customer" ||
                               currentItem.role === "customer"
                             ) {
-                              speechSynthRef.current.cancel();
+                              if (audioRef.current) {
+                                audioRef.current.pause();
+                                audioRef.current.src = "";
+                                audioRef.current = null;
+                              }
                               setSpeaking(false);
                               moveToNextItem();
                             }

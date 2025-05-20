@@ -26,6 +26,7 @@ import {
   VolumeUp,
   CheckCircle,
 } from "@mui/icons-material";
+import { textToSpeech } from "../../../../../services/text_to_speech";
 
 // Utility function to strip HTML tags
 const stripHtmlTags = (html: string): string => {
@@ -92,6 +93,7 @@ interface SimulationData {
   sim_type: string;
   status: string;
   tags: string[];
+  voice_id?: string;
   est_time: string;
   script: Array<{
     script_sentence: string;
@@ -196,7 +198,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
   // Refs
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const speechSynthRef = useRef(window.speechSynthesis);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const hotspotTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -245,7 +247,11 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
-      speechSynthRef.current.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
     };
   }, [isPaused]);
 
@@ -310,7 +316,7 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
         // Strip HTML before speaking
         const cleanText = stripHtmlTags(currentItem.text || "");
-        speakText(cleanText)
+        speakText(cleanText, simulationData?.voice_id || "pNInz6obpgDQGcFmaJgB")
           .then(() => {
             setAttemptSequenceData((prevState) => [
               ...prevState,
@@ -393,33 +399,38 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     isProcessing,
   ]);
 
-  // Function to speak text
-  const speakText = (text: string) => {
-    return new Promise((resolve, reject) => {
-      try {
-        // Ensure any ongoing speech is cancelled
-        speechSynthRef.current.cancel();
+  // Function to speak text using backend text-to-speech
+  const speakText = async (text: string, voice_id: string) => {
+    try {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
 
-        // Create a new utterance
-        const utterance = new SpeechSynthesisUtterance(text);
+      const blob = await textToSpeech({ text, voice_id });
+      const url = URL.createObjectURL(blob);
 
-        utterance.onend = () => {
-          speechSynthRef.current.cancel();
+      return new Promise<boolean>((resolve, reject) => {
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
           resolve(true);
         };
-
-        utterance.onerror = (error) => {
-          console.error("Speech synthesis error:", error);
-          speechSynthRef.current.cancel();
-          reject(error);
+        audio.onerror = (e) => {
+          console.error("Audio playback error", e);
+          URL.revokeObjectURL(url);
+          audioRef.current = null;
+          reject(e);
         };
-
-        speechSynthRef.current.speak(utterance);
-      } catch (error) {
-        console.error("Failed to initialize speech:", error);
-        reject(error);
-      }
-    });
+        audio.play().catch(reject);
+      });
+    } catch (error) {
+      console.error("Failed to play speech:", error);
+      return Promise.reject(error);
+    }
   };
 
   // Format time as MM:SS
@@ -738,9 +749,13 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     }
 
     if (speaking && !isPaused) {
-      speechSynthRef.current.pause();
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
     } else if (speaking && isPaused) {
-      speechSynthRef.current.resume();
+      if (audioRef.current) {
+        audioRef.current.play();
+      }
     }
 
     // Also handle pausing of recording
@@ -764,7 +779,11 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       hotspotTimeoutRef.current = null;
     }
 
-    speechSynthRef.current.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
 
     if (isRecording && recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
@@ -1630,7 +1649,11 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                         currentItem.role === "Customer" ||
                         currentItem.role === "customer"
                       ) {
-                        speechSynthRef.current.cancel();
+                        if (audioRef.current) {
+                          audioRef.current.pause();
+                          audioRef.current.src = "";
+                          audioRef.current = null;
+                        }
                         setSpeaking(false);
                       }
                       // For trainee messages

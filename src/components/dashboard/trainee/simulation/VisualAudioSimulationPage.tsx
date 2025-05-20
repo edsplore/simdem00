@@ -1138,13 +1138,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // Simplified approach: Record clicks for click tracking
+  // Check for clicks outside of active hotspot areas
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
     const handleClick = (event: MouseEvent) => {
       const container = imageContainerRef.current;
       if (!container) return;
+
+      // Skip tracking wrong clicks for dropdown and textbox hotspots
+      const hotspotType = currentItem.hotspotType || "button";
+      if (["dropdown", "textfield"].includes(hotspotType)) {
+        return;
+      }
 
       // Get click position relative to the container
       const rect = container.getBoundingClientRect();
@@ -1229,6 +1235,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
+    // Only set isClicked for certain hotspot types (button, highlight, checkbox)
+    const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
     // Simpler approach: find the item in our data and update its properties
     setAttemptSequenceData((prevData) => {
       // Find if this item already exists in our data
@@ -1241,32 +1250,31 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const newData = [...prevData];
         const existingItem = newData[existingItemIndex];
 
-        // Set isClicked to true and remove the last wrong click (if any)
+        // Only update wrong_clicks for clickable hotspots
         let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-        if (updatedWrongClicks.length > 0) {
+        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
           // Remove the last wrong click
           updatedWrongClicks.pop();
         }
 
-        // Update the item
+        // Update the item, only setting isClicked for appropriate types
         newData[existingItemIndex] = {
           ...existingItem,
-          isClicked: true,
+          ...(shouldSetIsClicked ? { isClicked: true } : {}),
           wrong_clicks: updatedWrongClicks,
         };
 
         console.log(
-          `Updated hotspot ${currentItem.id}, removed last wrong click`,
-          updatedWrongClicks,
+          `Updated hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
         );
         return newData;
       } else {
-        // If item doesn't exist yet, add it with isClicked=true
+        // If item doesn't exist yet, add it with appropriate properties
         return [
           ...prevData,
           {
             ...currentItem,
-            isClicked: true,
+            ...(shouldSetIsClicked ? { isClicked: true } : {}),
             wrong_clicks: [], // Start with empty wrong_clicks
           },
         ];
@@ -1323,8 +1331,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           ...prevData.filter((item) => item.id !== currentItem.id),
           {
             ...existingItem,
-            // isClicked: true,
+            // Do NOT set isClicked for dropdown
             userInput: option,
+            // Clear any wrong_clicks for dropdown
+            wrong_clicks: [],
           },
         ];
       } else {
@@ -1332,8 +1342,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           ...prevData,
           {
             ...currentItem,
-            // isClicked: true,
+            // Do NOT set isClicked for dropdown
             userInput: option,
+            wrong_clicks: [],
           },
         ];
       }
@@ -1859,36 +1870,57 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Check if current item is a hotspot that should be marked as clicked
       if (currentItem && currentItem.type === "hotspot") {
+        const hotspotType = currentItem.hotspotType || "button";
+        // Only set isClicked for certain hotspot types (not for dropdown, textfield, or coaching)
+        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
         // Find if this item is already in our data
         const itemIndex = finalAttemptData.findIndex(
           (item) => item.id === currentItem.id,
         );
 
         if (itemIndex >= 0) {
-          // Ensure it's marked as clicked and has the last wrong click removed
+          // Update the item based on its type
           const existingItem = finalAttemptData[itemIndex];
-          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (updatedWrongClicks.length > 0) {
-            // Remove the last wrong click (which would be the correct click on the hotspot)
-            updatedWrongClicks.pop();
+
+          // For clickable hotspots, update isClicked and clean wrong_clicks
+          if (shouldSetIsClicked) {
+            let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+            if (updatedWrongClicks.length > 0) {
+              // Remove the last wrong click
+              updatedWrongClicks.pop();
+            }
+
+            finalAttemptData[itemIndex] = {
+              ...existingItem,
+              isClicked: true,
+              wrong_clicks: updatedWrongClicks,
+            };
+          } else {
+            // For dropdown and textfield, don't set isClicked but clear wrong_clicks
+            finalAttemptData[itemIndex] = {
+              ...existingItem,
+              wrong_clicks: [],
+            };
           }
 
-          finalAttemptData[itemIndex] = {
-            ...existingItem,
-            isClicked: true,
-            wrong_clicks: updatedWrongClicks,
-          };
           console.log(
-            "Final data updated for last hotspot:",
-            finalAttemptData[itemIndex],
+            `Final data updated for hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`
           );
         } else {
-          // Add it if not found
-          finalAttemptData.push({
-            ...currentItem,
-            isClicked: true,
-            wrong_clicks: [],
-          });
+          // Add it if not found, with proper properties based on type
+          finalAttemptData.push(
+            shouldSetIsClicked 
+              ? {
+                  ...currentItem,
+                  isClicked: true,
+                  wrong_clicks: [],
+                }
+              : {
+                  ...currentItem,
+                  wrong_clicks: [],
+                }
+          );
         }
       }
 

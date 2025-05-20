@@ -1787,17 +1787,17 @@ const ManagerDashboard = () => {
       // }
 
       if (trainingEntityDateRange[0] && trainingEntityDateRange[1]) {
-        params.assignedDateRange.startDate =
+        params.trainingEntityDateRange.startDate =
           trainingEntityDateRange[0].format("YYYY-MM-DD");
-        params.assignedDateRange.endDate =
+        params.trainingEntityDateRange.endDate =
           trainingEntityDateRange[1].format("YYYY-MM-DD");
       } else if (trainingEntityDateRange[0]) {
-        params.assignedDateRange.startDate =
+        params.trainingEntityDateRange.startDate =
           trainingEntityDateRange[0].format("YYYY-MM-DD");
-        params.assignedDateRange.endDate = null;
+        params.trainingEntityDateRange.endDate = null;
       } else if (trainingEntityDateRange[1]) {
-        params.assignedDateRange.startDate = null;
-        params.assignedDateRange.endDate =
+        params.trainingEntityDateRange.startDate = null;
+        params.trainingEntityDateRange.endDate =
           trainingEntityDateRange[1].format("YYYY-MM-DD");
       }
       const pagination = {

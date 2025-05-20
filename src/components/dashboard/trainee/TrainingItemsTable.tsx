@@ -33,8 +33,8 @@ import { DateRange } from "@mui/x-date-pickers-pro/models";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import type { TrainingPlan, Module, Simulation } from "../../../types/training";
 import { useAuth } from "../../../context/AuthContext";
 import DateSelector from "../../common/DateSelector";
@@ -97,12 +97,13 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     return (
       searchQuery !== "" ||
       statusFilter !== "all" ||
-      (dateRange[0] !== null || dateRange[1] !== null)
+      dateRange[0] !== null ||
+      dateRange[1] !== null
     );
   }, [searchQuery, statusFilter, dateRange]);
 
   // Calculate total simulations count
-  const totalSimulationsCount = showTrainingPlans 
+  const totalSimulationsCount = showTrainingPlans
     ? trainingPlans.reduce((acc, plan) => acc + plan.total_simulations, 0) +
       modules.reduce((acc, module) => acc + module.total_simulations, 0) +
       simulations.length
@@ -170,21 +171,29 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
 
     if (dateRange[0]) {
       // Convert start of day in user's timezone to UTC
-      startDateUTC = currentTimeZone 
-        ? dayjs.tz(dateRange[0].format('YYYY-MM-DD'), currentTimeZone).startOf('day').utc()
-        : dateRange[0].utc().startOf('day');
+      startDateUTC = currentTimeZone
+        ? dayjs
+            .tz(dateRange[0].format("YYYY-MM-DD"), currentTimeZone)
+            .startOf("day")
+            .utc()
+        : dateRange[0].utc().startOf("day");
     }
 
     if (dateRange[1]) {
       // Convert end of day in user's timezone to UTC
       endDateUTC = currentTimeZone
-        ? dayjs.tz(dateRange[1].format('YYYY-MM-DD'), currentTimeZone).endOf('day').utc()
-        : dateRange[1].utc().endOf('day');
+        ? dayjs
+            .tz(dateRange[1].format("YYYY-MM-DD"), currentTimeZone)
+            .endOf("day")
+            .utc()
+        : dateRange[1].utc().endOf("day");
     }
 
     // Compare UTC dates
     if (startDateUTC && endDateUTC) {
-      return backendDate.isAfter(startDateUTC) && backendDate.isBefore(endDateUTC);
+      return (
+        backendDate.isAfter(startDateUTC) && backendDate.isBefore(endDateUTC)
+      );
     } else if (startDateUTC) {
       return backendDate.isAfter(startDateUTC);
     } else if (endDateUTC) {
@@ -195,7 +204,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   };
 
   // Filter items based on search query, status, and date range
-  const filteredTrainingPlans = showTrainingPlans 
+  const filteredTrainingPlans = showTrainingPlans
     ? trainingPlans.filter((plan) => {
         if (
           searchQuery &&
@@ -257,7 +266,10 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   const endIndex = startIndex + pageSize;
 
   // Get paginated items
-  const paginatedTrainingPlans = filteredTrainingPlans.slice(startIndex, endIndex);
+  const paginatedTrainingPlans = filteredTrainingPlans.slice(
+    startIndex,
+    endIndex,
+  );
   const paginatedModules = filteredModules.slice(
     Math.max(0, startIndex - filteredTrainingPlans.length),
     Math.max(0, endIndex - filteredTrainingPlans.length),
@@ -275,7 +287,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
 
   // Ensure we don't exceed page size across all categories
   let remainingItems = pageSize;
-  const displayedTrainingPlans = showTrainingPlans 
+  const displayedTrainingPlans = showTrainingPlans
     ? paginatedTrainingPlans.slice(0, remainingItems)
     : [];
   if (showTrainingPlans) {
@@ -415,8 +427,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     borderRadius: 2,
                     height: 40,
                   }}
-                >
-                </Button>
+                ></Button>
               </span>
             </Tooltip>
           </Stack>
@@ -432,9 +443,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
           </Box>
         ) : totalFilteredItems === 0 ? (
           <Box sx={{ textAlign: "center", my: 4 }}>
-            <Alert severity="info">
-              No items match your search criteria.
-            </Alert>
+            <Alert severity="info">No items match your search criteria.</Alert>
           </Box>
         ) : (
           <StyledPaper>
@@ -519,8 +528,10 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     </Grid>
                     <Grid item xs={2.5}>
                       <Typography variant="body2">
-                        {plan.total_modules} {plan.total_modules === 1 ? 'Module' : 'Modules'} | {plan.total_simulations}{" "}
-                        {plan.total_simulations === 1 ? 'Sim' : 'Sims'}
+                        {plan.total_modules}{" "}
+                        {plan.total_modules === 1 ? "Module" : "Modules"} |{" "}
+                        {plan.total_simulations}{" "}
+                        {plan.total_simulations === 1 ? "Sim" : "Sims"}
                       </Typography>
                     </Grid>
                     <Grid item xs={1.5}>
@@ -612,12 +623,15 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                       </Grid>
                       <Grid item xs={2.5}>
                         <Typography variant="body2">
-                          {module.total_simulations} {module.total_simulations === 1 ? 'Simulation' : 'Simulations'}
+                          {module.total_simulations}{" "}
+                          {module.total_simulations === 1
+                            ? "Simulation"
+                            : "Simulations"}
                         </Typography>
                       </Grid>
                       <Grid item xs={1.5}>
                         <Typography variant="body2">
-                          {module.estimated_time || 0}m
+                          {module.est_time || 0}m
                         </Typography>
                       </Grid>
                       <Grid item xs={1.5}>
@@ -721,18 +735,14 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                               variant="body2"
                               sx={{
                                 color:
-                                  sim.final_score &&
-                                  sim.final_score >= 80
+                                  sim.final_score && sim.final_score >= 80
                                     ? "success.main"
-                                    : sim.final_score &&
-                                        sim.final_score >= 60
+                                    : sim.final_score && sim.final_score >= 60
                                       ? "warning.main"
                                       : "error.main",
                               }}
                             >
-                              {sim.final_score
-                                ? `${sim.final_score}%`
-                                : "N/A"}
+                              {sim.final_score ? `${sim.final_score}%` : "N/A"}
                             </Typography>
                           </Grid>
                           <Grid item xs={1.5}>

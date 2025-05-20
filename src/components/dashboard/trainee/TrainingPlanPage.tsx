@@ -36,7 +36,7 @@ const TrainingPlanPage = () => {
   return (
       <DashboardContent>
         <Container>
-          <Stack spacing={4} sx={{ py: 4 }}>
+          <Stack spacing={4} sx={{ py: 1 }}>
             <Stack spacing={1}>
               <Typography variant="h4" fontWeight="medium">
                 Training Plan

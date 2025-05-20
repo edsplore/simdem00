@@ -505,7 +505,7 @@ const ManageTrainingPlanPage = () => {
   return (
     <DashboardContent>
       <Container>
-        <Stack spacing={3} sx={{ py: 4 }}>
+        <Stack spacing={3} sx={{ py: 1 }}>
           <Stack>
             <Typography variant="h4" fontWeight="medium">
               Manage Training Plan

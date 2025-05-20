@@ -409,13 +409,22 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   }, [settings.voice?.voiceId]);
 
   useEffect(() => {
-    const filtered = filterVoices(voices, {
-      accent,
-      gender,
-      age: ageGroup,
-    });
-    setFilteredVoices(filtered.slice(0, 3));
-  }, [voices, accent, gender, ageGroup]);
+      const voiceLimit = simulationType === "visual-audio" ? 5 : 3;
+
+      if (simulationType === "visual-audio") {
+        // For visual-audio simulations, the API already returned the
+        // voices matching the provided parameters, so use them directly
+        setFilteredVoices(voices.slice(0, voiceLimit));
+      } else {
+        const filtered = filterVoices(voices, {
+          accent,
+          gender,
+          age: ageGroup,
+        });
+        setFilteredVoices(filtered.slice(0, voiceLimit));
+      }
+    }, [voices, accent, gender, ageGroup, simulationType]);
+
 
   useEffect(() => {
     if (!showVoiceSettings) return;

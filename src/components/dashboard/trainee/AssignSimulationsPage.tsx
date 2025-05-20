@@ -502,7 +502,7 @@ const AssignSimulationsPage = () => {
   return (
     <DashboardContent>
       <Container>
-        <Stack spacing={4} sx={{ py: 4 }}>
+        <Stack spacing={4} sx={{ py: 1 }}>
           {/* Header */}
           <Stack>
             <Typography variant="h4" fontWeight="medium">

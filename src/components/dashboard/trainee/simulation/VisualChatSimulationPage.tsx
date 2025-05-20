@@ -2007,11 +2007,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               <Box
                 sx={{
                   width: 320,
+                  height: "100%",
                   borderLeft: 1,
                   borderColor: "divider",
                   display: "flex",
                   flexDirection: "column",
                   bgcolor: "background.paper",
+                  overflow: "hidden",
                 }}
               >
                 {/* Status + top controls */}

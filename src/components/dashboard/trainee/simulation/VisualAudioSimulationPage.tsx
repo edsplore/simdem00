@@ -425,8 +425,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log("Auto-speaking customer message");
         setSpeaking(true);
 
-        speakText(currentItem.text || "")
-          .then(() => {
+        speakText(currentItem.text || "", simulationData?.voice_id || "pNInz6obpgDQGcFmaJgB").then(() => {
             setAttemptSequenceData((prevState) => [...prevState, currentItem]);
             setSpeaking(false);
             setCallStatus("Connected");

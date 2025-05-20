@@ -1799,7 +1799,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                       color: "#444CE7",
                                     },
                                   }}
-                                />                                
+                                />
                               </Box>
                             )}
 
@@ -2003,20 +2003,22 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 </Box>
               </Box>
 
-              {/* Right side - Chat panel */}
+              {/* Right side - Chat panel with FIXED HEIGHT */}
               <Box
                 sx={{
                   width: 320,
-                  height: "100%",
+                  height: "100%", // Takes parent height
+                  maxHeight: "calc(100vh - 90px)", // Ensure it doesn't exceed viewport
                   borderLeft: 1,
                   borderColor: "divider",
                   display: "flex",
                   flexDirection: "column",
                   bgcolor: "background.paper",
-                  overflow: "hidden",
+                  overflow: "hidden", // Critical for containing child elements
+                  position: "relative", // Needed for absolute positioning if required
                 }}
               >
-                {/* Status + top controls */}
+                {/* Status + top controls - FIXED HEIGHT */}
                 <Box
                   sx={{
                     p: 1.5,
@@ -2025,8 +2027,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    height: "50px", // Reduced from 60px
+                    height: 50, // Explicit fixed height
                     flexShrink: 0, // Prevent shrinking
+                    width: "100%",
+                    bgcolor: "background.paper",
+                    zIndex: 2, // Ensure it stays above scroll content
                   }}
                 >
                   <Typography variant="subtitle2" color="text.secondary">
@@ -2053,21 +2058,32 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   </Box>
                 </Box>
 
-                {/* Chat messages area */}
+                {/* Chat messages area - STRICTLY CONSTRAINED HEIGHT WITH SCROLLING */}
                 <Box
                   ref={chatContainerRef}
                   sx={{
                     flex: 1,
-                    overflowY: "auto",
+                    height:
+                      waitingForUserInput && expectedTraineeResponse
+                        ? "calc(100% - 215px)" // Adjust for expected response box + button height
+                        : "calc(100% - 115px)", // Standard height without expected response
+                    maxHeight:
+                      waitingForUserInput && expectedTraineeResponse
+                        ? "calc(100% - 215px)" // Adjust for expected response box + button height
+                        : "calc(100% - 115px)", // Standard max height without expected response
+                    overflowY: "auto", // Critical for vertical scrolling
+                    overflowX: "hidden", // Prevent horizontal scrolling
                     p: 1.5,
                     bgcolor: "#F5F7FF",
                     display: "flex",
                     flexDirection: "column",
                     gap: 1.5,
-                    minHeight: "80px", // Reduced from 100px
-                    maxHeight: "calc(100% - 90px)", // Adjusted to prevent input being pushed off-screen
+                    scrollbarWidth: "thin" /* Firefox */,
+                    scrollbarColor: "#c1c1c1 #f1f1f1" /* Firefox */,
+                    msOverflowStyle: "auto" /* IE and Edge */,
                     "&::-webkit-scrollbar": {
                       width: "8px",
+                      height: "8px",
                     },
                     "&::-webkit-scrollbar-track": {
                       background: "#f1f1f1",
@@ -2093,7 +2109,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                         height: "100%",
                         textAlign: "center",
                         color: "text.secondary",
-                        py: 4, // Reduced from py: 8
+                        py: 4,
                       }}
                     >
                       <ChatIcon sx={{ fontSize: 40, mb: 1, opacity: 0.5 }} />
@@ -2115,13 +2131,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       justifyContent={
                         message.role === "customer" ? "flex-start" : "flex-end"
                       }
+                      sx={{ minWidth: 0, flexShrink: 0 }} // Prevent shrinking/growing issues
                     >
                       {message.role === "customer" && (
                         <Avatar
                           sx={{
-                            width: 28, // Reduced from 32
-                            height: 28, // Reduced from 32
+                            width: 28,
+                            height: 28,
                             bgcolor: "primary.light",
+                            flexShrink: 0, // Prevent shrinking
                           }}
                         >
                           <SupportAgentIcon fontSize="small" />
@@ -2130,7 +2148,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
                       <Paper
                         sx={{
-                          p: 1.5, // Reduced from p: 2
+                          p: 1.5,
                           maxWidth: "75%",
                           borderRadius: 2,
                           position: "relative",
@@ -2143,6 +2161,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                           "&:hover .timestamp": {
                             opacity: 1,
                           },
+                          wordBreak: "break-word", // Handle long words
+                          overflowWrap: "break-word", // Modern property for overflow
                         }}
                       >
                         <Typography variant="body2">
@@ -2167,9 +2187,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                       {message.role === "trainee" && (
                         <Avatar
                           sx={{
-                            width: 28, // Reduced from 32
-                            height: 28, // Reduced from 32
+                            width: 28,
+                            height: 28,
                             bgcolor: "success.light",
+                            flexShrink: 0, // Prevent shrinking
                           }}
                         >
                           <PersonIcon fontSize="small" />
@@ -2191,8 +2212,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                         sx={{
                           display: "inline-flex",
                           alignItems: "center",
-                          px: 1.5, // Reduced from px: 2
-                          py: 0.75, // Reduced from py: 1
+                          px: 1.5,
+                          py: 0.75,
                           bgcolor: "warning.light",
                           color: "warning.dark",
                           borderRadius: "20px",
@@ -2223,7 +2244,90 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                   )}
                 </Box>
 
-                {/* Message input area */}
+                {/* Expected response hint - FIXED, NON-OVERLAPPING POSITION */}
+                {waitingForUserInput && expectedTraineeResponse && (
+                  <Box
+                    sx={{
+                      borderTop: 1,
+                      borderColor: "divider",
+                      bgcolor: "#F5F7FF",
+                      p: 1.5,
+                      flexShrink: 0,
+                      height: "auto",
+                      width: "100%",
+                      zIndex: 2,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1,
+                    }}
+                  >
+                    {/* Expected response hint panel */}
+                    <Paper
+                      sx={{
+                        p: 1.5,
+                        bgcolor: "warning.50",
+                        border: 1,
+                        borderColor: "warning.100",
+                        borderRadius: 2,
+                        maxHeight: "80px",
+                        overflowY: "auto",
+                        "&::-webkit-scrollbar": {
+                          width: "8px",
+                        },
+                        "&::-webkit-scrollbar-track": {
+                          background: "#fff1d6",
+                          borderRadius: "4px",
+                        },
+                        "&::-webkit-scrollbar-thumb": {
+                          background: "#f5bf65",
+                          borderRadius: "4px",
+                        },
+                        "&::-webkit-scrollbar-thumb:hover": {
+                          background: "#e0aa45",
+                        },
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ color: "warning.dark", mb: 0.5 }}
+                      >
+                        Expected Response:
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontStyle: "italic",
+                          color: "text.secondary",
+                          mb: 0.5,
+                        }}
+                      >
+                        {expectedTraineeResponse}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Type this response (or your own variation) to proceed
+                      </Typography>
+                    </Paper>
+
+                    {/* Next button - alternative to typing exact response */}
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      endIcon={<ArrowForward />}
+                      onClick={() => {
+                        // Use the expected response as the user's message
+                        setUserInput(expectedTraineeResponse);
+                        // Submit after a slight delay to show what was "typed"
+                        setTimeout(() => {
+                          handleSubmitMessage();
+                        }, 100);
+                      }}
+                    >
+                      Use Suggested Response
+                    </Button>
+                  </Box>
+                )}
+
+                {/* Message input area - FIXED HEIGHT */}
                 <Box
                   component="form"
                   onSubmit={(e) => {
@@ -2231,16 +2335,21 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     handleSubmitMessage();
                   }}
                   sx={{
-                    p: 1.5, // Reduced from p: 2
+                    p: 1.5,
                     borderTop: 1,
                     borderColor: "divider",
                     bgcolor: "white",
-                    maxHeight: "25%", // Reduced from 30%
-                    height: "auto",
+                    height: 65, // EXPLICIT FIXED HEIGHT
+                    maxHeight: 65, // FIXED MAX HEIGHT
+                    minHeight: 65, // ENSURE CONSISTENT HEIGHT
                     overflowY: "auto",
                     flexShrink: 0, // Prevent shrinking
                     display: "flex",
                     flexDirection: "column",
+                    justifyContent: "center", // Center content vertically
+                    width: "100%", // Ensure full width
+                    position: "relative", // Position context for absolute elements if needed
+                    zIndex: 2, // Ensure it stays above scroll content
                     "&::-webkit-scrollbar": {
                       width: "8px",
                     },
@@ -2257,110 +2366,57 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                     },
                   }}
                 >
-                  <Stack spacing={1.5}>
-                    {/* Reduced from spacing: 2 */}
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <TextField
-                        inputRef={chatInputRef}
-                        fullWidth
-                        multiline
-                        maxRows={2} // Reduced from maxRows: 3
-                        placeholder={
-                          waitingForUserInput
-                            ? "Type your response..."
-                            : "Waiting for customer..."
-                        }
-                        value={userInput}
-                        onChange={(e) => setUserInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        disabled={!waitingForUserInput || isEndingChat}
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: 2,
-                            bgcolor: waitingForUserInput ? "white" : "grey.100",
-                            borderColor: waitingForUserInput
-                              ? "primary.main"
-                              : "grey.300",
-                          },
-                        }}
-                      />
-                      <IconButton
-                        type="submit"
-                        disabled={
-                          !waitingForUserInput ||
-                          !userInput.trim() ||
-                          isEndingChat
-                        }
-                        sx={{
-                          alignSelf: "flex-end",
-                          bgcolor: waitingForUserInput
+                  <Stack spacing={1.5} direction="row" alignItems="center">
+                    <TextField
+                      inputRef={chatInputRef}
+                      fullWidth
+                      multiline
+                      maxRows={2}
+                      placeholder={
+                        waitingForUserInput
+                          ? "Type your response..."
+                          : "Waiting for customer..."
+                      }
+                      value={userInput}
+                      onChange={(e) => setUserInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      disabled={!waitingForUserInput || isEndingChat}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                          bgcolor: waitingForUserInput ? "white" : "grey.100",
+                          borderColor: waitingForUserInput
                             ? "primary.main"
                             : "grey.300",
-                          color: waitingForUserInput ? "white" : "grey.500",
-                          "&:hover": {
-                            bgcolor: waitingForUserInput
-                              ? "primary.dark"
-                              : "grey.300",
-                          },
-                          "&.Mui-disabled": {
-                            bgcolor: "grey.200",
-                            color: "grey.400",
-                          },
-                        }}
-                      >
-                        <SendIcon />
-                      </IconButton>
-                    </Box>
-                    {/* Expected response hint */}
-                    {waitingForUserInput && expectedTraineeResponse && (
-                      <Paper
-                        sx={{
-                          p: 1.5, // Reduced from p: 2
-                          bgcolor: "warning.50",
-                          border: 1,
-                          borderColor: "warning.100",
-                          borderRadius: 2,
-                        }}
-                      >
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ color: "warning.dark", mb: 0.5 }}
-                        >
-                          Expected Response:
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontStyle: "italic",
-                            color: "text.secondary",
-                            mb: 0.5, // Reduced from mb: 1
-                          }}
-                        >
-                          {expectedTraineeResponse}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Type this response (or your own variation) to proceed
-                        </Typography>
-                      </Paper>
-                    )}
-                    {/* Next button - alternative to typing exact response */}
-                    {waitingForUserInput && (
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        endIcon={<ArrowForward />}
-                        onClick={() => {
-                          // Use the expected response as the user's message
-                          setUserInput(expectedTraineeResponse);
-                          // Submit after a slight delay to show what was "typed"
-                          setTimeout(() => {
-                            handleSubmitMessage();
-                          }, 100);
-                        }}
-                      >
-                        Use Suggested Response
-                      </Button>
-                    )}
+                        },
+                      }}
+                    />
+                    <IconButton
+                      type="submit"
+                      disabled={
+                        !waitingForUserInput ||
+                        !userInput.trim() ||
+                        isEndingChat
+                      }
+                      sx={{
+                        alignSelf: "flex-end",
+                        bgcolor: waitingForUserInput
+                          ? "primary.main"
+                          : "grey.300",
+                        color: waitingForUserInput ? "white" : "grey.500",
+                        "&:hover": {
+                          bgcolor: waitingForUserInput
+                            ? "primary.dark"
+                            : "grey.300",
+                        },
+                        "&.Mui-disabled": {
+                          bgcolor: "grey.200",
+                          color: "grey.400",
+                        },
+                      }}
+                    >
+                      <SendIcon />
+                    </IconButton>
                   </Stack>
                 </Box>
               </Box>

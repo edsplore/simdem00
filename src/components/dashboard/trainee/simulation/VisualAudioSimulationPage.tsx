@@ -208,6 +208,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [speaking, setSpeaking] = useState(false);
+  const [timeoutActive, setTimeoutActive] = useState(false);
 
   // New audio recording state
   const [recordingInstance, setRecordingInstance] =
@@ -362,6 +363,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
+    setTimeoutActive(false);
 
     // Clean up any previous state
     if (recordingTimerRef.current) {
@@ -645,10 +647,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           }
 
           // Set a new timeout that will advance if no interaction occurs
+          setTimeoutActive(true);
+
           hotspotTimeoutRef.current = setTimeout(() => {
             console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
+            setTimeoutActive(false);
             setIsProcessing(false);
           }, timeout * 1000);
         }
@@ -750,12 +755,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       console.log("Timer stopped");
     }
 
-      // Cancel any ongoing speech
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
+    // Cancel any ongoing speech
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
 
     // Stop recording if active
     if (recordingTimerRef.current) {
@@ -822,12 +834,50 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
+      // Make a copy of the current data
+      let finalAttemptData = [...attemptSequenceData];
+
+      // Check if current item is a hotspot that should be marked as clicked
+      if (currentItem && currentItem.type === "hotspot") {
+        // Find if this item is already in our data
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (itemIndex >= 0) {
+          // Ensure it's marked as clicked and has the last wrong click removed
+          const existingItem = finalAttemptData[itemIndex];
+          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+          if (updatedWrongClicks.length > 0) {
+            // Remove the last wrong click (which would be the correct click on the hotspot)
+            updatedWrongClicks.pop();
+          }
+
+          finalAttemptData[itemIndex] = {
+            ...existingItem,
+            isClicked: true,
+            wrong_clicks: updatedWrongClicks,
+          };
+          console.log(
+            "Final data updated for last hotspot:",
+            finalAttemptData[itemIndex],
+          );
+        } else {
+          // Add it if not found
+          finalAttemptData.push({
+            ...currentItem,
+            isClicked: true,
+            wrong_clicks: [],
+          });
+        }
+      }
+
       console.log("Executing end-visual-audio API call with modified data");
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
         simulationProgressId,
-        attemptSequenceData,
+        finalAttemptData,
         modifiedSlidesData, // Send modified slides data with direct transcriptions
       );
 
@@ -1032,6 +1082,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    if (
+      currentItem?.type === "hotspot" &&
+      currentItem.settings?.highlightColor
+    ) {
+      return currentItem.settings.highlightColor;
+    }
+    return "rgba(68, 76, 231, 0.7)"; // Default color
+  };
+
   // Move to next item in sequence
   const moveToNextItem = () => {
     // Clear any active timeout when manually moving to next item
@@ -1039,6 +1100,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
+    setTimeoutActive(false);
 
     console.log(
       "Moving to next item from",
@@ -1162,59 +1224,54 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
     }
+    setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
+    console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
-    // MODIFIED: Only set isClicked and handle wrong_clicks for specific hotspot types
-    if (["button", "highlight", "checkbox"].includes(hotspotType)) {
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
+    // Simpler approach: find the item in our data and update its properties
+    setAttemptSequenceData((prevData) => {
+      // Find if this item already exists in our data
+      const existingItemIndex = prevData.findIndex(
+        (item) => item.id === currentItem.id,
+      );
+
+      if (existingItemIndex >= 0) {
+        // Make a copy of the data
+        const newData = [...prevData];
+        const existingItem = newData[existingItemIndex];
+
+        // Set isClicked to true and remove the last wrong click (if any)
+        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+        if (updatedWrongClicks.length > 0) {
+          // Remove the last wrong click
+          updatedWrongClicks.pop();
+        }
+
+        // Update the item
+        newData[existingItemIndex] = {
+          ...existingItem,
+          isClicked: true,
+          wrong_clicks: updatedWrongClicks,
+        };
+
+        console.log(
+          `Updated hotspot ${currentItem.id}, removed last wrong click`,
+          updatedWrongClicks,
         );
-
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
+        return newData;
+      } else {
+        // If item doesn't exist yet, add it with isClicked=true
+        return [
+          ...prevData,
+          {
+            ...currentItem,
             isClicked: true,
-            wrong_clicks: newData[existingItemIndex].wrong_clicks.slice(0, -1),
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              isClicked: true,
-            },
-          ];
-        }
-      });
-    } else {
-      // For other hotspot types, set wrong_clicks to empty array and don't set isClicked
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
-
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
-            wrong_clicks: [], // Set to empty array for other types
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [], // Set to empty array for other types
-            },
-          ];
-        }
-      });
-    }
+            wrong_clicks: [], // Start with empty wrong_clicks
+          },
+        ];
+      }
+    });
 
     console.log("Hotspot clicked:", hotspotType);
 
@@ -1223,7 +1280,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       case "highlight":
         // For button and highlight, simply advance
         setHighlightHotspot(false);
-        moveToNextItem();
+        setTimeout(() => {
+          moveToNextItem();
+        }, 100);
         break;
 
       case "dropdown":
@@ -1327,6 +1386,18 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (!isPaused && hotspotTimeoutRef.current) {
       clearTimeout(hotspotTimeoutRef.current);
       hotspotTimeoutRef.current = null;
+    }
+
+    // When resuming, restart timeout if needed
+    if (isPaused && currentItem?.type === "hotspot" && timeoutActive) {
+      const timeout = currentItem.settings?.timeoutDuration;
+      if (timeout && timeout > 0) {
+        hotspotTimeoutRef.current = setTimeout(() => {
+          moveToNextItem();
+          setHighlightHotspot(false);
+          setTimeoutActive(false);
+        }, timeout * 1000);
+      }
     }
 
     if (speaking && !isPaused) {
@@ -1706,12 +1777,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       console.log("Timer stopped");
     }
 
-      // Cancel any ongoing speech
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
+    // Cancel any ongoing speech
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
 
     // Stop recording if active
     if (recordingTimerRef.current) {
@@ -1776,19 +1854,50 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
-      // Final cleanup: Clear any wrong clicks for items that have been successfully clicked
-      const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
-        // If the item was successfully clicked, keep the current state
-        // We're not removing wrong_clicks anymore as we need to track all interactions
-        return item;
-      });
+      // Make a copy of the current data
+      let finalAttemptData = [...attemptSequenceData];
+
+      // Check if current item is a hotspot that should be marked as clicked
+      if (currentItem && currentItem.type === "hotspot") {
+        // Find if this item is already in our data
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (itemIndex >= 0) {
+          // Ensure it's marked as clicked and has the last wrong click removed
+          const existingItem = finalAttemptData[itemIndex];
+          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+          if (updatedWrongClicks.length > 0) {
+            // Remove the last wrong click (which would be the correct click on the hotspot)
+            updatedWrongClicks.pop();
+          }
+
+          finalAttemptData[itemIndex] = {
+            ...existingItem,
+            isClicked: true,
+            wrong_clicks: updatedWrongClicks,
+          };
+          console.log(
+            "Final data updated for last hotspot:",
+            finalAttemptData[itemIndex],
+          );
+        } else {
+          // Add it if not found
+          finalAttemptData.push({
+            ...currentItem,
+            isClicked: true,
+            wrong_clicks: [],
+          });
+        }
+      }
 
       console.log("Executing end-visual-audio API call with modified data");
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
         simulationProgressId,
-        cleanedAttemptSequenceData,
+        finalAttemptData,
         modifiedSlidesData, // Send modified slides data with transcriptions
       );
 
@@ -2198,6 +2307,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                         onLoad={handleImageLoad}
                       />
 
+                      {/* Timeout indicator - show timer when timeout is active */}
+                      {timeoutActive &&
+                        currentItem?.type === "hotspot" &&
+                        currentItem.settings?.timeoutDuration &&
+                        !isPaused && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: 10,
+                              right: 10,
+                              bgcolor: "rgba(0, 0, 0, 0.6)",
+                              color: "white",
+                              p: 1,
+                              borderRadius: 2,
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                              zIndex: 100,
+                            }}
+                          >
+                            <AccessTimeIcon fontSize="small" />
+                            <Typography variant="caption">
+                              Auto-advance in {currentItem.settings?.timeoutDuration}s
+                            </Typography>
+                          </Box>
+                        )}
+
                       {/* Render hotspots directly on the image - don't render if it should be skipped */}
                       {imageLoaded &&
                         currentItem?.type === "hotspot" &&
@@ -2249,10 +2385,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     },
                                     boxShadow: highlightHotspot ? 4 : 0,
                                     border: highlightHotspot
-                                      ? `2px solid ${
-                                          currentItem.settings
-                                            ?.highlightColor || "white"
-                                        }`
+                                      ? `2px solid ${getHighlightColor()}`
                                       : "none",
                                   }}
                                 >
@@ -2299,10 +2432,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                       }px`,
                                       bgcolor: "white",
                                       border: highlightHotspot
-                                        ? `2px solid ${
-                                            currentItem.settings
-                                              ?.highlightColor || "#444CE7"
-                                          }`
+                                        ? `2px solid ${getHighlightColor()}`
                                         : "1px solid #ddd",
                                       boxShadow: highlightHotspot ? 2 : 0,
                                     }}
@@ -2366,8 +2496,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                       }px`,
                                     },
                                     color: highlightHotspot
-                                      ? currentItem.settings?.highlightColor ||
-                                        "#444CE7"
+                                      ? getHighlightColor()
                                       : "action.active",
                                     "&.Mui-checked": {
                                       color: "#444CE7",
@@ -2420,16 +2549,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                       bgcolor: "white",
                                       "& fieldset": {
                                         borderColor: highlightHotspot
-                                          ? currentItem.settings
-                                              ?.highlightColor || "#444CE7"
+                                          ? getHighlightColor()
                                           : "rgba(0, 0, 0, 0.23)",
                                         borderWidth: highlightHotspot ? 2 : 1,
                                       },
                                       "&:hover fieldset": {
-                                        borderColor: "#444CE7",
+                                        borderColor: getHighlightColor(),
                                       },
                                       "&.Mui-focused fieldset": {
-                                        borderColor: "#444CE7",
+                                        borderColor: getHighlightColor(),
                                       },
                                     },
                                   }}
@@ -2455,14 +2583,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     width: `${scaleCoordinates(currentItem.coordinates)?.width}px`,
                                     height: `${scaleCoordinates(currentItem.coordinates)?.height}px`,
                                     border: "8px solid", // INCREASED from 4px to 8px
-                                    borderColor:
-                                      currentItem.settings?.highlightColor ||
-                                      "rgba(68, 76, 231, 0.7)", // Keep original color
+                                    borderColor: getHighlightColor(), // Use the helper function
                                     boxShadow: highlightHotspot
-                                      ? `0 0 15px 8px ${currentItem.settings?.highlightColor || "rgba(68, 76, 231, 0.7)"}` // Use same color
+                                      ? `0 0 18px 8px ${getHighlightColor()}` // Use same color
                                       : "none",
-                                    borderRadius: "4px",
-                                    transition: "box-shadow 0.3s",
+                                    borderRadius: "6px", // Slightly increased from 4px
+                                    transition: "all 0.3s ease",
                                     zIndex: 10,
                                   }}
                                 />
@@ -2500,10 +2626,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               }px`,
                               zIndex: 50,
                               border: highlightHotspot
-                                ? `2px solid ${
-                                    currentItem.settings?.highlightColor ||
-                                    "#1e293b"
-                                  }`
+                                ? `2px solid ${getHighlightColor()}`
                                 : "none",
                               boxShadow: highlightHotspot ? 3 : 0,
                               transition: "all 0.3s ease",
@@ -2574,7 +2697,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
                                   filter: item.content.settings?.blur_mask
-                                    ? "blur(5px)"
+                                    ? "blur(8px)"
+                                    : "none",
+                                  backdropFilter: item.content.settings
+                                    ?.blur_mask
+                                    ? "blur(8px)"
                                     : "none",
                                 }}
                               />

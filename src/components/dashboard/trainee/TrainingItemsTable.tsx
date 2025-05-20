@@ -404,8 +404,8 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
             >
               <MenuItem value="all">All Status</MenuItem>
               <MenuItem value="not_started">Not Started</MenuItem>
-              <MenuItem value="finished">Completed</MenuItem>
-              <MenuItem value="ongoing">In Progress</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="in_progress">In Progress</MenuItem>
               <MenuItem value="over_due">Overdue</MenuItem>
             </Select>
 

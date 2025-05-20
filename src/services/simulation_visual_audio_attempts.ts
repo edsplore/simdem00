@@ -108,6 +108,7 @@ export interface SimulationData {
       timestamp?: number;
     }>;
   }>;
+  voice_id?: string;
 }
 
 export interface StartVisualAudioRequest {

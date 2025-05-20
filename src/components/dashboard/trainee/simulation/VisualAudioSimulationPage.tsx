@@ -839,36 +839,40 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Check if current item is a hotspot that should be marked as clicked
       if (currentItem && currentItem.type === "hotspot") {
+        const hotspotType = currentItem.hotspotType || "";
+        // Only mark as clicked for button, highlight, and checkbox hotspots
+        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+          hotspotType,
+        );
+
         // Find if this item is already in our data
         const itemIndex = finalAttemptData.findIndex(
           (item) => item.id === currentItem.id,
         );
 
         if (itemIndex >= 0) {
-          // Ensure it's marked as clicked and has the last wrong click removed
           const existingItem = finalAttemptData[itemIndex];
           let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (updatedWrongClicks.length > 0) {
+          if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
             // Remove the last wrong click (which would be the correct click on the hotspot)
             updatedWrongClicks.pop();
           }
 
           finalAttemptData[itemIndex] = {
             ...existingItem,
-            isClicked: true,
+            ...(shouldSetIsClicked ? { isClicked: true } : {}),
             wrong_clicks: updatedWrongClicks,
           };
           console.log(
-            "Final data updated for last hotspot:",
-            finalAttemptData[itemIndex],
+            `Final data updated for last hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
           );
         } else {
           // Add it if not found
-          finalAttemptData.push({
-            ...currentItem,
-            isClicked: true,
-            wrong_clicks: [],
-          });
+          finalAttemptData.push(
+            shouldSetIsClicked
+              ? { ...currentItem, isClicked: true, wrong_clicks: [] }
+              : { ...currentItem, wrong_clicks: [] },
+          );
         }
       }
 

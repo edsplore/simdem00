@@ -869,7 +869,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   };
 
   // Function to speak text using backend text-to-speech
-  const speakText = async (text: string) => {
+  const speakText = async (text: string, voice_id: string) => {
     try {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -877,7 +877,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         audioRef.current = null;
       }
 
-      const blob = await textToSpeech({ text });
+      const blob = await textToSpeech({ text, voice_id });
       const url = URL.createObjectURL(blob);
 
       return new Promise<boolean>((resolve, reject) => {

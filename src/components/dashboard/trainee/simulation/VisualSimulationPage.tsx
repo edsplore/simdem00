@@ -601,88 +601,72 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
-    const handleClick = (event: MouseEvent) => {
-      const container = imageContainerRef.current;
-      if (!container) return;
-
-      // Get click position relative to the container
-      const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-
-      // Convert to percentages for more stable storage
-      const xPercent = (x / rect.width) * 100;
-      const yPercent = (y / rect.height) * 100;
-
-      // Get hotspot coordinates
-      const coords = currentItem.coordinates ||
-        currentItem.percentageCoordinates || {
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-        };
-
-      // Scale hotspot coordinates
-      const scaledCoords = scaleCoordinates(coords);
-
-      if (!scaledCoords) return;
-
-      // Check if the click is outside the hotspot
-      const { left, top, width, height } = scaledCoords;
-      const isOutside =
-        x < left || x > left + width || y < top || y > top + height;
-
-      if (isOutside) {
-        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
-        setAttemptSequenceData((prevData) => {
-          const existingItem = prevData.find(
-            (item) => item.id === currentItem.id,
-          );
-          if (existingItem) {
-            return [
-              ...prevData.filter((item) => item.id !== currentItem.id),
-              {
-                ...existingItem,
-                wrong_clicks: [
-                  ...(existingItem.wrong_clicks || []),
-                  {
-                    x_cordinates: x,
-                    y_cordinates: y,
-                    x_percent: xPercent,
-                    y_percent: yPercent,
-                  },
-                ],
-              },
-            ];
-          } else {
-            return [
-              ...prevData,
-              {
-                ...currentItem,
-                wrong_clicks: [
-                  {
-                    x_cordinates: x,
-                    y_cordinates: y,
-                    x_percent: xPercent,
-                    y_percent: yPercent,
-                  },
-                ],
-              },
-            ];
-          }
-        });
-      } else {
-        console.log("Clicked inside currentItem box — ignoring");
-      }
-    };
-
+  const handleClick = (event: MouseEvent) => {
     const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
+    if (!container) return;
 
-    return () => {
-      container?.removeEventListener("click", handleClick);
-    };
+    // Skip tracking wrong clicks for dropdown, textfield and coaching hotspots
+    const hotspotType = currentItem.hotspotType || "button";
+    if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
+      return;
+    }
+
+    // Get click position relative to the container
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Convert to percentages for more stable storage
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
+
+    // Record all clicks as wrong clicks initially
+    console.log(`Recording click at x=${x}, y=${y}`);
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find(
+        (item) => item.id === currentItem.id,
+      );
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            wrong_clicks: [
+              ...(existingItem.wrong_clicks || []),
+              {
+                x_cordinates: x,
+                y_cordinates: y,
+                x_percent: xPercent,
+                y_percent: yPercent,
+              },
+            ],
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            wrong_clicks: [
+              {
+                x_cordinates: x,
+                y_cordinates: y,
+                x_percent: xPercent,
+                y_percent: yPercent,
+              },
+            ],
+          },
+        ];
+      }
+    });
+  };
+
+  const container = imageContainerRef.current;
+  container?.addEventListener("click", handleClick);
+
+  return () => {
+    container?.removeEventListener("click", handleClick);
+  };
   }, [currentItem]);
 
   // Handle hotspot click based on type

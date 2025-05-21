@@ -18,6 +18,7 @@ import {
 import FilterListIcon from "@mui/icons-material/FilterList";
 import SortIcon from "@mui/icons-material/Sort";
 import { useAuth } from "../../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import {
   AttemptsResponse,
   fetchPlaybackRowData,
@@ -39,7 +40,7 @@ interface SimulationRecord {
 }
 
 const PlaybackTable = () => {
-  const { user } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const navigate = useNavigate();
 
   const [paginationParams, setPaginationParams] =
@@ -53,7 +54,12 @@ const PlaybackTable = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const handleRowClick = (id: string) => {
-    navigate(`/playback/${id}`);
+    const path = buildPathWithWorkspace(
+      `/playback/${id}`,
+      currentWorkspaceId,
+      currentTimeZone
+    );
+    navigate(path);
   };
   const filteredData = useMemo(() => {
     if (!playbackData) return [];

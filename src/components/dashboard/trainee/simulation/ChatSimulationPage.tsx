@@ -292,10 +292,30 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
       if (response.scores) {
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
-        setShowCompletionScreen(true);
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+        }
+      } else {
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
       }
     } catch (error) {
       console.error("Error ending chat:", error);
+      // On error, still check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
     } finally {
       setIsEndingChat(false);
     }

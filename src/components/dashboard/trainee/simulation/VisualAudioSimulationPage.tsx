@@ -427,7 +427,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log("Auto-speaking customer message");
         setSpeaking(true);
 
-        speakText(currentItem.text || "", simulationData?.voice_id || "pNInz6obpgDQGcFmaJgB").then(() => {
+        speakText(
+          currentItem.text || "",
+          simulationData?.voice_id || "pNInz6obpgDQGcFmaJgB",
+        )
+          .then(() => {
             setAttemptSequenceData((prevState) => [...prevState, currentItem]);
             setSpeaking(false);
             setCallStatus("Connected");
@@ -893,21 +897,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
-        // Force update to completion screen
-        setShowCompletionScreen(true);
-        console.log(
-          "Set showCompletionScreen to true, should show completion screen now",
-        );
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+          console.log("Set showCompletionScreen to true for Test attempt");
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+          console.log("Practice attempt completed, returning to list");
+        }
       } else {
         console.warn("No scores received in response");
-        // Even without scores, show completion screen
-        setShowCompletionScreen(true);
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
       }
     } catch (error) {
       console.error("Failed to end visual-audio simulation:", error);
-      // Show an error message to the user if needed
-      // Still show completion screen to avoid stuck state
-      setShowCompletionScreen(true);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
     } finally {
       console.log("End call flow completed");
       setIsEndingCall(false);
@@ -1242,7 +1258,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
     // Only set isClicked for certain hotspot types (button, highlight, checkbox)
-    const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+    const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+      hotspotType,
+    );
 
     // Simpler approach: find the item in our data and update its properties
     setAttemptSequenceData((prevData) => {
@@ -1882,9 +1900,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Check if current item is a hotspot that should be marked as clicked
       if (currentItem && currentItem.type === "hotspot") {
-        const hotspotType = currentItem.hotspotType || "button";
+        const hotspotType = currentItem.hotspotType || "";
         // Only set isClicked for certain hotspot types (not for dropdown, textfield, or coaching)
-        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+          hotspotType,
+        );
 
         // Find if this item is already in our data
         const itemIndex = finalAttemptData.findIndex(
@@ -1918,7 +1938,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           }
 
           console.log(
-            `Final data updated for hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`
+            `Final data updated for hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
           );
         } else {
           // Add it if not found, with proper properties based on type
@@ -1933,7 +1953,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               : {
                   ...restCurrent,
                   wrong_clicks: [],
-                }
+                },
           );
         }
       }
@@ -1953,21 +1973,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
-        // Force update to completion screen
-        setShowCompletionScreen(true);
-        console.log(
-          "Set showCompletionScreen to true, should show completion screen now",
-        );
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+          console.log("Set showCompletionScreen to true for Test attempt");
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+          console.log("Practice attempt completed, returning to list");
+        }
       } else {
         console.warn("No scores received in response");
-        // Even without scores, show completion screen
-        setShowCompletionScreen(true);
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
       }
     } catch (error) {
       console.error("Failed to end visual-audio simulation:", error);
-      // Show an error message to the user if needed
-      // Still show completion screen to avoid stuck state
-      setShowCompletionScreen(true);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
     } finally {
       console.log("End call flow completed");
       setIsEndingCall(false);
@@ -2375,7 +2407,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                           >
                             <AccessTimeIcon fontSize="small" />
                             <Typography variant="caption">
-                              Auto-advance in {currentItem.settings?.timeoutDuration}s
+                              Auto-advance in{" "}
+                              {currentItem.settings?.timeoutDuration}s
                             </Typography>
                           </Box>
                         )}
@@ -2548,7 +2581,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                       color: "#444CE7",
                                     },
                                   }}
-                                />                                
+                                />
                               </Box>
                             )}
 

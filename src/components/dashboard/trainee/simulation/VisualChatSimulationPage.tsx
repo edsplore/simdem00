@@ -1215,17 +1215,31 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
-        setShowCompletionScreen(true);
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+        }
       } else {
         console.warn("No scores received in response");
-        // Show completion screen even without scores
-        setShowCompletionScreen(true);
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
       }
     } catch (error) {
       console.error("Failed to end visual-chat simulation:", error);
-      // Show an error message to the user if needed
-      // Still show completion screen to avoid stuck state
-      setShowCompletionScreen(true);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
     } finally {
       console.log("End chat flow completed");
       setIsEndingChat(false);

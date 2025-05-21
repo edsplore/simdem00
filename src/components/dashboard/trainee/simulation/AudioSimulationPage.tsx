@@ -49,7 +49,7 @@ interface AudioSimulationPageProps {
   attemptType: string;
   onBackToList: () => void;
   onGoToNextSim?: () => void;
-  onRestartSim?: () => void
+  onRestartSim?: () => void;
   hasNextSimulation?: boolean;
   assignmentId: string;
   simulation?: any;
@@ -471,13 +471,32 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
           console.log("Setting scores and showing completion screen");
           setScores(response.scores);
           setDuration(response.duration || elapsedTime);
-          setShowCompletionScreen(true);
+
+          // Only show completion screen for Test attempts
+          if (attemptType === "Test") {
+            setShowCompletionScreen(true);
+          } else {
+            // For Practice attempts, go back to list
+            onBackToList();
+          }
         } else {
           console.warn("No scores received in response");
+          // Only show completion screen for Test attempts
+          if (attemptType === "Test") {
+            setShowCompletionScreen(true);
+          } else {
+            onBackToList();
+          }
         }
       } catch (error) {
         console.error("Failed to end audio simulation:", error);
         // Show an error message to the user if needed
+        // Only show completion screen for Test attempts, even on error
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
       } finally {
         console.log("End call flow completed");
         setIsEndingCall(false);

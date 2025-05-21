@@ -305,10 +305,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
     };
 
     // Get estimated time (convert from minutes to "X mins" format)
+    // CHANGED: Default to false (OFF) instead of checking for existence
     const estimatedTime = {
-      enabled:
-        simulationData?.estimated_time_to_attempt_in_mins !== undefined ||
-        simulationData?.est_time !== undefined,
+      enabled: false, // Default to OFF
       value: simulationData?.estimated_time_to_attempt_in_mins
         ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
         : simulationData?.est_time
@@ -451,31 +450,47 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
 
     // Check if estimated time is specified and enabled
+    // CHANGED: Only require time value if toggle is ON
     const estimatedTime = settingsState.advancedSettings?.estimatedTime;
     const isEstimatedTimeValid =
-      estimatedTime?.enabled &&
-      estimatedTime?.value &&
-      estimatedTime.value.trim() !== "";
+      !estimatedTime?.enabled ||
+      (estimatedTime.enabled &&
+        estimatedTime.value &&
+        estimatedTime.value.trim() !== "");
 
     // Build validation error message if needed
     let errorMessage = null;
 
-    if (!isAnyLevelEnabled && !isEstimatedTimeValid && !isWeightageValid) {
+    if (
+      !isAnyLevelEnabled &&
+      estimatedTime?.enabled &&
+      !estimatedTime.value.trim() &&
+      !isWeightageValid
+    ) {
       errorMessage =
-        "At least one level must be enabled, estimated time must be specified, and score metric weightage must total 100% before publishing.";
-    } else if (!isAnyLevelEnabled && !isEstimatedTimeValid) {
+        "At least one level must be enabled, estimated time must be specified when enabled, and score metric weightage must total 100% before publishing.";
+    } else if (
+      !isAnyLevelEnabled &&
+      estimatedTime?.enabled &&
+      !estimatedTime.value.trim()
+    ) {
       errorMessage =
-        "At least one level must be enabled and estimated time must be specified before publishing.";
+        "At least one level must be enabled and estimated time must be specified when enabled before publishing.";
     } else if (!isAnyLevelEnabled && !isWeightageValid) {
       errorMessage =
         "At least one level must be enabled and score metric weightage must total 100% before publishing.";
-    } else if (!isEstimatedTimeValid && !isWeightageValid) {
+    } else if (
+      estimatedTime?.enabled &&
+      !estimatedTime.value.trim() &&
+      !isWeightageValid
+    ) {
       errorMessage =
-        "Estimated time must be specified and score metric weightage must total 100% before publishing.";
+        "Estimated time must be specified when enabled and score metric weightage must total 100% before publishing.";
     } else if (!isAnyLevelEnabled) {
       errorMessage = "At least one level must be enabled before publishing.";
-    } else if (!isEstimatedTimeValid) {
-      errorMessage = "Estimated time must be specified before publishing.";
+    } else if (estimatedTime?.enabled && !estimatedTime.value.trim()) {
+      errorMessage =
+        "Estimated time must be specified when enabled before publishing.";
     } else if (!isWeightageValid) {
       errorMessage =
         "Score metric weightage must total 100% before publishing.";
@@ -493,12 +508,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const levels = settingsState.advancedSettings?.levels?.simulationLevels;
     const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
 
-    // Check if estimated time is specified and enabled
+    // Check if estimated time is valid (not enabled OR enabled with a value)
+    // CHANGED: Only require time value if toggle is ON
     const estimatedTime = settingsState.advancedSettings?.estimatedTime;
     const isEstimatedTimeValid =
-      estimatedTime?.enabled &&
-      estimatedTime?.value &&
-      estimatedTime.value.trim() !== "";
+      !estimatedTime?.enabled ||
+      (estimatedTime.enabled &&
+        estimatedTime.value &&
+        estimatedTime.value.trim() !== "");
 
     return !isAnyLevelEnabled || !isEstimatedTimeValid || !isWeightageValid;
   }, [
@@ -654,8 +671,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const scoringConfig = voiceSettings?.scoring || {};
 
     // Parse time value to extract just the number
-    const timeValue =
-      String(timeSettings.value || "").match(/\d+/)?.[0] || "";
+    const timeValue = String(timeSettings.value || "").match(/\d+/)?.[0] || "";
 
     // Check enabled levels from simulationLevels setting
     const lvl1Enabled = levelSettings.simulationLevels?.lvl1 !== false; // Default to true if undefined
@@ -779,9 +795,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
           levelSettings.aiPoweredPauses?.lvl3 === true,
       },
       estimated_time_to_attempt_in_mins:
-        timeSettings.enabled && timeValue !== ""
-          ? parseInt(timeValue)
-          : 0,
+        timeSettings.enabled && timeValue !== "" ? parseInt(timeValue) : 0,
       // CRITICAL FIX: Only send objectives if enabled, otherwise send empty array
       key_objectives: objectivesSettings.enabled
         ? processTextToArray(objectivesSettings.text)
@@ -1202,7 +1216,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
             <Tooltip
               title={
                 isPublishDisabled
-                  ? "At least one level must be enabled, estimated time must be specified, and score metric weightage must total 100% before publishing"
+                  ? "At least one level must be enabled, estimated time must be specified when enabled, and score metric weightage must total 100% before publishing"
                   : ""
               }
               arrow

@@ -225,11 +225,7 @@ export const startChatPreview = async (
 
     const response = await apiClient.post<ChatPreviewResponse>(
       "/simulations/start-chat-preview",
-      {
-        user_id: userId,
-        sim_id: simulationId,
-        message: message,
-      },
+      payload,
     );
 
     console.log("Chat preview response:", response.data);

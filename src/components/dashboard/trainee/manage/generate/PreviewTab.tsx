@@ -466,7 +466,8 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
             text: "",
           },
         ]);
-      } else if (simulationType === "visual-chat") {
+      } 
+      else if (simulationType === "visual-chat") {
         const response = await startVisualChatPreview("user123", simulationId);
 
         // Store full simulation data
@@ -480,7 +481,8 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
             text: "Initializing visual chat...",
           },
         ]);
-      } else if (simulationType === "visual") {
+      } 
+      else if (simulationType === "visual") {
         const response = await startVisualPreview("user123", simulationId);
 
         // Store full simulation data
@@ -494,7 +496,8 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
             text: "Initializing visual simulation...",
           },
         ]);
-      } else if (simulationType === "audio") {
+      } 
+      else if (simulationType === "audio") {
         setIsCallActive(true);
         setAllMessages([
           {
@@ -530,8 +533,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
             accessToken: response.access_token,
           });
         }
-      } else {
-        // Chat type - FIXED IMPLEMENTATION
+      } 
+      else {
+        // Chat type
         setIsCallActive(true);
 
         console.log("Starting chat preview...");
@@ -541,16 +545,14 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         console.log("Chat preview response:", response);
 
         // Store the progress ID if provided
-        if (response.progress_id) {
-          setSimulationProgressId(response.progress_id);
-          console.log("Set simulation progress ID:", response.progress_id);
+        if (response.id) {
+          setSimulationProgressId(response.id);
+          console.log("Set simulation progress ID:", response.id);
         }
 
         // If a response is returned, determine who speaks first based on the content
         if (response.response) {
-          // Determine initial speaker based on script data if available
-          // For this implementation, we'll default to customer first
-          // but in a full implementation, you'd check the script to see who speaks first
+          
           const firstSpeaker = response.initial_speaker || "customer";
 
           setAllMessages([
@@ -591,7 +593,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         "user123",
         simulationId,
         inputMessage.trim(),
-        simulationProgressId // Include this in your API function
+        simulationProgressId || ""
       );
 
       if (response.response) {

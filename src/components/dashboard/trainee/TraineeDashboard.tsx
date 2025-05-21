@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Stack, Container } from '@mui/material';
+import { Stack, Container, Typography } from '@mui/material';
 import { useAuth } from '../../../context/AuthContext';
 import DashboardContent from '../DashboardContent';
 import WelcomeBanner from './WelcomeBanner';
@@ -39,6 +39,9 @@ const TraineeDashboard = () => {
       <Container>
         <Stack spacing={4} sx={{ py: 1 }}>
           <WelcomeBanner userName={user?.name || ''} trainingData={trainingData} />
+          <Typography variant="h5" fontWeight="medium">
+            My Overall Stats
+          </Typography>
           {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
           {trainingData && (
             <TrainingPlanTable 

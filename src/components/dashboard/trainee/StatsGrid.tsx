@@ -129,9 +129,6 @@ const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
 
   return (
     <Stack spacing={2}>
-      <Typography variant="h5" fontWeight="medium">
-        My Overall Stats
-      </Typography>
       <Grid container spacing={2}>
         {statsData.map((stat, index) => (
           <Grid item xs={12} md={3} key={index}>

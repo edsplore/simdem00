@@ -196,7 +196,7 @@ const defaultSettings = {
     id: "aiPoweredPauses",
     name: "AI Powered Pauses and Feedback",
     description:
-      "This will enable the post simulation survey upon first completion attempt",
+      "This will enable realtime AI feedback and coaching",
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
 };

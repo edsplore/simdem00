@@ -37,6 +37,7 @@ import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import type { TrainingPlan, Module, Simulation } from "../../../types/training";
 import { useAuth } from "../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../utils/navigation";
 import DateSelector from "../../common/DateSelector";
 
 // Extend dayjs with plugins
@@ -318,19 +319,21 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     event: React.MouseEvent,
   ) => {
     event.stopPropagation();
-    const workspaceParam = currentWorkspaceId
-      ? `?workspace_id=${currentWorkspaceId}`
-      : "";
-    navigate(
-      `/simulation/${simulationId}/${assignmentId}/attempt${workspaceParam}`,
+    const path = buildPathWithWorkspace(
+      `/simulation/${simulationId}/${assignmentId}/attempt`,
+      currentWorkspaceId,
+      currentTimeZone
     );
+    navigate(path);
   };
 
   const handleTrainingPlanClick = (trainingPlan: TrainingPlan) => {
-    const workspaceParam = currentWorkspaceId
-      ? `?workspace_id=${currentWorkspaceId}`
-      : "";
-    navigate(`/training/${trainingPlan.id}${workspaceParam}`, {
+    const path = buildPathWithWorkspace(
+      `/training/${trainingPlan.id}`,
+      currentWorkspaceId,
+      currentTimeZone
+    );
+    navigate(path, {
       state: { trainingPlan },
     });
   };

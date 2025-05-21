@@ -4,6 +4,7 @@ import { Stack, Button, Typography, Box } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useTheme } from '@mui/material/styles';
 import { useAuth } from '../../../context/AuthContext';
+import { buildPathWithWorkspace } from '../../../utils/navigation';
 import type { TrainingData, Simulation } from '../../../types/training';
 import welcomeBannerImage from '../../../assets/banner.svg';
 
@@ -15,7 +16,7 @@ interface WelcomeBannerProps {
 const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData }) => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { currentWorkspaceId } = useAuth();
+  const { currentWorkspaceId, currentTimeZone } = useAuth();
 
   // Find the first simulation with "not_started" status
   const findNextSimulation = (): string | null => {
@@ -57,8 +58,12 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData })
   const handleGoToNextSimulation = () => {
     const nextSimulationId = findNextSimulation();
     if (nextSimulationId) {
-      const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-      navigate(`/simulation/${nextSimulationId}/attempt${workspaceParam}`);
+      const path = buildPathWithWorkspace(
+        `/simulation/${nextSimulationId}/attempt`,
+        currentWorkspaceId,
+        currentTimeZone
+      );
+      navigate(path);
     } else {
       // If no simulation is found, we could show a message or navigate to a default page
       console.log('No pending simulations found');
@@ -66,8 +71,12 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData })
   };
 
   const handleGoToPlayback = () => {
-    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-    navigate(`/playback${workspaceParam}`);
+    const path = buildPathWithWorkspace(
+      '/playback',
+      currentWorkspaceId,
+      currentTimeZone
+    );
+    navigate(path);
   };
 
   return (

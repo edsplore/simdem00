@@ -654,7 +654,39 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           setTimeoutActive(true);
 
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
+            console.log(`Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`);
+
+            // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
+            setAttemptSequenceData((prevData) => {
+              const existingItemIndex = prevData.findIndex(
+                (item) => item.id === currentItem.id,
+              );
+
+              // Create a clean timeout record with timedOut=true and NO isClicked property
+              const timeoutRecord = {
+                ...currentItem,
+                timedOut: true,
+                wrong_clicks: []
+              };
+
+              // Explicitly REMOVE isClicked property if it exists
+              if ('isClicked' in timeoutRecord) {
+                delete timeoutRecord.isClicked;
+              }
+
+              console.log(`Adding timeout record for hotspot ${currentItem.name}:`, JSON.stringify(timeoutRecord));
+
+              if (existingItemIndex >= 0) {
+                // Replace existing item with timeout version
+                const newData = [...prevData];
+                newData[existingItemIndex] = timeoutRecord;
+                return newData;
+              } else {
+                // Add new timeout record
+                return [...prevData, timeoutRecord];
+              }
+            });
+
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -838,51 +870,86 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
-      // Make a copy of the current data
-      let finalAttemptData = [...attemptSequenceData];
+      // Make a direct copy of the current data that we can manipulate synchronously
+      // This avoids relying on asynchronous state updates
+      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      // Check if current item is a hotspot that should be marked as clicked
+      // Process the current item if it's a hotspot
       if (currentItem && currentItem.type === "hotspot") {
-        const hotspotType = currentItem.hotspotType || "";
-        // Only mark as clicked for button, highlight, and checkbox hotspots
-        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
-          hotspotType,
-        );
+        // Check if this item already exists in the data
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
 
-        // Find if this item is already in our data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const isTimedOut = timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
 
-        if (itemIndex >= 0) {
-          const existingItem = finalAttemptData[itemIndex];
-          const { isClicked: _prevClicked, ...restExisting } = existingItem;
-          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-            // Remove the last wrong click (which would be the correct click on the hotspot)
-            updatedWrongClicks.pop();
+        console.log(`Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`);
+
+        if (isTimedOut) {
+          // Create a clean timeout record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: []
+          };
+
+          if ('isClicked' in timeoutRecord) {
+            delete timeoutRecord.isClicked;
           }
 
-          finalAttemptData[itemIndex] = {
-            ...restExisting,
-            ...(shouldSetIsClicked ? { isClicked: true } : {}),
-            wrong_clicks: updatedWrongClicks,
-          };
-          console.log(
-            `Final data updated for last hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
-          );
+          // Update or add the record
+          if (itemIndex >= 0) {
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            finalAttemptData.push(timeoutRecord);
+          }
         } else {
-          // Add it if not found
-          const { isClicked: _clicked, ...restCurrent } = currentItem;
-          finalAttemptData.push(
-            shouldSetIsClicked
-              ? { ...restCurrent, isClicked: true, wrong_clicks: [] }
-              : { ...restCurrent, wrong_clicks: [] },
-          );
+          // Normal clicked hotspot
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
+              finalAttemptData[itemIndex] = {
+                ...finalAttemptData[itemIndex],
+                isClicked: true,
+                timedOut: false
+              };
+            }
+          } else {
+            // Add new record with appropriate properties
+            const newRecord = {
+              ...currentItem,
+              wrong_clicks: []
+            };
+
+            if (shouldBeClicked) {
+              newRecord.isClicked = true;
+              newRecord.timedOut = false;
+            }
+
+            finalAttemptData.push(newRecord);
+          }
         }
       }
 
-      console.log("Executing end-visual-audio API call with modified data");
+      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
+      // does NOT have an isClicked property
+      finalAttemptData = finalAttemptData.map(item => {
+        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
+          if (item.timedOut === true && 'isClicked' in item) {
+            // Create a clean copy without the isClicked property
+            const { isClicked, ...cleanItem } = item;
+            return cleanItem;
+          }
+        }
+        return item;
+      });
+
+      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
+
+      // Use the endVisualAudioAttempt function from simulation_visual_audio_attempts
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
@@ -1262,50 +1329,47 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       hotspotType,
     );
 
-    // Simpler approach: find the item in our data and update its properties
+    // Create a clean clicked hotspot record
+    const clickRecord = {
+      ...currentItem,
+      timedOut: false,
+      wrong_clicks: []
+    };
+
+    // Only add isClicked property for clickable hotspot types
+    if (shouldSetIsClicked) {
+      clickRecord.isClicked = true;
+    }
+
+    console.log("Adding click record:", JSON.stringify(clickRecord));
+
+    // Update the attempt sequence data
     setAttemptSequenceData((prevData) => {
       // Find if this item already exists in our data
       const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id,
+        (item) => item.id === currentItem.id
       );
 
       if (existingItemIndex >= 0) {
         // Make a copy of the data
         const newData = [...prevData];
-        const existingItem = newData[existingItemIndex];
-        // Remove any previous isClicked flag when not applicable
-        const { isClicked: _prevClicked, ...restExisting } = existingItem;
 
-        // Only update wrong_clicks for clickable hotspots
-        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+        // Get existing wrong clicks if any
+        let updatedWrongClicks = [...(newData[existingItemIndex].wrong_clicks || [])];
         if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-          // Remove the last wrong click
-          updatedWrongClicks.pop();
+          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
         }
 
-        // Update the item, only setting isClicked for appropriate types
+        // Update the existing item with our click record
         newData[existingItemIndex] = {
-          ...restExisting,
-          ...(shouldSetIsClicked ? { isClicked: true } : {}),
-          wrong_clicks: updatedWrongClicks,
+          ...clickRecord,
+          wrong_clicks: updatedWrongClicks
         };
 
-        console.log(
-          `Updated hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
-        );
         return newData;
       } else {
-        // If item doesn't exist yet, add it with appropriate properties
-        // Remove isClicked from currentItem if present
-        const { isClicked: _clicked, ...restCurrent } = currentItem;
-        return [
-          ...prevData,
-          {
-            ...restCurrent,
-            ...(shouldSetIsClicked ? { isClicked: true } : {}),
-            wrong_clicks: [], // Start with empty wrong_clicks
-          },
-        ];
+        // If item doesn't exist, add it
+        return [...prevData, clickRecord];
       }
     });
 
@@ -1354,29 +1418,23 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     setAttemptSequenceData((prevData) => {
       const existingItem = prevData.find((item) => item.id === currentItem.id);
+
+      const dropdownRecord = {
+        ...currentItem,
+        userInput: option,
+        wrong_clicks: [],
+        timedOut: false
+      };
+
+      // Do NOT add isClicked for dropdown type
+
       if (existingItem) {
-        const { isClicked: _prevClicked, ...restExisting } = existingItem;
         return [
           ...prevData.filter((item) => item.id !== currentItem.id),
-          {
-            ...restExisting,
-            // Do NOT set isClicked for dropdown
-            userInput: option,
-            // Clear any wrong_clicks for dropdown
-            wrong_clicks: [],
-          },
+          dropdownRecord
         ];
       } else {
-        const { isClicked: _clicked, ...restCurrent } = currentItem;
-        return [
-          ...prevData,
-          {
-            ...restCurrent,
-            // Do NOT set isClicked for dropdown
-            userInput: option,
-            wrong_clicks: [],
-          },
-        ];
+        return [...prevData, dropdownRecord];
       }
     });
 
@@ -1389,32 +1447,30 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+
+      const textInputRecord = {
+        ...currentItem,
+        userInput: textInputValue,
+        wrong_clicks: [], 
+        timedOut: false
+      };
+
+      // Do NOT add isClicked for text input
+
       setAttemptSequenceData((prevData) => {
-        const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id
         );
-        if (existingItem) {
-          return [
-            ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              // isClicked: true, // Correctly commented out
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
-          ];
+
+        if (existingItemIndex >= 0) {
+          const newData = [...prevData];
+          newData[existingItemIndex] = textInputRecord;
+          return newData;
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              // isClicked: true, // Correctly commented out
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
-          ];
+          return [...prevData, textInputRecord];
         }
       });
+
       moveToNextItem();
     }
   };
@@ -1895,68 +1951,83 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
-      // Make a copy of the current data
-      let finalAttemptData = [...attemptSequenceData];
+      // Create a direct copy of the data that we can manipulate synchronously
+      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      // Check if current item is a hotspot that should be marked as clicked
+      // Process the current item if it's a hotspot
       if (currentItem && currentItem.type === "hotspot") {
-        const hotspotType = currentItem.hotspotType || "";
-        // Only set isClicked for certain hotspot types (not for dropdown, textfield, or coaching)
-        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
-          hotspotType,
-        );
+        // Check if this item already exists in the data
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
 
-        // Find if this item is already in our data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const isTimedOut = timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
 
-        if (itemIndex >= 0) {
-          // Update the item based on its type
-          const existingItem = finalAttemptData[itemIndex];
-          const { isClicked: _prevClicked, ...restExisting } = existingItem;
+        console.log(`Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`);
 
-          // For clickable hotspots, update isClicked and clean wrong_clicks
-          if (shouldSetIsClicked) {
-            let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-            if (updatedWrongClicks.length > 0) {
-              // Remove the last wrong click
-              updatedWrongClicks.pop();
-            }
+        if (isTimedOut) {
+          // Create a clean timeout record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: []
+          };
 
-            finalAttemptData[itemIndex] = {
-              ...restExisting,
-              isClicked: true,
-              wrong_clicks: updatedWrongClicks,
-            };
-          } else {
-            // For dropdown and textfield, don't set isClicked but clear wrong_clicks
-            finalAttemptData[itemIndex] = {
-              ...restExisting,
-              wrong_clicks: [],
-            };
+          if ('isClicked' in timeoutRecord) {
+            delete timeoutRecord.isClicked;
           }
 
-          console.log(
-            `Final data updated for hotspot ${currentItem.id}, type: ${hotspotType}, setting isClicked: ${shouldSetIsClicked}`,
-          );
+          // Update or add the record
+          if (itemIndex >= 0) {
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            finalAttemptData.push(timeoutRecord);
+          }
         } else {
-          // Add it if not found, with proper properties based on type
-          const { isClicked: _clicked, ...restCurrent } = currentItem;
-          finalAttemptData.push(
-            shouldSetIsClicked
-              ? {
-                  ...restCurrent,
-                  isClicked: true,
-                  wrong_clicks: [],
-                }
-              : {
-                  ...restCurrent,
-                  wrong_clicks: [],
-                },
-          );
+          // Normal clicked hotspot
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
+              finalAttemptData[itemIndex] = {
+                ...finalAttemptData[itemIndex],
+                isClicked: true,
+                timedOut: false
+              };
+            }
+          } else {
+            // Add new record with appropriate properties
+            const newRecord = {
+              ...currentItem,
+              wrong_clicks: []
+            };
+
+            if (shouldBeClicked) {
+              newRecord.isClicked = true;
+              newRecord.timedOut = false;
+            }
+
+            finalAttemptData.push(newRecord);
+          }
         }
       }
+
+      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
+      // does NOT have an isClicked property
+      finalAttemptData = finalAttemptData.map(item => {
+        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
+          if (item.timedOut === true && 'isClicked' in item) {
+            // Create a clean copy without the isClicked property
+            const { isClicked, ...cleanItem } = item;
+            return cleanItem;
+          }
+        }
+        return item;
+      });
+
+      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
 
       console.log("Executing end-visual-audio API call with modified data");
       const response = await endVisualAudioAttempt(

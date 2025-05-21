@@ -1015,85 +1015,106 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
 
     try {
-      console.log("Executing end-visual API call");
+      // IMPORTANT: Clone the current attemptSequenceData directly
+      // This allows us to modify it without waiting for setState
+      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      // Make a copy of the current data
-      let finalAttemptData = [...attemptSequenceData];
+      console.log("Starting attempt data processing...");
 
-      // Handle any current item that might not be in the data yet
+      // Process the current item if it's a hotspot - do this BEFORE API call
       if (currentItem && currentItem.type === "hotspot") {
-        const itemExists = finalAttemptData.some(item => item.id === currentItem.id);
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
+        console.log(`Current hotspot: ${currentItem.name}, exists in data: ${itemIndex >= 0}`);
 
-        if (!itemExists) {
-          // If we have an active timeout, record this as timed out
-          if (timeoutActive) {
-            console.log(`Recording current hotspot ${currentItem.name} as timed out`);
+        // Create the appropriate record based on the current state
+        const isTimedOutHotspot = timeoutActive || 
+          (currentItem.settings?.timeoutDuration > 0 && !currentItem.isClicked);
 
-            // Create a record without isClicked property
-            const timeoutRecord = {
-              ...currentItem,
-              timedOut: true,
-              wrong_clicks: []
-            };
+        console.log(`Hotspot ${currentItem.name} timed out? ${isTimedOutHotspot}`);
 
-            // Do not include isClicked property for timed out items
-            delete timeoutRecord.isClicked;
+        if (isTimedOutHotspot) {
+          // Create a clean timed out record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: []
+          };
 
-            finalAttemptData.push(timeoutRecord);
+          delete timeoutRecord.isClicked; // Explicitly remove isClicked
+
+          // Update or add the record
+          if (itemIndex >= 0) {
+            console.log(`Updating existing record for ${currentItem.name} as timed out`);
+            finalAttemptData[itemIndex] = timeoutRecord;
           } else {
-            // Not in a timeout - determine if it should be marked as clicked
-            const hotspotType = currentItem.hotspotType || "";
-            const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+            console.log(`Adding new record for ${currentItem.name} as timed out`);
+            finalAttemptData.push(timeoutRecord);
+          }
+        } else if (itemIndex === -1) {
+          // Only add a normal record if it doesn't already exist
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
 
-            console.log(`Recording current hotspot ${currentItem.name} as normal, clicked=${shouldBeClicked}`);
+          // For non-timed out hotspots, we only add isClicked if appropriate
+          const newRecord = {
+            ...currentItem,
+            timedOut: false,
+            wrong_clicks: []
+          };
 
-            // For non-timed out hotspots, we only add isClicked if appropriate
-            const normalRecord = {
-              ...currentItem,
-              timedOut: false,
-              wrong_clicks: []
-            };
+          if (shouldBeClicked) {
+            newRecord.isClicked = true;
+          }
 
-            if (shouldBeClicked) {
-              normalRecord.isClicked = true;
+          console.log(`Adding new regular record for ${currentItem.name}`);
+          finalAttemptData.push(newRecord);
+        }
+      }
+
+      // Final cleanup pass through ALL items
+      for (let i = 0; i < finalAttemptData.length; i++) {
+        const item = finalAttemptData[i];
+
+        // Only process hotspot items
+        if (item.type === "hotspot") {
+          // Special handling for hotspots with timeout settings
+          if (item.settings?.timeoutDuration > 0) {
+            console.log(`Processing hotspot with timeout: ${item.name}`);
+
+            // Check for explicit timed out status
+            if (item.timedOut === true) {
+              // For timed out items, remove isClicked property completely
+              if ('isClicked' in item) {
+                console.log(`Removing isClicked from timed out hotspot: ${item.name}`);
+                const { isClicked, ...cleanItem } = item;
+                finalAttemptData[i] = cleanItem;
+              }
+            } 
+            // If hotspot has timeout duration but unclear status, assume it timed out
+            // This applies to all button-type hotspots with timeouts, regardless of name
+            else if (item.timedOut === undefined || item.timedOut === null) {
+              console.log(`Hotspot ${item.name} has timeout setting but unclear status - marking as timed out`);
+
+              // Remove isClicked to be safe if it exists
+              if ('isClicked' in item) {
+                const { isClicked, ...cleanItem } = item;
+                finalAttemptData[i] = {
+                  ...cleanItem,
+                  timedOut: true
+                };
+              } else {
+                finalAttemptData[i] = {
+                  ...item,
+                  timedOut: true
+                };
+              }
             }
-
-            finalAttemptData.push(normalRecord);
           }
         }
       }
 
-      // Critical validation: ensure timed out hotspots NEVER have isClicked=true
-      finalAttemptData = finalAttemptData.map(item => {
-        // Only process hotspot items
-        if (item.type === "hotspot") {
-          // If the item has timed out, ensure it does NOT have isClicked=true
-          if (item.timedOut === true) {
-            // Create a clean copy without isClicked
-            const { isClicked, ...cleanItem } = item;
-            return cleanItem;
-          }
-
-          // If an item has a timeout duration but no explicit timedOut status,
-          // and no isClicked status, assume it timed out
-          if (
-            item.settings?.timeoutDuration > 0 && 
-            item.timedOut === undefined && 
-            item.isClicked === undefined
-          ) {
-            console.log(`Setting implicit timeout for hotspot ${item.name}`);
-            return {
-              ...item,
-              timedOut: true
-            };
-          }
-        }
-
-        return item;
-      });
-
       // Log the final data before submission
-      console.log("Final attempt data before submission:", JSON.stringify(finalAttemptData));
+      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
 
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(

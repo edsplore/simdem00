@@ -1090,6 +1090,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setShowCompletionScreen(false);
   };
 
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    return "rgba(68, 76, 231, 0.7)"; // Default color
+  };
+
   return (
     <>
       <SimulationCompletionScreen
@@ -1664,6 +1669,79 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   }}
                                 />
                               )}
+
+                            {/* Coaching tip hotspot */}
+                            {currentItem.hotspotType === "coaching" &&
+                              !levelSettings.hideCoachingTips && (
+                                <Box
+                                  onClick={(e) => handleHotspotClick(e)}
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.width
+                                    }px`,
+                                    height: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.height
+                                    }px`,
+                                    zIndex: 50,
+                                    border: highlightHotspot
+                                      ? `2px solid ${
+                                          currentItem.settings
+                                            ?.highlightColor || "#1e293b"
+                                        }`
+                                      : "none",
+                                    boxShadow: highlightHotspot ? 3 : 0,
+                                    transition: "all 0.3s ease",
+                                  }}
+                                >
+                                  <Button
+                                    fullWidth
+                                    variant="contained"
+                                    sx={{
+                                      height: "100%",
+                                      backgroundColor:
+                                        currentItem.settings?.buttonColor ||
+                                        "#1e293b",
+                                      color:
+                                        currentItem.settings?.textColor ||
+                                        "#FFFFFF",
+                                      "&:hover": {
+                                        backgroundColor: currentItem.settings
+                                          ?.buttonColor
+                                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                          : "#0f172a",
+                                      },
+                                      boxShadow: highlightHotspot ? 4 : 0,
+                                      border: highlightHotspot
+                                        ? `2px solid ${getHighlightColor()}`
+                                        : "none",
+                                    }}
+                                  >
+                                    {currentItem.settings?.tipText ||
+                                      currentItem.name ||
+                                      "Coaching Tip"}
+                                  </Button>
+                                </Box>
+                              )}
                           </>
                         )}
 
@@ -1730,78 +1808,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   )}
                 </Box>
               </Box>
-
-              {/* Coaching tip button - only render if not hidden by settings */}
-              {imageLoaded &&
-                currentItem?.type === "hotspot" &&
-                currentItem.hotspotType === "coaching" &&
-                (currentItem.coordinates ||
-                  currentItem.percentageCoordinates) &&
-                !levelSettings.hideCoachingTips && (
-                  <Box
-                    onClick={(e) => handleHotspotClick(e)}
-                    sx={{
-                      position: "absolute",
-                      cursor: "pointer",
-                      left: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.left
-                      }px`,
-                      top: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.top
-                      }px`,
-                      width: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.width
-                      }px`,
-                      height: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.height
-                      }px`,
-                      zIndex: 50,
-                      border: highlightHotspot
-                        ? `2px solid ${
-                            currentItem.settings?.highlightColor || "#1e293b"
-                          }`
-                        : "none",
-                      boxShadow: highlightHotspot ? 3 : 0,
-                      transition: "all 0.3s ease",
-                    }}
-                  >
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      sx={{
-                        height: "100%",
-                        backgroundColor:
-                          currentItem.settings?.buttonColor || "#1e293b",
-                        color: currentItem.settings?.textColor || "#FFFFFF",
-                        "&:hover": {
-                          backgroundColor: currentItem.settings?.buttonColor
-                            ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                            : "#0f172a",
-                        },
-                        boxShadow: highlightHotspot ? 4 : 0,
-                        border: highlightHotspot
-                          ? `2px solid ${getHighlightColor()}`
-                          : "none",
-                      }}
-                    >
-                      {currentItem.settings?.tipText ||
-                        currentItem.name ||
-                        "Coaching Tip"}
-                    </Button>
-                  </Box>
-                )}
 
               {/* Right side - Empty sidebar (to match layout of other components) */}
               <Box
@@ -1915,11 +1921,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       </Box>
     </>
   );
-};
-
-// Get highlight color from settings or use default
-const getHighlightColor = () => {
-  return "rgba(68, 76, 231, 0.7)"; // Default color
 };
 
 export default VisualSimulationPage;

@@ -68,7 +68,6 @@ const DateSelector = ({
         { label: "Last 7 Days", range: [dayjs().subtract(6, "day"), dayjs()] },
         { label: "Last 30 Days", range: [dayjs().subtract(29, "day"), dayjs()] },
         { label: "Last 90 Days", range: [dayjs().subtract(89, "day"), dayjs()] },
-        { label: "Custom", range: [null, null] },
       ]
     : [
         { label: "Today", range: [dayjs(), dayjs()] },
@@ -129,11 +128,7 @@ const DateSelector = ({
                   {p.label}
                 </DateSelectionChip>
               ))}
-              {variant === "managerGlobal" && (
-                <DateSelectionChip onClick={() => setDateRange([dayjs().subtract(89, "day"), dayjs()])}>
-                  Custom
-                </DateSelectionChip>
-              )}
+             
             </Stack>
             <Divider orientation="vertical" flexItem />
             <LocalizationProvider dateAdapter={AdapterDayjs}>

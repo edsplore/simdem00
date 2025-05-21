@@ -175,6 +175,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [simulationDetails, setSimulationDetails] =
     useState<SimulationDetails | null>(null);
+  const [simulationProgressId, setSimulationProgressId] = useState<string | null>(null);
 
   // Add refs to store hide settings - this will ensure they're available during the update callback
   const hideAgentScriptRef = useRef(false);
@@ -436,6 +437,7 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     setShowEndAnimation(false);
     setIsCallActive(false);
     setAllMessages([]);
+    setSimulationProgressId(null);
     // Clear any data that should be reset
     setSimulationData(null);
     setSlides(new Map());
@@ -529,17 +531,35 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           });
         }
       } else {
-        // Chat type
+        // Chat type - FIXED IMPLEMENTATION
         setIsCallActive(true);
-        const response = await startChatPreview("test_user", simulationId);
 
+        console.log("Starting chat preview...");
+
+        // Make a single API call to start the chat
+        const response = await startChatPreview("test_user", simulationId);
+        console.log("Chat preview response:", response);
+
+        // Store the progress ID if provided
+        if (response.progress_id) {
+          setSimulationProgressId(response.progress_id);
+          console.log("Set simulation progress ID:", response.progress_id);
+        }
+
+        // If a response is returned, determine who speaks first based on the content
         if (response.response) {
+          // Determine initial speaker based on script data if available
+          // For this implementation, we'll default to customer first
+          // but in a full implementation, you'd check the script to see who speaks first
+          const firstSpeaker = response.initial_speaker || "customer";
+
           setAllMessages([
             {
-              speaker: "customer",
+              speaker: firstSpeaker,
               text: response.response,
             },
           ]);
+          console.log(`Added initial ${firstSpeaker} message:`, response.response);
         }
       }
     } catch (error) {
@@ -564,10 +584,14 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     setIsLoading(true);
 
     try {
+      // Include the simulation progress ID in the request
+      console.log("Sending message with progress ID:", simulationProgressId);
+
       const response = await startChatPreview(
         "user123",
         simulationId,
         inputMessage.trim(),
+        simulationProgressId // Include this in your API function
       );
 
       if (response.response) {

@@ -2201,6 +2201,7 @@ const ManagerDashboard = () => {
                       handleDateRangeApplyCallback={
                         handleDateRangeApplyCallback
                       }
+                      variant="managerGlobal"
                     />
                   </Stack>
                 </Stack>

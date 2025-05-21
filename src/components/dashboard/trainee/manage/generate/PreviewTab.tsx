@@ -545,14 +545,16 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         console.log("Chat preview response:", response);
 
         // Store the progress ID if provided
-        if (response.id) {
-          setSimulationProgressId(response.id);
-          console.log("Set simulation progress ID:", response.id);
+        if (response.progress_id) {
+          setSimulationProgressId(response.progress_id);
+          console.log("Set simulation progress ID:", response.progress_id);
         }
 
         // If a response is returned, determine who speaks first based on the content
         if (response.response) {
-          
+          // Determine initial speaker based on script data if available
+          // For this implementation, we'll default to customer first
+          // but in a full implementation, you'd check the script to see who speaks first
           const firstSpeaker = response.initial_speaker || "customer";
 
           setAllMessages([

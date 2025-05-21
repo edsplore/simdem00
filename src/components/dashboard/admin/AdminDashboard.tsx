@@ -603,7 +603,7 @@ const AdminDashboard = () => {
     total: adminDashboardData.totalUsers,
   });
 
-  const handleDateRangeApplyCallback = () => {};
+  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {};
 
   const loadUserActivity = async () => {
     if (user?.id) {

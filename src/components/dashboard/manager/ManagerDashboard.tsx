@@ -79,6 +79,17 @@ import { fetchTeams, TeamResponse, Team } from "../../../services/teams";
 import DateSelector from "../../common/DateSelector";
 import { BarChart } from "@mui/x-charts";
 
+// Format status labels to proper capitalization
+const formatStatusLabel = (status) => {
+  if (status === "over_due" || status === "overdue") return "Overdue";
+
+  return status
+    .replace(/_/g, " ")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 // Mock data for the dashboard
 const mockData = {
   dropdownData: [
@@ -277,16 +288,12 @@ const TOOLTIP_ASSIGNMENTS =
   "Total = Completed + In Progress + Not Started + Overdue. Overdue counts assignments past the due date.";
 const TOOLTIP_COMPLETION_RATE =
   "Completion Rate = (Completed / Total assignments) × 100.";
-const TOOLTIP_AVERAGE_SCORE =
-  "Average of scores from completed attempts.";
+const TOOLTIP_AVERAGE_SCORE = "Average of scores from completed attempts.";
 const TOOLTIP_ADHERENCE_RATE =
   "Adherence Rate = (On-time completions / Total completions) × 100.";
-const TOOLTIP_COMPLETION_LEADERBOARD =
-  "Teams ranked by completion rate.";
-const TOOLTIP_AVERAGE_SCORE_LEADERBOARD =
-  "Teams ranked by average score.";
-const TOOLTIP_ADHERENCE_LEADERBOARD =
-  "Teams ranked by adherence rate.";
+const TOOLTIP_COMPLETION_LEADERBOARD = "Teams ranked by completion rate.";
+const TOOLTIP_AVERAGE_SCORE_LEADERBOARD = "Teams ranked by average score.";
+const TOOLTIP_ADHERENCE_LEADERBOARD = "Teams ranked by adherence rate.";
 
 // CircularProgressWithLabel component
 const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
@@ -395,7 +402,13 @@ const chartSetting = {
 };
 
 // LeaderBoard component
-const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false }) => {
+const LeaderBoard = ({
+  data,
+  title,
+  onSortChange,
+  popupText,
+  disabled = false,
+}) => {
   const [sortBy, setSortBy] = useState("High to Low");
 
   const handleSortChange = (event) => {
@@ -428,9 +441,11 @@ const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false })
           "linear-gradient(white, white) padding-box, linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%) border-box",
         border: "1px solid transparent",
         boxShadow: "0px 12px 24px -4px #919EAB1F",
-        height: "fit-content",
+        height: "100%", // Make height 100% to match other cards in the row
+        display: "flex",
+        flexDirection: "column",
         opacity: disabled ? 0.5 : 1,
-        pointerEvents: disabled ? 'none' : 'auto',
+        pointerEvents: disabled ? "none" : "auto",
       }}
     >
       <Stack justifyContent="space-between" height="100%">
@@ -452,7 +467,12 @@ const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false })
             <InfoIconPopup title={popupText} />
           </Stack>
           <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-            <Typography fontSize={12} variant="caption" color="#00000099" sx={{ mr: 1 }}>
+            <Typography
+              fontSize={12}
+              variant="caption"
+              color="#00000099"
+              sx={{ mr: 1 }}
+            >
               Sort by:
             </Typography>
             <FormControl size="small" sx={{ minWidth: 120 }}>
@@ -481,7 +501,16 @@ const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false })
             </FormControl>
           </Box>
         </Stack>
-        <Stack sx={{ px: 1.5, pt: 2 }} gap={1}>
+        <Stack
+          sx={{
+            px: 1.5,
+            pt: 2,
+            flex: 1,
+            display: "flex",
+            justifyContent: "center",
+          }}
+          gap={1}
+        >
           <BarChart
             dataset={sortedData}
             yAxis={[{ scaleType: "band", dataKey: "team" }]}
@@ -503,6 +532,7 @@ const LeaderBoard = ({ data, title, onSortChange, popupText, disabled = false })
             barLabel="value"
             borderRadius={6}
             layout="horizontal"
+            height={240} // Fixed height to ensure consistent sizing
             sx={{
               ".MuiChartsAxisTickLabel-root": {
                 fill: "#637381",
@@ -578,6 +608,7 @@ const AssignmentCard = ({
           "linear-gradient(white, white) padding-box, linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%) border-box",
         border: "1px solid transparent",
         boxShadow: "0px 12px 24px -4px #919EAB1F",
+        height: "100%", // Set to 100% to ensure consistency in row
       }}
     >
       <Stack spacing={2}>
@@ -673,9 +704,10 @@ const CircularProgressCards = ({ value, title, popupText }) => {
           "linear-gradient(white, white) padding-box, linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%) border-box",
         border: "1px solid transparent",
         boxShadow: "0px 12px 24px -4px #919EAB1F",
+        height: "100%", // Set to 100% to ensure consistency in row
       }}
     >
-      <Stack spacing={2} alignItems="center">
+      <Stack spacing={2} alignItems="center" height="100%">
         <Stack
           direction="row"
           justifyContent="space-between"
@@ -824,7 +856,7 @@ const TrainingPlanTable = ({
 
   const handlePopupClick = (
     event: React.MouseEvent<HTMLButtonElement>,
-    entityId: string
+    entityId: string,
   ) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
@@ -881,13 +913,13 @@ const TrainingPlanTable = ({
       "Avg. Score",
     ];
     const trainingEntityData = trainingPlans.find(
-      (plan: any) => plan.id === selectedIdForCsvDownload
+      (plan: any) => plan.id === selectedIdForCsvDownload,
     );
     const csvRows = [headers.join(",")];
     trainingEntityData.trainees?.forEach((row: any) => {
       const rowData = [
         allUserNamesMap.get(row.name) || row.name,
-        allUserClassIdsMap.get(row.name) || '-',
+        allUserClassIdsMap.get(row.name) || "-",
         row.status,
         row.dueDate,
         row.avgScore,
@@ -921,8 +953,8 @@ const TrainingPlanTable = ({
               {activeTab === "TrainingPlan"
                 ? "TRP Name"
                 : activeTab === "Module"
-                ? "Module Name"
-                : "Simulation Name"}
+                  ? "Module Name"
+                  : "Simulation Name"}
             </TableCell>
             <TableCell sx={{ py: 1, px: 2, color: "#00000066" }}>
               Assigned Trainees
@@ -1219,7 +1251,8 @@ const TrainingPlanTable = ({
                                       p: 2,
                                     }}
                                   >
-                                    {allUserNamesMap.get(trainee.name) || trainee.name}
+                                    {allUserNamesMap.get(trainee.name) ||
+                                      trainee.name}
                                   </TableCell>
                                   <TableCell
                                     sx={{
@@ -1228,11 +1261,12 @@ const TrainingPlanTable = ({
                                       fontSize: 16,
                                     }}
                                   >
-                                    {allUserClassIdsMap.get(trainee.name) || '-'}
+                                    {allUserClassIdsMap.get(trainee.name) ||
+                                      "-"}
                                   </TableCell>
                                   <TableCell>
                                     <Chip
-                                      label={trainee.status}
+                                      label={formatStatusLabel(trainee.status)}
                                       size="small"
                                       sx={{
                                         bgcolor: getStatusColor(trainee.status)
@@ -1398,7 +1432,9 @@ const menuItemSx = {
 const ManagerDashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] =
-    useState<ManagerDashboardAggregatedDataResponse | null>(defaultAggDashboardData);
+    useState<ManagerDashboardAggregatedDataResponse | null>(
+      defaultAggDashboardData,
+    );
   const [reporteeUser, setReporteeUser] = useState<[] | User[]>([]);
   const [filteredReporteeUserIds, setFilteredReporteeUserIds] = useState<
     [] | string[]
@@ -1416,11 +1452,11 @@ const ManagerDashboard = () => {
     useState<Map<string, string>>(new Map());
   // New comprehensive user maps using fetchUsersSummary
   const [allUserNamesMap, setAllUserNamesMap] = useState<Map<string, string>>(
-    new Map()
+    new Map(),
   );
-  const [allUserClassIdsMap, setAllUserClassIdsMap] = useState<Map<string, string>>(
-    new Map()
-  );
+  const [allUserClassIdsMap, setAllUserClassIdsMap] = useState<
+    Map<string, string>
+  >(new Map());
   const [reporteeTeam, setReporteeTeam] = useState<null | TeamResponse>(null);
   const [filteredReporteeTeamIds, setFilteredReporteeTeamIds] = useState<
     [] | string[]
@@ -1445,7 +1481,7 @@ const ManagerDashboard = () => {
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
   const [trainingEntityPagination, setTrainingEntityPagination] = useState<any>(
-    {}
+    {},
   );
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
   const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
@@ -1504,10 +1540,10 @@ const ManagerDashboard = () => {
     // Handle the selected users/teams here
     console.log("teamframe", teamframe, dropdownSearchQuery);
     let selectedUserIds = teamframe.filter((id: string) =>
-      allUserIds.includes(id)
+      allUserIds.includes(id),
     );
     let selectedTeamIds = teamframe.filter((id: string) =>
-      allTeamIds.includes(id)
+      allTeamIds.includes(id),
     );
     if (
       (!selectedUserIds || selectedUserIds.length === 0) &&
@@ -1540,10 +1576,10 @@ const ManagerDashboard = () => {
           data?.map((user) => [
             user.user_id,
             user.first_name + " " + user.last_name,
-          ])
+          ]),
         );
         const userMaptoClassId = new Map(
-          data?.map((user) => [user.user_id, user.class_id || ""])
+          data?.map((user) => [user.user_id, user.class_id || ""]),
         );
         setReporteeUserIdsMapToName(userMap);
         setReporteeUserIdsMapToClassId(userMaptoClassId);
@@ -1569,7 +1605,7 @@ const ManagerDashboard = () => {
           undefined,
           undefined,
           undefined,
-          user.id
+          user.id,
         );
         console.log("repoertee users --------", data);
         const teamsData = data?.items?.map((team: Team) => team.team_id);
@@ -1580,7 +1616,7 @@ const ManagerDashboard = () => {
         }
 
         const teamMap = new Map(
-          data?.items?.map((team) => [team.team_id, team.name])
+          data?.items?.map((team) => [team.team_id, team.name]),
         );
         if (teamMap) {
           setReporteeTeamIdsMapToName(teamMap);
@@ -1605,7 +1641,10 @@ const ManagerDashboard = () => {
       // Fetch ALL users without role filtering for the table
       const response = await fetchUsersSummary(workspaceId || "");
 
-      console.log("All platform users from fetchUsersSummary (no role filter):", response);
+      console.log(
+        "All platform users from fetchUsersSummary (no role filter):",
+        response,
+      );
 
       // Create comprehensive maps for both names and class IDs
       const comprehensiveUserNamesMap = new Map<string, string>();
@@ -1623,14 +1662,20 @@ const ManagerDashboard = () => {
       response?.forEach((user: any) => {
         const fullName = `${user.first_name} ${user.last_name}`;
         comprehensiveUserNamesMap.set(user.user_id, fullName);
-        comprehensiveUserClassIdsMap.set(user.user_id, user.class_id || '');
+        comprehensiveUserClassIdsMap.set(user.user_id, user.class_id || "");
       });
 
       setAllUserNamesMap(comprehensiveUserNamesMap);
       setAllUserClassIdsMap(comprehensiveUserClassIdsMap);
 
-      console.log("Updated comprehensive user names map:", comprehensiveUserNamesMap);
-      console.log("Updated comprehensive user class IDs map:", comprehensiveUserClassIdsMap);
+      console.log(
+        "Updated comprehensive user names map:",
+        comprehensiveUserNamesMap,
+      );
+      console.log(
+        "Updated comprehensive user class IDs map:",
+        comprehensiveUserClassIdsMap,
+      );
     } catch (error) {
       console.error("Error loading all platform users:", error);
       setError("Failed to load platform users");
@@ -1648,7 +1693,12 @@ const ManagerDashboard = () => {
       const workspaceId = params.get("workspace_id");
 
       // Fetch only users with Sim Creator and Manager roles for the creator dropdown
-      const response = await fetchUsersSummary(workspaceId || "", ["Sim Creator", "Manager", "Instructional Designer", "anmol_test"]);
+      const response = await fetchUsersSummary(workspaceId || "", [
+        "Sim Creator",
+        "Manager",
+        "Instructional Designer",
+        "anmol_test",
+      ]);
 
       console.log("Creators and Managers from fetchUsersSummary:", response);
 
@@ -1661,7 +1711,7 @@ const ManagerDashboard = () => {
         response?.map((user: any) => [
           user.user_id,
           user.first_name + " " + user.last_name,
-        ])
+        ]),
       );
       if (creatorMap) {
         setCreatorIdsMapToName(creatorMap);
@@ -1681,9 +1731,9 @@ const ManagerDashboard = () => {
 
     for (const key in leaderBoards) {
       if (Array.isArray(leaderBoards[key])) {
-        leaderBoards[key] = leaderBoards[key].map(item => ({
+        leaderBoards[key] = leaderBoards[key].map((item) => ({
           ...item,
-          team: reporteeTeamIdsMapToName.get(item.team) || item.team
+          team: reporteeTeamIdsMapToName.get(item.team) || item.team,
         }));
       }
     }
@@ -1707,14 +1757,16 @@ const ManagerDashboard = () => {
         if (effectiveRange[0] && effectiveRange[1]) {
           params.assignedDateRange.startDate =
             effectiveRange[0].format("YYYY-MM-DD");
-          params.assignedDateRange.endDate = effectiveRange[1].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate =
+            effectiveRange[1].format("YYYY-MM-DD");
         } else if (effectiveRange[0]) {
           params.assignedDateRange.startDate =
             effectiveRange[0].format("YYYY-MM-DD");
           params.assignedDateRange.endDate = null;
         } else if (effectiveRange[1]) {
           params.assignedDateRange.startDate = null;
-          params.assignedDateRange.endDate = effectiveRange[1].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate =
+            effectiveRange[1].format("YYYY-MM-DD");
         }
 
         // In a real implementation, we would fetch data from the API
@@ -1738,7 +1790,7 @@ const ManagerDashboard = () => {
   const loadTrainingEntityAttemptsForManagerDashboard = async (
     type: string,
     searchQueryOverride: string | null = null,
-    selectedTeamsOverride: string[] | [] = []
+    selectedTeamsOverride: string[] | [] = [],
   ) => {
     try {
       setIsTableLoading(true);
@@ -1750,17 +1802,19 @@ const ManagerDashboard = () => {
         trainingEntityDateRange: { startDate: "", endDate: "" },
         trainingEntityCreatedBy: selectedCreators.filter(
           (creatorId) =>
-            creatorId !== "" && creatorId !== null && creatorId !== undefined
+            creatorId !== "" && creatorId !== null && creatorId !== undefined,
         ),
         trainingEntityTeams:
           selectedTeamsOverride.length > 0
             ? selectedTeamsOverride
             : selectedTeams.filter(
                 (teamId) =>
-                  teamId !== "" && teamId !== null && teamId !== undefined
+                  teamId !== "" && teamId !== null && teamId !== undefined,
               ),
         trainingEntitySearchQuery:
-          searchQueryOverride !== null ? searchQueryOverride.trim() : searchQuery.trim(),
+          searchQueryOverride !== null
+            ? searchQueryOverride.trim()
+            : searchQuery.trim(),
         trainingEntityReportingUserIds:
           selectedTeamsOverride.length > 0
             ? filteredReporteeUserIdsTrainingEntity
@@ -1807,7 +1861,14 @@ const ManagerDashboard = () => {
         pagesize: rowsPerPage,
       };
 
-      if ((params && params.trainingEntityTeams && params.trainingEntityTeams.length > 0) || (params && params.trainingEntityReportingUserIds && params.trainingEntityReportingUserIds.length > 0)) {
+      if (
+        (params &&
+          params.trainingEntityTeams &&
+          params.trainingEntityTeams.length > 0) ||
+        (params &&
+          params.trainingEntityReportingUserIds &&
+          params.trainingEntityReportingUserIds.length > 0)
+      ) {
         const data = await fetchTrainingEntityAttemptsStatsForManagerDashboard({
           user_id: user?.id || "user123",
           type: type,
@@ -1832,7 +1893,7 @@ const ManagerDashboard = () => {
   const filteredUserIds = allUserIds.filter((userId) =>
     (reporteeUserIdsMapToName.get(userId) || "")
       .toLowerCase()
-      .includes(dropdownSearchQuery.toLowerCase().trim())
+      .includes(dropdownSearchQuery.toLowerCase().trim()),
   );
 
   const filteredTeams =
@@ -1840,20 +1901,20 @@ const ManagerDashboard = () => {
       (reporteeTeamIdsMapToName.get(team.team_id) || "")
         .toLowerCase()
         .trim()
-        .includes(dropdownSearchQuery.toLowerCase().trim())
+        .includes(dropdownSearchQuery.toLowerCase().trim()),
     ) || [];
 
   const filteredCreators = allCreatorIds.filter((creatorId) =>
     (creatorIdsMapToName.get(creatorId) || "")
       .toLowerCase()
-      .includes(creatorSearchQuery.toLowerCase().trim())
+      .includes(creatorSearchQuery.toLowerCase().trim()),
   );
 
   const filteredTeamEntity = filteredTeams?.filter((team) =>
     reporteeTeamIdsMapToName
       .get(team.team_id)
       ?.toLowerCase()
-      .includes(teamSearchQuery.toLowerCase().trim())
+      .includes(teamSearchQuery.toLowerCase().trim()),
   );
 
   useEffect(() => {
@@ -1866,7 +1927,10 @@ const ManagerDashboard = () => {
 
   // Updated useEffect to call both functions when reportee data is loaded
   useEffect(() => {
-    if (reporteeUserIdsMapToName.size > 0 && reporteeUserIdsMapToClassId.size > 0) {
+    if (
+      reporteeUserIdsMapToName.size > 0 &&
+      reporteeUserIdsMapToClassId.size > 0
+    ) {
       loadAllPlatformUsers();
       loadCreators();
     }
@@ -1909,14 +1973,16 @@ const ManagerDashboard = () => {
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
-  const handleTrainingEntityDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+  const handleTrainingEntityDateRangeApplyCallback = (
+    range: DateRange<Dayjs>,
+  ) => {
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     handleTrainingEntityTeamSelectedApply();
   };
 
   const handleTrainingEntitySelectedApply = () => {
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
-    handleTrainingEntityTeamSelectedApply()
+    handleTrainingEntityTeamSelectedApply();
   };
 
   const handleTrainingEntityCreatorSelectedApply = () => {
@@ -1932,7 +1998,7 @@ const ManagerDashboard = () => {
       loadTrainingEntityAttemptsForManagerDashboard(
         activeTab,
         undefined,
-        allTeamIds
+        allTeamIds,
       );
     } else {
       loadTrainingEntityAttemptsForManagerDashboard(activeTab);
@@ -1971,7 +2037,7 @@ const ManagerDashboard = () => {
   // Helper function to check if any individual users are selected
   const hasUserSelections = () => {
     // Check if any selected items are from the users list
-    return teamframe.some(selectedId => allUserIds.includes(selectedId));
+    return teamframe.some((selectedId) => allUserIds.includes(selectedId));
   };
 
   useEffect(() => {
@@ -2050,14 +2116,16 @@ const ManagerDashboard = () => {
                         IconComponent={ExpandMoreIcon}
                         renderValue={(selected) => {
                           const filterSelected = selected.filter(
-                            (data) => data
+                            (data) => data,
                           );
-                          return filterSelected.length === 0
-                            ? <b>All Users and Teams</b>
-                            : teamframeNames.length > 0
-                            ? teamframeNames[0] +
-                              (teamframeNames[1] ? `${teamframeNames[1]}` : "")
-                            : <b>All Users and Teams</b>;
+                          return filterSelected.length === 0 ? (
+                            <b>All Users and Teams</b>
+                          ) : teamframeNames.length > 0 ? (
+                            teamframeNames[0] +
+                            (teamframeNames[1] ? `${teamframeNames[1]}` : "")
+                          ) : (
+                            <b>All Users and Teams</b>
+                          );
                         }}
                         MenuProps={{
                           PaperProps: {
@@ -2509,8 +2577,8 @@ const ManagerDashboard = () => {
                   activeTab === "TrainingPlan"
                     ? "Search by Training Plan Name or ID"
                     : activeTab === "Module"
-                    ? "Search by Module Name or ID"
-                    : "Search by Simulation Name or ID"
+                      ? "Search by Module Name or ID"
+                      : "Search by Simulation Name or ID"
                 }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}

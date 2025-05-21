@@ -17,6 +17,7 @@ import {
   CircularProgress,
   InputAdornment,
   Chip,
+  SvgIcon,
 } from "@mui/material";
 import {
   PlayArrow,
@@ -63,6 +64,15 @@ interface AbsoluteCoordinates {
   width: number;
   height: number;
 }
+
+const HeadsetIcon = ({ size = 64, color = "#DEE2FD" }) => (
+  <SvgIcon viewBox="0 0 64 64" sx={{ width: size, height: size }}>
+    <path
+      d="M20.0013 48C17.068 48 14.5569 46.9556 12.468 44.8667C10.3791 42.7778 9.33464 40.2667 9.33464 37.3333V26.4667C9.33464 24.2 10.0457 22.2111 11.468 20.5C12.8902 18.7889 14.7124 17.7333 16.9346 17.3333C19.468 16.8444 21.9791 16.5 24.468 16.3C26.9569 16.1 29.468 16 32.0013 16C34.5346 16 37.0569 16.1 39.568 16.3C42.0791 16.5 44.5791 16.8444 47.068 17.3333C49.2902 17.7778 51.1124 18.8444 52.5346 20.5333C53.9569 22.2222 54.668 24.2 54.668 26.4667V37.3333C54.668 40.2667 53.6235 42.7778 51.5346 44.8667C49.4457 46.9556 46.9346 48 44.0013 48H41.3346C40.7569 48 40.1791 47.9667 39.6013 47.9C39.0235 47.8333 38.468 47.6889 37.9346 47.4667L33.668 46C33.1346 45.7778 32.5791 45.6667 32.0013 45.6667C31.4235 45.6667 30.868 45.7778 30.3346 46L26.068 47.4667C25.5346 47.6889 24.9791 47.8333 24.4013 47.9C23.8235 47.9667 23.2457 48 22.668 48H20.0013ZM20.0013 42.6667H22.668C22.9791 42.6667 23.2791 42.6444 23.568 42.6C23.8569 42.5556 24.1346 42.4889 24.4013 42.4C25.6902 42 26.9457 41.5778 28.168 41.1333C29.3902 40.6889 30.668 40.4667 32.0013 40.4667C33.3346 40.4667 34.6235 40.6778 35.868 41.1C37.1124 41.5222 38.3569 41.9556 39.6013 42.4C39.868 42.4889 40.1457 42.5556 40.4346 42.6C40.7235 42.6444 41.0235 42.6667 41.3346 42.6667H44.0013C45.468 42.6667 46.7235 42.1444 47.768 41.1C48.8124 40.0556 49.3346 38.8 49.3346 37.3333V26.4667C49.3346 25.4889 49.0235 24.6444 48.4013 23.9333C47.7791 23.2222 47.0013 22.7556 46.068 22.5333C43.7569 22.0444 41.4346 21.7222 39.1013 21.5667C36.768 21.4111 34.4013 21.3333 32.0013 21.3333C29.6013 21.3333 27.2457 21.4222 24.9346 21.6C22.6235 21.7778 20.2902 22.0889 17.9346 22.5333C17.0013 22.7111 16.2235 23.1667 15.6013 23.9C14.9791 24.6333 14.668 25.4889 14.668 26.4667V37.3333C14.668 38.8 15.1902 40.0556 16.2346 41.1C17.2791 42.1444 18.5346 42.6667 20.0013 42.6667ZM4.66797 37.3333C4.09019 37.3333 3.61241 37.1444 3.23464 36.7667C2.85686 36.3889 2.66797 35.9111 2.66797 35.3333V28.6667C2.66797 28.0889 2.85686 27.6111 3.23464 27.2333C3.61241 26.8556 4.09019 26.6667 4.66797 26.6667C5.24575 26.6667 5.72352 26.8556 6.1013 27.2333C6.47908 27.6111 6.66797 28.0889 6.66797 28.6667V35.3333C6.66797 35.9111 6.47908 36.3889 6.1013 36.7667C5.72352 37.1444 5.24575 37.3333 4.66797 37.3333ZM59.3346 37.3333C58.7569 37.3333 58.2791 37.1444 57.9013 36.7667C57.5235 36.3889 57.3346 35.9111 57.3346 35.3333V28.6667C57.3346 28.0889 57.5235 27.6111 57.9013 27.2333C58.2791 26.8556 58.7569 26.6667 59.3346 26.6667C59.9124 26.6667 60.3902 26.8556 60.768 27.2333C61.1457 27.6111 61.3346 28.0889 61.3346 28.6667V35.3333C61.3346 35.9111 61.1457 36.3889 60.768 36.7667C60.3902 37.1444 59.9124 37.3333 59.3346 37.3333Z"
+      fill={color}
+    />
+  </SvgIcon>
+);
 
 // Utility functions for coordinate conversions
 const absoluteToPercentage = (
@@ -564,7 +574,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`);
+            console.log(
+              `Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`,
+            );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
@@ -576,15 +588,18 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               const timeoutRecord = {
                 ...currentItem,
                 timedOut: true,
-                wrong_clicks: []
+                wrong_clicks: [],
               };
 
               // Explicitly REMOVE isClicked property if it exists
-              if ('isClicked' in timeoutRecord) {
+              if ("isClicked" in timeoutRecord) {
                 delete timeoutRecord.isClicked;
               }
 
-              console.log(`Adding timeout record for hotspot ${currentItem.name}:`, JSON.stringify(timeoutRecord));
+              console.log(
+                `Adding timeout record for hotspot ${currentItem.name}:`,
+                JSON.stringify(timeoutRecord),
+              );
 
               if (existingItemIndex >= 0) {
                 // Replace existing item with timeout version
@@ -885,14 +900,14 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
     // Determine if this hotspot should set isClicked based on its type
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
-      hotspotType
+      hotspotType,
     );
 
     // Create a clean clicked hotspot record
     const clickRecord = {
       ...currentItem,
       timedOut: false,
-      wrong_clicks: []
+      wrong_clicks: [],
     };
 
     // Only add isClicked property for clickable hotspot types
@@ -906,7 +921,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     setAttemptSequenceData((prevData) => {
       // Find if this item already exists in our data
       const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id
+        (item) => item.id === currentItem.id,
       );
 
       if (existingItemIndex >= 0) {
@@ -914,7 +929,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         const newData = [...prevData];
 
         // Get existing wrong clicks if any
-        let updatedWrongClicks = [...(newData[existingItemIndex].wrong_clicks || [])];
+        let updatedWrongClicks = [
+          ...(newData[existingItemIndex].wrong_clicks || []),
+        ];
         if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
           updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
         }
@@ -922,7 +939,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         // Update the existing item with our click record
         newData[existingItemIndex] = {
           ...clickRecord,
-          wrong_clicks: updatedWrongClicks
+          wrong_clicks: updatedWrongClicks,
         };
 
         return newData;
@@ -978,12 +995,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       ...currentItem,
       userInput: option,
       timedOut: false,
-      wrong_clicks: []
+      wrong_clicks: [],
     };
 
     setAttemptSequenceData((prevData) => {
       const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id
+        (item) => item.id === currentItem.id,
       );
 
       if (existingItemIndex >= 0) {
@@ -1012,12 +1029,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         ...currentItem,
         userInput: textInputValue,
         timedOut: false,
-        wrong_clicks: []
+        wrong_clicks: [],
       };
 
       setAttemptSequenceData((prevData) => {
         const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id
+          (item) => item.id === currentItem.id,
         );
 
         if (existingItemIndex >= 0) {
@@ -1213,23 +1230,28 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // Process the current item if it's a hotspot
       if (currentItem && currentItem.type === "hotspot") {
         // Check if this item already exists in the data
-        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
 
         // Determine if this hotspot has timed out or should be considered clicked
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-        const isTimedOut = timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+        const isTimedOut =
+          timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
 
-        console.log(`Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`);
+        console.log(
+          `Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`,
+        );
 
         if (isTimedOut) {
           // Create a clean timeout record WITHOUT isClicked property
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: []
+            wrong_clicks: [],
           };
 
-          if ('isClicked' in timeoutRecord) {
+          if ("isClicked" in timeoutRecord) {
             delete timeoutRecord.isClicked;
           }
 
@@ -1242,7 +1264,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         } else {
           // Determine if this hotspot should set isClicked based on its type
           const hotspotType = currentItem.hotspotType || "";
-          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
+            hotspotType,
+          );
 
           if (itemIndex >= 0) {
             // Update existing record based on hotspot type
@@ -1250,14 +1274,14 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               finalAttemptData[itemIndex] = {
                 ...finalAttemptData[itemIndex],
                 isClicked: true,
-                timedOut: false
+                timedOut: false,
               };
             }
           } else {
             // Add new record with appropriate properties
             const newRecord = {
               ...currentItem,
-              wrong_clicks: []
+              wrong_clicks: [],
             };
 
             if (shouldBeClicked) {
@@ -1272,9 +1296,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
       // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
       // does NOT have an isClicked property
-      finalAttemptData = finalAttemptData.map(item => {
+      finalAttemptData = finalAttemptData.map((item) => {
         if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
-          if (item.timedOut === true && 'isClicked' in item) {
+          if (item.timedOut === true && "isClicked" in item) {
             // Create a clean copy without the isClicked property
             const { isClicked, ...cleanItem } = item;
             return cleanItem;
@@ -1283,7 +1307,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         return item;
       });
 
-      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
+      console.log(
+        "Final attempt data before API call:",
+        JSON.stringify(finalAttemptData),
+      );
 
       // Use the endVisualChatAttempt function instead of direct axios call
       const response = await endVisualChatAttempt(
@@ -1600,7 +1627,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 mb: 2,
               }}
             >
-              <ChatIcon sx={{ fontSize: 48, color: "#DEE2FD" }} />
+              <HeadsetIcon size={96} color="#DEE2FD" />
             </Box>
             <Typography
               variant="h4"
@@ -1624,6 +1651,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 borderRadius: 2,
                 textTransform: "none",
                 fontSize: "16px",
+                width: "80%",
                 "&:hover": {
                   bgcolor: "#002ed4",
                 },
@@ -1643,6 +1671,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 py: 1.5,
                 borderRadius: 2,
                 fontSize: "16px",
+                width: "80%",
               }}
             >
               Back to Sim List

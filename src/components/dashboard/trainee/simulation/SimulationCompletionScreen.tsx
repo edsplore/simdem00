@@ -1,14 +1,4 @@
 import React from "react";
-import { Box, Typography, Button, Avatar, Chip, Paper } from "@mui/material";
-import {
-  AccessTime as AccessTimeIcon,
-  SignalCellularAlt as SignalIcon,
-  SentimentSatisfiedAlt as SatisfiedIcon,
-  Psychology as PsychologyIcon,
-  BatteryChargingFull as EnergyIcon,
-  SmartToy as SmartToyIcon,
-  PlayArrow as PlayArrowIcon,
-} from "@mui/icons-material";
 
 interface ScoresType {
   FinalScore: number;
@@ -19,6 +9,7 @@ interface ScoresType {
   Confidence?: number;
   Energy?: number;
   Concentration?: number;
+  SimAccuracyScore?: number;
   [key: string]: any; // For any additional scores
 }
 
@@ -36,6 +27,7 @@ interface SimulationCompletionScreenProps {
   onGoToNextSim?: () => void;
   onRestartSim?: () => void;
   onViewPlayback?: () => void;
+  onShareFeedback?: () => void;
   hasNextSimulation?: boolean;
   minPassingScore: number;
 }
@@ -54,6 +46,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   onGoToNextSim,
   onRestartSim,
   onViewPlayback,
+  onShareFeedback,
   hasNextSimulation = false,
   minPassingScore,
 }) => {
@@ -64,545 +57,386 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
     return `${mins}m ${secs}s`;
   };
 
+  // Format click score as X/Y if it's a fraction
+  const formatClickScore = (score: number) => {
+    if (Number.isInteger(score)) {
+      return `${score}`;
+    }
+    // If it has a denominator (like in the 62/70 example)
+    if (
+      scores?.ClickScore &&
+      typeof scores.ClickScore === "string" &&
+      scores.ClickScore.includes("/")
+    ) {
+      return scores.ClickScore;
+    }
+    return `${Math.round(score)}%`;
+  };
+
   if (!showCompletionScreen) {
     return null;
   }
 
   return (
-    <Box
-      sx={{
-        height: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        bgcolor: "#f5f7fa",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-      }}
-    >
-      <Paper
-        elevation={3}
-        sx={{
-          width: "650px",
-          borderRadius: "16px",
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <Box
-          sx={{
-            p: 3,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            borderBottom: "1px solid #eaedf0",
-          }}
-        >
-          <Box
-            sx={{
-              width: 60,
-              height: 60,
-              bgcolor: "#F0F3F5",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              mb: 1,
-            }}
-          >
-            <Avatar sx={{ width: 40, height: 40, bgcolor: "transparent" }}>
-              <SmartToyIcon sx={{ color: "#A3AED0" }} />
-            </Avatar>
-          </Box>
-          <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-            Great work,
-          </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
-            {userName}
-          </Typography>
-        </Box>
+    <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-lg overflow-hidden">
+        {/* Header with user greeting */}
+        <div className="flex flex-col items-center p-6 border-b border-gray-200">
+          <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mb-2">
+            <div>
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 100 100"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M19.2695 8.83594H36.5615C38.0664 8.83599 39.4123 9.22747 40.6123 10.0059C41.7493 10.7435 42.6713 11.7111 43.3799 12.916L43.5186 13.1602L49.999 26.1211L50.4463 25.2266L56.4785 13.1602C57.2041 11.841 58.1727 10.7927 59.3857 10.0059C60.5858 9.22744 61.9315 8.83594 63.4365 8.83594H80.7275C82.1574 8.83594 83.1894 9.41084 83.8936 10.5742C84.5582 11.6724 84.6405 12.7708 84.1387 13.9229L84.0303 14.1543L70.3848 41.5508L70.0596 42.2031L70.7852 42.2715C76.5669 42.8156 81.401 45.1908 85.3096 49.4053C89.214 53.6154 91.165 58.6665 91.165 64.5859C91.165 70.8446 88.9944 76.1335 84.6455 80.4824C80.2966 84.8313 75.0076 87.0029 68.749 87.0029C68.1333 87.0029 67.4991 86.9855 66.8477 86.9512C66.2148 86.9179 65.6 86.8348 65.0029 86.7021L64.7988 86.6562L64.623 86.7695C62.5083 88.1339 60.2226 89.2096 57.7637 89.9951C55.3158 90.7771 52.7281 91.1689 49.999 91.1689C47.27 91.1689 44.6645 90.7767 42.1807 89.9941C39.687 89.2085 37.3834 88.1333 35.2695 86.7695L35.0938 86.6562L34.8906 86.7021C34.2916 86.8353 33.6929 86.918 33.0957 86.9512C32.4809 86.9853 31.8306 87.0029 31.1445 87.0029C24.957 87.0029 19.7026 84.8324 15.3525 80.4824C11.0025 76.1324 8.83211 70.8779 8.83203 64.6904C8.83203 58.7721 10.8005 53.7212 14.7393 49.5107C18.6817 45.2965 23.531 42.9564 29.3105 42.4805L30.0459 42.4199L29.7168 41.7588L15.9668 14.1543L15.8584 13.9229C15.3566 12.7709 15.4389 11.6723 16.1035 10.5742C16.8077 9.41084 17.8396 8.83594 19.2695 8.83594ZM49.999 45.3359C44.6597 45.3359 40.1049 47.2106 36.3643 50.9512C32.6236 54.6918 30.749 59.2465 30.749 64.5859C30.749 69.9254 32.6236 74.48 36.3643 78.2207C40.1049 81.9613 44.6597 83.8359 49.999 83.8359C55.3383 83.8359 59.8932 81.9613 63.6338 78.2207C67.3743 74.4801 69.249 69.9253 69.249 64.5859C69.249 59.2466 67.3743 54.6918 63.6338 50.9512C59.8932 47.2106 55.3383 45.336 49.999 45.3359ZM26.5068 50.3613C23.4942 51.3656 21.0154 53.1449 19.0801 55.6895C17.1352 58.2466 16.165 61.219 16.165 64.5859C16.165 67.9529 17.1352 70.9252 19.0801 73.4824C21.0154 76.027 23.4942 77.8063 26.5068 78.8105L27.7695 79.2314L27.0967 78.083C25.9384 76.1071 25.0343 73.9764 24.3857 71.6895C23.739 69.4089 23.415 67.0414 23.415 64.5859C23.415 62.1305 23.739 59.7629 24.3857 57.4824C25.0343 55.1955 25.9384 53.0648 27.0967 51.0889L27.7695 49.9404L26.5068 50.3613ZM72.9004 51.0889C74.0587 53.0648 74.9628 55.1955 75.6113 57.4824C76.258 59.7629 76.582 62.1305 76.582 64.5859C76.582 67.0414 76.258 69.4089 75.6113 71.6895C74.9628 73.9764 74.0587 76.1071 72.9004 78.083L72.2275 79.2314L73.4902 78.8105C76.5031 77.8063 78.9826 76.0271 80.918 73.4824C82.8628 70.9253 83.832 67.9528 83.832 64.5859C83.832 61.2191 82.8628 58.2466 80.918 55.6895C78.9826 53.1448 76.5031 51.3656 73.4902 50.3613L72.2275 49.9404L72.9004 51.0889ZM49.999 54.0439C50.2051 54.044 50.3217 54.089 50.3887 54.1357C50.4354 54.1685 50.4839 54.2198 50.5234 54.3086L50.5596 54.4111L50.5605 54.4141L52.54 61.1846L52.6445 61.5439H59.2695C59.4826 61.5439 59.6046 61.5879 59.6738 61.6328C59.7355 61.6729 59.7929 61.738 59.833 61.8682C59.875 62.0046 59.8693 62.1079 59.8389 62.1953C59.807 62.2867 59.734 62.3993 59.5811 62.5283L54.5 66.1582L54.2051 66.3682L54.3125 66.7139L56.292 73.0684C56.3351 73.226 56.3256 73.3364 56.2969 73.4189C56.267 73.5048 56.2 73.6063 56.0527 73.7168C55.9133 73.8214 55.8158 73.8416 55.749 73.8389C55.6795 73.836 55.5723 73.8052 55.4229 73.6807L55.4141 73.6729L55.4043 73.666L50.2998 69.8115L49.999 69.584L49.6973 69.8115L44.5928 73.666L44.584 73.6729L44.5742 73.6807C44.425 73.805 44.3186 73.8359 44.249 73.8389C44.1823 73.8416 44.084 73.8215 43.9443 73.7168C43.7972 73.6064 43.7301 73.5048 43.7002 73.4189C43.6708 73.3344 43.6622 73.2204 43.709 73.0566L43.708 73.0557L45.6846 66.7139L45.792 66.3682L45.498 66.1582L40.415 62.5283C40.2626 62.3995 40.19 62.2866 40.1582 62.1953C40.1278 62.1079 40.1221 62.0046 40.1641 61.8682C40.2042 61.738 40.2616 61.6729 40.3232 61.6328C40.3924 61.5879 40.5145 61.544 40.7275 61.5439H47.3525L47.458 61.1846L49.4365 54.4141L49.4375 54.4111C49.4817 54.2563 49.5461 54.1794 49.6084 54.1357C49.6754 54.0889 49.7925 54.0439 49.999 54.0439ZM25.5928 16.8916L37.3633 40.6416L37.5947 41.1084L38.0518 40.8574C39.4074 40.1118 40.8491 39.5185 42.377 39.0771C43.9087 38.6346 45.457 38.345 47.0215 38.209L47.7539 38.1455L47.4248 37.4873L36.9043 16.4453L36.7656 16.1689H25.2344L25.5928 16.8916ZM63.0928 16.4453L54.2393 34.1543L54.127 34.3779L54.2393 34.6016L56.2178 38.5596L56.3164 38.7559L56.5283 38.8164C57.4922 39.0918 58.4209 39.385 59.3145 39.6943C60.19 39.9974 61.0684 40.3851 61.9492 40.8594L62.4033 41.1035L74.5088 16.8926L74.8701 16.1689H63.2314L63.0928 16.4453Z"
+                  fill="#A3AED0"
+                  stroke="#A3AED0"
+                />
+              </svg>
+            </div>
+          </div>
+          <p className="text-gray-500 text-sm">Great work,</p>
+          <h2 className="text-xl font-semibold">{userName}</h2>
+        </div>
 
         {/* Simulation details */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 2,
-            p: 2,
-            borderBottom: "1px solid #eaedf0",
-          }}
-        >
-          <Chip
-            label={simulationName}
-            variant="outlined"
-            sx={{
-              borderRadius: "8px",
-              color: "#4A5568",
-              bgcolor: "#f7fafc",
-              border: "none",
-              fontSize: "13px",
-            }}
-          />
-          <Chip
-            label={level}
-            variant="outlined"
-            sx={{
-              borderRadius: "8px",
-              color: "#4A5568",
-              bgcolor: "#f7fafc",
-              border: "none",
-              fontSize: "13px",
-            }}
-          />
-          <Chip
-            label={`Sim Type: ${simType}`}
-            variant="outlined"
-            sx={{
-              borderRadius: "8px",
-              color: "#4A5568",
-              bgcolor: "#f7fafc",
-              border: "none",
-              fontSize: "13px",
-            }}
-          />
-          <Chip
-            label={`${attemptType} Attempt`}
-            variant="outlined"
-            sx={{
-              borderRadius: "8px",
-              color: "#4A5568",
-              bgcolor: "#f7fafc",
-              border: "none",
-              fontSize: "13px",
-            }}
-          />
-        </Box>
+        <div className="flex justify-center gap-2 p-4 flex-wrap border-b border-gray-200">
+          <span className="bg-gray-50 px-3 py-1 rounded-lg text-sm text-gray-700">
+            {simulationName}
+          </span>
+          <span className="bg-gray-50 px-3 py-1 rounded-lg text-sm text-gray-700">
+            {level}
+          </span>
+          <span className="bg-gray-50 px-3 py-1 rounded-lg text-sm text-gray-700">
+            Sim Type: {simType}
+          </span>
+          <span className="bg-gray-50 px-3 py-1 rounded-lg text-sm text-gray-700">
+            {attemptType} Attempt
+          </span>
+        </div>
 
         {/* Score details */}
-        <Box sx={{ px: 4, py: 3 }}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 3,
-            }}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Score Details
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="body2" sx={{ color: "#718096" }}>
-                Min passing score:
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{ color: "#6366F1", fontWeight: 600 }}
-              >
-                {minPassingScore}%
-              </Typography>
-              <Chip
-                label={isPassed ? "Passed" : "Failed"}
-                size="small"
-                sx={{
-                  bgcolor: isPassed ? "#E6FFFA" : "#FFF5F5",
-                  color: isPassed ? "#319795" : "#E53E3E",
-                  fontSize: "12px",
-                  height: "22px",
-                }}
-              />
-            </Box>
-          </Box>
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-semibold text-gray-800">Score Details</h3>
+            {minPassingScore > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">
+                  Min passing score:
+                </span>
+                <span className="text-sm font-semibold text-blue-600">
+                  {minPassingScore}%
+                </span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded ${
+                    isPassed
+                      ? "bg-green-50 text-green-600"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
+                  {isPassed ? "Passed" : "Failed"}
+                </span>
+              </div>
+            )}
+          </div>
 
-          {/* Metrics Grid - Updated to show all scores */}
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-              gap: 3,
-            }}
-          >
-            {/* Overall Score (FinalScore) */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  bgcolor: "#EBF4FF",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  mb: 1,
-                }}
-              >
-                <SignalIcon sx={{ color: "#3182CE" }} />
-              </Box>
-              <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                Overall Score
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-3 gap-6">
+            {/* Sim Score */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6.14714 17.5208C5.64714 17.5069 5.17144 17.3785 4.72005 17.1354C4.26866 16.8924 3.84158 16.5347 3.4388 16.0625C2.88325 15.3958 2.44922 14.6007 2.13672 13.6771C1.82422 12.7535 1.66797 11.8056 1.66797 10.8333C1.66797 9.68056 1.88672 8.59722 2.32422 7.58333C2.76172 6.56944 3.35547 5.6875 4.10547 4.9375C4.85547 4.1875 5.73741 3.59375 6.7513 3.15625C7.76519 2.71875 8.84852 2.5 10.0013 2.5C11.1541 2.5 12.2374 2.72222 13.2513 3.16667C14.2652 3.61111 15.1471 4.21528 15.8971 4.97917C16.6471 5.74306 17.2409 6.63889 17.6784 7.66667C18.1159 8.69444 18.3346 9.79861 18.3346 10.9792C18.3346 12.0486 18.161 13.0486 17.8138 13.9792C17.4666 14.9097 16.9735 15.6944 16.3346 16.3333C15.9457 16.7222 15.536 17.0174 15.1055 17.2188C14.6749 17.4201 14.2374 17.5208 13.793 17.5208C13.543 17.5208 13.293 17.4896 13.043 17.4271C12.793 17.3646 12.543 17.2708 12.293 17.1458L11.1263 16.5625C10.9596 16.4792 10.7826 16.4167 10.5951 16.375C10.4076 16.3333 10.2096 16.3125 10.0013 16.3125C9.79297 16.3125 9.59505 16.3333 9.40755 16.375C9.22005 16.4167 9.04297 16.4792 8.8763 16.5625L7.70964 17.1458C7.44575 17.2847 7.18533 17.3854 6.92839 17.4479C6.67144 17.5104 6.41102 17.5347 6.14714 17.5208ZM6.1888 15.8542C6.3138 15.8542 6.44227 15.8403 6.57422 15.8125C6.70616 15.7847 6.83464 15.7361 6.95964 15.6667L8.1263 15.0833C8.41797 14.9306 8.72005 14.8194 9.03255 14.75C9.34505 14.6806 9.66102 14.6458 9.98047 14.6458C10.2999 14.6458 10.6194 14.6806 10.9388 14.75C11.2582 14.8194 11.5638 14.9306 11.8555 15.0833L13.043 15.6667C13.168 15.7361 13.293 15.7847 13.418 15.8125C13.543 15.8403 13.668 15.8542 13.793 15.8542C14.0569 15.8542 14.3069 15.7847 14.543 15.6458C14.7791 15.5069 15.0152 15.2986 15.2513 15.0208C15.6957 14.4931 16.043 13.8611 16.293 13.125C16.543 12.3889 16.668 11.6319 16.668 10.8542C16.668 8.99306 16.0221 7.41319 14.7305 6.11458C13.4388 4.81597 11.8624 4.16667 10.0013 4.16667C8.14019 4.16667 6.5638 4.81944 5.27214 6.125C3.98047 7.43056 3.33464 9.01389 3.33464 10.875C3.33464 11.6667 3.46311 12.4375 3.72005 13.1875C3.977 13.9375 4.33464 14.5694 4.79297 15.0833C5.02908 15.3611 5.25825 15.559 5.48047 15.6771C5.70269 15.7951 5.9388 15.8542 6.1888 15.8542ZM10.0013 12.5C10.4596 12.5 10.852 12.3368 11.1784 12.0104C11.5048 11.684 11.668 11.2917 11.668 10.8333C11.668 10.7222 11.6576 10.6111 11.6367 10.5C11.6159 10.3889 11.5846 10.2778 11.543 10.1667L12.5846 8.77083C12.7374 8.96528 12.8624 9.16319 12.9596 9.36458C13.0569 9.56597 13.1402 9.77778 13.2096 10C13.2791 10.2222 13.3832 10.4167 13.5221 10.5833C13.661 10.75 13.8416 10.8333 14.0638 10.8333C14.3416 10.8333 14.5603 10.7118 14.7201 10.4688C14.8798 10.2257 14.9249 9.95833 14.8555 9.66667C14.5777 8.54167 13.9874 7.62153 13.0846 6.90625C12.1819 6.19097 11.1541 5.83333 10.0013 5.83333C8.83463 5.83333 7.80339 6.19097 6.90755 6.90625C6.01172 7.62153 5.42491 8.54167 5.14714 9.66667C5.07769 9.95833 5.12283 10.2257 5.28255 10.4688C5.44227 10.7118 5.66102 10.8333 5.9388 10.8333C6.16102 10.8333 6.34158 10.75 6.48047 10.5833C6.61936 10.4167 6.72352 10.2222 6.79297 10C6.98741 9.26389 7.37977 8.66319 7.97005 8.19792C8.56033 7.73264 9.23741 7.5 10.0013 7.5C10.2235 7.5 10.4423 7.52083 10.6576 7.5625C10.8728 7.60417 11.0777 7.66667 11.2721 7.75L10.2096 9.1875C10.1819 9.1875 10.1471 9.18403 10.1055 9.17708C10.0638 9.17014 10.0291 9.16667 10.0013 9.16667C9.54297 9.16667 9.15061 9.32986 8.82422 9.65625C8.49783 9.98264 8.33463 10.375 8.33463 10.8333C8.33463 11.2917 8.49783 11.684 8.82422 12.0104C9.15061 12.3368 9.54297 12.5 10.0013 12.5Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Sim Score</span>
+              <span className="text-lg font-semibold">
                 {scores ? `${Math.round(scores.FinalScore)}%` : "N/A"}
-              </Typography>
-            </Box>
-
-            {/* Contextual Accuracy */}
-            {scores?.ContextualAccuracy !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Contextual Accuracy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.ContextualAccuracy)}%`}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Keyword Score */}
-            {scores?.KeywordScore !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Keyword Score
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.KeywordScore)}%`}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Click Score */}
-            {scores?.ClickScore !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <SignalIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Click Score
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.ClickScore)}%`}
-                </Typography>
-              </Box>
-            )}
-
-            {/* Data Accuracy */}
-            {scores?.DataAccuracy !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
-                >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Data Accuracy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.DataAccuracy)}%`}
-                </Typography>
-              </Box>
-            )}
+              </span>
+            </div>
 
             {/* Completion Time */}
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <Box
-                sx={{
-                  width: 40,
-                  height: 40,
-                  bgcolor: "#EBF4FF",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  mb: 1,
-                }}
-              >
-                <AccessTimeIcon sx={{ color: "#3182CE" }} />
-              </Box>
-              <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="25"
+                  height="24"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.0013 2.5026C8.76519 2.5026 8.56727 2.42274 8.40755 2.26302C8.24783 2.1033 8.16797 1.90538 8.16797 1.66927C8.16797 1.43316 8.24783 1.23524 8.40755 1.07552C8.56727 0.915799 8.76519 0.835938 9.0013 0.835938H12.3346C12.5707 0.835938 12.7687 0.915799 12.9284 1.07552C13.0881 1.23524 13.168 1.43316 13.168 1.66927C13.168 1.90538 13.0881 2.1033 12.9284 2.26302C12.7687 2.42274 12.5707 2.5026 12.3346 2.5026H9.0013ZM10.668 11.6693C10.9041 11.6693 11.102 11.5894 11.2617 11.4297C11.4214 11.27 11.5013 11.072 11.5013 10.8359V7.5026C11.5013 7.26649 11.4214 7.06858 11.2617 6.90885C11.102 6.74913 10.9041 6.66927 10.668 6.66927C10.4319 6.66927 10.2339 6.74913 10.0742 6.90885C9.9145 7.06858 9.83464 7.26649 9.83464 7.5026V10.8359C9.83464 11.072 9.9145 11.27 10.0742 11.4297C10.2339 11.5894 10.4319 11.6693 10.668 11.6693ZM10.668 18.3359C9.64019 18.3359 8.67144 18.138 7.76172 17.7422C6.852 17.3464 6.05686 16.8082 5.3763 16.1276C4.69575 15.447 4.15755 14.6519 3.76172 13.7422C3.36589 12.8325 3.16797 11.8637 3.16797 10.8359C3.16797 9.80816 3.36589 8.83941 3.76172 7.92969C4.15755 7.01997 4.69575 6.22483 5.3763 5.54427C6.05686 4.86372 6.852 4.32552 7.76172 3.92969C8.67144 3.53385 9.64019 3.33594 10.668 3.33594C11.5291 3.33594 12.3555 3.47483 13.1471 3.7526C13.9388 4.03038 14.6819 4.43316 15.3763 4.96094L15.9596 4.3776C16.1124 4.22483 16.3069 4.14844 16.543 4.14844C16.7791 4.14844 16.9735 4.22483 17.1263 4.3776C17.2791 4.53038 17.3555 4.72483 17.3555 4.96094C17.3555 5.19705 17.2791 5.39149 17.1263 5.54427L16.543 6.1276C17.0707 6.82205 17.4735 7.5651 17.7513 8.35677C18.0291 9.14844 18.168 9.97483 18.168 10.8359C18.168 11.8637 17.9701 12.8325 17.5742 13.7422C17.1784 14.6519 16.6402 15.447 15.9596 16.1276C15.2791 16.8082 14.4839 17.3464 13.5742 17.7422C12.6645 18.138 11.6957 18.3359 10.668 18.3359ZM10.668 16.6693C12.2791 16.6693 13.6541 16.0998 14.793 14.9609C15.9319 13.822 16.5013 12.447 16.5013 10.8359C16.5013 9.22483 15.9319 7.84983 14.793 6.71094C13.6541 5.57205 12.2791 5.0026 10.668 5.0026C9.05686 5.0026 7.68186 5.57205 6.54297 6.71094C5.40408 7.84983 4.83464 9.22483 4.83464 10.8359C4.83464 12.447 5.40408 13.822 6.54297 14.9609C7.68186 16.0998 9.05686 16.6693 10.668 16.6693Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">
                 Completion Time
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              </span>
+              <span className="text-lg font-semibold">
                 {formatCompletionTime(duration)}
-              </Typography>
-            </Box>
+              </span>
+            </div>
 
-            {/* Confidence - Show exact score */}
-            {scores?.Confidence !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
+            {/* Data Accuracy */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
                 >
-                  <SatisfiedIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Confidence
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.Confidence)}%`}
-                </Typography>
-              </Box>
-            )}
+                  <path
+                    d="M3 13h2v7H3v-7zm4-7h2v14H7V6zm4 3h2v11h-2V9zm4 4h2v7h-2v-7zm4-7h2v14h-2V6z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Data Accuracy</span>
+              <span className="text-lg font-semibold">
+                {scores?.DataAccuracy !== undefined
+                  ? `${Math.round(scores.DataAccuracy)}%`
+                  : "12%"}
+              </span>
+            </div>
 
-            {/* Energy - Show exact score */}
-            {scores?.Energy !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
+            {/* Click Score */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <EnergyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Energy
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.Energy)}%`}
-                </Typography>
-              </Box>
-            )}
+                  <path
+                    d="M9.9974 6.66406C9.08073 6.66406 8.29601 6.99045 7.64323 7.64323C6.99045 8.29601 6.66406 9.08073 6.66406 9.9974C6.66406 10.6224 6.82031 11.1988 7.13281 11.7266C7.44531 12.2543 7.87934 12.6641 8.4349 12.9557C8.65712 13.0668 8.81337 13.23 8.90365 13.4453C8.99392 13.6606 8.99045 13.8793 8.89323 14.1016C8.79601 14.296 8.65017 14.4418 8.45573 14.5391C8.26128 14.6363 8.06684 14.6363 7.8724 14.5391C6.9974 14.1224 6.29948 13.5043 5.77865 12.6849C5.25781 11.8655 4.9974 10.9696 4.9974 9.9974C4.9974 8.60851 5.48351 7.42795 6.45573 6.45573C7.42795 5.48351 8.60851 4.9974 9.9974 4.9974C10.9835 4.9974 11.8898 5.25781 12.7161 5.77865C13.5425 6.29948 14.1571 7.01128 14.5599 7.91406C14.6432 8.10851 14.6398 8.30295 14.5495 8.4974C14.4592 8.69184 14.3168 8.83073 14.1224 8.91406C13.9002 9.01128 13.678 9.01128 13.4557 8.91406C13.2335 8.81684 13.0668 8.65712 12.9557 8.4349C12.6641 7.87934 12.2543 7.44531 11.7266 7.13281C11.1988 6.82031 10.6224 6.66406 9.9974 6.66406ZM9.9974 3.33073C8.13628 3.33073 6.5599 3.97656 5.26823 5.26823C3.97656 6.5599 3.33073 8.13628 3.33073 9.9974C3.33073 11.7474 3.90712 13.2474 5.0599 14.4974C6.21267 15.7474 7.65712 16.4557 9.39323 16.6224C9.62934 16.6502 9.8342 16.7543 10.0078 16.9349C10.1814 17.1155 10.2613 17.3238 10.2474 17.5599C10.2335 17.796 10.1467 17.9905 9.98698 18.1432C9.82726 18.296 9.62934 18.3655 9.39323 18.3516C8.3099 18.2821 7.29948 18.0113 6.36198 17.5391C5.42448 17.0668 4.60503 16.4523 3.90365 15.6953C3.20226 14.9384 2.65365 14.0703 2.25781 13.0911C1.86198 12.112 1.66406 11.0807 1.66406 9.9974C1.66406 8.84462 1.88281 7.76128 2.32031 6.7474C2.75781 5.73351 3.35156 4.85156 4.10156 4.10156C4.85156 3.35156 5.73351 2.75781 6.7474 2.32031C7.76128 1.88281 8.84462 1.66406 9.9974 1.66406C12.178 1.66406 14.0773 2.40712 15.6953 3.89323C17.3134 5.37934 18.1988 7.21267 18.3516 9.39323C18.3793 9.61545 18.3134 9.80642 18.1536 9.96615C17.9939 10.1259 17.796 10.2127 17.5599 10.2266C17.3238 10.2405 17.112 10.1641 16.9245 9.9974C16.737 9.83073 16.6293 9.62934 16.6016 9.39323C16.3932 7.72656 15.6675 6.29948 14.4245 5.11198C13.1814 3.92448 11.7057 3.33073 9.9974 3.33073ZM16.2891 17.9141L13.5391 15.1849L12.9141 17.0807C12.8446 17.2752 12.7127 17.3689 12.5182 17.362C12.3238 17.355 12.1918 17.2543 12.1224 17.0599L10.2266 10.7474C10.171 10.5946 10.2057 10.4557 10.3307 10.3307C10.4557 10.2057 10.5946 10.171 10.7474 10.2266L17.0599 12.1224C17.2543 12.1918 17.355 12.3238 17.362 12.5182C17.3689 12.7127 17.2752 12.8446 17.0807 12.9141L15.1849 13.5391L17.9349 16.2891C18.171 16.5252 18.2891 16.796 18.2891 17.1016C18.2891 17.4071 18.171 17.678 17.9349 17.9141C17.6988 18.1502 17.4245 18.2682 17.112 18.2682C16.7995 18.2682 16.5252 18.1502 16.2891 17.9141Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Click Score</span>
+              <span className="text-lg font-semibold">
+                {scores?.ClickScore !== undefined
+                  ? formatClickScore(scores.ClickScore)
+                  : "62/70"}
+              </span>
+            </div>
 
-            {/* Concentration - Show exact score */}
-            {scores?.Concentration !== undefined && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    bgcolor: "#EBF4FF",
-                    borderRadius: "50%",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mb: 1,
-                  }}
+            {/* Keyword Score */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <PsychologyIcon sx={{ color: "#3182CE" }} />
-                </Box>
-                <Typography variant="body2" sx={{ color: "#718096", mb: 0.5 }}>
-                  Concentration
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {`${Math.round(scores.Concentration)}%`}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+                  <path
+                    d="M3.58203 3.43555H11.915C12.1958 3.43555 12.4375 3.52111 12.6436 3.69238L12.7305 3.77148C12.9543 3.99551 13.0654 4.26509 13.0654 4.58594C13.0654 4.86686 12.9801 5.10831 12.8086 5.31445L12.7305 5.40039C12.5064 5.62448 12.236 5.73633 11.915 5.73633H8.89844V15.4189C8.89844 15.6996 8.81376 15.9414 8.64258 16.1475L8.56348 16.2344C8.3395 16.4583 8.06981 16.5693 7.74902 16.5693C7.46819 16.5693 7.2266 16.4839 7.02051 16.3125L6.93359 16.2344C6.70951 16.0103 6.59863 15.7399 6.59863 15.4189V5.73633H3.58203C3.30118 5.73633 3.05962 5.65087 2.85352 5.47949L2.76758 5.40039C2.54349 5.1763 2.43164 4.90694 2.43164 4.58594C2.43164 4.30509 2.5171 4.06353 2.68848 3.85742L2.76758 3.77148C2.96361 3.57546 3.19424 3.46579 3.46387 3.44141L3.58203 3.43555ZM12.749 7.60254H17.749C18.0299 7.6026 18.2714 7.68787 18.4775 7.85938L18.5635 7.9375C18.7876 8.16159 18.8984 8.43193 18.8984 8.75293C18.8984 9.03366 18.8139 9.27541 18.6426 9.48145L18.5635 9.56738C18.3395 9.7914 18.0699 9.90227 17.749 9.90234H16.3984V15.4189C16.3984 15.6996 16.3138 15.9414 16.1426 16.1475L16.0635 16.2344C15.8395 16.4583 15.5698 16.5693 15.249 16.5693C14.928 16.5693 14.6577 16.4585 14.4336 16.2344C14.2095 16.0103 14.0986 15.7399 14.0986 15.4189V9.90234H12.749C12.4683 9.90234 12.2265 9.81766 12.0205 9.64648L11.9336 9.56738C11.7097 9.3434 11.5987 9.07371 11.5986 8.75293C11.5986 8.47209 11.6841 8.23051 11.8555 8.02441L11.9336 7.9375C12.1577 7.71341 12.428 7.60254 12.749 7.60254Z"
+                    fill="#343F8A"
+                    stroke="#F4F7FE"
+                    stroke-width="0.2"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Keyword Score</span>
+              <span className="text-lg font-semibold">
+                {scores?.KeywordScore !== undefined
+                  ? typeof scores.KeywordScore === "string" &&
+                    scores.KeywordScore.includes("/")
+                    ? scores.KeywordScore
+                    : `${Math.round(scores.KeywordScore)}%`
+                  : "4/12"}
+              </span>
+            </div>
 
-          {/* Buttons */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 4 }}>
-            {/* First row - Navigation buttons */}
-            <Box sx={{ display: "flex", gap: 2 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={onBackToList}
-                sx={{
-                  borderColor: "#E2E8F0",
-                  color: "#4A5568",
-                  "&:hover": {
-                    borderColor: "#CBD5E0",
-                    bgcolor: "#F7FAFC",
-                  },
-                  py: 1.5,
-                  borderRadius: "8px",
-                }}
-              >
-                Back to Sim List
-              </Button>
-              {onGoToNextSim && (
-                <Button
-                  fullWidth
-                  variant="contained"
-                  onClick={onGoToNextSim}
-                  disabled={!hasNextSimulation}
-                  sx={{
-                    bgcolor: hasNextSimulation ? "#4299E1" : "#A0AEC0",
-                    "&:hover": {
-                      bgcolor: hasNextSimulation ? "#3182CE" : "#A0AEC0",
-                    },
-                    "&.Mui-disabled": {
-                      color: "#718096",
-                      bgcolor: "#E2E8F0",
-                    },
-                    py: 1.5,
-                    borderRadius: "8px",
-                  }}
+            {/* Contextual Accuracy */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  {hasNextSimulation
-                    ? "Go to Next Simulation"
-                    : "Last Simulation"}
-                </Button>
-              )}
-            </Box>
+                  <path
+                    d="M9.03776 12.9193C9.37109 13.2526 9.80165 13.4158 10.3294 13.4089C10.8572 13.4019 11.2461 13.2109 11.4961 12.8359L15.0169 7.5651C15.1419 7.37066 15.1246 7.19358 14.9648 7.03385C14.8051 6.87413 14.628 6.85677 14.4336 6.98177L9.16276 10.5026C8.78776 10.7526 8.58984 11.1345 8.56901 11.6484C8.54818 12.1623 8.70443 12.5859 9.03776 12.9193ZM10.3294 3.33594C10.8294 3.33594 11.3225 3.3776 11.8086 3.46094C12.2947 3.54427 12.7669 3.67622 13.2253 3.85677C13.4475 3.9401 13.6836 4.09635 13.9336 4.32552C14.1836 4.55469 14.253 4.77344 14.1419 4.98177C14.0308 5.1901 13.7808 5.32899 13.3919 5.39844C13.003 5.46788 12.6905 5.46094 12.4544 5.3776C12.1072 5.2526 11.7565 5.15885 11.4023 5.09635C11.0482 5.03385 10.6905 5.0026 10.3294 5.0026C8.48221 5.0026 6.90929 5.65191 5.61068 6.95052C4.31207 8.24913 3.66276 9.82205 3.66276 11.6693C3.66276 12.2526 3.74262 12.829 3.90234 13.3984C4.06207 13.9679 4.28776 14.5026 4.57943 15.0026H16.0794C16.3989 14.4748 16.6315 13.9262 16.7773 13.3568C16.9232 12.7873 16.9961 12.197 16.9961 11.5859C16.9961 11.2248 16.9648 10.8707 16.9023 10.5234C16.8398 10.1762 16.7461 9.83594 16.6211 9.5026C16.5378 9.26649 16.5239 9.03733 16.5794 8.8151C16.635 8.59288 16.76 8.40538 16.9544 8.2526C17.135 8.11372 17.3329 8.07205 17.5482 8.1276C17.7635 8.18316 17.9128 8.30816 17.9961 8.5026C18.2044 8.98872 18.3642 9.48524 18.4753 9.99219C18.5864 10.4991 18.6489 11.0165 18.6628 11.5443C18.6767 12.3359 18.5864 13.0929 18.3919 13.8151C18.1975 14.5373 17.9128 15.2248 17.5378 15.8776C17.385 16.1276 17.1767 16.322 16.9128 16.4609C16.6489 16.5998 16.3711 16.6693 16.0794 16.6693H4.57943C4.28776 16.6693 4.00998 16.5998 3.74609 16.4609C3.48221 16.322 3.27387 16.1276 3.12109 15.8776C2.75998 15.2526 2.4822 14.5894 2.28776 13.888C2.09332 13.1866 1.99609 12.447 1.99609 11.6693C1.99609 10.5165 2.21484 9.43663 2.65234 8.42969C3.08984 7.42274 3.68707 6.5408 4.44401 5.78385C5.20096 5.02691 6.08637 4.42969 7.10026 3.99219C8.11415 3.55469 9.19054 3.33594 10.3294 3.33594Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">
+                Contextual Accuracy
+              </span>
+              <span className="text-lg font-semibold">
+                {scores?.ContextualAccuracy !== undefined
+                  ? `${Math.round(scores.ContextualAccuracy)}%`
+                  : "72%"}
+              </span>
+            </div>
 
-            {/* Second row - Action buttons */}
-            {(onRestartSim || onViewPlayback) && (
-              <Box sx={{ display: "flex", gap: 2 }}>
-                {onRestartSim && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={onRestartSim}
-                    sx={{
-                      borderColor: "#E2E8F0",
-                      color: "#4A5568",
-                      "&:hover": {
-                        borderColor: "#CBD5E0",
-                        bgcolor: "#F7FAFC",
-                      },
-                      py: 1.5,
-                      borderRadius: "8px",
-                    }}
-                  >
-                    Restart Sim
-                  </Button>
-                )}
-                {onViewPlayback && (
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={onViewPlayback}
-                    sx={{
-                      bgcolor: "#4299E1",
-                      "&:hover": {
-                        bgcolor: "#3182CE",
-                      },
-                      py: 1.5,
-                      borderRadius: "8px",
-                    }}
-                  >
-                    View Playback
-                  </Button>
-                )}
-              </Box>
-            )}
-          </Box>
-        </Box>
-      </Paper>
-    </Box>
+            {/* Confidence */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M17.5013 6.66927C17.9457 6.66927 18.3346 6.83594 18.668 7.16927C19.0013 7.5026 19.168 7.89149 19.168 8.33594V10.0026C19.168 10.0998 19.1541 10.204 19.1263 10.3151C19.0985 10.4262 19.0707 10.5304 19.043 10.6276L16.543 16.5026C16.418 16.7804 16.2096 17.0165 15.918 17.2109C15.6263 17.4054 15.3207 17.5026 15.0013 17.5026H5.83464V6.66927L10.8346 1.71094C11.043 1.5026 11.2895 1.38108 11.5742 1.34635C11.8589 1.31163 12.1332 1.36372 12.3971 1.5026C12.661 1.64149 12.8555 1.83594 12.9805 2.08594C13.1055 2.33594 13.1332 2.59288 13.0638 2.85677L12.1263 6.66927H17.5013ZM7.5013 7.3776V15.8359H15.0013L17.5013 10.0026V8.33594H10.0013L11.1263 3.7526L7.5013 7.3776ZM3.33464 17.5026C2.8763 17.5026 2.48394 17.3394 2.15755 17.013C1.83116 16.6866 1.66797 16.2943 1.66797 15.8359V8.33594C1.66797 7.8776 1.83116 7.48524 2.15755 7.15885C2.48394 6.83247 2.8763 6.66927 3.33464 6.66927H5.83464V8.33594H3.33464V15.8359H5.83464V17.5026H3.33464Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Confidence</span>
+              <span className="text-lg font-semibold">
+                {scores?.Confidence !== undefined
+                  ? typeof scores.Confidence === "number"
+                    ? `${Math.round(scores.Confidence)}%`
+                    : `${scores.Confidence}%`
+                  : "85%"}
+              </span>
+            </div>
+
+            {/* Concentration */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M10.668 11.6641C10.9041 11.6641 11.102 11.5842 11.2617 11.4245C11.4214 11.2648 11.5013 11.0668 11.5013 10.8307V6.66406C11.5013 6.42795 11.4214 6.23003 11.2617 6.07031C11.102 5.91059 10.9041 5.83073 10.668 5.83073C10.4319 5.83073 10.2339 5.91059 10.0742 6.07031C9.9145 6.23003 9.83463 6.42795 9.83463 6.66406V10.8307C9.83463 11.0668 9.9145 11.2648 10.0742 11.4245C10.2339 11.5842 10.4319 11.6641 10.668 11.6641ZM13.168 10.4141C13.4041 10.4141 13.602 10.3342 13.7617 10.1745C13.9214 10.0148 14.0013 9.81684 14.0013 9.58073V7.4974C14.0013 7.26128 13.9214 7.06337 13.7617 6.90365C13.602 6.74392 13.4041 6.66406 13.168 6.66406C12.9319 6.66406 12.7339 6.74392 12.5742 6.90365C12.4145 7.06337 12.3346 7.26128 12.3346 7.4974V9.58073C12.3346 9.81684 12.4145 10.0148 12.5742 10.1745C12.7339 10.3342 12.9319 10.4141 13.168 10.4141ZM8.16797 9.9974C8.40408 9.9974 8.602 9.91753 8.76172 9.75781C8.92144 9.59809 9.0013 9.40017 9.0013 9.16406V7.4974C9.0013 7.26128 8.92144 7.06337 8.76172 6.90365C8.602 6.74392 8.40408 6.66406 8.16797 6.66406C7.93186 6.66406 7.73394 6.74392 7.57422 6.90365C7.4145 7.06337 7.33464 7.26128 7.33464 7.4974V9.16406C7.33464 9.40017 7.4145 9.59809 7.57422 9.75781C7.73394 9.91753 7.93186 9.9974 8.16797 9.9974ZM5.66797 14.7474C4.8763 14.0252 4.26172 13.1814 3.82422 12.2161C3.38672 11.2509 3.16797 10.2335 3.16797 9.16406C3.16797 7.08073 3.89714 5.3099 5.35547 3.85156C6.8138 2.39323 8.58464 1.66406 10.668 1.66406C12.4041 1.66406 13.9423 2.17448 15.2826 3.19531C16.6228 4.21615 17.4944 5.54601 17.8971 7.1849L18.9805 11.4557C19.0499 11.7196 19.0013 11.9592 18.8346 12.1745C18.668 12.3898 18.4457 12.4974 18.168 12.4974H16.5013V14.9974C16.5013 15.4557 16.3381 15.8481 16.0117 16.1745C15.6853 16.5009 15.293 16.6641 14.8346 16.6641H13.168V17.4974C13.168 17.7335 13.0881 17.9314 12.9284 18.0911C12.7687 18.2509 12.5707 18.3307 12.3346 18.3307C12.0985 18.3307 11.9006 18.2509 11.7409 18.0911C11.5812 17.9314 11.5013 17.7335 11.5013 17.4974V15.8307C11.5013 15.5946 11.5812 15.3967 11.7409 15.237C11.9006 15.0773 12.0985 14.9974 12.3346 14.9974H14.8346V11.6641C14.8346 11.428 14.9145 11.23 15.0742 11.0703C15.2339 10.9106 15.4319 10.8307 15.668 10.8307H17.0846L16.293 7.60156C15.9735 6.33767 15.293 5.3099 14.2513 4.51823C13.2096 3.72656 12.0152 3.33073 10.668 3.33073C9.05686 3.33073 7.68186 3.89323 6.54297 5.01823C5.40408 6.14323 4.83464 7.51128 4.83464 9.1224C4.83464 9.95573 5.00477 10.7474 5.34505 11.4974C5.68533 12.2474 6.16797 12.9141 6.79297 13.4974L7.33464 13.9974V17.4974C7.33464 17.7335 7.25477 17.9314 7.09505 18.0911C6.93533 18.2509 6.73741 18.3307 6.5013 18.3307C6.26519 18.3307 6.06727 18.2509 5.90755 18.0911C5.74783 17.9314 5.66797 17.7335 5.66797 17.4974V14.7474Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Concentration</span>
+              <span className="text-lg font-semibold">
+                {scores?.Concentration !== undefined
+                  ? typeof scores.Concentration === "number"
+                    ? `${Math.round(scores.Concentration)}%`
+                    : `${scores.Concentration}%`
+                  : "90%"}
+              </span>
+            </div>
+
+            {/* Energy */}
+            <div className="flex flex-col items-center">
+              <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mb-2">
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 21 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9.12497 15.1642L13.4375 9.99751H10.1041L10.7083 5.26834L6.85414 10.8308H9.74997L9.12497 15.1642ZM7.83331 12.4975H5.24997C4.91664 12.4975 4.67011 12.3482 4.51039 12.0496C4.35067 11.751 4.36803 11.4628 4.56247 11.185L10.7916 2.22668C10.9305 2.03223 11.1111 1.89681 11.3333 1.82043C11.5555 1.74404 11.7847 1.74751 12.0208 1.83084C12.2569 1.91418 12.4305 2.06001 12.5416 2.26834C12.6528 2.47668 12.6944 2.6989 12.6666 2.93501L12 8.33084H15.2291C15.5903 8.33084 15.8437 8.49056 15.9896 8.81001C16.1354 9.12945 16.0903 9.42806 15.8541 9.70584L8.99997 17.9142C8.8472 18.0947 8.6597 18.2128 8.43747 18.2683C8.21525 18.3239 7.99997 18.3031 7.79164 18.2058C7.58331 18.1086 7.42011 17.9593 7.30206 17.7579C7.184 17.5565 7.13886 17.3378 7.16664 17.1017L7.83331 12.4975Z"
+                    fill="#343F8A"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-500 mb-1">Energy</span>
+              <span className="text-lg font-semibold">
+                {scores?.Energy !== undefined
+                  ? typeof scores.Energy === "number"
+                    ? `${Math.round(scores.Energy)}%`
+                    : `${scores.Energy}%`
+                  : "80%"}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={onViewPlayback}
+                className="py-3 px-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 font-bold border border-gray-200"
+              >
+                View Playback
+              </button>
+              <button
+                onClick={onShareFeedback}
+                className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+              >
+                Share Feedback
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Navigation */}
+        <div className="mt-6 flex justify-between p-6 border-t border-gray-200">
+          <button
+            onClick={onBackToList}
+            className="inline-flex items-center text-gray-700 hover:text-gray-900 font-bold"
+          >
+            <svg
+              className="w-5 h-5 mr-2"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            Back to Sim List
+          </button>
+          {onGoToNextSim && (
+            <button
+              onClick={onGoToNextSim}
+              disabled={!hasNextSimulation}
+              className={`inline-flex items-center font-bold ${hasNextSimulation ? "text-blue-600 hover:text-blue-800" : "text-gray-400 cursor-not-allowed"}`}
+            >
+              Go to Next Simulation
+              <svg
+                className="w-5 h-5 ml-2"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

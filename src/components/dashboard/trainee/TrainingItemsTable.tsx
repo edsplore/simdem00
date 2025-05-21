@@ -92,6 +92,17 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     [key: string]: boolean;
   }>({});
 
+  // Format status labels to proper capitalization
+  const formatStatusLabel = (status: string) => {
+    if (status === "over_due" || status === "overdue") return "Overdue";
+
+    return status
+      .replace(/_/g, " ")
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   // Check if any filters are applied
   const hasActiveFilters = useMemo(() => {
     return (
@@ -559,7 +570,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     </Grid>
                     <Grid item xs={2}>
                       <Chip
-                        label={plan.status.replace("_", " ")}
+                        label={formatStatusLabel(plan.status)}
                         size="small"
                         sx={{
                           bgcolor: getStatusColor(plan.status).bg,
@@ -656,7 +667,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                       </Grid>
                       <Grid item xs={2}>
                         <Chip
-                          label={module.status.replace("_", " ")}
+                          label={formatStatusLabel(module.status)}
                           size="small"
                           sx={{
                             bgcolor: getStatusColor(module.status).bg,
@@ -752,7 +763,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                           </Grid>
                           <Grid item xs={2}>
                             <Chip
-                              label={sim.status.replace("_", " ")}
+                              label={formatStatusLabel(sim.status)}
                               size="small"
                               sx={{
                                 bgcolor: getStatusColor(sim.status).bg,
@@ -856,7 +867,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     </Grid>
                     <Grid item xs={2}>
                       <Chip
-                        label={simulation.status.replace("_", " ")}
+                        label={formatStatusLabel(simulation.status)}
                         size="small"
                         sx={{
                           bgcolor: getStatusColor(simulation.status).bg,

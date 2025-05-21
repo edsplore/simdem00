@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/permissions';
+import { buildPathWithWorkspace } from '../../utils/navigation';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,15 +12,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children, 
   path
 }) => {
-  const { isAuthenticated, user, currentWorkspaceId } = useAuth();
+  const { isAuthenticated, user, currentWorkspaceId, currentTimeZone } = useAuth();
   const location = useLocation();
 
   // If not authenticated, redirect to unauthorized page
   if (!isAuthenticated) {
     // Preserve the workspace_id when redirecting
-    const params = new URLSearchParams(location.search);
-    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-    return <Navigate to={`/unauthorized${workspaceParam}`} />;
+    return (
+      <Navigate
+        to={buildPathWithWorkspace(
+          '/unauthorized',
+          currentWorkspaceId,
+          currentTimeZone
+        )}
+      />
+    );
   }
 
   // If no user object, wait for it
@@ -35,24 +42,38 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       user.permissions["dashboard-manager"] || 
       user.permissions["dashboard-admin"];
 
-    if (!hasAnyDashboardPermission) {
-      console.log('No dashboard permissions found');
-      const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-      return <Navigate to={`/training${workspaceParam}`} />;
-    }
+      if (!hasAnyDashboardPermission) {
+        console.log('No dashboard permissions found');
+        return (
+          <Navigate
+            to={buildPathWithWorkspace(
+              '/training',
+              currentWorkspaceId,
+              currentTimeZone
+            )}
+          />
+        );
+      }
 
     // If they have permission, the DashboardRouter component will handle which dashboard to show
     return <>{children}</>;
   }
 
   // For other paths, check permission as usual
-  if (!hasPermission(path)) {
-    console.log('Permission denied for path:', path);
+    if (!hasPermission(path)) {
+      console.log('Permission denied for path:', path);
 
-    // Redirect to unauthorized page instead of dashboard
-    const workspaceParam = currentWorkspaceId ? `?workspace_id=${currentWorkspaceId}` : '';
-    return <Navigate to={`/unauthorized${workspaceParam}`} />;
-  }
+      // Redirect to unauthorized page instead of dashboard
+      return (
+        <Navigate
+          to={buildPathWithWorkspace(
+            '/unauthorized',
+            currentWorkspaceId,
+            currentTimeZone
+          )}
+        />
+      );
+    }
 
   return <>{children}</>;
 };

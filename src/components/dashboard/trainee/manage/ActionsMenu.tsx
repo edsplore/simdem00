@@ -19,6 +19,7 @@ import {
 } from "../../../../utils/permissions";
 import { cloneSimulation } from "../../../../services/simulation_operations";
 import { useAuth } from "../../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 
 interface ActionsMenuProps {
   anchorEl: HTMLElement | null;
@@ -34,7 +35,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   onCloneSuccess,
 }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [isCloning, setIsCloning] = useState(false);
 
   // Check permissions for different actions
@@ -44,7 +45,13 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
 
   const handleEditClick = () => {
     if (selectedRow) {
-      navigate(`/generate-scripts/${selectedRow.id}`);
+      navigate(
+        buildPathWithWorkspace(
+          `/generate-scripts/${selectedRow.id}`,
+          currentWorkspaceId,
+          currentTimeZone
+        )
+      );
     }
     onClose();
   };

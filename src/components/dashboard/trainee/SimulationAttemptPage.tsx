@@ -29,6 +29,7 @@ import { fetchSimulationById } from "../../../services/simulations";
 import { canStartTest } from "../../../services/simulation";
 import { fetchTrainingData } from "../../../services/training";
 import { useAuth } from "../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../utils/navigation";
 import type { Simulation, TrainingData } from "../../../types/training";
 
 interface SimulationItem {
@@ -54,7 +55,7 @@ const SimulationAttemptPage = () => {
     assignment_id: string;
   }>();
   const navigate = useNavigate();
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [selectedAttempt, setSelectedAttempt] = useState<
     "Test" | "Practice" | null
@@ -209,12 +210,12 @@ const SimulationAttemptPage = () => {
     if (index < 0 || index >= allSimulations.length) return;
 
     const sim = allSimulations[index];
-    const workspaceParam = currentWorkspaceId
-      ? `?workspace_id=${currentWorkspaceId}`
-      : "";
-    navigate(
-      `/simulation/${sim.simulation_id}/${sim.assignment_id}/attempt${workspaceParam}`,
+    const path = buildPathWithWorkspace(
+      `/simulation/${sim.simulation_id}/${sim.assignment_id}/attempt`,
+      currentWorkspaceId,
+      currentTimeZone
     );
+    navigate(path);
   };
 
   const navigatePrevious = () => {

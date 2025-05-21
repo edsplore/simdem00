@@ -30,6 +30,7 @@ import {
   CompleteSimulationResponse,
 } from "../../../../../services/simulation_operations";
 import { useAuth } from "../../../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../../../utils/navigation";
 
 interface TabState {
   script: boolean;
@@ -341,7 +342,7 @@ const GenerateScriptContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
 
   const {
     scriptData,
@@ -1242,7 +1243,15 @@ const GenerateScriptContent = () => {
           </Alert>
           <Button
             variant="contained"
-            onClick={() => navigate("/manage-simulations")}
+            onClick={() =>
+              navigate(
+                buildPathWithWorkspace(
+                  "/manage-simulations",
+                  currentWorkspaceId,
+                  currentTimeZone
+                )
+              )
+            }
             sx={{ mt: 2 }}
           >
             Back to Manage Simulations
@@ -1404,7 +1413,15 @@ const GenerateScriptContent = () => {
         </Alert>
         <Button
           variant="contained"
-          onClick={() => navigate("/manage-simulations")}
+          onClick={() =>
+            navigate(
+              buildPathWithWorkspace(
+                "/manage-simulations",
+                currentWorkspaceId,
+                currentTimeZone
+              )
+            )
+          }
           sx={{ mt: 2 }}
         >
           Back to Manage Simulations

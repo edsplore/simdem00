@@ -33,6 +33,7 @@ import {
 
 import { useForm, Controller } from "react-hook-form";
 import { useAuth } from "../../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import {
   fetchDivisions,
   fetchDepartments,
@@ -91,7 +92,7 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
   onClose,
 }) => {
   const navigate = useNavigate();
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [divisions, setDivisions] = useState<string[]>([]);
@@ -196,7 +197,13 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         // Close dialog
         onClose();
         // Navigate to the generate scripts page with the ID
-        navigate(`/generate-scripts/${response.id}`);
+        navigate(
+          buildPathWithWorkspace(
+            `/generate-scripts/${response.id}`,
+            currentWorkspaceId,
+            currentTimeZone
+          )
+        );
       } else {
         setErrorMessage("Failed to create simulation. Please try again.");
       }

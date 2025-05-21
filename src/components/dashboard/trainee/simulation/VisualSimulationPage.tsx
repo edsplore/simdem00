@@ -392,7 +392,39 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
+            console.log(`Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`);
+
+            // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
+            setAttemptSequenceData((prevData) => {
+              const existingItemIndex = prevData.findIndex(
+                (item) => item.id === currentItem.id,
+              );
+
+              // Create timeout record with explicit timedOut=true and isClicked=false
+              const timeoutRecord = {
+                ...currentItem,
+                isClicked: false, // Never clicked
+                timedOut: true,   // Explicitly timed out
+                wrong_clicks: []
+              };
+
+              // Remove isClicked property if it exists
+              delete timeoutRecord.isClicked;
+
+              // Log the timeout record for debugging
+              console.log("Adding timeout record:", JSON.stringify(timeoutRecord));
+
+              if (existingItemIndex >= 0) {
+                // Replace existing item with timeout version
+                const newData = [...prevData];
+                newData[existingItemIndex] = timeoutRecord;
+                return newData;
+              } else {
+                // Add new timeout record
+                return [...prevData, timeoutRecord];
+              }
+            });
+
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -601,72 +633,72 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
-    const handleClick = (event: MouseEvent) => {
-      const container = imageContainerRef.current;
-      if (!container) return;
-
-      // Skip tracking wrong clicks for dropdown, textfield and coaching hotspots
-      const hotspotType = currentItem.hotspotType || "button";
-      if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
-        return;
-      }
-
-      // Get click position relative to the container
-      const rect = container.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-
-      // Convert to percentages for more stable storage
-      const xPercent = (x / rect.width) * 100;
-      const yPercent = (y / rect.height) * 100;
-
-      // Record all clicks as wrong clicks initially
-      console.log(`Recording click at x=${x}, y=${y}`);
-      setAttemptSequenceData((prevData) => {
-        const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
-        );
-        if (existingItem) {
-          return [
-            ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              wrong_clicks: [
-                ...(existingItem.wrong_clicks || []),
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
-          ];
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
-          ];
-        }
-      });
-    };
-
+  const handleClick = (event: MouseEvent) => {
     const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
+    if (!container) return;
 
-    return () => {
-      container?.removeEventListener("click", handleClick);
-    };
+    // Skip tracking wrong clicks for dropdown, textfield and coaching hotspots
+    const hotspotType = currentItem.hotspotType || "button";
+    if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
+      return;
+    }
+
+    // Get click position relative to the container
+    const rect = container.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Convert to percentages for more stable storage
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
+
+    // Record all clicks as wrong clicks initially
+    console.log(`Recording click at x=${x}, y=${y}`);
+    setAttemptSequenceData((prevData) => {
+      const existingItem = prevData.find(
+        (item) => item.id === currentItem.id,
+      );
+      if (existingItem) {
+        return [
+          ...prevData.filter((item) => item.id !== currentItem.id),
+          {
+            ...existingItem,
+            wrong_clicks: [
+              ...(existingItem.wrong_clicks || []),
+              {
+                x_cordinates: x,
+                y_cordinates: y,
+                x_percent: xPercent,
+                y_percent: yPercent,
+              },
+            ],
+          },
+        ];
+      } else {
+        return [
+          ...prevData,
+          {
+            ...currentItem,
+            wrong_clicks: [
+              {
+                x_cordinates: x,
+                y_cordinates: y,
+                x_percent: xPercent,
+                y_percent: yPercent,
+              },
+            ],
+          },
+        ];
+      }
+    });
+  };
+
+  const container = imageContainerRef.current;
+  container?.addEventListener("click", handleClick);
+
+  return () => {
+    container?.removeEventListener("click", handleClick);
+  };
   }, [currentItem]);
 
   // Handle hotspot click based on type
@@ -703,32 +735,34 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         (item) => item.id === currentItem.id,
       );
 
-      if (existingItemIndex >= 0) {
-        const newData = [...prevData];
-        const existingItem = newData[existingItemIndex];
-        const { isClicked: _prevClicked, ...restExisting } = existingItem;
+      const clickRecord = {
+        ...currentItem,
+        ...(shouldSetIsClicked ? { isClicked: true } : {}),
+        timedOut: false, // Explicitly mark as not timed out since user clicked
+        wrong_clicks: []
+      };
 
-        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+      // Log the click record for debugging
+      console.log("Adding click record:", JSON.stringify(clickRecord));
+
+      if (existingItemIndex >= 0) {
+        // Update existing record with click information
+        const newData = [...prevData];
+
+        // Get existing wrong clicks if any
+        let updatedWrongClicks = [...(newData[existingItemIndex].wrong_clicks || [])];
         if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-          updatedWrongClicks.pop();
+          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
         }
 
         newData[existingItemIndex] = {
-          ...restExisting,
-          ...(shouldSetIsClicked ? { isClicked: true } : {}),
-          wrong_clicks: updatedWrongClicks,
+          ...clickRecord,
+          wrong_clicks: updatedWrongClicks
         };
+
         return newData;
       } else {
-        const { isClicked: _clicked, ...restCurrent } = currentItem;
-        return [
-          ...prevData,
-          {
-            ...restCurrent,
-            ...(shouldSetIsClicked ? { isClicked: true } : {}),
-            wrong_clicks: [],
-          },
-        ];
+        return [...prevData, clickRecord];
       }
     });
 
@@ -981,44 +1015,106 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
 
     try {
-      console.log("Executing end-visual API call");
+      // IMPORTANT: Clone the current attemptSequenceData directly
+      // This allows us to modify it without waiting for setState
+      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      // Make a copy of the current data so we can ensure the last hotspot click is captured
-      let finalAttemptData = [...attemptSequenceData];
+      console.log("Starting attempt data processing...");
 
-      // If the current item is a hotspot, ensure its state is saved correctly
+      // Process the current item if it's a hotspot - do this BEFORE API call
       if (currentItem && currentItem.type === "hotspot") {
-        const hotspotType = currentItem.hotspotType || "";
-        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
-          hotspotType,
-        );
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
+        console.log(`Current hotspot: ${currentItem.name}, exists in data: ${itemIndex >= 0}`);
 
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+        // Create the appropriate record based on the current state
+        const isTimedOutHotspot = timeoutActive || 
+          (currentItem.settings?.timeoutDuration > 0 && !currentItem.isClicked);
 
-        if (itemIndex >= 0) {
-          const existingItem = finalAttemptData[itemIndex];
-          const { isClicked: _prevClicked, ...restExisting } = existingItem;
-          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-            updatedWrongClicks.pop();
+        console.log(`Hotspot ${currentItem.name} timed out? ${isTimedOutHotspot}`);
+
+        if (isTimedOutHotspot) {
+          // Create a clean timed out record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: []
+          };
+
+          delete timeoutRecord.isClicked; // Explicitly remove isClicked
+
+          // Update or add the record
+          if (itemIndex >= 0) {
+            console.log(`Updating existing record for ${currentItem.name} as timed out`);
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            console.log(`Adding new record for ${currentItem.name} as timed out`);
+            finalAttemptData.push(timeoutRecord);
+          }
+        } else if (itemIndex === -1) {
+          // Only add a normal record if it doesn't already exist
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
+          // For non-timed out hotspots, we only add isClicked if appropriate
+          const newRecord = {
+            ...currentItem,
+            timedOut: false,
+            wrong_clicks: []
+          };
+
+          if (shouldBeClicked) {
+            newRecord.isClicked = true;
           }
 
-          finalAttemptData[itemIndex] = {
-            ...restExisting,
-            ...(shouldSetIsClicked ? { isClicked: true } : {}),
-            wrong_clicks: updatedWrongClicks,
-          };
-        } else {
-          const { isClicked: _clicked, ...restCurrent } = currentItem;
-          finalAttemptData.push(
-            shouldSetIsClicked
-              ? { ...restCurrent, isClicked: true, wrong_clicks: [] }
-              : { ...restCurrent, wrong_clicks: [] },
-          );
+          console.log(`Adding new regular record for ${currentItem.name}`);
+          finalAttemptData.push(newRecord);
         }
       }
+
+      // Final cleanup pass through ALL items
+      for (let i = 0; i < finalAttemptData.length; i++) {
+        const item = finalAttemptData[i];
+
+        // Only process hotspot items
+        if (item.type === "hotspot") {
+          // Special handling for hotspots with timeout settings
+          if (item.settings?.timeoutDuration > 0) {
+            console.log(`Processing hotspot with timeout: ${item.name}`);
+
+            // Check for explicit timed out status
+            if (item.timedOut === true) {
+              // For timed out items, remove isClicked property completely
+              if ('isClicked' in item) {
+                console.log(`Removing isClicked from timed out hotspot: ${item.name}`);
+                const { isClicked, ...cleanItem } = item;
+                finalAttemptData[i] = cleanItem;
+              }
+            } 
+            // If hotspot has timeout duration but unclear status, assume it timed out
+            // This applies to all button-type hotspots with timeouts, regardless of name
+            else if (item.timedOut === undefined || item.timedOut === null) {
+              console.log(`Hotspot ${item.name} has timeout setting but unclear status - marking as timed out`);
+
+              // Remove isClicked to be safe if it exists
+              if ('isClicked' in item) {
+                const { isClicked, ...cleanItem } = item;
+                finalAttemptData[i] = {
+                  ...cleanItem,
+                  timedOut: true
+                };
+              } else {
+                finalAttemptData[i] = {
+                  ...item,
+                  timedOut: true
+                };
+              }
+            }
+          }
+        }
+      }
+
+      // Log the final data before submission
+      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
 
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(
@@ -1091,6 +1187,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
+  };
+
+  // Get highlight color from settings or use default
+  const getHighlightColor = () => {
+    return "rgba(68, 76, 231, 0.7)"; // Default color
   };
 
   return (
@@ -1667,6 +1768,79 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   }}
                                 />
                               )}
+
+                            {/* Coaching tip hotspot */}
+                            {currentItem.hotspotType === "coaching" &&
+                              !levelSettings.hideCoachingTips && (
+                                <Box
+                                  onClick={(e) => handleHotspotClick(e)}
+                                  sx={{
+                                    position: "absolute",
+                                    cursor: "pointer",
+                                    left: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.left
+                                    }px`,
+                                    top: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.top
+                                    }px`,
+                                    width: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.width
+                                    }px`,
+                                    height: `${
+                                      scaleCoordinates(
+                                        currentItem.percentageCoordinates ||
+                                          currentItem.coordinates,
+                                      )?.height
+                                    }px`,
+                                    zIndex: 50,
+                                    border: highlightHotspot
+                                      ? `2px solid ${
+                                          currentItem.settings
+                                            ?.highlightColor || "#1e293b"
+                                        }`
+                                      : "none",
+                                    boxShadow: highlightHotspot ? 3 : 0,
+                                    transition: "all 0.3s ease",
+                                  }}
+                                >
+                                  <Button
+                                    fullWidth
+                                    variant="contained"
+                                    sx={{
+                                      height: "100%",
+                                      backgroundColor:
+                                        currentItem.settings?.buttonColor ||
+                                        "#1e293b",
+                                      color:
+                                        currentItem.settings?.textColor ||
+                                        "#FFFFFF",
+                                      "&:hover": {
+                                        backgroundColor: currentItem.settings
+                                          ?.buttonColor
+                                          ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
+                                          : "#0f172a",
+                                      },
+                                      boxShadow: highlightHotspot ? 4 : 0,
+                                      border: highlightHotspot
+                                        ? `2px solid ${getHighlightColor()}`
+                                        : "none",
+                                    }}
+                                  >
+                                    {currentItem.settings?.tipText ||
+                                      currentItem.name ||
+                                      "Coaching Tip"}
+                                  </Button>
+                                </Box>
+                              )}
                           </>
                         )}
 
@@ -1733,78 +1907,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                   )}
                 </Box>
               </Box>
-
-              {/* Coaching tip button - only render if not hidden by settings */}
-              {imageLoaded &&
-                currentItem?.type === "hotspot" &&
-                currentItem.hotspotType === "coaching" &&
-                (currentItem.coordinates ||
-                  currentItem.percentageCoordinates) &&
-                !levelSettings.hideCoachingTips && (
-                  <Box
-                    onClick={(e) => handleHotspotClick(e)}
-                    sx={{
-                      position: "absolute",
-                      cursor: "pointer",
-                      left: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.left
-                      }px`,
-                      top: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.top
-                      }px`,
-                      width: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.width
-                      }px`,
-                      height: `${
-                        scaleCoordinates(
-                          currentItem.percentageCoordinates ||
-                            currentItem.coordinates,
-                        )?.height
-                      }px`,
-                      zIndex: 50,
-                      border: highlightHotspot
-                        ? `2px solid ${
-                            currentItem.settings?.highlightColor || "#1e293b"
-                          }`
-                        : "none",
-                      boxShadow: highlightHotspot ? 3 : 0,
-                      transition: "all 0.3s ease",
-                    }}
-                  >
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      sx={{
-                        height: "100%",
-                        backgroundColor:
-                          currentItem.settings?.buttonColor || "#1e293b",
-                        color: currentItem.settings?.textColor || "#FFFFFF",
-                        "&:hover": {
-                          backgroundColor: currentItem.settings?.buttonColor
-                            ? `${currentItem.settings.buttonColor}dd` // Slightly darker on hover
-                            : "#0f172a",
-                        },
-                        boxShadow: highlightHotspot ? 4 : 0,
-                        border: highlightHotspot
-                          ? `2px solid ${getHighlightColor()}`
-                          : "none",
-                      }}
-                    >
-                      {currentItem.settings?.tipText ||
-                        currentItem.name ||
-                        "Coaching Tip"}
-                    </Button>
-                  </Box>
-                )}
 
               {/* Right side - Empty sidebar (to match layout of other components) */}
               <Box
@@ -1918,11 +2020,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       </Box>
     </>
   );
-};
-
-// Get highlight color from settings or use default
-const getHighlightColor = () => {
-  return "rgba(68, 76, 231, 0.7)"; // Default color
 };
 
 export default VisualSimulationPage;

@@ -564,7 +564,39 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
+            console.log(`Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`);
+
+            // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
+            setAttemptSequenceData((prevData) => {
+              const existingItemIndex = prevData.findIndex(
+                (item) => item.id === currentItem.id,
+              );
+
+              // Create a clean timeout record with timedOut=true and NO isClicked property
+              const timeoutRecord = {
+                ...currentItem,
+                timedOut: true,
+                wrong_clicks: []
+              };
+
+              // Explicitly REMOVE isClicked property if it exists
+              if ('isClicked' in timeoutRecord) {
+                delete timeoutRecord.isClicked;
+              }
+
+              console.log(`Adding timeout record for hotspot ${currentItem.name}:`, JSON.stringify(timeoutRecord));
+
+              if (existingItemIndex >= 0) {
+                // Replace existing item with timeout version
+                const newData = [...prevData];
+                newData[existingItemIndex] = timeoutRecord;
+                return newData;
+              } else {
+                // Add new timeout record
+                return [...prevData, timeoutRecord];
+              }
+            });
+
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -851,47 +883,52 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
-    // Simpler approach: find the item in our data and update its properties
+    // Determine if this hotspot should set isClicked based on its type
+    const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+      hotspotType
+    );
+
+    // Create a clean clicked hotspot record
+    const clickRecord = {
+      ...currentItem,
+      timedOut: false,
+      wrong_clicks: []
+    };
+
+    // Only add isClicked property for clickable hotspot types
+    if (shouldSetIsClicked) {
+      clickRecord.isClicked = true;
+    }
+
+    console.log("Adding click record:", JSON.stringify(clickRecord));
+
+    // Update the attempt sequence data
     setAttemptSequenceData((prevData) => {
       // Find if this item already exists in our data
       const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id,
+        (item) => item.id === currentItem.id
       );
 
       if (existingItemIndex >= 0) {
         // Make a copy of the data
         const newData = [...prevData];
-        const existingItem = newData[existingItemIndex];
 
-        // Set isClicked to true and remove the last wrong click (if any)
-        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-        if (updatedWrongClicks.length > 0) {
-          // Remove the last wrong click
-          updatedWrongClicks.pop();
+        // Get existing wrong clicks if any
+        let updatedWrongClicks = [...(newData[existingItemIndex].wrong_clicks || [])];
+        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
+          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
         }
 
-        // Update the item
+        // Update the existing item with our click record
         newData[existingItemIndex] = {
-          ...existingItem,
-          isClicked: true,
-          wrong_clicks: updatedWrongClicks,
+          ...clickRecord,
+          wrong_clicks: updatedWrongClicks
         };
 
-        console.log(
-          `Updated hotspot ${currentItem.id}, removed last wrong click`,
-          updatedWrongClicks,
-        );
         return newData;
       } else {
-        // If item doesn't exist yet, add it with isClicked=true
-        return [
-          ...prevData,
-          {
-            ...currentItem,
-            isClicked: true,
-            wrong_clicks: [], // Start with empty wrong_clicks
-          },
-        ];
+        // If item doesn't exist, add it
+        return [...prevData, clickRecord];
       }
     });
 
@@ -935,24 +972,28 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
     setDropdownOpen(false);
+
+    // Create a dropdown record that doesn't include isClicked property
+    const dropdownRecord = {
+      ...currentItem,
+      userInput: option,
+      timedOut: false,
+      wrong_clicks: []
+    };
+
     setAttemptSequenceData((prevData) => {
-      const existingItem = prevData.find((item) => item.id === currentItem.id);
-      if (existingItem) {
-        return [
-          ...prevData.filter((item) => item.id !== currentItem.id),
-          {
-            ...existingItem,
-            userInput: option,
-          },
-        ];
+      const existingItemIndex = prevData.findIndex(
+        (item) => item.id === currentItem.id
+      );
+
+      if (existingItemIndex >= 0) {
+        // Update existing record
+        const newData = [...prevData];
+        newData[existingItemIndex] = dropdownRecord;
+        return newData;
       } else {
-        return [
-          ...prevData,
-          {
-            ...currentItem,
-            userInput: option,
-          },
-        ];
+        // Add new record
+        return [...prevData, dropdownRecord];
       }
     });
 
@@ -965,30 +1006,31 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
+
+      // Create a text input record that doesn't include isClicked property
+      const textInputRecord = {
+        ...currentItem,
+        userInput: textInputValue,
+        timedOut: false,
+        wrong_clicks: []
+      };
+
       setAttemptSequenceData((prevData) => {
-        const existingItem = prevData.find(
-          (item) => item.id === currentItem.id,
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id
         );
-        if (existingItem) {
-          return [
-            ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
-          ];
+
+        if (existingItemIndex >= 0) {
+          // Update existing record
+          const newData = [...prevData];
+          newData[existingItemIndex] = textInputRecord;
+          return newData;
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
-          ];
+          // Add new record
+          return [...prevData, textInputRecord];
         }
       });
+
       moveToNextItem();
     }
   };
@@ -1165,43 +1207,83 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     try {
       console.log("Executing end-visual-chat API call");
 
-      // Make a copy of the current data
-      let finalAttemptData = [...attemptSequenceData];
+      // Create a direct copy of the data that we can manipulate synchronously
+      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      // Check if current item is a hotspot that should be marked as clicked
+      // Process the current item if it's a hotspot
       if (currentItem && currentItem.type === "hotspot") {
-        // Find if this item is already in our data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+        // Check if this item already exists in the data
+        const itemIndex = finalAttemptData.findIndex(item => item.id === currentItem.id);
 
-        if (itemIndex >= 0) {
-          // Ensure it's marked as clicked and has the last wrong click removed
-          const existingItem = finalAttemptData[itemIndex];
-          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (updatedWrongClicks.length > 0) {
-            // Remove the last wrong click (which would be the correct click on the hotspot)
-            updatedWrongClicks.pop();
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const isTimedOut = timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+
+        console.log(`Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`);
+
+        if (isTimedOut) {
+          // Create a clean timeout record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: []
+          };
+
+          if ('isClicked' in timeoutRecord) {
+            delete timeoutRecord.isClicked;
           }
 
-          finalAttemptData[itemIndex] = {
-            ...existingItem,
-            isClicked: true,
-            wrong_clicks: updatedWrongClicks,
-          };
-          console.log(
-            "Final data updated for last hotspot:",
-            finalAttemptData[itemIndex],
-          );
+          // Update or add the record
+          if (itemIndex >= 0) {
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            finalAttemptData.push(timeoutRecord);
+          }
         } else {
-          // Add it if not found
-          finalAttemptData.push({
-            ...currentItem,
-            isClicked: true,
-            wrong_clicks: [],
-          });
+          // Determine if this hotspot should set isClicked based on its type
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(hotspotType);
+
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
+              finalAttemptData[itemIndex] = {
+                ...finalAttemptData[itemIndex],
+                isClicked: true,
+                timedOut: false
+              };
+            }
+          } else {
+            // Add new record with appropriate properties
+            const newRecord = {
+              ...currentItem,
+              wrong_clicks: []
+            };
+
+            if (shouldBeClicked) {
+              newRecord.isClicked = true;
+              newRecord.timedOut = false;
+            }
+
+            finalAttemptData.push(newRecord);
+          }
         }
       }
+
+      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
+      // does NOT have an isClicked property
+      finalAttemptData = finalAttemptData.map(item => {
+        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
+          if (item.timedOut === true && 'isClicked' in item) {
+            // Create a clean copy without the isClicked property
+            const { isClicked, ...cleanItem } = item;
+            return cleanItem;
+          }
+        }
+        return item;
+      });
+
+      console.log("Final attempt data before API call:", JSON.stringify(finalAttemptData));
 
       // Use the endVisualChatAttempt function instead of direct axios call
       const response = await endVisualChatAttempt(
@@ -1642,7 +1724,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               gap: 1,
                               zIndex: 100,
                             }}
-                          ></Box>
+                          >
+                            <AccessTimeIcon fontSize="small" />
+                            <Typography variant="caption">
+                              Auto-advance in{" "}
+                              {currentItem.settings?.timeoutDuration}s
+                            </Typography>
+                          </Box>
                         )}
 
                       {/* Render hotspots directly on the image */}

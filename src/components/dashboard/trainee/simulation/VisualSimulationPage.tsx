@@ -393,6 +393,30 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
             console.log(`Timeout of ${timeout} seconds reached for hotspot`);
+
+            // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
+            setAttemptSequenceData((prevData) => {
+              const existingItemIndex = prevData.findIndex(
+                (item) => item.id === currentItem.id,
+              );
+
+              if (existingItemIndex >= 0) {
+                // If item already exists in data, just return as is
+                return prevData;
+              } else {
+                // Add new item but explicitly set isClicked to false since this is a timeout
+                return [
+                  ...prevData,
+                  {
+                    ...currentItem,
+                    isClicked: false, // Explicitly mark as not clicked
+                    timedOut: true,   // Add a flag to indicate it was timed out
+                    wrong_clicks: []
+                  },
+                ];
+              }
+            });
+
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -716,6 +740,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         newData[existingItemIndex] = {
           ...restExisting,
           ...(shouldSetIsClicked ? { isClicked: true } : {}),
+          timedOut: false, // Explicitly mark as not timed out since user clicked
           wrong_clicks: updatedWrongClicks,
         };
         return newData;
@@ -726,6 +751,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           {
             ...restCurrent,
             ...(shouldSetIsClicked ? { isClicked: true } : {}),
+            timedOut: false, // Explicitly mark as not timed out since user clicked
             wrong_clicks: [],
           },
         ];
@@ -983,39 +1009,59 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     try {
       console.log("Executing end-visual API call");
 
-      // Make a copy of the current data so we can ensure the last hotspot click is captured
+      // Make a copy of the current data
       let finalAttemptData = [...attemptSequenceData];
 
-      // If the current item is a hotspot, ensure its state is saved correctly
-      if (currentItem && currentItem.type === "hotspot") {
+      // If the current item is a hotspot and we have an active timeout, ensure we record it
+      if (currentItem && currentItem.type === "hotspot" && timeoutActive) {
+        // If there's an active timeout, add the current item as timed out but NOT clicked
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id
+        );
+
+        if (itemIndex === -1) {
+          // Add current item with isClicked=false since it's in a timeout state
+          finalAttemptData.push({
+            ...currentItem,
+            isClicked: false, // Explicitly NOT clicked
+            timedOut: true,   // Mark as timed out
+            wrong_clicks: []
+          });
+        }
+      } 
+      // Only handle normal click case if no timeout is active
+      else if (currentItem && currentItem.type === "hotspot" && !timeoutActive) {
         const hotspotType = currentItem.hotspotType || "";
         const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
-          hotspotType,
+          hotspotType
         );
 
         const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
+          (item) => item.id === currentItem.id
         );
 
         if (itemIndex >= 0) {
           const existingItem = finalAttemptData[itemIndex];
-          const { isClicked: _prevClicked, ...restExisting } = existingItem;
-          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
-          if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-            updatedWrongClicks.pop();
-          }
+          // Only set isClicked if it doesn't have timedOut=true
+          if (!existingItem.timedOut) {
+            const { isClicked: _prevClicked, ...restExisting } = existingItem;
+            let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+            if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
+              updatedWrongClicks.pop();
+            }
 
-          finalAttemptData[itemIndex] = {
-            ...restExisting,
-            ...(shouldSetIsClicked ? { isClicked: true } : {}),
-            wrong_clicks: updatedWrongClicks,
-          };
+            finalAttemptData[itemIndex] = {
+              ...restExisting,
+              ...(shouldSetIsClicked ? { isClicked: true } : {}),
+              wrong_clicks: updatedWrongClicks,
+            };
+          }
         } else {
           const { isClicked: _clicked, ...restCurrent } = currentItem;
           finalAttemptData.push(
             shouldSetIsClicked
               ? { ...restCurrent, isClicked: true, wrong_clicks: [] }
-              : { ...restCurrent, wrong_clicks: [] },
+              : { ...restCurrent, wrong_clicks: [] }
           );
         }
       }

@@ -442,11 +442,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       !isEndingSimulation
     ) {
       // We've reached the end of the last slide's sequence
-      console.log("Reached end of simulation content");
+      // console.log("Reached end of simulation content");
       // Wait a moment for any final animations/transitions
-      setTimeout(() => {
-        handleEndSimulation();
-      }, 1000);
+      // setTimeout(() => {
+      //   handleEndSimulation();
+      // }, 1000);
     }
   }, [
     currentSlideIndex,

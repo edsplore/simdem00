@@ -708,57 +708,45 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     const hotspotType = currentItem.hotspotType || "button";
 
-    // Only set isClicked and handle wrong_clicks for specific hotspot types
-    if (["button", "highlight", "checkbox"].includes(hotspotType)) {
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+    // Determine if the hotspot should set isClicked (scored types)
+    const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+      hotspotType,
+    );
 
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
-            isClicked: true,
-            wrong_clicks:
-              newData[existingItemIndex].wrong_clicks?.slice(0, -1) || [],
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              isClicked: true,
-            },
-          ];
-        }
-      });
-    } else {
-      // For other hotspot types, set wrong_clicks to empty array and don't set isClicked
-      setAttemptSequenceData((prevData) => {
-        const existingItemIndex = prevData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
+    // Update attempt data for this hotspot
+    setAttemptSequenceData((prevData) => {
+      const existingItemIndex = prevData.findIndex(
+        (item) => item.id === currentItem.id,
+      );
 
-        if (existingItemIndex >= 0) {
-          const newData = [...prevData];
-          newData[existingItemIndex] = {
-            ...newData[existingItemIndex],
-            wrong_clicks: [], // Set to empty array for other types
-          };
-          return newData;
-        } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [], // Set to empty array for other types
-            },
-          ];
+      if (existingItemIndex >= 0) {
+        const newData = [...prevData];
+        const existingItem = newData[existingItemIndex];
+        const { isClicked: _prevClicked, ...restExisting } = existingItem;
+
+        let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
+          updatedWrongClicks.pop();
         }
-      });
-    }
+
+        newData[existingItemIndex] = {
+          ...restExisting,
+          ...(shouldSetIsClicked ? { isClicked: true } : {}),
+          wrong_clicks: updatedWrongClicks,
+        };
+        return newData;
+      } else {
+        const { isClicked: _clicked, ...restCurrent } = currentItem;
+        return [
+          ...prevData,
+          {
+            ...restCurrent,
+            ...(shouldSetIsClicked ? { isClicked: true } : {}),
+            wrong_clicks: [],
+          },
+        ];
+      }
+    });
 
     switch (hotspotType) {
       case "button":
@@ -1011,18 +999,49 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     try {
       console.log("Executing end-visual API call");
 
-      // Final cleanup: Clean any wrong clicks for items that have been successfully clicked
-      const cleanedAttemptSequenceData = attemptSequenceData.map((item) => {
-        // If the item was successfully clicked, keep wrong_clicks as is
-        return item;
-      });
+      // Make a copy of the current data so we can ensure the last hotspot click is captured
+      let finalAttemptData = [...attemptSequenceData];
+
+      // If the current item is a hotspot, ensure its state is saved correctly
+      if (currentItem && currentItem.type === "hotspot") {
+        const hotspotType = currentItem.hotspotType || "";
+        const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
+          hotspotType,
+        );
+
+        const itemIndex = finalAttemptData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        if (itemIndex >= 0) {
+          const existingItem = finalAttemptData[itemIndex];
+          const { isClicked: _prevClicked, ...restExisting } = existingItem;
+          let updatedWrongClicks = [...(existingItem.wrong_clicks || [])];
+          if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
+            updatedWrongClicks.pop();
+          }
+
+          finalAttemptData[itemIndex] = {
+            ...restExisting,
+            ...(shouldSetIsClicked ? { isClicked: true } : {}),
+            wrong_clicks: updatedWrongClicks,
+          };
+        } else {
+          const { isClicked: _clicked, ...restCurrent } = currentItem;
+          finalAttemptData.push(
+            shouldSetIsClicked
+              ? { ...restCurrent, isClicked: true, wrong_clicks: [] }
+              : { ...restCurrent, wrong_clicks: [] },
+          );
+        }
+      }
 
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(
         userId,
         simulationId,
         simulationProgressId,
-        cleanedAttemptSequenceData,
+        finalAttemptData,
       );
 
       if (response && response.scores) {

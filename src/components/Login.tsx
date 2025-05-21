@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { TextField, Button, Paper, Typography, Container, Link } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { buildPathWithWorkspace } from '../utils/navigation';
 import api from '../services/api';
 import { useRedirectIfAuthenticated } from '../hooks/useRedirectIfAuthenticated';
 
@@ -10,7 +11,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login, currentWorkspaceId } = useAuth();
+  const { login, currentWorkspaceId, currentTimeZone } = useAuth();
   const location = useLocation();
 
   // Redirect if already authenticated
@@ -23,12 +24,13 @@ const Login = () => {
     try {
       const response = await api.login({ email, password });
 
-      // Get workspace ID from URL or use the one from context
+      // Get workspace ID and timeZone from URL or context
       const params = new URLSearchParams(location.search);
       const workspaceId = params.get('workspace_id') || currentWorkspaceId;
+      const timeZone = params.get('timeZone') || currentTimeZone;
 
-      login(response.token, workspaceId || undefined);
-      navigate('/dashboard');
+      login(response.token, workspaceId || undefined, timeZone || undefined);
+      navigate(buildPathWithWorkspace('/dashboard', workspaceId, timeZone));
     } catch (err: any) {
       setError(err.response?.data?.message || 'An error occurred during login');
     }
@@ -76,7 +78,11 @@ const Login = () => {
           </Button>
           <Typography align="center">
             Don't have an account?{' '}
-            <Link component={RouterLink} to="/register" underline="hover">
+            <Link
+              component={RouterLink}
+              to={buildPathWithWorkspace('/register', currentWorkspaceId, currentTimeZone)}
+              underline="hover"
+            >
               Register here
             </Link>
           </Typography>

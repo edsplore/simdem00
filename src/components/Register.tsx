@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { TextField, Button, Paper, Typography, Container, MenuItem, Link } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { buildPathWithWorkspace } from '../utils/navigation';
 import api from '../services/api';
 import { UserRole } from '../types/auth';
 import { useRedirectIfAuthenticated } from '../hooks/useRedirectIfAuthenticated';
@@ -23,7 +24,7 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login, currentWorkspaceId } = useAuth();
+  const { login, currentWorkspaceId, currentTimeZone } = useAuth();
   const location = useLocation();
 
   // Redirect if already authenticated
@@ -40,12 +41,13 @@ const Register = () => {
     try {
       const response = await api.register(formData);
 
-      // Get workspace ID from URL or use the one from context
+      // Get workspace ID and timeZone from URL or context
       const params = new URLSearchParams(location.search);
       const workspaceId = params.get('workspace_id') || currentWorkspaceId;
+      const timeZone = params.get('timeZone') || currentTimeZone;
 
-      login(response.token, workspaceId || undefined);
-      navigate('/dashboard');
+      login(response.token, workspaceId || undefined, timeZone || undefined);
+      navigate(buildPathWithWorkspace('/dashboard', workspaceId, timeZone));
     } catch (err: any) {
       setError(err.response?.data?.message || 'An error occurred during registration');
     }
@@ -119,7 +121,11 @@ const Register = () => {
           </Button>
           <Typography align="center">
             Already have an account?{' '}
-            <Link component={RouterLink} to="/login" underline="hover">
+            <Link
+              component={RouterLink}
+              to={buildPathWithWorkspace('/login', currentWorkspaceId, currentTimeZone)}
+              underline="hover"
+            >
               Sign in here
             </Link>
           </Typography>

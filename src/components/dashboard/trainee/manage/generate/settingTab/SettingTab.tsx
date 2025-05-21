@@ -26,6 +26,7 @@ import {
   updateSimulationWithFormData,
 } from "../../../../../../services/simulation_operations";
 import { useAuth } from "../../../../../../context/AuthContext";
+import { buildPathWithWorkspace } from "../../../../../../utils/navigation";
 import { useSimulationWizard } from "../../../../../../context/SimulationWizardContext";
 
 const NavItem = styled(ListItem)(({ theme }) => ({
@@ -210,7 +211,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   // Add state for weightage validation
   const [isWeightageValid, setIsWeightageValid] = useState(true);
 
-  const { user, currentWorkspaceId } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
@@ -1030,7 +1031,13 @@ const SettingTab: React.FC<SettingTabProps> = ({
     if (response) {
       if (response.status === "success" || response.status === "draft") {
         // Navigate to manage-simulations instead of showing preview
-        navigate("/manage-simulations");
+        navigate(
+          buildPathWithWorkspace(
+            "/manage-simulations",
+            currentWorkspaceId,
+            currentTimeZone
+          )
+        );
       } else {
         setError("Failed to save simulation as draft. Please try again.");
       }

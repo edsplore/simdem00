@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Stack, Typography, Button } from '@mui/material';
+import { useAuth } from '../../../../../context/AuthContext';
+import { buildPathWithWorkspace } from '../../../../../utils/navigation';
 
 interface PlaybackHeaderProps {
   showDetails: boolean;
@@ -11,6 +13,7 @@ const PlaybackHeader: React.FC<PlaybackHeaderProps> = ({
   showDetails,
   onToggleDetails,
 }) => {
+  const { currentWorkspaceId, currentTimeZone } = useAuth();
   return (
     <Stack
       direction="row"
@@ -23,7 +26,14 @@ const PlaybackHeader: React.FC<PlaybackHeaderProps> = ({
       }}
     >
       <Stack direction="row" spacing={1} alignItems="center">
-        <Link to="/playback" style={{ textDecoration: 'none' }}>
+        <Link
+          to={buildPathWithWorkspace(
+            '/playback',
+            currentWorkspaceId,
+            currentTimeZone
+          )}
+          style={{ textDecoration: 'none' }}
+        >
           <Typography variant="h4" color="text.secondary">
             Playback
           </Typography>

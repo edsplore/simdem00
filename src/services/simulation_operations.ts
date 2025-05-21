@@ -218,6 +218,28 @@ export interface CloneSimulationResponse {
   [key: string]: any; // For any additional fields that might be returned
 }
 
+// Interface for archiving a simulation
+export interface ArchiveSimulationRequest {
+  user_id: string;
+  simulation_id: string;
+}
+
+export interface ArchiveSimulationResponse {
+  id: string;
+  status: string;
+}
+
+// Interface for unarchiving a simulation
+export interface UnarchiveSimulationRequest {
+  user_id: string;
+  simulation_id: string;
+}
+
+export interface UnarchiveSimulationResponse {
+  id: string;
+  status: string;
+}
+
 export interface UpdateImageMaskingObjectResponse {
   status: string;
   message?: string;
@@ -539,6 +561,62 @@ export const detectMaskAreas = async (
     return response.data;
   } catch (error) {
     console.error("Error cloning simulation:", error);
+    throw error;
+  }
+};
+
+/**
+ * Archives a simulation
+ * @param userId - ID of the user performing the action
+ * @param simulationId - ID of the simulation to archive
+ * @returns A promise with the archive response
+ */
+export const archiveSimulation = async (
+  userId: string,
+  simulationId: string,
+): Promise<ArchiveSimulationResponse> => {
+  try {
+    const payload: ArchiveSimulationRequest = {
+      user_id: userId,
+      simulation_id: simulationId,
+    };
+
+    const response = await apiClient.post<ArchiveSimulationResponse>(
+      '/simulations/archive',
+      payload,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error archiving simulation:', error);
+    throw error;
+  }
+};
+
+/**
+ * Unarchives a simulation
+ * @param userId - ID of the user performing the action
+ * @param simulationId - ID of the simulation to unarchive
+ * @returns A promise with the unarchive response
+ */
+export const unarchiveSimulation = async (
+  userId: string,
+  simulationId: string,
+): Promise<UnarchiveSimulationResponse> => {
+  try {
+    const payload: UnarchiveSimulationRequest = {
+      user_id: userId,
+      simulation_id: simulationId,
+    };
+
+    const response = await apiClient.post<UnarchiveSimulationResponse>(
+      '/simulations/unarchive',
+      payload,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error('Error unarchiving simulation:', error);
     throw error;
   }
 };

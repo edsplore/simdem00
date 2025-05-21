@@ -17,7 +17,10 @@ import {
   hasCreatePermission,
   hasDeletePermission,
 } from "../../../../utils/permissions";
-import { cloneSimulation } from "../../../../services/simulation_operations";
+import {
+  cloneSimulation,
+  archiveSimulation,
+} from "../../../../services/simulation_operations";
 import { useAuth } from "../../../../context/AuthContext";
 
 interface ActionsMenuProps {
@@ -25,6 +28,7 @@ interface ActionsMenuProps {
   selectedRow: SimulationData | null;
   onClose: () => void;
   onCloneSuccess?: () => void;
+  onArchiveSuccess?: () => void;
 }
 
 const ActionsMenu: React.FC<ActionsMenuProps> = ({
@@ -32,10 +36,12 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   selectedRow,
   onClose,
   onCloneSuccess,
+  onArchiveSuccess,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isCloning, setIsCloning] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Check permissions for different actions
   const canUpdate = hasUpdatePermission("manage-simulations");
@@ -73,6 +79,33 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       console.error("Error cloning simulation:", error);
     } finally {
       setIsCloning(false);
+      onClose();
+    }
+  };
+
+  const handleArchiveClick = async () => {
+    if (!selectedRow || !user?.id) {
+      onClose();
+      return;
+    }
+
+    setIsArchiving(true);
+
+    try {
+      const response = await archiveSimulation(user.id, selectedRow.id);
+
+      if (response && response.status === 'archived') {
+        console.log('Simulation archived successfully:', response);
+        if (onArchiveSuccess) {
+          onArchiveSuccess();
+        }
+      } else {
+        console.error('Failed to archive simulation:', response);
+      }
+    } catch (error) {
+      console.error('Error archiving simulation:', error);
+    } finally {
+      setIsArchiving(false);
       onClose();
     }
   };
@@ -177,10 +210,12 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       )}
 
       {canUpdate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
+*/}
 
       {canUpdate && (
         <MenuItem
-          onClick={onClose}
+          onClick={handleArchiveClick}
+          disabled={isArchiving}
           sx={{
             color: "#666666",
             "& svg": {
@@ -189,10 +224,16 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
             padding: "1px 8px", // Reduced padding for smaller spacing
           }}
         >
-          <ArchiveIcon sx={{ mr: 1 }} /> Archive
+          {isArchiving ? (
+            <CircularProgress size={16} sx={{ mr: 1 }} />
+          ) : (
+            <ArchiveIcon sx={{ mr: 1 }} />
+          )}
+          {isArchiving ? "Archiving..." : "Archive"}
         </MenuItem>
       )}
 
+      {/*
       {canUpdate && canDelete && <Divider sx={{ borderColor: "#EBEBEB" }} />}
 
       {canDelete && (
@@ -208,7 +249,8 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         >
           <DeleteIcon sx={{ mr: 1 }} /> Delete
         </MenuItem>
-      )} */}
+        )}
+      */}
     </Menu>
   );
 };

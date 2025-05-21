@@ -1270,6 +1270,7 @@ const ManageSimulationsPage = () => {
         selectedRow={selectedRow}
         onClose={handleMenuClose}
         onCloneSuccess={loadSimulations}
+        onArchiveSuccess={loadSimulations}
       />
 
       <CreateSimulationDialog

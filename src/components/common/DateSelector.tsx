@@ -44,7 +44,7 @@ export type DateSelectorVariant = "default" | "managerGlobal";
 interface DateSelectorProps {
   dateRange: DateRange<Dayjs>;
   setDateRange: (range: DateRange<Dayjs>) => void;
-  handleDateRangeApplyCallback: () => void;
+  handleDateRangeApplyCallback: (range: DateRange<Dayjs>) => void;
   variant?: DateSelectorVariant;
 }
 
@@ -91,14 +91,14 @@ const DateSelector = ({
   const handlePresetClick = (range: DateRange<Dayjs>) => {
     setDateRange(range);
     if (range[0] && range[1]) {
-      handleDateRangeApplyCallback();
+      handleDateRangeApplyCallback(range);
       handleClose();
     }
   };
 
   const handleApply = () => {
     handleClose();
-    handleDateRangeApplyCallback();
+    handleDateRangeApplyCallback(dateRange);
   };
 
   return (
@@ -128,7 +128,12 @@ const DateSelector = ({
                   {p.label}
                 </DateSelectionChip>
               ))}
-             
+              {variant === "managerGlobal" && (
+                <DateSelectionChip onClick={() => setDateRange([null, null])}>
+                  Custom
+                </DateSelectionChip>
+              )}
+
             </Stack>
             <Divider orientation="vertical" flexItem />
             <LocalizationProvider dateAdapter={AdapterDayjs}>

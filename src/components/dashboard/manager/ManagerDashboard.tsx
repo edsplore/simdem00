@@ -1689,7 +1689,7 @@ const ManagerDashboard = () => {
     }
   };
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (rangeOverride?: DateRange<Dayjs>) => {
     if (user?.id) {
       try {
         setIsAggregatedDataLoading(true);
@@ -1702,17 +1702,19 @@ const ManagerDashboard = () => {
           trainingEntitySearchQuery: "",
         };
 
-        if (dateRange[0] && dateRange[1]) {
+        const effectiveRange = rangeOverride ?? dateRange;
+
+        if (effectiveRange[0] && effectiveRange[1]) {
           params.assignedDateRange.startDate =
-            dateRange[0].format("YYYY-MM-DD");
-          params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-        } else if (dateRange[0]) {
+            effectiveRange[0].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate = effectiveRange[1].format("YYYY-MM-DD");
+        } else if (effectiveRange[0]) {
           params.assignedDateRange.startDate =
-            dateRange[0].format("YYYY-MM-DD");
+            effectiveRange[0].format("YYYY-MM-DD");
           params.assignedDateRange.endDate = null;
-        } else if (dateRange[1]) {
+        } else if (effectiveRange[1]) {
           params.assignedDateRange.startDate = null;
-          params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
+          params.assignedDateRange.endDate = effectiveRange[1].format("YYYY-MM-DD");
         }
 
         // In a real implementation, we would fetch data from the API
@@ -1902,12 +1904,12 @@ const ManagerDashboard = () => {
     setPage(0); // Reset to the first page when changing tabs
   };
 
-  const handleDateRangeApplyCallback = () => {
-    loadDashboardData();
+  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+    loadDashboardData(range);
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     // loadTrainingEntityAttemptsForManagerDashboard(activeTab);
   };
-  const handleTrainingEntityDateRangeApplyCallback = () => {
+  const handleTrainingEntityDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     handleTrainingEntityTeamSelectedApply();
   };

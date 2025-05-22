@@ -1290,6 +1290,7 @@ const ManageSimulationsPage = () => {
         onClose={handleMenuClose}
         onCloneSuccess={refreshSimulations}
         onArchiveSuccess={refreshSimulations}
+        onUnarchiveSuccess={refreshSimulations}
       />
 
       <CreateSimulationDialog

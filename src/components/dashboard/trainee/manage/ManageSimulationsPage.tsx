@@ -72,17 +72,15 @@ const formatStatus = (status: string): string => {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 };
 
-// Helper function to format sim type with capital first letter and special handling
+// Helper function to format sim type with capital first letter of all words
 const formatSimType = (simType: string): string => {
   if (!simType) return '';
 
-  // Special case for visual-audio/chat
-  if (simType.toLowerCase() === 'visual-audio/chat') {
-    return 'Visual-Audio/Chat';
-  }
-
-  // General case: capitalize first letter
-  return simType.charAt(0).toUpperCase() + simType.slice(1).toLowerCase();
+  // Split by common delimiters (space, hyphen, slash, underscore) and capitalize each word
+  return simType
+    .split(/[\s\-\/\_]+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join('-'); // Join with hyphen to maintain the original format
 };
 
 type Order = "asc" | "desc";
@@ -650,31 +648,50 @@ const ManageSimulationsPage = () => {
           </Box>
         </TableCell>
         <TableCell sx={{ width: 150 }}>
-          <Chip
-            label={formatSimType(row.sim_type)}
-            size="small"
-            sx={{ bgcolor: "#F5F6FF", color: "#444CE7" }}
-          />
+          <Tooltip title={formatSimType(row.sim_type)} arrow>
+            <Chip
+              label={formatSimType(row.sim_type)}
+              size="small"
+              sx={{ 
+                bgcolor: "#F5F6FF", 
+                color: "#444CE7",
+                maxWidth: "100%",
+                "& .MuiChip-label": {
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }
+              }}
+            />
+          </Tooltip>
         </TableCell>
         <TableCell sx={{ width: 120 }}>
-          <Chip
-            label={formatStatus(row.status)}
-            size="small"
-            sx={{
-              bgcolor:
-                row.status === "published"
-                  ? "#ECFDF3"
-                  : row.status === "draft"
-                    ? "#F5F6FF"
-                    : "#F9FAFB",
-              color:
-                row.status === "published"
-                  ? "#027A48"
-                  : row.status === "draft"
-                    ? "#444CE7"
-                    : "#344054",
-            }}
-          />
+          <Tooltip title={formatStatus(row.status)} arrow>
+            <Chip
+              label={formatStatus(row.status)}
+              size="small"
+              sx={{
+                bgcolor:
+                  row.status === "published"
+                    ? "#ECFDF3"
+                    : row.status === "draft"
+                      ? "#F5F6FF"
+                      : "#F9FAFB",
+                color:
+                  row.status === "published"
+                    ? "#027A48"
+                    : row.status === "draft"
+                      ? "#444CE7"
+                      : "#344054",
+                maxWidth: "100%",
+                "& .MuiChip-label": {
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }
+              }}
+            />
+          </Tooltip>
         </TableCell>
         <TableCell sx={{ width: 200 }}>
           <Stack

@@ -8,6 +8,7 @@ export interface TrainingPlan {
     type: 'module' | 'simulation';
     id: string;
   }>;
+  status?: string;
   created_by: string;
   created_at: string;
   last_modified_by: string;
@@ -65,6 +66,7 @@ export interface TrainingPlanPaginationParams {
   createdBy?: string;
   tags?: string | string[];
   search?: string;
+  status?: string | string[];
 }
 
 export interface TrainingPlansResponse {
@@ -166,6 +168,15 @@ export const fetchTrainingPlans = async (
           payload.pagination.tags = [pagination.tags];
         }
       }
+
+      // Add optional status filter
+      if (pagination.status) {
+        if (Array.isArray(pagination.status)) {
+          payload.pagination.status = pagination.status;
+        } else if (pagination.status !== "All") {
+          payload.pagination.status = [pagination.status];
+        }
+      }
     }
 
     console.log('Fetching training plans with payload:', payload);
@@ -227,6 +238,39 @@ export const updateTrainingPlan = async (
     return response.data;
   } catch (error) {
     console.error(`Error updating training plan ${trainingPlanId}:`, error);
+    throw error;
+  }
+};
+
+export interface ArchiveTrainingPlanResponse {
+  id: string;
+  status: string;
+}
+
+export const archiveTrainingPlan = async (
+  userId: string,
+  trainingPlanId: string
+): Promise<ArchiveTrainingPlanResponse> => {
+  try {
+    const payload = { user_id: userId, training_plan_id: trainingPlanId };
+    const response = await apiClient.post('/training-plans/archive', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error archiving training plan:', error);
+    throw error;
+  }
+};
+
+export const unarchiveTrainingPlan = async (
+  userId: string,
+  trainingPlanId: string
+): Promise<ArchiveTrainingPlanResponse> => {
+  try {
+    const payload = { user_id: userId, training_plan_id: trainingPlanId };
+    const response = await apiClient.post('/training-plans/unarchive', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error unarchiving training plan:', error);
     throw error;
   }
 };

@@ -422,6 +422,7 @@ const CircularProgressWithLabel = ({ value, size = 170, thickness = 5 }) => {
     </Box>
   );
 };
+
 const dataset = [
   {
     score: 95,
@@ -448,6 +449,7 @@ const dataset = [
 function valueFormatter(value: number | null) {
   return `${value}%`;
 }
+
 const chartSetting = {
   width: 350,
   height: 200,
@@ -460,7 +462,7 @@ const chartSetting = {
   ],
 };
 
-// LeaderBoard component
+// Updated LeaderBoard component with fixed height
 const LeaderBoard = ({
   data,
   title,
@@ -490,6 +492,16 @@ const LeaderBoard = ({
       return a.score - b.score;
     }
   });
+
+  // Calculate dynamic bar sizing based on number of teams
+  const numberOfTeams = sortedData.length;
+  const maxTeamsForNormalHeight = 5;
+  const baseHeight = 240;
+
+  // Calculate margins to ensure consistent chart container height
+  const topMargin = 10;
+  const bottomMargin = 10;
+  const chartAreaHeight = baseHeight - topMargin - bottomMargin;
 
   return (
     <Card
@@ -567,45 +579,75 @@ const LeaderBoard = ({
             flex: 1,
             display: "flex",
             justifyContent: "center",
+            height: baseHeight, // Fixed container height
+            maxHeight: baseHeight, // Prevent expansion
+            overflow: "hidden", // Hide any overflow
           }}
           gap={1}
         >
-          <BarChart
-            dataset={sortedData}
-            yAxis={[{ scaleType: "band", dataKey: "team" }]}
-            xAxis={[
-              {
-                min: 0,
-                max: 100,
-                tickMinStep: 20,
-                valueFormatter: (value) => `${value}%`,
-              },
-            ]}
-            series={[
-              {
-                dataKey: "score",
-                valueFormatter,
-                color: "#E8EDFF",
-              },
-            ]}
-            barLabel="value"
-            borderRadius={6}
-            layout="horizontal"
-            height={240} // Fixed height to ensure consistent sizing
+          <Box
             sx={{
-              ".MuiChartsAxisTickLabel-root": {
-                fill: "#637381",
-                fontSize: 14,
-                fontWeight: "medium",
-              },
-              ".MuiChartsAxis-line": {
-                stroke: "transparent",
-              },
-              ".MuiChartsAxis-tick": {
-                display: "none",
-              },
+              height: baseHeight, // Fixed height container
+              maxHeight: baseHeight,
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
+          >
+            <BarChart
+              dataset={sortedData}
+              yAxis={[{ 
+                scaleType: "band", 
+                dataKey: "team",
+                categoryGap: numberOfTeams > maxTeamsForNormalHeight ? 0.1 : 0.2, // Reduce gap for more teams
+              }]}
+              xAxis={[
+                {
+                  min: 0,
+                  max: 100,
+                  tickMinStep: 20,
+                  valueFormatter: (value) => `${value}%`,
+                },
+              ]}
+              series={[
+                {
+                  dataKey: "score",
+                  valueFormatter,
+                  color: "#E8EDFF",
+                },
+              ]}
+              barLabel="value"
+              borderRadius={6}
+              layout="horizontal"
+              height={baseHeight} // Fixed height
+              margin={{
+                top: topMargin,
+                bottom: bottomMargin,
+                left: 60,
+                right: 60,
+              }}
+              sx={{
+                ".MuiChartsAxisTickLabel-root": {
+                  fill: "#637381",
+                  fontSize: numberOfTeams > maxTeamsForNormalHeight ? 12 : 14, // Smaller font for more teams
+                  fontWeight: "medium",
+                },
+                ".MuiChartsAxis-line": {
+                  stroke: "transparent",
+                },
+                ".MuiChartsAxis-tick": {
+                  display: "none",
+                },
+                ".MuiChartsBarLabel-root": {
+                  fontSize: numberOfTeams > maxTeamsForNormalHeight ? 11 : 12, // Smaller labels for more teams
+                },
+                // Ensure the chart doesn't expand beyond the container
+                maxHeight: baseHeight,
+                overflow: "hidden",
+              }}
+            />
+          </Box>
         </Stack>
       </Stack>
     </Card>
@@ -2137,14 +2179,13 @@ const ManagerDashboard = () => {
                           const filterSelected = selected.filter(
                             (data) => data,
                           );
-                          return filterSelected.length === 0 ? (
-                            <b>All Users and Teams</b>
-                          ) : teamframeNames.length > 0 ? (
-                            teamframeNames[0] +
-                            (teamframeNames[1] ? `${teamframeNames[1]}` : "")
-                          ) : (
-                            <b>All Users and Teams</b>
-                          );
+                          if (filterSelected.length === 0) {
+                            return <b>All Users and Teams</b>;
+                          } else if (filterSelected.length === 1) {
+                            return <b>1 selected</b>;
+                          } else {
+                            return <b>{filterSelected.length} selected</b>;
+                          }
                         }}
                         MenuProps={{
                           PaperProps: {
@@ -2651,11 +2692,13 @@ const ManagerDashboard = () => {
                     IconComponent={ExpandMoreIcon}
                     renderValue={(selected) => {
                       const filterSelected = selected.filter((data) => data);
-                      return filterSelected.length === 0
-                        ? "All Teams"
-                        : filterSelected
-                            .map((id) => reporteeTeamIdsMapToName.get(id))
-                            .join(", ");
+                      if (filterSelected.length === 0) {
+                        return "All Teams";
+                      } else if (filterSelected.length === 1) {
+                        return "1 selected";
+                      } else {
+                        return `${filterSelected.length} selected`;
+                      }
                     }}
                     MenuProps={menuSelectProps}
                     sx={menuSelectsx}
@@ -2745,11 +2788,13 @@ const ManagerDashboard = () => {
                     IconComponent={ExpandMoreIcon}
                     renderValue={(selected) => {
                       const filterSelected = selected.filter((data) => data);
-                      return filterSelected.length === 0
-                        ? "All Creators"
-                        : filterSelected
-                            .map((id) => creatorIdsMapToName.get(id))
-                            .join(", ");
+                      if (filterSelected.length === 0) {
+                        return "All Creators";
+                      } else if (filterSelected.length === 1) {
+                        return "1 selected";
+                      } else {
+                        return `${filterSelected.length} selected`;
+                      }
                     }}
                     MenuProps={menuSelectProps}
                     sx={menuSelectsx}

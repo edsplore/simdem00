@@ -170,9 +170,8 @@ const ManageSimulationsPage = () => {
     };
 
     // Add filters if they're not set to "All"
-    if (searchQuery) {
-      // Use search instead of searchQuery as per the Pydantic model
-      params.search = searchQuery;
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
 
     if (selectedTags !== "All Tags") {

@@ -160,8 +160,8 @@ const ManageTrainingPlanPage = () => {
     };
 
     // Add filters if they're not set to "All"
-    if (searchQuery) {
-      params.search = searchQuery;
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
 
     if (selectedTags !== "All Tags") {

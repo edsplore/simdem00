@@ -230,7 +230,7 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
 
       {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
 
-      {canUpdate && (
+      {canUpdate && selectedItem?.status !== 'archived' && (
         <MenuItem
           onClick={handleArchiveClick}
           disabled={isArchiving}

@@ -142,6 +142,8 @@ const ManageSimulationsPage = () => {
 
   // Ref to track if users have been loaded
   const hasLoadedUsers = useRef(false);
+  // Ref to track the latest API request for simulations
+  const latestRequestId = useRef(0);
 
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
@@ -294,20 +296,23 @@ const ManageSimulationsPage = () => {
   const loadSimulations = useCallback(async () => {
     if (!user?.id) return;
 
+    const requestId = ++latestRequestId.current;
+
     try {
       // Only show loading spinner on initial load, not on refreshes
       if (!isRefreshing) {
         setIsLoading(true);
-      } else {
+      } else if (tableBodyRef.current) {
         // For refreshes, we'll just update a specific part of the UI
-        if (tableBodyRef.current) {
-          tableBodyRef.current.style.opacity = '0.6';
-        }
+        tableBodyRef.current.style.opacity = '0.6';
       }
 
       setError(null);
 
       const response = await fetchSimulations(user.id, paginationParams);
+
+      // Ignore results from outdated requests
+      if (requestId !== latestRequestId.current) return;
 
       setSimulations(response.simulations);
 
@@ -326,15 +331,20 @@ const ManageSimulationsPage = () => {
       // Fetch user details for the simulations
       await fetchUserDetails(response.simulations);
     } catch (err) {
-      setError("Failed to load simulations");
+      // Only set the error if this is the latest request
+      if (requestId === latestRequestId.current) {
+        setError("Failed to load simulations");
+      }
       console.error("Error loading simulations:", err);
     } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
+      if (requestId === latestRequestId.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
 
-      // Restore opacity after refresh
-      if (tableBodyRef.current) {
-        tableBodyRef.current.style.opacity = '1';
+        // Restore opacity after refresh
+        if (tableBodyRef.current) {
+          tableBodyRef.current.style.opacity = '1';
+        }
       }
     }
   }, [user?.id, paginationParams, page, isRefreshing, fetchUserDetails]);

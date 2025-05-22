@@ -1547,7 +1547,10 @@ const ManagerDashboard = () => {
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
   const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([
+    dayjs().subtract(6, "day"),
+    dayjs(),
+  ]);
   const [trainingEntityDateRange, setTrainingEntityDateRange] = useState<
     DateRange<Dayjs>
   >([null, null]);

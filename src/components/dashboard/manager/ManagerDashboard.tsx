@@ -496,7 +496,7 @@ const LeaderBoard = ({
   // Calculate dynamic bar sizing based on number of teams
   const numberOfTeams = sortedData.length;
   const maxTeamsForNormalHeight = 5;
-  const baseHeight = 240;
+  const baseHeight = 200;
 
   // Calculate margins to ensure consistent chart container height
   const topMargin = 10;

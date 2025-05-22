@@ -5,6 +5,7 @@ export interface Module {
   name: string;
   tags: string[];
   simulations_id: string[];
+  status?: string;
   created_by: string;
   created_at: string;
   last_modified_by: string;
@@ -53,6 +54,7 @@ export interface ModulePaginationParams {
   createdBy?: string;
   tags?: string | string[];
   search?: string;
+  status?: string | string[];
 }
 
 export interface ModulesResponse {
@@ -165,6 +167,15 @@ export const fetchModules = async (
           payload.pagination.tags = [pagination.tags];
         }
       }
+
+      // Add optional status filter
+      if (pagination.status) {
+        if (Array.isArray(pagination.status)) {
+          payload.pagination.status = pagination.status;
+        } else if (pagination.status !== "All") {
+          payload.pagination.status = [pagination.status];
+        }
+      }
     }
 
     console.log('Fetching modules with payload:', payload);
@@ -221,6 +232,39 @@ export const updateModule = async (
     return response.data;
   } catch (error) {
     console.error(`Error updating module ${moduleId}:`, error);
+    throw error;
+  }
+};
+
+export interface ArchiveModuleResponse {
+  id: string;
+  status: string;
+}
+
+export const archiveModule = async (
+  userId: string,
+  moduleId: string
+): Promise<ArchiveModuleResponse> => {
+  try {
+    const payload = { user_id: userId, module_id: moduleId };
+    const response = await apiClient.post('/modules/archive', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error archiving module:', error);
+    throw error;
+  }
+};
+
+export const unarchiveModule = async (
+  userId: string,
+  moduleId: string
+): Promise<ArchiveModuleResponse> => {
+  try {
+    const payload = { user_id: userId, module_id: moduleId };
+    const response = await apiClient.post('/modules/unarchive', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error unarchiving module:', error);
     throw error;
   }
 };

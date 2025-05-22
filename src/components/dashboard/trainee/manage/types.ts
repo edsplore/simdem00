@@ -4,7 +4,7 @@ export interface SimulationData {
   version: string;
   level: string;
   type: string;
-  status: "Published" | "Draft" | "Archive";
+  status: "Published" | "Draft" | "Archived";
   tags: string[];
   estTime: string;
   lastModified: string;

@@ -55,6 +55,23 @@ const formatDateTime = (dateString: string, timeZone: string | null = null) => {
   return formatTimeToTimeZone(dateString, timeZone);
 };
 
+// Helper function to format status with capital first letter
+const formatStatus = (status: string): string => {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
+// Helper function to format type with capital first letter of all words
+const formatType = (type: string): string => {
+  if (!type) return '';
+
+  // Split by common delimiters and capitalize each word
+  return type
+    .split(/[\s\-\/\_]+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' '); // Join with space for better readability in type context
+};
+
 type Order = 'asc' | 'desc';
 type OrderBy = 'name' | 'type' | 'teams' | 'trainees' | 'start_date' | 'end_date' | 'status' | 'last_modified_at' | 'last_modified_by' | 'created_at' | 'created_by';
 
@@ -115,9 +132,6 @@ const AssignSimulationsPage = () => {
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<AssignmentPaginationParams>(() => {
-
-
-
     const params: AssignmentPaginationParams = {
       page: page + 1, // API uses 1-based indexing
       pagesize: rowsPerPage,
@@ -126,8 +140,8 @@ const AssignSimulationsPage = () => {
     };
 
     // Add filters if they're not set to "All"
-    if (searchQuery) {
-      params.search = searchQuery;
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
 
     if (selectedCreator !== "Created By") {
@@ -444,14 +458,22 @@ const AssignSimulationsPage = () => {
           {row.name || 'Untitled Assignment'}
         </TableCell>
         <TableCell>
-          <Chip
-            label={row.type}
-            size="small"
-            sx={{
-              bgcolor: '#F5F6FF',
-              color: '#444CE7',
-            }}
-          />
+          <Tooltip title={formatType(row.type)} arrow>
+            <Chip
+              label={formatType(row.type)}
+              size="small"
+              sx={{
+                bgcolor: '#F5F6FF',
+                color: '#444CE7',
+                maxWidth: "100%",
+                "& .MuiChip-label": {
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap"
+                }
+              }}
+            />
+          </Tooltip>
         </TableCell>
         <TableCell>{row.team_id?.length || 0} Teams</TableCell>
         <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
@@ -459,14 +481,36 @@ const AssignSimulationsPage = () => {
         <TableCell>{formatDate(row.end_date, currentTimeZone)}</TableCell>
         <TableCell>
           <Stack direction="row" spacing={1} alignItems="center">
-            <Chip
-              label={row.status}
-              size="small"
-              sx={{
-                bgcolor: '#F5F6FF',
-                color: '#444CE7',
-              }}
-            />
+            <Tooltip title={formatStatus(row.status)} arrow>
+              <Chip
+                label={formatStatus(row.status)}
+                size="small"
+                sx={{
+                  bgcolor: 
+                    row.status?.toLowerCase() === "active" 
+                      ? "#ECFDF3"
+                      : row.status?.toLowerCase() === "completed"
+                        ? "#F0F9FF"
+                        : row.status?.toLowerCase() === "pending"
+                          ? "#FFF7ED"
+                          : "#F5F6FF",
+                  color:
+                    row.status?.toLowerCase() === "active"
+                      ? "#027A48"
+                      : row.status?.toLowerCase() === "completed"
+                        ? "#026AA2"
+                        : row.status?.toLowerCase() === "pending"
+                          ? "#C4320A"
+                          : "#444CE7",
+                  maxWidth: "100%",
+                  "& .MuiChip-label": {
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                  }
+                }}
+              />
+            </Tooltip>
           </Stack>
         </TableCell>
         <TableCell sx={{ minWidth: 180 }}>

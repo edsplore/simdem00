@@ -1852,6 +1852,7 @@ const ManagerDashboard = () => {
     type: string,
     searchQueryOverride: string | null = null,
     selectedTeamsOverride: string[] | [] = [],
+    trainingRangeOverride?: DateRange<Dayjs>,
   ) => {
     try {
       setIsTableLoading(true);
@@ -1882,40 +1883,22 @@ const ManagerDashboard = () => {
             : [],
       };
 
-      // if (dateRange[0] && dateRange[1]) {
-      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      // } else if (dateRange[0]) {
-      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-      //   params.assignedDateRange.endDate = null;
-      // } else if (dateRange[1]) {
-      //   params.assignedDateRange.startDate = null;
-      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      // }
-      // if (dateRange[0] && dateRange[1]) {
-      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      // } else if (dateRange[0]) {
-      //   params.assignedDateRange.startDate = dateRange[0].format("YYYY-MM-DD");
-      //   params.assignedDateRange.endDate = null;
-      // } else if (dateRange[1]) {
-      //   params.assignedDateRange.startDate = null;
-      //   params.assignedDateRange.endDate = dateRange[1].format("YYYY-MM-DD");
-      // }
+      const effectiveTrainingRange =
+        trainingRangeOverride ?? trainingEntityDateRange;
 
-      if (trainingEntityDateRange[0] && trainingEntityDateRange[1]) {
+      if (effectiveTrainingRange[0] && effectiveTrainingRange[1]) {
         params.trainingEntityDateRange.startDate =
-          trainingEntityDateRange[0].format("YYYY-MM-DD");
+          effectiveTrainingRange[0].format("YYYY-MM-DD");
         params.trainingEntityDateRange.endDate =
-          trainingEntityDateRange[1].format("YYYY-MM-DD");
-      } else if (trainingEntityDateRange[0]) {
+          effectiveTrainingRange[1].format("YYYY-MM-DD");
+      } else if (effectiveTrainingRange[0]) {
         params.trainingEntityDateRange.startDate =
-          trainingEntityDateRange[0].format("YYYY-MM-DD");
+          effectiveTrainingRange[0].format("YYYY-MM-DD");
         params.trainingEntityDateRange.endDate = null;
-      } else if (trainingEntityDateRange[1]) {
+      } else if (effectiveTrainingRange[1]) {
         params.trainingEntityDateRange.startDate = null;
         params.trainingEntityDateRange.endDate =
-          trainingEntityDateRange[1].format("YYYY-MM-DD");
+          effectiveTrainingRange[1].format("YYYY-MM-DD");
       }
       const pagination = {
         page: page,
@@ -2037,8 +2020,17 @@ const ManagerDashboard = () => {
   const handleTrainingEntityDateRangeApplyCallback = (
     range: DateRange<Dayjs>,
   ) => {
-    //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
-    handleTrainingEntityTeamSelectedApply();
+    setTrainingEntityDateRange(range);
+    if (selectedTeams.length === 0) {
+      loadTrainingEntityAttemptsForManagerDashboard(
+        activeTab,
+        null,
+        allTeamIds,
+        range,
+      );
+    } else {
+      loadTrainingEntityAttemptsForManagerDashboard(activeTab, null, [], range);
+    }
   };
 
   const handleTrainingEntitySelectedApply = () => {

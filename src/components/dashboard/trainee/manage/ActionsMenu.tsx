@@ -100,7 +100,10 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
 
     try {
       const response = await archiveSimulation(user.id, selectedRow.id);
-      if (response && response.status === "archived") {
+      if (
+        response &&
+        (response.status === "archived" || response.status === "success")
+      ) {
         console.log("Simulation archived successfully:", response);
         if (onArchiveSuccess) {
           onArchiveSuccess();

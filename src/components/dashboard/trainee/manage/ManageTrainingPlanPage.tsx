@@ -68,6 +68,12 @@ const formatDateTime = (dateString: string, timeZone: string | null = null) => {
   return formatTimeToTimeZone(dateString, timeZone);
 };
 
+// Helper function to format status with capital first letter
+const formatStatus = (status: string): string => {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
 type Order = 'asc' | 'desc';
 type OrderBy =
   | 'name'
@@ -202,8 +208,8 @@ const ManageTrainingPlanPage = () => {
     };
 
     // Add filters if they're not set to "All"
-    if (searchQuery) {
-      params.search = searchQuery;
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
 
     if (selectedTags !== "All Tags") {
@@ -933,7 +939,34 @@ const ManageTrainingPlanPage = () => {
                               </Box>
                             </Stack>
                           </TableCell>
-                          <TableCell sx={{ width: 120 }}>{item.status}</TableCell>
+                          <TableCell sx={{ width: 120 }}>
+                            <Tooltip title={formatStatus(item.status)} arrow>
+                              <Chip
+                                label={formatStatus(item.status)}
+                                size="small"
+                                sx={{
+                                  bgcolor:
+                                    item.status?.toLowerCase() === "published"
+                                      ? "#ECFDF3"
+                                      : item.status?.toLowerCase() === "draft"
+                                        ? "#F5F6FF"
+                                        : "#F9FAFB",
+                                  color:
+                                    item.status?.toLowerCase() === "published"
+                                      ? "#027A48"
+                                      : item.status?.toLowerCase() === "draft"
+                                        ? "#444CE7"
+                                        : "#344054",
+                                  maxWidth: "100%",
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap"
+                                  }
+                                }}
+                              />
+                            </Tooltip>
+                          </TableCell>
                           <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
                           <TableCell>
                             <Stack sx={{ minWidth: 180 }}>

@@ -164,7 +164,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               </div>
               <span className="text-sm text-gray-500 mb-1">Sim Score</span>
               <span className="text-lg font-semibold">
-                {scores ? `${Math.round(scores.FinalScore)}%` : "N/A"}
+                {scores ? `${Math.round(scores.FinalScore)}%` : "-"}
               </span>
             </div>
 
@@ -212,7 +212,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               <span className="text-lg font-semibold">
                 {scores?.DataAccuracy !== undefined
                   ? `${Math.round(scores.DataAccuracy)}%`
-                  : "12%"}
+                  : "-"}
               </span>
             </div>
 
@@ -236,7 +236,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               <span className="text-lg font-semibold">
                 {scores?.ClickScore !== undefined
                   ? formatClickScore(scores.ClickScore)
-                  : "62/70"}
+                  : "-"}
               </span>
             </div>
 
@@ -265,7 +265,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
                     scores.KeywordScore.includes("/")
                     ? scores.KeywordScore
                     : `${Math.round(scores.KeywordScore)}%`
-                  : "4/12"}
+                  : "-"}
               </span>
             </div>
 
@@ -291,7 +291,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               <span className="text-lg font-semibold">
                 {scores?.ContextualAccuracy !== undefined
                   ? `${Math.round(scores.ContextualAccuracy)}%`
-                  : "72%"}
+                  : "-"}
               </span>
             </div>
 
@@ -317,7 +317,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
                   ? typeof scores.Confidence === "number"
                     ? `${Math.round(scores.Confidence)}%`
                     : `${scores.Confidence}%`
-                  : "85%"}
+                  : "-"}
               </span>
             </div>
 
@@ -343,7 +343,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
                   ? typeof scores.Concentration === "number"
                     ? `${Math.round(scores.Concentration)}%`
                     : `${scores.Concentration}%`
-                  : "90%"}
+                  : "-"}
               </span>
             </div>
 
@@ -369,7 +369,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
                   ? typeof scores.Energy === "number"
                     ? `${Math.round(scores.Energy)}%`
                     : `${scores.Energy}%`
-                  : "80%"}
+                  : "-"}
               </span>
             </div>
           </div>

@@ -145,6 +145,11 @@ const ManageTrainingPlanPage = () => {
     );
   }, [searchQuery, selectedTags, selectedCreator, selectedStatus]);
 
+  // Helper function to check if an item is archived
+  const isItemArchived = (item: TrainingPlan | Module): boolean => {
+    return item.status?.toLowerCase() === 'archived';
+  };
+
   // Create a memoized pagination params object for training plans
   const trainingPlanPaginationParams = useMemo<TrainingPlanPaginationParams>(() => {
     const params: TrainingPlanPaginationParams = {
@@ -155,8 +160,8 @@ const ManageTrainingPlanPage = () => {
     };
 
     // Add filters if they're not set to "All"
-    if (searchQuery) {
-      params.search = searchQuery;
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
     }
 
     if (selectedTags !== "All Tags") {
@@ -373,6 +378,11 @@ const ManageTrainingPlanPage = () => {
   };
 
   const handleRowClick = async (item: TrainingPlan | Module) => {
+    // Check if the item is archived - if so, don't proceed
+    if (isItemArchived(item)) {
+      return;
+    }
+
     // Only show details dialog for training plans
     if (currentTab === 'Training Plans') {
       setSelectedTrainingPlan(item as TrainingPlan);
@@ -885,84 +895,88 @@ const ManageTrainingPlanPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    sortedData.map((item) => (
-                      <TableRow 
-                        key={item.id} 
-                        onClick={() => handleRowClick(item)}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                          },
-                        }}
-                      >
-                        <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
-                        <TableCell sx={{ width: 200 }}>
-                          <Stack direction="row" spacing={1}>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
-                              {item.tags.map((tag, i) => (
-                                <Chip
-                                  key={i}
-                                  label={tag}
-                                  size="small"
-                                  sx={{ 
-                                    bgcolor: '#F5F6FF', 
-                                    color: '#444CE7',
-                                    maxWidth: '100%',
-                                    '& .MuiChip-label': {
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis',
-                                      whiteSpace: 'nowrap'
-                                    }
-                                  }}
-                                />
-                              ))}
-                            </Box>
-                          </Stack>
-                        </TableCell>
-                        <TableCell sx={{ width: 120 }}>{item.status}</TableCell>
-                        <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
-                        <TableCell>
-                          <Stack sx={{ minWidth: 180 }}>
-                            <Typography variant="body2">{formatDate(item.created_at, currentTimeZone)}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatDateTime(item.created_at, currentTimeZone)}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Stack sx={{ minWidth: 150 }}>
-                            <Typography variant="body2" noWrap>{getUserName(item.created_by)}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Stack sx={{ minWidth: 180 }}>
-                            <Typography variant="body2">{formatDate(item.last_modified_at, currentTimeZone)}</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {formatDateTime(item.last_modified_at, currentTimeZone)}
-                            </Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell>
-                          <Stack sx={{ minWidth: 150 }}>
-                            <Typography variant="body2" noWrap>{getUserName(item.last_modified_by)}</Typography>
-                          </Stack>
-                        </TableCell>
-                        <TableCell align="right" sx={{ width: 100 }}>
-                          <IconButton 
-                            size="small" 
-                            onClick={(event) => handleMenuOpen(
-                              event,
-                              item.id,
-                              currentTab === 'Training Plans' ? 'training-plan' : 'module',
-                              item.status || ''
-                            )}
-                          >
-                            <MoreVertIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    sortedData.map((item) => {
+                      const isArchived = isItemArchived(item);
+                      return (
+                        <TableRow 
+                          key={item.id} 
+                          onClick={isArchived ? undefined : () => handleRowClick(item)}
+                          sx={{
+                            cursor: isArchived ? 'default' : 'pointer',
+                            opacity: isArchived ? 0.6 : 1,
+                            '&:hover': {
+                              bgcolor: isArchived ? 'transparent' : 'action.hover',
+                            },
+                          }}
+                        >
+                          <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
+                          <TableCell sx={{ width: 200 }}>
+                            <Stack direction="row" spacing={1}>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
+                                {item.tags.map((tag, i) => (
+                                  <Chip
+                                    key={i}
+                                    label={tag}
+                                    size="small"
+                                    sx={{ 
+                                      bgcolor: '#F5F6FF', 
+                                      color: '#444CE7',
+                                      maxWidth: '100%',
+                                      '& .MuiChip-label': {
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                      }
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                            </Stack>
+                          </TableCell>
+                          <TableCell sx={{ width: 120 }}>{item.status}</TableCell>
+                          <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
+                          <TableCell>
+                            <Stack sx={{ minWidth: 180 }}>
+                              <Typography variant="body2">{formatDate(item.created_at, currentTimeZone)}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDateTime(item.created_at, currentTimeZone)}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack sx={{ minWidth: 150 }}>
+                              <Typography variant="body2" noWrap>{getUserName(item.created_by)}</Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack sx={{ minWidth: 180 }}>
+                              <Typography variant="body2">{formatDate(item.last_modified_at, currentTimeZone)}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatDateTime(item.last_modified_at, currentTimeZone)}
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack sx={{ minWidth: 150 }}>
+                              <Typography variant="body2" noWrap>{getUserName(item.last_modified_by)}</Typography>
+                            </Stack>
+                          </TableCell>
+                          <TableCell align="right" sx={{ width: 100 }}>
+                            <IconButton 
+                              size="small" 
+                              onClick={(event) => handleMenuOpen(
+                                event,
+                                item.id,
+                                currentTab === 'Training Plans' ? 'training-plan' : 'module',
+                                item.status || ''
+                              )}
+                            >
+                              <MoreVertIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

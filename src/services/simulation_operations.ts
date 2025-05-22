@@ -371,6 +371,7 @@ export const updateSimulationWithFormData = async (
   }
 };
 
+
 /**
  * Updates a masking array of an image in a simulation
  * @param simulationId - The ID of the simulation to update
@@ -378,45 +379,98 @@ export const updateSimulationWithFormData = async (
  * @param maskingData - The masking data to update
  * @returns A promise with the masking update response
  */
+
+
+// export const updateSimulationWithMasking = async (
+//   simulationId: string,
+//   imageId: string,
+//   maskingData: MaskingItem[],
+// ) => {
+//   try {
+//     // Convert masking data to the right format for the backend
+//     const processedMaskingData = maskingData.map((item) => {
+//       const masking = item.content;
+
+//       // Ensure we have the right properties
+//       return {
+//         id: item.id,
+//         type: item.type,
+//         content: {
+//           id: masking.id,
+//           type: masking.type,
+//           // Include both coordinate formats
+//           coordinates: masking.coordinates,
+//           percentageCoordinates: masking.percentageCoordinates,
+//           settings: masking.settings,
+//         },
+//       };
+//     });
+
+//     // Make the API call
+//     const response = await apiClient.post(
+//       `/simulations/${simulationId}/images/${imageId}/masking`,
+//       {
+//         masking: processedMaskingData,
+//       },
+//     );
+
+//     return response.data;
+//   } catch (error) {
+//     console.error("Error updating simulation masking:", error);
+//     throw error;
+//   }
+// };
+
+/**
+ * Updates the masking array for an image in a simulation.
+ *
+ * @param simulationId – ID of the simulation to update
+ * @param imageId      – ID of the image to update
+ * @param maskingData  – Raw masking data from the UI
+ */
 export const updateSimulationWithMasking = async (
   simulationId: string,
   imageId: string,
   maskingData: MaskingItem[],
-) => {
+): Promise<UpdateImageMaskingObjectResponse> => {
   try {
-    // Convert masking data to the right format for the backend
-    const processedMaskingData = maskingData.map((item) => {
-      const masking = item.content;
+    // Convert to the format the backend expects
+    const processedMaskingData = maskingData.map(({ id, type, content }) => ({
+      id,
+      type,
+      content: {
+        id: content.id,
+        type: content.type,
+        // Send both absolute-pixel and percentage coords
+        coordinates: content.coordinates,
+        percentageCoordinates: content.percentageCoordinates,
+        settings: content.settings,
+      },
+    }));
 
-      // Ensure we have the right properties
-      return {
-        id: item.id,
-        type: item.type,
-        content: {
-          id: masking.id,
-          type: masking.type,
-          // Include both coordinate formats
-          coordinates: masking.coordinates,
-          percentageCoordinates: masking.percentageCoordinates,
-          settings: masking.settings,
-        },
-      };
-    });
+    // Compose the request payload
+    const payload = {
+      sim_id: simulationId,
+      image_id: imageId,
+      masking_list: processedMaskingData,
+    };
 
-    // Make the API call
-    const response = await apiClient.post(
-      `/simulations/${simulationId}/images/${imageId}/masking`,
+    //PUT to the correct endpoint
+    const { data } = await apiClient.put<UpdateImageMaskingObjectResponse>(
+      "/simulations/update-image-mask",
+      payload,
       {
-        masking: processedMaskingData,
+        headers: { "Content-Type": "application/json" },
       },
     );
 
-    return response.data;
-  } catch (error) {
-    console.error("Error updating simulation masking:", error);
-    throw error;
+    return data;
+  } catch (err) {
+    // Bubble the error so callers can handle it
+    throw err;
   }
 };
+
 
 /**
  * Publishes a simulation with complete settings

@@ -66,6 +66,25 @@ const formatDateTime = (dateString: string, timeZone: string | null = null) => {
   return formatTimeToTimeZone(dateString, timeZone);
 };
 
+// Helper function to format status with capital first letter
+const formatStatus = (status: string): string => {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
+
+// Helper function to format sim type with capital first letter and special handling
+const formatSimType = (simType: string): string => {
+  if (!simType) return '';
+
+  // Special case for visual-audio/chat
+  if (simType.toLowerCase() === 'visual-audio/chat') {
+    return 'Visual-Audio/Chat';
+  }
+
+  // General case: capitalize first letter
+  return simType.charAt(0).toUpperCase() + simType.slice(1).toLowerCase();
+};
+
 type Order = "asc" | "desc";
 type OrderBy =
   | "sim_name"
@@ -632,14 +651,14 @@ const ManageSimulationsPage = () => {
         </TableCell>
         <TableCell sx={{ width: 150 }}>
           <Chip
-            label={row.sim_type}
+            label={formatSimType(row.sim_type)}
             size="small"
             sx={{ bgcolor: "#F5F6FF", color: "#444CE7" }}
           />
         </TableCell>
         <TableCell sx={{ width: 120 }}>
           <Chip
-            label={row.status}
+            label={formatStatus(row.status)}
             size="small"
             sx={{
               bgcolor:

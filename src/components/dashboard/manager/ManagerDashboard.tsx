@@ -1396,7 +1396,7 @@ const TrainingPlanTable = ({
       >
         <TablePagination
           component="div"
-          count={totalCount} // Total number of items
+          count={totalCount || 0} // Total number of items
           page={page}
           onPageChange={onChangePage}
           rowsPerPage={rowsPerPage}
@@ -1541,9 +1541,9 @@ const ManagerDashboard = () => {
   const [trainingEntityAttempts, setTrainingEntityAttempts] = useState<
     ManagerDashboardTrainingEntityAttemptsStatsResponse[]
   >([]);
-  const [trainingEntityPagination, setTrainingEntityPagination] = useState<any>(
-    {},
-  );
+  const [trainingEntityPagination, setTrainingEntityPagination] = useState<any>({
+    total_count: 0,
+  });
   const [dropdownSearchQuery, setDropdownSearchQuery] = useState("");
   const [creatorSearchQuery, setCreatorSearchQuery] = useState("");
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
@@ -2863,7 +2863,7 @@ const ManagerDashboard = () => {
             {/* Training Plans Table */}
             <TrainingPlanTable
               trainingPlans={trainingEntityAttempts}
-              totalCount={trainingEntityPagination.total_count} // Pass total count for pagination
+              totalCount={trainingEntityPagination.total_count || 0} // Pass total count for pagination
               page={page}
               rowsPerPage={rowsPerPage}
               onChangePage={handleChangePage}

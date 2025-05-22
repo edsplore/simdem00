@@ -60,6 +60,9 @@ const DateSelector = ({
     if (dateRange[0] && dateRange[1]) {
       return `${dateRange[0].format("MMM D, YYYY")} - ${dateRange[1].format("MMM D, YYYY")}`;
     }
+    if (!dateRange[0] && !dateRange[1]) {
+      return "All Time";
+    }
     return "Select dates";
   };
 

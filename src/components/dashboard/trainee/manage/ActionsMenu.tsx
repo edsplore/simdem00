@@ -8,6 +8,7 @@ import {
   DownloadOutlined as DownloadIcon,
   LockOutlined as LockIcon,
   ArchiveOutlined as ArchiveIcon,
+  UnarchiveOutlined as UnarchiveIcon,
   DeleteOutlined as DeleteIcon,
   LockOpenOutlined as UnlockIcon,
 } from "@mui/icons-material";
@@ -20,6 +21,7 @@ import {
 import {
   cloneSimulation,
   archiveSimulation,
+  unarchiveSimulation,
 } from "../../../../services/simulation_operations";
 import { useAuth } from "../../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
@@ -30,6 +32,7 @@ interface ActionsMenuProps {
   onClose: () => void;
   onCloneSuccess?: () => void;
   onArchiveSuccess?: () => void;
+  onUnarchiveSuccess?: () => void;
 }
 
 const ActionsMenu: React.FC<ActionsMenuProps> = ({
@@ -38,11 +41,13 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   onClose,
   onCloneSuccess,
   onArchiveSuccess,
+  onUnarchiveSuccess,
 }) => {
   const navigate = useNavigate();
   const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [isCloning, setIsCloning] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
 
   // Check permissions for different actions
   const canUpdate = hasUpdatePermission("manage-simulations");
@@ -115,6 +120,32 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       console.error("Error archiving simulation:", error);
     } finally {
       setIsArchiving(false);
+      onClose();
+    }
+  };
+
+  const handleUnarchiveClick = async () => {
+    if (!selectedRow || selectedRow.status !== "archived" || !user?.id) {
+      onClose();
+      return;
+    }
+
+    setIsUnarchiving(true);
+
+    try {
+      const response = await unarchiveSimulation(user.id, selectedRow.id);
+      if (response && (response.status === "success" || response.status === "unarchived")) {
+        console.log("Simulation unarchived successfully:", response);
+        if (onUnarchiveSuccess) {
+          onUnarchiveSuccess();
+        }
+      } else {
+        console.error("Failed to unarchive simulation:", response);
+      }
+    } catch (error) {
+      console.error("Error unarchiving simulation:", error);
+    } finally {
+      setIsUnarchiving(false);
       onClose();
     }
   };
@@ -221,7 +252,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       {canUpdate && <Divider sx={{ borderColor: "#EBEBEB" }} />}
       */}
 
-      {canUpdate && (
+      {canUpdate && selectedRow?.status !== "archived" && (
         <MenuItem
           onClick={handleArchiveClick}
           disabled={isArchiving}
@@ -239,6 +270,27 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
             <ArchiveIcon sx={{ mr: 1 }} />
           )}
           {isArchiving ? "Archiving..." : "Archive"}
+        </MenuItem>
+      )}
+
+      {canUpdate && selectedRow?.status === "archived" && (
+        <MenuItem
+          onClick={handleUnarchiveClick}
+          disabled={isUnarchiving}
+          sx={{
+            color: "#666666",
+            "& svg": {
+              color: "#EBEBEB",
+            },
+            padding: "1px 8px",
+          }}
+        >
+          {isUnarchiving ? (
+            <CircularProgress size={16} sx={{ mr: 1 }} />
+          ) : (
+            <UnarchiveIcon sx={{ mr: 1 }} />
+          )}
+          {isUnarchiving ? "Unarchiving..." : "Unarchive"}
         </MenuItem>
       )}
 

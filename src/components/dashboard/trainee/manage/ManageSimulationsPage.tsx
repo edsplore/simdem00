@@ -339,15 +339,24 @@ const ManageSimulationsPage = () => {
     }
   }, [user?.id, paginationParams, page, isRefreshing, fetchUserDetails]);
 
+  const refreshSimulations = useCallback(() => {
+    setIsRefreshing(true);
+    loadSimulations();
+  }, [loadSimulations]);
+
   // Load simulations when component mounts
   useEffect(() => {
     loadSimulations();
   }, []);
 
   // When pagination params change, refresh data without full loading state
+  const isFirstPaginationChange = useRef(true);
   useEffect(() => {
-    // Skip the initial load which is handled by the mount effect
-    if (isLoading) return;
+    if (isFirstPaginationChange.current) {
+      // Skip the effect on initial render to avoid duplicate API call
+      isFirstPaginationChange.current = false;
+      return;
+    }
 
     setIsRefreshing(true);
     loadSimulations();
@@ -1269,8 +1278,8 @@ const ManageSimulationsPage = () => {
         anchorEl={anchorEl}
         selectedRow={selectedRow}
         onClose={handleMenuClose}
-        onCloneSuccess={loadSimulations}
-        onArchiveSuccess={loadSimulations}
+        onCloneSuccess={refreshSimulations}
+        onArchiveSuccess={refreshSimulations}
       />
 
       <CreateSimulationDialog

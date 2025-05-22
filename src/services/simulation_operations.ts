@@ -404,7 +404,7 @@ export const updateSimulationWithMasking = async (
     });
 
     // Make the API call
-    const response = await api.post(
+    const response = await apiClient.post(
       `/simulations/${simulationId}/images/${imageId}/masking`,
       {
         masking: processedMaskingData,

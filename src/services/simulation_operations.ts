@@ -522,6 +522,60 @@ export const cloneSimulation = async (
   }
 };
 
+export interface ArchiveSimulationRequest {
+  user_id: string;
+  simulation_id: string;
+}
+
+export interface ArchiveSimulationResponse {
+  id: string;
+  status: string;
+}
+
+export const archiveSimulation = async (
+  userId: string,
+  simulationId: string,
+): Promise<ArchiveSimulationResponse> => {
+  try {
+    const payload: ArchiveSimulationRequest = {
+      user_id: userId,
+      simulation_id: simulationId,
+    };
+
+    const response = await apiClient.post<ArchiveSimulationResponse>(
+      "/simulations/archive",
+      payload,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error archiving simulation:", error);
+    throw error;
+  }
+};
+
+export const unarchiveSimulation = async (
+  userId: string,
+  simulationId: string,
+): Promise<ArchiveSimulationResponse> => {
+  try {
+    const payload: ArchiveSimulationRequest = {
+      user_id: userId,
+      simulation_id: simulationId,
+    };
+
+    const response = await apiClient.post<ArchiveSimulationResponse>(
+      "/simulations/unarchive",
+      payload,
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Error unarchiving simulation:", error);
+    throw error;
+  }
+};
+
 export const detectMaskAreas = async (
   formData: FormData,
 ): Promise<DetectMaskPHIResponse[]> => {

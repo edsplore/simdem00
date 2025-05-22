@@ -772,7 +772,7 @@ const ManageSimulationsPage = () => {
               <Tab label="All" value="All" />
               <Tab label="Published" value="Published" />
               <Tab label="Draft" value="Draft" />
-              <Tab label="Archive" value="Archive" />
+              <Tab label="Archived" value="Archived" />
             </Tabs>
             <Button
               variant="contained"
@@ -1270,6 +1270,7 @@ const ManageSimulationsPage = () => {
         selectedRow={selectedRow}
         onClose={handleMenuClose}
         onCloneSuccess={loadSimulations}
+        onArchiveSuccess={loadSimulations}
       />
 
       <CreateSimulationDialog

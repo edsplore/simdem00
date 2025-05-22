@@ -81,13 +81,65 @@ import { BarChart } from "@mui/x-charts";
 
 // Format status labels to proper capitalization
 const formatStatusLabel = (status) => {
-  if (status === "over_due" || status === "overdue") return "Overdue";
+  if (!status) return "";
+  if (typeof status !== "string") return status;
+
+  if (status.toLowerCase() === "over_due" || status.toLowerCase() === "overdue")
+    return "Overdue";
 
   return status
     .replace(/_/g, " ")
     .split(" ")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+};
+
+// Improved StatusPill component
+const StatusPill = ({ status }) => {
+  // Safety check for null/undefined status
+  if (!status) return null;
+
+  const { bg, color } = getStatusColor(status);
+
+  return (
+    <Chip
+      label={formatStatusLabel(status)}
+      size="small"
+      sx={{
+        bgcolor: bg,
+        color: color,
+        fontWeight: "medium",
+        borderRadius: "16px",
+        height: "24px",
+        fontSize: "0.75rem",
+      }}
+    />
+  );
+};
+
+const getStatusColor = (status) => {
+  // Safety check for null/undefined status
+  if (!status) return { bg: "#FFFAEB", color: "#B54708" };
+  if (typeof status !== "string") return { bg: "#FFFAEB", color: "#B54708" };
+
+  const statusLower = status.toLowerCase();
+
+  switch (statusLower) {
+    case "in_progress":
+    case "ongoing":
+      return { bg: "#EEF4FF", color: "#3538CD" };
+    case "completed":
+    case "finished":
+      return { bg: "#ECFDF3", color: "#027A48" };
+    case "over_due":
+    case "overdue":
+      return { bg: "#FEF2F2", color: "#DC2626" };
+    case "not_started":
+      return { bg: "#FFFAEB", color: "#B54708" };
+    default:
+      console.log("Unknown status:", status);
+      return { bg: "#FFFAEB", color: "#B54708" };
+  }
 };
 
 // Mock data for the dashboard
@@ -191,6 +243,13 @@ const mockData = {
           status: "Completed",
           dueDate: "25 Dec 2024",
           avgScore: 86,
+        },
+        {
+          name: "Abhinav",
+          classId: "82840",
+          status: "over_due",
+          dueDate: "25 Dec 2024",
+          avgScore: null,
         },
       ],
     },
@@ -552,6 +611,7 @@ const LeaderBoard = ({
     </Card>
   );
 };
+
 const InfoIconPopup = ({ title }) => {
   return (
     <Tooltip
@@ -587,6 +647,7 @@ const InfoIconPopup = ({ title }) => {
     </Tooltip>
   );
 };
+
 // AssignmentCard component
 const AssignmentCard = ({
   title,
@@ -651,12 +712,12 @@ const AssignmentCard = ({
             </Box>
           </Grid>
           <Grid>
-            <Box sx={{ bgcolor: "#F2F4F7", py: 0.5, px: 2, borderRadius: 100 }}>
+            <Box sx={{ bgcolor: "#EEF4FF", py: 0.5, px: 2, borderRadius: 100 }}>
               <Typography
                 variant="body2"
                 sx={{ fontSize: 16 }}
                 fontWeight="medium"
-                color="#344054"
+                color="#3538CD"
               >
                 In Progress: {inProgress}
               </Typography>
@@ -670,17 +731,17 @@ const AssignmentCard = ({
                 fontWeight="medium"
                 color="#B54708"
               >
-                Not started: {notStarted}
+                Not Started: {notStarted}
               </Typography>
             </Box>
           </Grid>
           <Grid>
-            <Box sx={{ bgcolor: "#FEF3F2", py: 0.5, px: 2, borderRadius: 100 }}>
+            <Box sx={{ bgcolor: "#FEF2F2", py: 0.5, px: 2, borderRadius: 100 }}>
               <Typography
                 variant="body2"
                 sx={{ fontSize: 16 }}
                 fontWeight="medium"
-                color="#B42318"
+                color="#DC2626"
               >
                 Overdue: {overdue}
               </Typography>
@@ -729,6 +790,7 @@ const CircularProgressCards = ({ value, title, popupText }) => {
     </Card>
   );
 };
+
 const BreakupDataDialog = ({ downloadData, cancel }) => {
   return (
     <Dialog
@@ -873,19 +935,6 @@ const TrainingPlanTable = ({
     }));
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return { bg: "#ECFDF3", color: "#027A48" };
-      case "in_progress":
-        return { bg: "#F2F4F7", color: "#344054" };
-      case "not_started":
-        return { bg: "#FFFAEB", color: "#B54708" };
-      default:
-        return { bg: "#F9FAFB", color: "#B54708" };
-    }
-  };
-
   const getCompactId = (id: string) => {
     if (!id || id.length < 6) return id;
     return `${id.slice(0, 3)}..${id.slice(-3)}`;
@@ -920,7 +969,7 @@ const TrainingPlanTable = ({
       const rowData = [
         allUserNamesMap.get(row.name) || row.name,
         allUserClassIdsMap.get(row.name) || "-",
-        row.status,
+        formatStatusLabel(row.status),
         row.dueDate,
         row.avgScore,
       ].join(",");
@@ -1029,8 +1078,10 @@ const TrainingPlanTable = ({
                         width: "fit-content",
                         px: 1,
                         py: 0.4,
-                        borderRadius: "25px",
+                        borderRadius: "16px",
                         fontWeight: "medium",
+                        fontSize: "0.75rem",
+                        height: "24px",
                       }}
                     >
                       {plan.assignedTrainees}
@@ -1044,67 +1095,60 @@ const TrainingPlanTable = ({
                     </Box>
                   </TableCell>
                   <TableCell>
-                    <Typography
+                    <Chip
+                      label={`${plan.completionRate}%`}
+                      size="small"
                       sx={{
                         color: "#027A48",
                         bgcolor: "#ECFDF3",
-                        width: "fit-content",
-                        borderRadius: "25px",
-                        px: 1,
-                        py: 0.4,
-                        fontSize: 14,
+                        borderRadius: "16px",
+                        height: "24px",
+                        fontSize: "0.75rem",
                         fontWeight: "medium",
                       }}
-                    >
-                      {plan.completionRate}%
-                    </Typography>
+                    />
                   </TableCell>
                   <TableCell>
-                    <Typography
+                    <Chip
+                      label={`${plan.adherenceRate}%`}
+                      size="small"
                       sx={{
                         color: "#B54708",
-                        fontWeight: "medium",
                         bgcolor: "#FFFAEB",
-                        width: "fit-content",
-                        borderRadius: "25px",
-                        px: 1,
-                        py: 0.4,
-                        fontSize: 14,
+                        borderRadius: "16px",
+                        height: "24px",
+                        fontSize: "0.75rem",
+                        fontWeight: "medium",
                       }}
-                    >
-                      {plan.adherenceRate}%
-                    </Typography>
+                    />
                   </TableCell>
                   <TableCell>
-                    <Typography
+                    <Chip
+                      label={`${plan.avgScore}%`}
+                      size="small"
                       sx={{
                         color: "#027A48",
-                        fontWeight: "medium",
                         bgcolor: "#ECFDF3",
-                        width: "fit-content",
-                        borderRadius: "25px",
-                        px: 1,
-                        py: 0.4,
-                        fontSize: 14,
+                        borderRadius: "16px",
+                        height: "24px",
+                        fontSize: "0.75rem",
+                        fontWeight: "medium",
                       }}
-                    >
-                      {plan.avgScore}%
-                    </Typography>
+                    />
                   </TableCell>
                   <TableCell>
-                    <Typography
+                    <Chip
+                      label={plan.estTime}
+                      size="small"
                       sx={{
                         bgcolor: "#F2F4F7",
                         color: "#344054",
-                        width: "fit-content",
-                        px: 1.2,
-                        py: 0.4,
-                        borderRadius: "25px",
+                        borderRadius: "16px",
+                        height: "24px",
+                        fontSize: "0.75rem",
                         fontWeight: "medium",
                       }}
-                    >
-                      {plan.estTime}
-                    </Typography>
+                    />
                   </TableCell>
                   <TableCell>
                     <IconButton
@@ -1232,17 +1276,6 @@ const TrainingPlanTable = ({
                             <TableBody>
                               {plan.trainees.map((trainee, idx) => (
                                 <TableRow key={idx}>
-                                  {/* <TableCell>
-                                  <Box
-                                    sx={{
-                                      width: 8,
-                                      height: 8,
-                                      borderRadius: "50%",
-                                      bgcolor: getStatusColor(trainee.status)
-                                        .color,
-                                    }}
-                                  />
-                                </TableCell> */}
                                   <TableCell
                                     sx={{
                                       color: "#00000099",
@@ -1265,50 +1298,36 @@ const TrainingPlanTable = ({
                                       "-"}
                                   </TableCell>
                                   <TableCell>
-                                    <Chip
-                                      label={formatStatusLabel(trainee.status)}
-                                      size="small"
-                                      sx={{
-                                        bgcolor: getStatusColor(trainee.status)
-                                          .bg,
-                                        color: getStatusColor(trainee.status)
-                                          .color,
-                                        fontWeight: "medium",
-                                      }}
-                                    />
+                                    <StatusPill status={trainee.status} />
                                   </TableCell>
                                   <TableCell>{trainee.dueDate}</TableCell>
                                   <TableCell>
                                     {trainee.avgScore ? (
-                                      <Typography
+                                      <Chip
+                                        label={`${trainee.avgScore}%`}
+                                        size="small"
                                         sx={{
                                           color: "#027A48",
-                                          fontWeight: "medium",
                                           bgcolor: "#ECFDF3",
-                                          width: "fit-content",
-                                          borderRadius: "25px",
-                                          px: 1,
-                                          py: 0.4,
-                                          fontSize: 14,
+                                          borderRadius: "16px",
+                                          height: "24px",
+                                          fontSize: "0.75rem",
+                                          fontWeight: "medium",
                                         }}
-                                      >
-                                        {trainee.avgScore}%
-                                      </Typography>
+                                      />
                                     ) : (
-                                      <Typography
+                                      <Chip
+                                        label="NA"
+                                        size="small"
                                         sx={{
                                           bgcolor: "#F2F4F7",
                                           color: "#344054",
-                                          width: "fit-content",
-                                          fontSize: 14,
-                                          px: 1.2,
-                                          py: 0.4,
-                                          borderRadius: "25px",
+                                          borderRadius: "16px",
+                                          height: "24px",
+                                          fontSize: "0.75rem",
                                           fontWeight: "medium",
                                         }}
-                                      >
-                                        NA
-                                      </Typography>
+                                      />
                                     )}
                                   </TableCell>
                                 </TableRow>

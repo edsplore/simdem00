@@ -152,8 +152,22 @@ const ManageTrainingPlanPage = () => {
   }, [searchQuery, selectedTags, selectedCreator, selectedStatus]);
 
   // Helper function to check if an item is archived
+  // Determine whether a training plan or module is archived. Some APIs may
+  // provide a boolean `archived` flag instead of a string status, so we check
+  // both formats to be safe.
   const isItemArchived = (item: TrainingPlan | Module): boolean => {
-    return item.status?.toLowerCase() === 'archived';
+    const status = (item as any).status;
+    const archivedFlag = (item as any).archived;
+
+    if (typeof archivedFlag === 'boolean') {
+      return archivedFlag;
+    }
+
+    if (typeof status === 'string') {
+      return status.toLowerCase() === 'archived';
+    }
+
+    return false;
   };
 
   // Create a memoized pagination params object for training plans
@@ -904,12 +918,13 @@ const ManageTrainingPlanPage = () => {
                     sortedData.map((item) => {
                       const isArchived = isItemArchived(item);
                       return (
-                        <TableRow 
-                          key={item.id} 
+                        <TableRow
+                          key={item.id}
                           onClick={isArchived ? undefined : () => handleRowClick(item)}
                           sx={{
                             cursor: isArchived ? 'default' : 'pointer',
                             opacity: isArchived ? 0.6 : 1,
+                            pointerEvents: isArchived ? 'none' : 'auto',
                             '&:hover': {
                               bgcolor: isArchived ? 'transparent' : 'action.hover',
                             },

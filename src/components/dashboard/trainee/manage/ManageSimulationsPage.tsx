@@ -825,7 +825,7 @@ const ManageSimulationsPage = () => {
             }}
           >
             <TextField
-              placeholder="Search by Sim Name or ID"
+              placeholder="Search by Sim Name"
               size="small"
               value={searchQuery}
               onChange={handleSearchChange}

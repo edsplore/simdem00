@@ -69,12 +69,21 @@ const formatDateTime = (dateString: string, timeZone: string | null = null) => {
 };
 
 type Order = 'asc' | 'desc';
-type OrderBy = 'name' | 'tags' | 'estimated_time' | 'created_at' | 'created_by' | 'last_modified_at' | 'last_modified_by';
+type OrderBy =
+  | 'name'
+  | 'tags'
+  | 'status'
+  | 'estimated_time'
+  | 'created_at'
+  | 'created_by'
+  | 'last_modified_at'
+  | 'last_modified_by';
 
 // Map frontend OrderBy to backend sortBy
 const orderByToSortBy: Record<OrderBy, string> = {
   name: "name",
   tags: "tags",
+  status: "status",
   estimated_time: "estimatedTime",
   created_at: "createdAt",
   created_by: "createdBy",
@@ -89,6 +98,7 @@ const ManageTrainingPlanPage = () => {
   const [selectedTags, setSelectedTags] = useState('All Tags');
   const [tagsSearchQuery, setTagsSearchQuery] = useState('');
   const [selectedCreator, setSelectedCreator] = useState('Created By');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [creatorSearchQuery, setCreatorSearchQuery] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
@@ -100,7 +110,7 @@ const ManageTrainingPlanPage = () => {
   const [order, setOrder] = useState<Order>('desc');
   const [orderBy, setOrderBy] = useState<OrderBy>('last_modified_at');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan' } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ id: string; type: 'module' | 'training-plan'; status?: string } | null>(null);
   const [selectedTrainingPlan, setSelectedTrainingPlan] = useState<TrainingPlan | null>(null);
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
@@ -130,9 +140,10 @@ const ManageTrainingPlanPage = () => {
     return (
       searchQuery !== "" ||
       selectedTags !== "All Tags" ||
-      selectedCreator !== "Created By"
+      selectedCreator !== "Created By" ||
+      selectedStatus !== "All"
     );
-  }, [searchQuery, selectedTags, selectedCreator]);
+  }, [searchQuery, selectedTags, selectedCreator, selectedStatus]);
 
   // Create a memoized pagination params object for training plans
   const trainingPlanPaginationParams = useMemo<TrainingPlanPaginationParams>(() => {
@@ -156,6 +167,14 @@ const ManageTrainingPlanPage = () => {
       params.createdBy = selectedCreator;
     }
 
+    if (selectedStatus !== 'All') {
+      params.status = [selectedStatus.toLowerCase()];
+    }
+
+    if (selectedStatus !== 'All') {
+      params.status = [selectedStatus.toLowerCase()];
+    }
+
     return params;
   }, [
     page,
@@ -164,7 +183,8 @@ const ManageTrainingPlanPage = () => {
     order,
     searchQuery,
     selectedTags,
-    selectedCreator
+    selectedCreator,
+    selectedStatus
   ]);
 
   // Create a memoized pagination params object for modules
@@ -197,7 +217,8 @@ const ManageTrainingPlanPage = () => {
     order,
     searchQuery,
     selectedTags,
-    selectedCreator
+    selectedCreator,
+    selectedStatus
   ]);
 
   // Load all users once when component mounts
@@ -319,12 +340,13 @@ const ManageTrainingPlanPage = () => {
   const handleMenuOpen = (
     event: React.MouseEvent<HTMLElement>,
     id: string,
-    type: 'module' | 'training-plan'
+    type: 'module' | 'training-plan',
+    status: string
   ) => {
     // Stop event propagation to prevent row click
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
-    setSelectedItem({ id, type });
+    setSelectedItem({ id, type, status });
   };
 
   const handleMenuClose = () => {
@@ -425,6 +447,7 @@ const ManageTrainingPlanPage = () => {
     setSearchQuery("");
     setSelectedTags("All Tags");
     setSelectedCreator("Created By");
+    setSelectedStatus("All");
     setCreatorSearchQuery("");
     setTagsSearchQuery("");
     setPage(0);
@@ -471,6 +494,10 @@ const ManageTrainingPlanPage = () => {
         case 'tags':
           aValue = a.tags.join(',') || '';
           bValue = b.tags.join(',') || '';
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
           break;
         case 'estimated_time':
           aValue = a.estimated_time || 0;
@@ -644,6 +671,33 @@ const ManageTrainingPlanPage = () => {
                 sx={{ width: 150 }}
               />
 
+              {/* Status Filter */}
+              <Autocomplete
+                value={selectedStatus === 'All' ? null : selectedStatus}
+                onChange={(event, newValue) => {
+                  setSelectedStatus(newValue || 'All');
+                  setPage(0);
+                }}
+                options={['All', 'Published', 'Archived']}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Status"
+                    size="small"
+                    sx={{
+                      minWidth: 120,
+                      bgcolor: '#FFFFFF',
+                      borderRadius: 2,
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        height: 40,
+                      },
+                    }}
+                  />
+                )}
+                sx={{ width: 130 }}
+              />
+
               {/* Created By Filter - Updated to use Autocomplete with search */}
               <Autocomplete
                 value={selectedCreator === "Created By" ? null : selectedCreator}
@@ -766,6 +820,15 @@ const ManageTrainingPlanPage = () => {
                     </TableCell>
                     <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 120 }}>
                       <TableSortLabel
+                        active={orderBy === 'status'}
+                        direction={orderBy === 'status' ? order : 'asc'}
+                        onClick={() => handleRequestSort('status')}
+                      >
+                        Status
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 120 }}>
+                      <TableSortLabel
                         active={orderBy === 'estimated_time'}
                         direction={orderBy === 'estimated_time' ? order : 'asc'}
                         onClick={() => handleRequestSort('estimated_time')}
@@ -815,7 +878,7 @@ const ManageTrainingPlanPage = () => {
                 <TableBody>
                   {sortedData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                      <TableCell colSpan={9} align="center" sx={{ py: 3 }}>
                         <Typography variant="body1" color="text.secondary">
                           No {currentTab.toLowerCase()} found matching your criteria.
                         </Typography>
@@ -857,6 +920,7 @@ const ManageTrainingPlanPage = () => {
                             </Box>
                           </Stack>
                         </TableCell>
+                        <TableCell sx={{ width: 120 }}>{item.status}</TableCell>
                         <TableCell sx={{ width: 120 }}>{item.estimated_time}m</TableCell>
                         <TableCell>
                           <Stack sx={{ minWidth: 180 }}>
@@ -888,9 +952,10 @@ const ManageTrainingPlanPage = () => {
                           <IconButton 
                             size="small" 
                             onClick={(event) => handleMenuOpen(
-                              event, 
-                              item.id, 
-                              currentTab === 'Training Plans' ? 'training-plan' : 'module'
+                              event,
+                              item.id,
+                              currentTab === 'Training Plans' ? 'training-plan' : 'module',
+                              item.status || ''
                             )}
                           >
                             <MoreVertIcon />
@@ -939,6 +1004,8 @@ const ManageTrainingPlanPage = () => {
           onClose={handleMenuClose}
           onCloneSuccess={loadData}
           onEditClick={handleEditClick}
+          onArchiveSuccess={loadData}
+          onUnarchiveSuccess={loadData}
         />
 
         <EditTrainingPlanDialog

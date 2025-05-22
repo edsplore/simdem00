@@ -6,22 +6,34 @@ import {
   EditOutlined as EditIcon,
   ContentCopyOutlined as DuplicateIcon,
   ArchiveOutlined as ArchiveIcon,
+  UnarchiveOutlined as UnarchiveIcon,
   DeleteOutlined as DeleteIcon,
 } from '@mui/icons-material';
 import { hasUpdatePermission, hasCreatePermission, hasDeletePermission } from '../../../../utils/permissions';
 import { useAuth } from '../../../../context/AuthContext';
-import { cloneTrainingPlan } from '../../../../services/trainingPlans';
-import { cloneModule } from '../../../../services/modules';
+import {
+  cloneTrainingPlan,
+  archiveTrainingPlan,
+  unarchiveTrainingPlan,
+} from '../../../../services/trainingPlans';
+import {
+  cloneModule,
+  archiveModule,
+  unarchiveModule,
+} from '../../../../services/modules';
 
 interface TrainingPlanActionsMenuProps {
   anchorEl: HTMLElement | null;
   selectedItem: {
     id: string;
     type: 'module' | 'training-plan';
+    status?: string;
   } | null;
   onClose: () => void;
   onCloneSuccess?: () => void;
   onEditClick?: (id: string, type: 'module' | 'training-plan') => void;
+  onArchiveSuccess?: () => void;
+  onUnarchiveSuccess?: () => void;
 }
 
 const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
@@ -30,10 +42,14 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
   onClose,
   onCloneSuccess,
   onEditClick,
+  onArchiveSuccess,
+  onUnarchiveSuccess,
 }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isCloning, setIsCloning] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
 
   // Check permissions for different actions
   const canUpdate = hasUpdatePermission('manage-training-plan');
@@ -83,11 +99,66 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
     }
   };
 
-  const handleArchiveClick = () => {
-    if (selectedItem) {
-      console.log(`Archive ${selectedItem.type} with ID: ${selectedItem.id}`);
+  const handleArchiveClick = async () => {
+    if (!selectedItem || !user?.id) {
+      onClose();
+      return;
     }
-    onClose();
+
+    setIsArchiving(true);
+
+    try {
+      let response;
+      if (selectedItem.type === 'module') {
+        response = await archiveModule(user.id, selectedItem.id);
+      } else {
+        response = await archiveTrainingPlan(user.id, selectedItem.id);
+      }
+
+      if (response && (response.status === 'success' || response.status === 'archived')) {
+        if (onArchiveSuccess) {
+          onArchiveSuccess();
+        }
+      } else {
+        console.error('Failed to archive', selectedItem.type, response);
+      }
+    } catch (error) {
+      console.error('Error archiving', selectedItem.type, error);
+    } finally {
+      setIsArchiving(false);
+      onClose();
+    }
+  };
+
+  const handleUnarchiveClick = async () => {
+    if (!selectedItem || selectedItem.status !== 'archived' || !user?.id) {
+      onClose();
+      return;
+    }
+
+    setIsUnarchiving(true);
+
+    try {
+      let response;
+      if (selectedItem.type === 'module') {
+        response = await unarchiveModule(user.id, selectedItem.id);
+      } else {
+        response = await unarchiveTrainingPlan(user.id, selectedItem.id);
+      }
+
+      if (response && (response.status === 'success' || response.status === 'unarchived')) {
+        if (onUnarchiveSuccess) {
+          onUnarchiveSuccess();
+        }
+      } else {
+        console.error('Failed to unarchive', selectedItem.type, response);
+      }
+    } catch (error) {
+      console.error('Error unarchiving', selectedItem.type, error);
+    } finally {
+      setIsUnarchiving(false);
+      onClose();
+    }
   };
 
   const handleDeleteClick = () => {
@@ -148,20 +219,21 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
             padding: '1px 8px',
           }}
         >
-          {isCloning ? (
-            <CircularProgress size={16} sx={{ mr: 1 }} />
-          ) : (
-            <DuplicateIcon sx={{ mr: 1 }} />
-          )}
-          {isCloning ? 'Cloning...' : 'Duplicate'}
-        </MenuItem>
+      {isCloning ? (
+        <CircularProgress size={16} sx={{ mr: 1 }} />
+      ) : (
+        <DuplicateIcon sx={{ mr: 1 }} />
+      )}
+      {isCloning ? 'Cloning...' : 'Duplicate'}
+      </MenuItem>
       )}
 
-      {/* {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
+      {canCreate && <Divider sx={{ borderColor: '#EBEBEB' }} />}
 
       {canUpdate && (
         <MenuItem
           onClick={handleArchiveClick}
+          disabled={isArchiving}
           sx={{
             color: '#666666',
             '& svg': {
@@ -170,15 +242,19 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
             padding: '1px 8px',
           }}
         >
-          <ArchiveIcon sx={{ mr: 1 }} /> Archive
+          {isArchiving ? (
+            <CircularProgress size={16} sx={{ mr: 1 }} />
+          ) : (
+            <ArchiveIcon sx={{ mr: 1 }} />
+          )}
+          {isArchiving ? 'Archiving...' : 'Archive'}
         </MenuItem>
       )}
 
-      {canUpdate && canDelete && <Divider sx={{ borderColor: '#EBEBEB' }} />}
-
-      {canDelete && (
+      {canUpdate && selectedItem?.status === 'archived' && (
         <MenuItem
-          onClick={handleDeleteClick}
+          onClick={handleUnarchiveClick}
+          disabled={isUnarchiving}
           sx={{
             color: '#666666',
             '& svg': {
@@ -187,9 +263,14 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
             padding: '1px 8px',
           }}
         >
-          <DeleteIcon sx={{ mr: 1 }} /> Delete
+          {isUnarchiving ? (
+            <CircularProgress size={16} sx={{ mr: 1 }} />
+          ) : (
+            <UnarchiveIcon sx={{ mr: 1 }} />
+          )}
+          {isUnarchiving ? 'Unarchiving...' : 'Unarchive'}
         </MenuItem>
-      )} */}
+      )}
     </Menu>
   );
 };

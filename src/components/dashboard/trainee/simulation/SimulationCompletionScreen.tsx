@@ -378,16 +378,16 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
           <div className="mt-8 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <button
-                onClick={onViewPlayback}
+                onClick={onRestartSim}
                 className="py-3 px-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 font-bold border border-gray-200"
               >
-                View Playback
+                Restart Sim
               </button>
               <button
-                onClick={onShareFeedback}
+                onClick={onViewPlayback}
                 className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
               >
-                Share Feedback
+                View Playback
               </button>
             </div>
           </div>

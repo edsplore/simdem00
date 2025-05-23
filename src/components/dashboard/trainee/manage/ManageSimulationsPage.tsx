@@ -54,6 +54,7 @@ import { fetchUsersSummary, User, fetchUsersByIds } from "../../../../services/u
 import { useAuth } from "../../../../context/AuthContext";
 import { hasCreatePermission } from "../../../../utils/permissions";
 import { formatDateToTimeZone, formatTimeToTimeZone } from '../../../../utils/dateTime';
+import OverflowTooltip from '../../../common/OverflowTooltip';
 
 // Helper functions for date formatting with timezone
 const formatDate = (dateString: string, timeZone: string | null = null) => {
@@ -619,16 +620,10 @@ const ManageSimulationsPage = () => {
     return simulations.map((row, index) => (
       <TableRow key={index}>
         <TableCell sx={{ minWidth: 250 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-          >
-            {row.sim_name}
+          <Stack direction="row" spacing={1} alignItems="center">
+            <OverflowTooltip>{row.sim_name}</OverflowTooltip>
             {row.islocked && (
-              <LockIcon
-                sx={{ fontSize: 16, color: "text.secondary" }}
-              />
+              <LockIcon sx={{ fontSize: 16, color: "text.secondary" }} />
             )}
           </Stack>
         </TableCell>
@@ -708,21 +703,22 @@ const ManageSimulationsPage = () => {
             >
               {row.tags &&
                 row.tags.map((tag, i) => (
-                  <Chip
-                    key={i}
-                    label={tag}
-                    size="small"
-                    sx={{
-                      bgcolor: "#F5F6FF",
-                      color: "#444CE7",
-                      maxWidth: "100%",
-                      "& .MuiChip-label": {
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      },
-                    }}
-                  />
+                  <Tooltip key={i} title={tag} arrow>
+                    <Chip
+                      label={tag}
+                      size="small"
+                      sx={{
+                        bgcolor: "#F5F6FF",
+                        color: "#444CE7",
+                        maxWidth: "100%",
+                        "& .MuiChip-label": {
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        },
+                      }}
+                    />
+                  </Tooltip>
                 ))}
             </Box>
           </Stack>
@@ -745,9 +741,9 @@ const ManageSimulationsPage = () => {
         </TableCell>
         <TableCell sx={{ minWidth: 150 }}>
           <Stack>
-            <Typography variant="body2" noWrap>
+            <OverflowTooltip>
               {getUserName(row.modified_by)}
-            </Typography>
+            </OverflowTooltip>
           </Stack>
         </TableCell>
         <TableCell sx={{ minWidth: 180 }}>
@@ -765,9 +761,9 @@ const ManageSimulationsPage = () => {
         </TableCell>
         <TableCell sx={{ minWidth: 150 }}>
           <Stack>
-            <Typography variant="body2" noWrap>
+            <OverflowTooltip>
               {getUserName(row.created_by)}
-            </Typography>
+            </OverflowTooltip>
           </Stack>
         </TableCell>
         <TableCell align="right" sx={{ width: 100 }}>

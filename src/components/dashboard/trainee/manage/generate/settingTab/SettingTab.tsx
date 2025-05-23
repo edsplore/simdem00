@@ -209,6 +209,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [hasPublishedChanges, setHasPublishedChanges] = useState(false);
 
   // Add state for weightage validation
   const [isWeightageValid, setIsWeightageValid] = useState(true);
@@ -1011,6 +1012,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
       if (response.status === "success" || response.status === "published") {
         setPublishedSimId(simulationId);
         setShowPreview(true);
+        setHasPublishedChanges(true);
         if (onPublish) {
           onPublish();
         }
@@ -1523,6 +1525,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               onSettingsChange={handleAdvancedSettingsChange}
               simulationType={simulationType}
               activeSection={activeSection}
+              hasPublishedChanges={hasPublishedChanges}
             />
 
             {/* Voice and Score settings with the prompt handler */}
@@ -1539,6 +1542,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               enabledLevels={
                 settingsState.advancedSettings?.levels?.simulationLevels
               } // Pass enabled levels
+              hasPublishedChanges={hasPublishedChanges}
             />
           </Box>
         </Box>

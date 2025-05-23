@@ -57,6 +57,8 @@ interface VoiceScoreSettingProps {
     lvl2: boolean;
     lvl3: boolean;
   };
+  // When true, skip resetting form with API values after publish
+  hasPublishedChanges?: boolean;
 }
 
 interface ScoreMetricWeightage {
@@ -139,6 +141,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   simulationType = "audio",
   onWeightageValidationChange,
   enabledLevels,
+  hasPublishedChanges,
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const { user } = useAuth();
@@ -150,6 +153,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
   const [weightageError, setWeightageError] = useState<string | null>(null);
+
+  // Track if we've already initialized the form with API data
+  const hasInitializedRef = useRef(false);
 
   // Calculate number of enabled levels
   const enabledLevelsCount = enabledLevels
@@ -241,7 +247,12 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   // FIXED: Reset form when settings arrive from API (one-time initialization)
   useEffect(() => {
-    if (settings && settings.voice && settings.scoring) {
+    if (
+      settings &&
+      settings.voice &&
+      settings.scoring &&
+      (!hasInitializedRef.current || !hasPublishedChanges)
+    ) {
       console.log("Resetting VoiceAndScore form with API settings:", settings);
 
       reset({
@@ -292,6 +303,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       if (settings.voice?.voiceId) {
         setSelectedVoice(settings.voice.voiceId);
       }
+
+      hasInitializedRef.current = true;
     }
   }, [settings, reset, hasScript, isAnyVisualType, enabledLevelsCount]);
 

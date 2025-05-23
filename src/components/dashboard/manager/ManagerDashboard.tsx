@@ -1556,6 +1556,9 @@ const ManagerDashboard = () => {
   >([null, null]);
   const [selectedTeams, setSelectedTeams] = useState([]);
   const [selectedCreators, setSelectedCreators] = useState([]);
+  // Control open state for table dropdown filters
+  const [teamsDropdownOpen, setTeamsDropdownOpen] = useState(false);
+  const [creatorsDropdownOpen, setCreatorsDropdownOpen] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
 
@@ -2039,6 +2042,7 @@ const ManagerDashboard = () => {
   const handleTrainingEntitySelectedApply = () => {
     //loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     handleTrainingEntityTeamSelectedApply();
+    setCreatorsDropdownOpen(false);
   };
 
   const handleTrainingEntityCreatorSelectedApply = () => {
@@ -2059,6 +2063,7 @@ const ManagerDashboard = () => {
     } else {
       loadTrainingEntityAttemptsForManagerDashboard(activeTab);
     }
+    setTeamsDropdownOpen(false);
   };
 
   const handleChangePage = (event, newPage) => {
@@ -2682,6 +2687,9 @@ const ManagerDashboard = () => {
                 <FormControl size="small" sx={{ minWidth: 120, maxWidth: 120 }}>
                   <Select
                     multiple
+                    open={teamsDropdownOpen}
+                    onClose={() => setTeamsDropdownOpen(false)}
+                    onOpen={() => setTeamsDropdownOpen(true)}
                     value={selectedTeams}
                     onChange={handleTeamsChange}
                     displayEmpty
@@ -2778,6 +2786,9 @@ const ManagerDashboard = () => {
                 <FormControl size="small" sx={{ minWidth: 150, maxWidth: 150 }}>
                   <Select
                     multiple
+                    open={creatorsDropdownOpen}
+                    onClose={() => setCreatorsDropdownOpen(false)}
+                    onOpen={() => setCreatorsDropdownOpen(true)}
                     value={selectedCreators}
                     onChange={handleCreatorChange}
                     displayEmpty

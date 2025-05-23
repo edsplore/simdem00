@@ -1049,9 +1049,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         );
 
         // Create the appropriate record based on the current state
+        const existingRecord =
+          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
         const isTimedOutHotspot =
           timeoutActive ||
-          (currentItem.settings?.timeoutDuration > 0 && !currentItem.isClicked);
+          (currentItem.settings?.timeoutDuration > 0 &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked));
 
         console.log(
           `Hotspot ${currentItem.name} timed out? ${isTimedOutHotspot}`,

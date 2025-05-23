@@ -21,7 +21,6 @@ import {
   FormControlLabel,
   Alert,
   Grid,
-  CircularProgress,
 } from "@mui/material";
 import { PlayArrow, Pause, InfoOutlined } from "@mui/icons-material";
 import {
@@ -144,13 +143,14 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 }) => {
   const [voices, setVoices] = useState<Voice[]>([]);
   const { user } = useAuth();
-  const [selectedVoice, setSelectedVoice] = useState<string>("");
+  const [selectedVoice, setSelectedVoice] = useState<string>(
+    settings.voice?.voiceId || "",
+  );
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const wavesurferRefs = useRef<{ [key: string]: WaveSurfer }>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
   const [weightageError, setWeightageError] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   // Calculate number of enabled levels
   const enabledLevelsCount = enabledLevels
@@ -166,9 +166,49 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const isAnyVisualType = isVisualOnly || isVisualAudioOrChat;
   const hasScript = simulationType !== "visual";
 
-  const { control, handleSubmit, watch, setValue, reset, getValues } =
+  // Initialize form with default values
+  const { control, handleSubmit, watch, setValue, getValues } =
     useForm<FormData>({
       mode: "onChange",
+      defaultValues: {
+        language: settings.voice?.language || "English",
+        accent: settings.voice?.accent || "American",
+        gender: settings.voice?.gender || "Male",
+        ageGroup: settings.voice?.ageGroup || "Middle Aged",
+        simulationScore: settings.scoring?.simulationScore || "best",
+        keywordScore:
+          settings.scoring?.keywordScore || (hasScript ? "20" : "0"),
+        clickScore: settings.scoring?.clickScore || (hasScript ? "80" : "100"),
+        pointsPerKeyword: settings.scoring?.pointsPerKeyword || "1",
+        pointsPerClick: settings.scoring?.pointsPerClick || "1",
+        practiceMode: settings.scoring?.practiceMode || "limited",
+        practiceLimit: settings.scoring?.practiceLimit || "3",
+        repetitionsAllowed: settings.scoring?.repetitionsAllowed || "3",
+        repetitionsNeeded:
+          settings.scoring?.repetitionsNeeded ||
+          Math.max(enabledLevelsCount, 1).toString(),
+        minimumPassingScore: settings.scoring?.minimumPassingScore || "60",
+        scoringMetrics: {
+          enabled: settings.scoring?.scoringMetrics?.enabled ?? true,
+          keywordScore: settings.scoring?.scoringMetrics?.keywordScore ?? "20%",
+          clickScore: settings.scoring?.scoringMetrics?.clickScore ?? "80%",
+        },
+        metricWeightage: {
+          clickAccuracy:
+            settings.scoring?.metricWeightage?.clickAccuracy ||
+            (isAnyVisualType ? "30%" : "0%"),
+          keywordAccuracy:
+            settings.scoring?.metricWeightage?.keywordAccuracy ||
+            (hasScript ? "30%" : "0%"),
+          dataEntryAccuracy:
+            settings.scoring?.metricWeightage?.dataEntryAccuracy ||
+            (isAnyVisualType ? "20%" : "0%"),
+          contextualAccuracy:
+            settings.scoring?.metricWeightage?.contextualAccuracy || "10%",
+          sentimentMeasures:
+            settings.scoring?.metricWeightage?.sentimentMeasures || "10%",
+        },
+      },
     });
 
   const accent = watch("accent");
@@ -201,7 +241,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   };
 
   const getRepetitionsAllowedOptions = () => {
-    const currentRepetitionsNeeded = parseInt(repetitionsNeeded || "1");
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
     const options = [];
     for (let i = currentRepetitionsNeeded; i <= 10; i++) {
       options.push(i.toString());
@@ -209,115 +249,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     return options;
   };
 
-  // FIXED: Initialize form values when settings become available
-  useEffect(() => {
-    console.log("=== VoiceAndScoreSettings: Settings prop changed ===");
-    console.log("Received settings:", settings);
-
-    if (settings && settings.voice && settings.scoring) {
-      console.log("Updating form with settings from API");
-
-      // FIXED: Ensure proper type conversions and fallbacks
-      const formValues: FormData = {
-        language: settings.voice.language || "English",
-        accent: settings.voice.accent || "American",
-        gender: settings.voice.gender || "Male",
-        ageGroup: settings.voice.ageGroup || "Middle Aged",
-        simulationScore: settings.scoring.simulationScore || "best",
-
-        // FIXED: Ensure these are strings and handle the conversion properly
-        keywordScore: String(
-          settings.scoring.keywordScore || (hasScript ? "20" : "0"),
-        ),
-        clickScore: String(
-          settings.scoring.clickScore || (hasScript ? "80" : "100"),
-        ),
-        pointsPerKeyword: String(settings.scoring.pointsPerKeyword || "1"),
-        pointsPerClick: String(settings.scoring.pointsPerClick || "1"),
-
-        practiceMode: settings.scoring.practiceMode || "limited",
-        practiceLimit: String(settings.scoring.practiceLimit || "3"),
-
-        // FIXED: Ensure repetition values are properly converted to strings
-        repetitionsAllowed: String(settings.scoring.repetitionsAllowed || "3"),
-        repetitionsNeeded: String(
-          settings.scoring.repetitionsNeeded || Math.max(enabledLevelsCount, 1),
-        ),
-
-        // FIXED: Ensure minimum passing score is properly converted
-        minimumPassingScore: String(
-          settings.scoring.minimumPassingScore || "60",
-        ),
-
-        scoringMetrics: {
-          enabled: settings.scoring.scoringMetrics?.enabled ?? true,
-
-          // FIXED: Ensure these include the % sign if they don't already have it
-          keywordScore: settings.scoring.scoringMetrics?.keywordScore?.includes(
-            "%",
-          )
-            ? settings.scoring.scoringMetrics.keywordScore
-            : `${settings.scoring.scoringMetrics?.keywordScore || (hasScript ? "20" : "0")}%`,
-          clickScore: settings.scoring.scoringMetrics?.clickScore?.includes("%")
-            ? settings.scoring.scoringMetrics.clickScore
-            : `${settings.scoring.scoringMetrics?.clickScore || (hasScript ? "80" : "100")}%`,
-        },
-        metricWeightage: {
-          // FIXED: Ensure all weightage values include % sign
-          clickAccuracy:
-            settings.scoring.metricWeightage?.clickAccuracy?.includes("%")
-              ? settings.scoring.metricWeightage.clickAccuracy
-              : `${settings.scoring.metricWeightage?.clickAccuracy || (isAnyVisualType ? "30" : "0")}%`,
-          keywordAccuracy:
-            settings.scoring.metricWeightage?.keywordAccuracy?.includes("%")
-              ? settings.scoring.metricWeightage.keywordAccuracy
-              : `${settings.scoring.metricWeightage?.keywordAccuracy || (hasScript ? "30" : "0")}%`,
-          dataEntryAccuracy:
-            settings.scoring.metricWeightage?.dataEntryAccuracy?.includes("%")
-              ? settings.scoring.metricWeightage.dataEntryAccuracy
-              : `${settings.scoring.metricWeightage?.dataEntryAccuracy || (isAnyVisualType ? "20" : "0")}%`,
-          contextualAccuracy:
-            settings.scoring.metricWeightage?.contextualAccuracy?.includes("%")
-              ? settings.scoring.metricWeightage.contextualAccuracy
-              : `${settings.scoring.metricWeightage?.contextualAccuracy || "10"}%`,
-          sentimentMeasures:
-            settings.scoring.metricWeightage?.sentimentMeasures?.includes("%")
-              ? settings.scoring.metricWeightage.sentimentMeasures
-              : `${settings.scoring.metricWeightage?.sentimentMeasures || "10"}%`,
-        },
-      };
-
-      console.log("Form values to set:", formValues);
-
-      // Use reset to set all values at once
-      reset(formValues);
-
-      // FIXED: Update selected voice separately and only if it's different
-      const voiceIdFromSettings = settings.voice.voiceId;
-      if (voiceIdFromSettings && voiceIdFromSettings !== selectedVoice) {
-        console.log("Updating selected voice:", voiceIdFromSettings);
-        setSelectedVoice(voiceIdFromSettings);
-      }
-
-      // Mark as initialized
-      if (!isInitialized) {
-        setIsInitialized(true);
-      }
-    }
-  }, [
-    settings,
-    reset,
-    hasScript,
-    isAnyVisualType,
-    enabledLevelsCount,
-    isInitialized,
-  ]);
-
   // Validate weightage totals
   useEffect(() => {
     // Remove % and convert to numbers
     const parsePercentage = (value: string) =>
-      parseInt(value?.replace("%", "") || "0") || 0;
+      parseInt(value.replace("%", "")) || 0;
 
     const weightageTotal =
       parsePercentage(clickAccuracy) +
@@ -351,24 +287,20 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   // Update repetitions needed when enabled levels change
   useEffect(() => {
-    if (!isInitialized) return;
-
-    const currentRepetitionsNeeded = parseInt(repetitionsNeeded || "1");
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
     if (currentRepetitionsNeeded < enabledLevelsCount) {
       setValue("repetitionsNeeded", enabledLevelsCount.toString());
     }
-  }, [enabledLevelsCount, repetitionsNeeded, setValue, isInitialized]);
+  }, [enabledLevelsCount, repetitionsNeeded, setValue]);
 
   // Update repetitions allowed when repetitions needed changes
   useEffect(() => {
-    if (!isInitialized) return;
-
-    const currentRepetitionsNeeded = parseInt(repetitionsNeeded || "1");
-    const currentRepetitionsAllowed = parseInt(repetitionsAllowed || "1");
+    const currentRepetitionsNeeded = parseInt(repetitionsNeeded);
+    const currentRepetitionsAllowed = parseInt(repetitionsAllowed);
     if (currentRepetitionsAllowed < currentRepetitionsNeeded) {
       setValue("repetitionsAllowed", currentRepetitionsNeeded.toString());
     }
-  }, [repetitionsNeeded, repetitionsAllowed, setValue, isInitialized]);
+  }, [repetitionsNeeded, repetitionsAllowed, setValue]);
 
   // Log when component mounts and when settings change
   useEffect(() => {
@@ -377,62 +309,75 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     console.log("Simulation type:", simulationType);
   }, []);
 
-  // FIXED: Update parent immediately when form values change (but only after initial load)
+  // Add an effect to update parent component when form values change
   useEffect(() => {
-    if (!isInitialized) {
-      return;
-    }
-
-    const subscription = watch((value) => {
-      console.log("Form values changed:", value);
-
-      if (
-        value.simulationScore &&
-        value.repetitionsAllowed &&
-        value.repetitionsNeeded
-      ) {
-        console.log("Updating parent with new scoring settings");
+    const updateParentSettings = () => {
+      // Update settings only if we have values to update
+      if (simulationScore && repetitionsAllowed && repetitionsNeeded) {
+        console.log("Updating parent with new scoring settings:", {
+          simulationScore,
+          repetitionsAllowed,
+          repetitionsNeeded,
+          practiceMode,
+          practiceLimit,
+          minimumPassingScore,
+        });
 
         onSettingsChange({
           ...settings,
           voice: {
             ...settings.voice,
-            language: value.language || "English",
-            accent: value.accent || "American",
-            gender: value.gender || "Male",
-            ageGroup: value.ageGroup || "Middle Aged",
+            language: watch("language"),
+            accent: watch("accent"),
+            gender: watch("gender"),
+            ageGroup: watch("ageGroup"),
             voiceId: selectedVoice || settings.voice?.voiceId,
           },
           scoring: {
-            simulationScore: value.simulationScore,
-            keywordScore: value.keywordScore || "20",
-            clickScore: value.clickScore || "80",
-            pointsPerKeyword: value.pointsPerKeyword || "1",
-            pointsPerClick: value.pointsPerClick || "1",
-            practiceMode: value.practiceMode || "limited",
-            practiceLimit: value.practiceLimit || "3",
-            repetitionsAllowed: value.repetitionsAllowed,
-            repetitionsNeeded: value.repetitionsNeeded,
-            minimumPassingScore: value.minimumPassingScore || "60",
-            scoringMetrics: value.scoringMetrics || {
-              enabled: true,
-              keywordScore: "20%",
-              clickScore: "80%",
+            simulationScore,
+            keywordScore: watch("keywordScore"),
+            clickScore: watch("clickScore"),
+            pointsPerKeyword: watch("pointsPerKeyword"),
+            pointsPerClick: watch("pointsPerClick"),
+            practiceMode,
+            practiceLimit,
+            repetitionsAllowed,
+            repetitionsNeeded,
+            minimumPassingScore,
+            scoringMetrics: {
+              enabled: watch("scoringMetrics.enabled"),
+              keywordScore: watch("scoringMetrics.keywordScore"),
+              clickScore: watch("scoringMetrics.clickScore"),
             },
-            metricWeightage: value.metricWeightage || {
-              clickAccuracy: "30%",
-              keywordAccuracy: "30%",
-              dataEntryAccuracy: "20%",
-              contextualAccuracy: "10%",
-              sentimentMeasures: "10%",
+            metricWeightage: {
+              clickAccuracy: watch("metricWeightage.clickAccuracy"),
+              keywordAccuracy: watch("metricWeightage.keywordAccuracy"),
+              dataEntryAccuracy: watch("metricWeightage.dataEntryAccuracy"),
+              contextualAccuracy: watch("metricWeightage.contextualAccuracy"),
+              sentimentMeasures: watch("metricWeightage.sentimentMeasures"),
             },
           },
         });
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
-  }, [watch, settings, onSettingsChange, selectedVoice, isInitialized]);
+    // Call immediately to update on mount
+    updateParentSettings();
+  }, [
+    simulationScore,
+    repetitionsAllowed,
+    repetitionsNeeded,
+    practiceMode,
+    practiceLimit,
+    selectedVoice,
+    minimumPassingScore,
+    clickAccuracy,
+    keywordAccuracy,
+    dataEntryAccuracy,
+    contextualAccuracy,
+    sentimentMeasures,
+    onSettingsChange,
+  ]);
 
   const fetchVoices = async () => {
     try {
@@ -516,7 +461,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   // Add effect to update parent component when voice selection changes
   useEffect(() => {
     // Update parent component with the selected voice ID immediately
-    if (selectedVoice && isInitialized) {
+    if (selectedVoice) {
       console.log("Voice ID changed, updating parent:", selectedVoice);
       onSettingsChange({
         ...settings,
@@ -526,7 +471,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         },
       });
     }
-  }, [selectedVoice, isInitialized]);
+  }, [selectedVoice]);
 
   const handlePlayPause = (voiceId: string) => {
     const wavesurfer = wavesurferRefs.current[voiceId];
@@ -618,27 +563,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       },
     });
   };
-
-  // FIXED: Don't render form until settings are available AND initialized
-  if (!settings || !settings.voice || !settings.scoring || !isInitialized) {
-    return (
-      <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "200px",
-          }}
-        >
-          <CircularProgress />
-          <Typography sx={{ ml: 2 }}>
-            Loading voice and score settings...
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
 
   return (
     <Box sx={{ maxWidth: 1100, mx: "auto", p: 2 }}>

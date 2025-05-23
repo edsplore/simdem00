@@ -234,6 +234,10 @@ const ManageTrainingPlanPage = () => {
       params.createdBy = selectedCreator;
     }
 
+    if (selectedStatus !== 'All') {
+      params.status = [selectedStatus.toLowerCase()];
+    }
+
     return params;
   }, [
     page,

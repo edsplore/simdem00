@@ -60,7 +60,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   // Format click score as X/Y if it's a fraction
   const formatClickScore = (score: number) => {
     if (Number.isInteger(score)) {
-      return `${score}`;
+      return `${score}%`;
     }
     // If it has a denominator (like in the 62/70 example)
     if (

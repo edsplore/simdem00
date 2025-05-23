@@ -33,6 +33,7 @@ export interface VisualImage {
   hotspots?: Hotspot[];
 }
 
+// FIXED: Complete SimulationSettings interface with all missing fields
 export interface SimulationSettings {
   simulationType?: string;
   levels?: {
@@ -57,20 +58,39 @@ export interface SimulationSettings {
     enabled: boolean;
     text: string;
   };
-  voice: {
-    language: string;
-    accent: string;
-    gender: string;
-    ageGroup: string;
-    voiceId: string;
+  voice?: {
+    language?: string;
+    accent?: string;
+    gender?: string;
+    ageGroup?: string;
+    voiceId?: string;
   };
-  scoring: {
-    simulationScore: "best" | "last" | "average";
-    keywordScore: string;
-    clickScore: string;
-    practiceMode: "unlimited" | "limited";
-    repetitionsAllowed: string;
-    repetitionsNeeded: string;
+  scoring?: {
+    simulationScore?: "best" | "last" | "average";
+    keywordScore?: string;
+    clickScore?: string;
+    // ADDED: Missing fields
+    pointsPerKeyword?: string;
+    pointsPerClick?: string;
+    practiceMode?: "unlimited" | "limited";
+    practiceLimit?: string; // ADDED: This was missing
+    repetitionsAllowed?: string;
+    repetitionsNeeded?: string;
+    minimumPassingScore?: string; // ADDED: This was missing
+    // ADDED: Missing scoringMetrics object
+    scoringMetrics?: {
+      enabled?: boolean;
+      keywordScore?: string;
+      clickScore?: string;
+    };
+    // ADDED: Missing metricWeightage object - this is the main issue!
+    metricWeightage?: {
+      clickAccuracy?: string;
+      keywordAccuracy?: string;
+      dataEntryAccuracy?: string;
+      contextualAccuracy?: string;
+      sentimentMeasures?: string;
+    };
   };
 }
 
@@ -118,7 +138,7 @@ export const SimulationWizardProvider: React.FC<{
     Set<string>
   >(new Set());
 
-  // Initialize settings with default values but allow updates
+  // FIXED: Initialize settings with complete default values including missing fields
   const [settings, setSettings] = useState<SimulationSettings>({
     simulationType: "audio",
     levels: {},
@@ -148,11 +168,31 @@ export const SimulationWizardProvider: React.FC<{
       simulationScore: "best",
       keywordScore: "20%",
       clickScore: "80%",
+      // ADDED: All the missing fields with proper defaults
+      pointsPerKeyword: "1",
+      pointsPerClick: "1",
       practiceMode: "unlimited",
+      practiceLimit: "3", // ADDED: This was missing
       repetitionsAllowed: "3",
       repetitionsNeeded: "2",
+      minimumPassingScore: "60", // ADDED: This was missing
+      // ADDED: Missing scoringMetrics object
+      scoringMetrics: {
+        enabled: true,
+        keywordScore: "20%",
+        clickScore: "80%",
+      },
+      // ADDED: Missing metricWeightage object - this was the main issue!
+      metricWeightage: {
+        clickAccuracy: "30%",
+        keywordAccuracy: "30%",
+        dataEntryAccuracy: "20%",
+        contextualAccuracy: "10%",
+        sentimentMeasures: "10%",
+      },
     },
   });
+
   const [simulationResponse, setSimulationResponse] = useState<{
     id: string;
     status: string;
@@ -160,7 +200,7 @@ export const SimulationWizardProvider: React.FC<{
   } | null>(null);
   const [isPublished, setIsPublished] = useState(false);
 
-  // Update settings while preserving existing values
+  // FIXED: Update settings while preserving ALL existing values including new fields
   const updateSettings = (newSettings: Partial<SimulationSettings>) => {
     setSettings((prevSettings) => ({
       ...prevSettings,
@@ -172,6 +212,16 @@ export const SimulationWizardProvider: React.FC<{
       scoring: {
         ...prevSettings.scoring,
         ...(newSettings.scoring || {}),
+        // FIXED: Ensure metricWeightage is properly merged
+        metricWeightage: {
+          ...prevSettings.scoring?.metricWeightage,
+          ...(newSettings.scoring?.metricWeightage || {}),
+        },
+        // FIXED: Ensure scoringMetrics is properly merged
+        scoringMetrics: {
+          ...prevSettings.scoring?.scoringMetrics,
+          ...(newSettings.scoring?.scoringMetrics || {}),
+        },
       },
     }));
   };

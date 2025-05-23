@@ -206,33 +206,30 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   simulationType: initialSimType,
   activeSection,
 }) => {
-  const { control, handleSubmit, watch, setValue } = useForm<FormData>({
+  // Use reset() approach for proper API data initialization
+  const { control, handleSubmit, watch, setValue, reset } = useForm<FormData>({
     defaultValues: {
       simulationType: initialSimType || "audio",
       settings: Object.fromEntries(
         Object.entries(defaultSettings).map(([key, value]) => [
           key,
-          settings.levels?.[key] || value.levels,
+          value.levels,
         ]),
       ),
       estimatedTime: {
-        enabled: settings.estimatedTime?.enabled || false,
-        value: settings.estimatedTime?.value || "",
+        enabled: false,
+        value: "",
       },
       objectives: {
-        enabled: settings.objectives?.enabled || false,
-        text:
-          settings.objectives?.text ||
-          "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
+        enabled: false,
+        text: "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
       },
       overviewVideo: {
-        enabled: settings.overviewVideo?.enabled || false,
+        enabled: false,
       },
       quickTips: {
-        enabled: settings.quickTips?.enabled || false,
-        text:
-          settings.quickTips?.text ||
-          "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
+        enabled: false,
+        text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
       },
     },
   });
@@ -254,6 +251,31 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   const level2Enabled = simulationLevelsSettings.lvl2 === true; // Default to false if undefined
   const level3Enabled = simulationLevelsSettings.lvl3 === true; // Default to false if undefined
 
+  // FIXED: Reset form when settings arrive from API (one-time initialization)
+  useEffect(() => {
+    if (settings && settings.levels) {
+      console.log(
+        "Resetting AdvancedSettings form with API settings:",
+        settings,
+      );
+
+      reset({
+        simulationType: settings.simulationType || initialSimType || "audio",
+        settings: settings.levels,
+        estimatedTime: settings.estimatedTime || { enabled: false, value: "" },
+        objectives: settings.objectives || {
+          enabled: false,
+          text: "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
+        },
+        quickTips: settings.quickTips || {
+          enabled: false,
+          text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
+        },
+        overviewVideo: settings.overviewVideo || { enabled: false },
+      });
+    }
+  }, [settings, reset, initialSimType]);
+
   // Log form states for debugging
   useEffect(() => {
     const formSettings = watch("settings");
@@ -266,7 +288,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     });
   }, [watch, level1Enabled, level2Enabled, level3Enabled]);
 
-  // Watch for form changes and update settings with proper disabled level handling
+  // FIXED: Watch for form changes and update settings with proper disabled level handling
   useEffect(() => {
     const subscription = watch((value) => {
       // Get the current levels enabled status
@@ -308,22 +330,6 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
     return () => subscription.unsubscribe();
   }, [watch, settings, onSettingsChange]);
-
-  // When settings prop changes, update form
-  useEffect(() => {
-    if (settings.levels) {
-      // Update all level settings from props
-      Object.entries(settings.levels).forEach(([key, value]) => {
-        setValue(`settings.${key}`, value);
-      });
-
-      // Specifically log the enablePractice setting
-      console.log(
-        "Settings.levels.enablePractice:",
-        settings.levels.enablePractice,
-      );
-    }
-  }, [settings, setValue]);
 
   const onSubmit = (data: FormData) => {
     onSettingsChange({

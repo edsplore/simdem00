@@ -164,11 +164,22 @@ interface SimulationData {
     is_enabled?: boolean;
     keyword_score?: number;
     click_score?: number;
+    points_per_keyword?: number;
+    points_per_click?: number;
+  };
+  // FIXED: Add metric_weightage field that was missing
+  metric_weightage?: {
+    click_accuracy?: number;
+    keyword_accuracy?: number;
+    data_entry_accuracy?: number;
+    contextual_accuracy?: number;
+    sentiment_measures?: number;
   };
   sim_practice?: {
     is_unlimited?: boolean;
     pre_requisite_limit?: number;
   };
+  minimum_passing_score?: number;
 }
 
 interface Message {
@@ -401,7 +412,7 @@ const GenerateScriptContent = () => {
             lvl3: simulation.lvl3 || {},
           };
 
-          // Always proceed with whatever data we have - use defaults for missing parts
+          // FIXED: Always proceed with whatever data we have - use defaults for missing parts
           setLoadedSimulation({
             id: simulation.id || simulation._id || id, // Fallback to route ID if API doesn't return it
             name: simulation.sim_name || "New Simulation", // Changed to match API response
@@ -444,11 +455,22 @@ const GenerateScriptContent = () => {
                 is_enabled: true,
                 keyword_score: 20,
                 click_score: 80,
+                points_per_keyword: 1,
+                points_per_click: 1,
               },
+            // FIXED: Add the missing metric_weightage field mapping
+            metric_weightage: simulation.metric_weightage || {
+              click_accuracy: 30,
+              keyword_accuracy: 30,
+              data_entry_accuracy: 20,
+              contextual_accuracy: 10,
+              sentiment_measures: 10,
+            },
             sim_practice: simulation.sim_practice || {
               is_unlimited: false,
               pre_requisite_limit: 3,
             },
+            minimum_passing_score: simulation.minimum_passing_score || 60,
           });
 
           // Initialize SimulationResponse with defaults for missing fields

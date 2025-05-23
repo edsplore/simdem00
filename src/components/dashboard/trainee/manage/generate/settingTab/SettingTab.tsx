@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Stack,
   Typography,
@@ -244,126 +244,188 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
   // Helper function to create settings object from simulationData
   const createSettingsFromData = () => {
+    // Add safety check and early return with defaults if no data
+    if (!simulationData) {
+      console.log("No simulationData available, using defaults");
+      return {
+        advancedSettings: {
+          simulationType: simulationType || "audio",
+          levels: {
+            simulationLevels: { lvl1: true, lvl2: false, lvl3: false },
+            enablePractice: { lvl1: false, lvl2: false, lvl3: false },
+            hideAgentScript: { lvl1: false, lvl2: false, lvl3: false },
+            hideCustomerScript: { lvl1: false, lvl2: false, lvl3: false },
+            hideKeywordScores: { lvl1: false, lvl2: false, lvl3: false },
+            hideSentimentScores: { lvl1: true, lvl2: true, lvl3: false },
+            hideHighlights: { lvl1: false, lvl2: false, lvl3: false },
+            hideCoachingTips: { lvl1: true, lvl2: true, lvl3: false },
+            enablePostSurvey: { lvl1: false, lvl2: false, lvl3: false },
+            aiPoweredPauses: { lvl1: false, lvl2: false, lvl3: false },
+          },
+          estimatedTime: { enabled: false, value: "" },
+          objectives: {
+            enabled: false,
+            text: "Learn basic customer service\nUnderstand refund process",
+          },
+          quickTips: {
+            enabled: false,
+            text: "Listen to the customer carefully\nBe polite and empathetic",
+          },
+          overviewVideo: { enabled: false },
+        },
+        voiceSettings: {
+          voice: {
+            language: "English",
+            accent: "American",
+            gender: "Male",
+            ageGroup: "Middle Aged",
+            voiceId: DEFAULT_VOICE_ID,
+          },
+          scoring: {
+            simulationScore: "best",
+            keywordScore: hasScript ? "20" : "0",
+            clickScore: hasScript ? "80" : "100",
+            pointsPerKeyword: "1",
+            pointsPerClick: "1",
+            practiceMode: "limited",
+            practiceLimit: "3",
+            repetitionsAllowed: "3",
+            repetitionsNeeded: "1",
+            minimumPassingScore: "60",
+            scoringMetrics: {
+              enabled: true,
+              keywordScore: "20%",
+              clickScore: "80%",
+            },
+            metricWeightage: {
+              clickAccuracy: isAnyVisualType ? "30%" : "0%",
+              keywordAccuracy: hasScript ? "30%" : "0%",
+              dataEntryAccuracy: isAnyVisualType ? "20%" : "0%",
+              contextualAccuracy: "10%",
+              sentimentMeasures: "10%",
+            },
+          },
+        },
+      };
+    }
+
+    console.log("Creating settings from simulationData:", simulationData);
+
     const levels = simulationData?.levels || {};
     const lvl1 = levels.lvl1 || {};
     const lvl2 = levels.lvl2 || {};
     const lvl3 = levels.lvl3 || {};
 
-    // Convert API format to internal settings format
+    // Convert API format to internal settings format - FIXED mapping
     const convertedLevels = {
-      // This is the top-level setting that controls which levels are enabled
       simulationLevels: {
-        lvl1: lvl1.isEnabled !== false, // Default to true if undefined
-        lvl2: lvl2.isEnabled === true, // Default to false if undefined
-        lvl3: lvl3.isEnabled === true, // Default to false if undefined
+        lvl1: lvl1.isEnabled !== false, // Use actual API value
+        lvl2: lvl2.isEnabled === true, // Use actual API value
+        lvl3: lvl3.isEnabled === true, // Use actual API value
       },
-      // Setting for enabling practice mode - separate from simulationLevels
       enablePractice: {
-        lvl1: lvl1.enablePractice === true,
-        lvl2: lvl2.enablePractice === true,
-        lvl3: lvl3.enablePractice === true,
+        lvl1: lvl1.enablePractice === true, // Use actual API value
+        lvl2: lvl2.enablePractice === true, // Use actual API value
+        lvl3: lvl3.enablePractice === true, // Use actual API value
       },
       hideAgentScript: {
-        lvl1: lvl1.hideAgentScript === true,
-        lvl2: lvl2.hideAgentScript === true,
-        lvl3: lvl3.hideAgentScript === true,
+        lvl1: lvl1.hideAgentScript === true, // Use actual API value
+        lvl2: lvl2.hideAgentScript === true, // Use actual API value
+        lvl3: lvl3.hideAgentScript === true, // Use actual API value
       },
       hideCustomerScript: {
-        lvl1: lvl1.hideCustomerScript === true,
-        lvl2: lvl2.hideCustomerScript === true,
-        lvl3: lvl3.hideCustomerScript === true,
+        lvl1: lvl1.hideCustomerScript === true, // Use actual API value
+        lvl2: lvl2.hideCustomerScript === true, // Use actual API value
+        lvl3: lvl3.hideCustomerScript === true, // Use actual API value
       },
       hideKeywordScores: {
-        lvl1: lvl1.hideKeywordScores === true,
-        lvl2: lvl2.hideKeywordScores === true,
-        lvl3: lvl3.hideKeywordScores === true,
+        lvl1: lvl1.hideKeywordScores === true, // Use actual API value
+        lvl2: lvl2.hideKeywordScores === true, // Use actual API value
+        lvl3: lvl3.hideKeywordScores === true, // Use actual API value
       },
       hideSentimentScores: {
-        lvl1: lvl1.hideSentimentScores !== false, // Default to true
-        lvl2: lvl2.hideSentimentScores !== false, // Default to true
-        lvl3: lvl3.hideSentimentScores === true, // Default to false
+        lvl1: lvl1.hideSentimentScores === true, // Use actual API value
+        lvl2: lvl2.hideSentimentScores === true, // Use actual API value
+        lvl3: lvl3.hideSentimentScores === true, // Use actual API value
       },
       hideHighlights: {
-        lvl1: lvl1.hideHighlights === true,
-        lvl2: lvl2.hideHighlights === true,
-        lvl3: lvl3.hideHighlights === true,
+        lvl1: lvl1.hideHighlights === true, // Use actual API value
+        lvl2: lvl2.hideHighlights === true, // Use actual API value
+        lvl3: lvl3.hideHighlights === true, // Use actual API value
       },
       hideCoachingTips: {
-        lvl1: lvl1.hideCoachingTips !== false, // Default to true
-        lvl2: lvl2.hideCoachingTips !== false, // Default to true
-        lvl3: lvl3.hideCoachingTips === true, // Default to false
+        lvl1: lvl1.hideCoachingTips === true, // Use actual API value
+        lvl2: lvl2.hideCoachingTips === true, // Use actual API value
+        lvl3: lvl3.hideCoachingTips === true, // Use actual API value
       },
       enablePostSurvey: {
-        lvl1: lvl1.enablePostSimulationSurvey === true,
-        lvl2: lvl2.enablePostSimulationSurvey === false,
-        lvl3: lvl3.enablePostSimulationSurvey === false,
+        lvl1: lvl1.enablePostSimulationSurvey === true, // Use actual API value
+        lvl2: lvl2.enablePostSimulationSurvey === true, // Use actual API value
+        lvl3: lvl3.enablePostSimulationSurvey === true, // Use actual API value
       },
       aiPoweredPauses: {
-        lvl1: lvl1.aiPoweredPausesAndFeedback === true,
-        lvl2: lvl2.aiPoweredPausesAndFeedback === true,
-        lvl3: lvl3.aiPoweredPausesAndFeedback === false,
+        lvl1: lvl1.aiPoweredPausesAndFeedback === true, // Use actual API value
+        lvl2: lvl2.aiPoweredPausesAndFeedback === true, // Use actual API value
+        lvl3: lvl3.aiPoweredPausesAndFeedback === true, // Use actual API value
       },
     };
 
-    // Get estimated time (convert from minutes to "X mins" format)
-    // CHANGED: Default to false (OFF) instead of checking for existence
+    // FIXED: Get estimated time properly from API
     const estimatedTime = {
-      enabled: false, // Default to OFF
+      enabled: !!(
+        simulationData?.estimated_time_to_attempt_in_mins &&
+        simulationData.estimated_time_to_attempt_in_mins > 0
+      ),
       value: simulationData?.estimated_time_to_attempt_in_mins
         ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
-        : simulationData?.est_time
-          ? `${simulationData.est_time} mins`
-          : "",
+        : simulationData?.est_time || "",
     };
 
     // FIXED: Properly handle objectives from API
-    // If the array is empty, it means it was disabled
-    // If it has content, it was enabled
     const keyObjectives = simulationData?.key_objectives || [];
     const objectives = {
-      enabled: keyObjectives.length > 0, // Enable only if there are actual objectives
+      enabled: keyObjectives.length > 0,
       text:
         keyObjectives.length > 0
           ? keyObjectives.join("\n")
-          : "Learn basic customer service\nUnderstand refund process", // Default placeholder
+          : "Learn basic customer service\nUnderstand refund process",
     };
 
     // FIXED: Properly handle quick tips from API
-    // If the array is empty, it means it was disabled
-    // If it has content, it was enabled
     const quickTipsArray = simulationData?.quick_tips || [];
     const quickTips = {
-      enabled: quickTipsArray.length > 0, // Enable only if there are actual tips
+      enabled: quickTipsArray.length > 0,
       text:
         quickTipsArray.length > 0
           ? quickTipsArray.join("\n")
-          : "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information", // Default placeholder
+          : "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
     };
 
     // Get overview video setting
     const overviewVideo = {
-      enabled:
-        !!simulationData?.overviewVideo || !!simulationData?.overview_video,
+      enabled: !!(
+        simulationData?.overviewVideo || simulationData?.overview_video
+      ),
     };
 
-    // Get metric weightage values
+    // FIXED: Get metric weightage values from API
     const metricWeightage = simulationData?.metric_weightage || {};
+    console.log("Metric weightage from API:", metricWeightage);
 
-    // Voice and scoring settings
+    // FIXED: Voice and scoring settings from API
     const voiceSettings = {
       voice: {
         language: simulationData?.language || "English",
-        accent: "American", // Default value as it's not in the API
-        gender: "Male", // Default value as it's not in the API
-        ageGroup: "Middle Aged", // Default value as it's not in the API
+        accent: "American", // Default as not in API
+        gender: "Male", // Default as not in API
+        ageGroup: "Middle Aged", // Default as not in API
         voiceId: simulationData?.voice_id || DEFAULT_VOICE_ID,
       },
       scoring: {
         simulationScore:
-          simulationData?.final_simulation_score_criteria === "Last attempt"
+          simulationData?.final_simulation_score_criteria === "last"
             ? "last"
-            : simulationData?.final_simulation_score_criteria ===
-                "Average of all"
+            : simulationData?.final_simulation_score_criteria === "average"
               ? "average"
               : "best",
         keywordScore:
@@ -386,12 +448,12 @@ const SettingTab: React.FC<SettingTabProps> = ({
         repetitionsAllowed:
           simulationData?.simulation_max_repetition?.toString() || "3",
         repetitionsNeeded:
-          simulationData?.simulation_completion_repetition?.toString() || "2",
+          simulationData?.simulation_completion_repetition?.toString() || "1",
         minimumPassingScore:
           simulationData?.minimum_passing_score?.toString() || "60",
         scoringMetrics: {
           enabled:
-            simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
+            simulationData?.simulation_scoring_metrics?.is_enabled !== false,
           keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score || (hasScript ? 20 : 0)}%`,
           clickScore: `${simulationData?.simulation_scoring_metrics?.click_score || (hasScript ? 80 : 100)}%`,
         },
@@ -405,7 +467,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
       },
     };
 
-    return {
+    const result = {
       advancedSettings: {
         simulationType: simulationType || "audio",
         levels: convertedLevels,
@@ -416,33 +478,47 @@ const SettingTab: React.FC<SettingTabProps> = ({
       },
       voiceSettings,
     };
+
+    console.log("Created settings from API data:", result);
+    return result;
   };
 
-  // Load settings from localStorage if available, or create from simulationData
-  const loadSettingsFromStorage = () => {
-    if (!simulationId) return null;
-
-    const storedSettings = localStorage.getItem(
-      `simulation_settings_${simulationId}`,
-    );
-    if (storedSettings) {
-      try {
-        return JSON.parse(storedSettings);
-      } catch (e) {
-        console.error("Error parsing stored settings:", e);
-      }
-    }
-    return null;
-  };
-
-  // Add state to track all settings
+  // Add state to track all settings - FIXED initialization
   const [settingsState, setSettingsState] = useState<SimulationSettings>(() => {
-    const storedSettings = loadSettingsFromStorage();
-    if (storedSettings) return storedSettings;
-
-    // If no stored settings, create from simulationData
+    // Always start with defaults, wait for API
     return createSettingsFromData();
   });
+
+  // Only update settings when simulationData arrives (one-time)
+  useEffect(() => {
+    if (simulationData) {
+      console.log(
+        "Received simulationData, updating settings:",
+        simulationData,
+      );
+
+      // Clear any cached settings to avoid conflicts
+      if (simulationId) {
+        localStorage.removeItem(`simulation_settings_${simulationId}`);
+      }
+
+      const newSettings = createSettingsFromData();
+      setSettingsState(newSettings);
+    }
+  }, [simulationData]); // Only simulationData dependency
+
+  // Save to localStorage after user changes (debounced)
+  useEffect(() => {
+    if (simulationId && simulationData) {
+      const timeoutId = setTimeout(() => {
+        localStorage.setItem(
+          `simulation_settings_${simulationId}`,
+          JSON.stringify(settingsState),
+        );
+      }, 1000); // 1 second debounce for saving
+      return () => clearTimeout(timeoutId);
+    }
+  }, [settingsState, simulationId, simulationData]);
 
   // NEW: Validate settings before publishing
   const validateSettings = () => {
@@ -527,51 +603,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
     isWeightageValid, // Add this dependency
   ]);
 
-  // Save settings to localStorage when they change
-  useEffect(() => {
-    if (simulationId) {
-      localStorage.setItem(
-        `simulation_settings_${simulationId}`,
-        JSON.stringify(settingsState),
-      );
-    }
-  }, [settingsState, simulationId]);
+  // Simple update handlers
+  const handleAdvancedSettingsChange = useCallback((newSettings: any) => {
+    setSettingsState((prev) => ({ ...prev, advancedSettings: newSettings }));
+  }, []);
 
-  // When simulationData changes, update settings
-  useEffect(() => {
-    if (simulationData) {
-      console.log("Received new simulationData:", simulationData);
-
-      // Create settings from new data
-      const newSettings = createSettingsFromData();
-      console.log("Created new settings from simulationData:", newSettings);
-
-      // Update the settings state
-      setSettingsState(newSettings);
-    }
-  }, [simulationData]);
-
-  // Log current settings for debugging
-  useEffect(() => {
-    console.log("Current settings state:", settingsState);
-  }, [settingsState]);
-
-  // Add handler functions to update settings
-  const handleAdvancedSettingsChange = (newSettings: any) => {
-    console.log("Advanced settings updated:", newSettings);
-    setSettingsState((prev) => ({
-      ...prev,
-      advancedSettings: newSettings,
-    }));
-  };
-
-  const handleVoiceSettingsChange = (newSettings: any) => {
-    console.log("Voice settings updated:", newSettings);
-    setSettingsState((prev) => ({
-      ...prev,
-      voiceSettings: newSettings,
-    }));
-  };
+  const handleVoiceSettingsChange = useCallback((newSettings: any) => {
+    setSettingsState((prev) => ({ ...prev, voiceSettings: newSettings }));
+  }, []);
 
   // Handler to update edited prompt when it changes
   const handlePromptChange = (newPrompt: string) => {
@@ -587,12 +626,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
   // When returning from preview, restore settings
   useEffect(() => {
     if (!showPreview) {
-      const storedSettings = loadSettingsFromStorage();
+      const storedSettings = localStorage.getItem(
+        `simulation_settings_${simulationId}`,
+      );
       if (storedSettings) {
-        setSettingsState(storedSettings);
+        try {
+          const parsedSettings = JSON.parse(storedSettings);
+          setSettingsState(parsedSettings);
+        } catch (e) {
+          console.error("Error parsing stored settings:", e);
+        }
       }
     }
-  }, [showPreview]);
+  }, [showPreview, simulationId]);
 
   // Smoothly scroll to a section when clicked
   const scrollToSection = (sectionId: string) => {

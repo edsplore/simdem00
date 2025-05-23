@@ -242,7 +242,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
-  const lastClickedHotspotRef = useRef<string | null>(null);
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -749,7 +748,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       //   console.log("Reached end of simulation content");
       //   // Wait a moment for any final animations/transitions
       //   setTimeout(() => {
-      //               handleEndCall();
+      //     handleEndCall();
       //   }, 30000);
       // } else {
       //   console.log(
@@ -887,229 +886,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
-      // Get the current attemptSequenceData and make a copy
-      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
-
-      // Process the current item if it's a hotspot
-      if (currentItem && currentItem.type === "hotspot") {
-        // Check if this item already exists in the data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
-
-        if (itemIndex >= 0) {
-          // Item exists in the data, use its existing state
-          const existingRecord = finalAttemptData[itemIndex];
-          console.log(
-            `Current hotspot ${currentItem.name} already in attempt data:`,
-            JSON.stringify(existingRecord),
-          );
-          // Don't modify it - it's already correctly recorded
-        } else {
-          // Item doesn't exist in the data (shouldn't happen for last item if clicked)
-          console.log(
-            `Current hotspot ${currentItem.name} NOT found in attempt data - checking timeout`,
-          );
-
-          // Only add it as timed out if no click was registered
-          const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-
-          if (hasTimeoutSetting) {
-            // Create a timeout record
-            const timeoutRecord = {
-              ...currentItem,
-              timedOut: true,
-              wrong_clicks: [],
-            };
-
-            if ("isClicked" in timeoutRecord) {
-              delete timeoutRecord.isClicked;
-            }
-
-            finalAttemptData.push(timeoutRecord);
-          }
-        }
-      }
-
-      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
-      // does NOT have an isClicked property
-      finalAttemptData = finalAttemptData.map((item) => {
-        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
-          if (item.timedOut === true && "isClicked" in item) {
-            // Create a clean copy without the isClicked property
-            const { isClicked, ...cleanItem } = item;
-            return cleanItem;
-          }
-        }
-        return item;
-      });
-
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
-
-      // Use the endVisualAudioAttempt function from simulation_visual_audio_attempts
-      const response = await endVisualAudioAttempt(
-        userId,
-        simulationId,
-        simulationProgressId,
-        finalAttemptData,
-        modifiedSlidesData, // Send modified slides data with direct transcriptions
-      );
-
-      console.log("End API call completed with response:", response);
-
-      if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
-        setScores(response.scores);
-        setDuration(response.duration || elapsedTime);
-
-        // Only show completion screen for Test attempts
-        if (attemptType === "Test") {
-          setShowCompletionScreen(true);
-          console.log("Set showCompletionScreen to true for Test attempt");
-        } else {
-          // For Practice attempts, go back to list
-          onBackToList();
-          console.log("Practice attempt completed, returning to list");
-        }
-      } else {
-        console.warn("No scores received in response");
-        // Even without scores, only show completion for Test attempts
-        if (attemptType === "Test") {
-          setShowCompletionScreen(true);
-        } else {
-          onBackToList();
-        }
-      }
-    } catch (error) {
-      console.error("Failed to end visual-audio simulation:", error);
-      // Even on error, check attempt type
-      if (attemptType === "Test") {
-        setShowCompletionScreen(true);
-      } else {
-        onBackToList();
-      }
-    } finally {
-      console.log("End call flow completed");
-      setIsEndingCall(false);
-    }
-  };
-
-    // Prevent multiple simultaneous end call attempts
-    if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
-      return;
-    }
-
-    // Verify user ID exists
-    if (!userId) {
-      console.error("Error: User ID is required to end simulation");
-      return;
-    }
-
-    // Set flag to prevent duplicate ending
-    setIsEndingCall(true);
-    console.log("Setting isEndingCall to true");
-
-    // Stop any active recording (though it should already be stopped)
-    if (recordingInstance) {
-      try {
-        recordingInstance.stop();
-        recordingInstance.stream?.getTracks().forEach((track) => track.stop());
-      } catch (e) {
-        // Ignore errors if already stopped
-      }
-      setRecordingInstance(null);
-    }
-
-    // Stop the timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-      console.log("Timer stopped");
-    }
-
-    // Cancel any ongoing speech
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
-
-    // Clear any active timeout
-    if (hotspotTimeoutRef.current) {
-      clearTimeout(hotspotTimeoutRef.current);
-      hotspotTimeoutRef.current = null;
-    }
-    setTimeoutActive(false);
-
-    // Stop recording if active
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-      setIsRecording(false);
-    }
-
-    // Update UI state
-    setIsCallActive(false);
-    console.log("Set isCallActive to false, call should now be inactive");
-
-    // Ensure we have the required IDs
-    if (!simulationProgressId) {
-      console.error("⚠️ Missing simulationProgressId for end call API");
-      setIsEndingCall(false);
-      return;
-    }
-
-    try {
-      console.log(
-        "Preparing modified simulation data with direct transcriptions",
-      );
-
-      // Create a deep copy of the slides data to modify
-      const modifiedSlidesData = simulationData?.slidesData
-        ? JSON.parse(JSON.stringify(simulationData.slidesData))
-        : [];
-
-      // Replace trainee messages with transcriptions and simplify hotspots
-      modifiedSlidesData.forEach((slide) => {
-        if (slide.sequence) {
-          slide.sequence = slide.sequence.map((item) => {
-            // Create a copy we can modify
-            const newItem = { ...item };
-
-            // For message items, replace trainee messages with transcriptions
-            if (
-              newItem.type === "message" &&
-              (newItem.role === "Trainee" || newItem.role === "assistant") &&
-              newItem.id &&
-              directTranscriptions.has(newItem.id)
-            ) {
-              // Replace the original text with the transcription
-              newItem.text = directTranscriptions.get(newItem.id);
-              console.log(
-                `Replacing text for ${newItem.id} with direct transcription:`,
-                newItem.text,
-              );
-            }
-
-            // For hotspots, just keep the ID and type
-            if (newItem.type === "hotspot") {
-              // Keep only essential properties
-              return {
-                id: newItem.id,
-                type: newItem.type,
-                hotspotType: newItem.hotspotType,
-              };
-            }
-
-            return newItem;
-          });
-        }
-      });
-
       // Make a direct copy of the current data that we can manipulate synchronously
       // This avoids relying on asynchronous state updates
       let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
@@ -1121,23 +897,18 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           (item) => item.id === currentItem.id,
         );
 
-        // Get the existing record if it exists
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
-
-        // Check if this hotspot was clicked (either in existing record or via ref)
-        const wasClicked = 
-          (existingRecord && existingRecord.isClicked === true) ||
-          lastClickedHotspotRef.current === currentItem.id;
-
-        // Determine if this hotspot has timed out
-        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
         const isTimedOut =
           timeoutActive ||
-          (hasTimeoutSetting && !wasClicked);
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked));
 
         console.log(
-          `Processing current hotspot ${currentItem.name} for end call, clicked: ${wasClicked}, timed out: ${isTimedOut}`,
+          `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
         );
 
         if (isTimedOut) {
@@ -1145,7 +916,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: existingRecord?.wrong_clicks || [],
+            wrong_clicks: [],
           };
 
           if ("isClicked" in timeoutRecord) {
@@ -1158,38 +929,36 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           } else {
             finalAttemptData.push(timeoutRecord);
           }
-        } else if (itemIndex >= 0) {
-          // If the item was already recorded and clicked, ensure it's properly marked
-          const hotspotType = currentItem.hotspotType || "";
-          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-            hotspotType,
-          );
-
-          if (shouldBeClicked && !finalAttemptData[itemIndex].isClicked) {
-            finalAttemptData[itemIndex] = {
-              ...finalAttemptData[itemIndex],
-              isClicked: true,
-              timedOut: false,
-            };
-          }
         } else {
-          // Add new record for clicked hotspot that wasn't already in the data
+          // Normal clicked hotspot
           const hotspotType = currentItem.hotspotType || "";
           const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
             hotspotType,
           );
 
-          const newRecord = {
-            ...currentItem,
-            wrong_clicks: [],
-          };
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
+              finalAttemptData[itemIndex] = {
+                ...finalAttemptData[itemIndex],
+                isClicked: true,
+                timedOut: false,
+              };
+            }
+          } else {
+            // Add new record with appropriate properties
+            const newRecord = {
+              ...currentItem,
+              wrong_clicks: [],
+            };
 
-          if (shouldBeClicked) {
-            newRecord.isClicked = true;
-            newRecord.timedOut = false;
+            if (shouldBeClicked) {
+              newRecord.isClicked = true;
+              newRecord.timedOut = false;
+            }
+
+            finalAttemptData.push(newRecord);
           }
-
-          finalAttemptData.push(newRecord);
         }
       }
 
@@ -1481,8 +1250,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Double check we're not in the middle of recording or transcribing
       if (!isRecording && !isTranscribing) {
-        // Small delay to ensure state updates are processed
-        setTimeout(() => handleEndCall(), 100);
+        handleEndCall();
       } else {
         console.log("Delaying end call until recording is complete");
         // We'll wait for the recording to finish and user to click next
@@ -1501,15 +1269,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // Skip tracking wrong clicks for dropdown, textbox and coaching hotspots
       const hotspotType = currentItem.hotspotType || "button";
       if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
-        return;
-      }
-
-      // Check if this hotspot has already been clicked
-      const existingItem = attemptSequenceData.find(
-        (item) => item.id === currentItem.id,
-      );
-      if (existingItem && existingItem.isClicked === true) {
-        // Don't record wrong clicks for already clicked hotspots
         return;
       }
 
@@ -1570,7 +1329,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return () => {
       container?.removeEventListener("click", handleClick);
     };
-  }, [currentItem, attemptSequenceData]);
+  }, [currentItem]);
 
   // Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
@@ -1600,10 +1359,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
       hotspotType,
     );
-
-    if (shouldSetIsClicked) {
-      lastClickedHotspotRef.current = currentItem.id;
-    }
 
     // Create a clean clicked hotspot record
     const clickRecord = {
@@ -2229,263 +1984,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
       });
 
-      // Get the current attemptSequenceData and make a copy
-      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
-
-      // Process the current item if it's a hotspot
-      if (currentItem && currentItem.type === "hotspot") {
-        // Check if this item already exists in the data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
-
-        if (itemIndex >= 0) {
-          // Item exists in the data, use its existing state
-          const existingRecord = finalAttemptData[itemIndex];
-          console.log(
-            `Current hotspot ${currentItem.name} already in attempt data:`,
-            JSON.stringify(existingRecord),
-          );
-          // Don't modify it - it's already correctly recorded
-        } else {
-          // Item doesn't exist in the data (shouldn't happen for last item if clicked)
-          console.log(
-            `Current hotspot ${currentItem.name} NOT found in attempt data - checking timeout`,
-          );
-
-          // Only add it as timed out if no click was registered
-          const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-
-          if (hasTimeoutSetting) {
-            // Create a timeout record
-            const timeoutRecord = {
-              ...currentItem,
-              timedOut: true,
-              wrong_clicks: [],
-            };
-
-            if ("isClicked" in timeoutRecord) {
-              delete timeoutRecord.isClicked;
-            }
-
-            finalAttemptData.push(timeoutRecord);
-          }
-        }
-      }
-
-      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
-      // does NOT have an isClicked property
-      finalAttemptData = finalAttemptData.map((item) => {
-        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
-          if (item.timedOut === true && "isClicked" in item) {
-            // Create a clean copy without the isClicked property
-            const { isClicked, ...cleanItem } = item;
-            return cleanItem;
-          }
-        }
-        return item;
-      });
-
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
-
-      console.log("Executing end-visual-audio API call with modified data");
-      const response = await endVisualAudioAttempt(
-        userId,
-        simulationId,
-        simulationProgressId,
-        finalAttemptData,
-        modifiedSlidesData, // Send modified slides data with transcriptions
-      );
-
-      console.log("End API call completed with response:", response);
-
-      if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
-        setScores(response.scores);
-        setDuration(response.duration || elapsedTime);
-
-        // Only show completion screen for Test attempts
-        if (attemptType === "Test") {
-          setShowCompletionScreen(true);
-          console.log("Set showCompletionScreen to true for Test attempt");
-        } else {
-          // For Practice attempts, go back to list
-          onBackToList();
-          console.log("Practice attempt completed, returning to list");
-        }
-      } else {
-        console.warn("No scores received in response");
-        // Even without scores, only show completion for Test attempts
-        if (attemptType === "Test") {
-          setShowCompletionScreen(true);
-        } else {
-          onBackToList();
-        }
-      }
-    } catch (error) {
-      console.error("Failed to end visual-audio simulation:", error);
-      // Even on error, check attempt type
-      if (attemptType === "Test") {
-        setShowCompletionScreen(true);
-      } else {
-        onBackToList();
-      }
-    } finally {
-      console.log("End call flow completed");
-      setIsEndingCall(false);
-    }
-  };
-
-    // Prevent multiple simultaneous end call attempts
-    if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
-      return;
-    }
-
-    // Verify user ID exists
-    if (!userId) {
-      console.error("Error: User ID is required to end simulation");
-      return;
-    }
-
-    // Safety check: Don't end call if we're in a trainee message recording state
-    // with auto-end (not from user button) unless the recorder has finished
-    const isCalledFromTraineeNext = new Error().stack?.includes(
-      "handleTraineeNext",
-    );
-    const isCalledFromButton =
-      new Error().stack?.includes("handleEndCall") &&
-      !new Error().stack?.includes("moveToNextItem") &&
-      !new Error().stack?.includes("handleTraineeNext");
-
-    const isTraineeMessageActive =
-      currentItem?.type === "message" &&
-      (currentItem.role === "Trainee" || currentItem.role === "assistant");
-
-    // Skip safety check if called from traineeNext (recording is already processed)
-    // or if explicitly called from button press
-    if (
-      !isCalledFromTraineeNext &&
-      !isCalledFromButton &&
-      isTraineeMessageActive &&
-      isRecording
-    ) {
-      console.log(
-        "Cannot auto-end during trainee recording, waiting for user input",
-      );
-      return;
-    }
-
-    // Set flag to prevent duplicate ending
-    setIsEndingCall(true);
-    console.log("Setting isEndingCall to true");
-
-    // Stop current recording if active
-    if (isRecording && recordingInstance) {
-      try {
-        console.log("Stopping active recording before ending call");
-        const transcribedText = await stopAndProcessRecording();
-
-        // Store transcription with current item ID if we have one
-        if (currentItem && currentItem.id) {
-          setMessageTranscriptions((prev) => {
-            const newMap = new Map(prev);
-            newMap.set(currentItem.id!, transcribedText);
-            return newMap;
-          });
-        }
-      } catch (error) {
-        console.error("Error processing final recording:", error);
-      }
-    }
-
-    // Stop the timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-      console.log("Timer stopped");
-    }
-
-    // Cancel any ongoing speech
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
-
-    // Clear any active timeout
-    if (hotspotTimeoutRef.current) {
-      clearTimeout(hotspotTimeoutRef.current);
-      hotspotTimeoutRef.current = null;
-    }
-    setTimeoutActive(false);
-
-    // Stop recording if active
-    if (recordingTimerRef.current) {
-      clearInterval(recordingTimerRef.current);
-      recordingTimerRef.current = null;
-      setIsRecording(false);
-    }
-
-    // Update UI state
-    setIsCallActive(false);
-    console.log("Set isCallActive to false, call should now be inactive");
-
-    // Ensure we have the required IDs
-    if (!simulationProgressId) {
-      console.error("⚠️ Missing simulationProgressId for end call API");
-      setIsEndingCall(false);
-      return;
-    }
-
-    try {
-      console.log("Preparing modified simulation data with transcriptions");
-
-      // Create a deep copy of the slides data to modify
-      const modifiedSlidesData = simulationData?.slidesData
-        ? JSON.parse(JSON.stringify(simulationData.slidesData))
-        : [];
-
-      // Replace trainee messages with transcriptions and simplify hotspots
-      modifiedSlidesData.forEach((slide) => {
-        if (slide.sequence) {
-          slide.sequence = slide.sequence.map((item) => {
-            // Create a copy we can modify
-            const newItem = { ...item };
-
-            // For message items, replace trainee messages with transcriptions
-            if (
-              newItem.type === "message" &&
-              (newItem.role === "Trainee" || newItem.role === "assistant") &&
-              newItem.id &&
-              messageTranscriptions.has(newItem.id)
-            ) {
-              // Replace the original text with the transcription
-              newItem.text = messageTranscriptions.get(newItem.id);
-              console.log(
-                `Replacing text for ${newItem.id} with transcription:`,
-                newItem.text,
-              );
-            }
-
-            // For hotspots, just keep the ID and type
-            if (newItem.type === "hotspot") {
-              // Keep only essential properties
-              return {
-                id: newItem.id,
-                type: newItem.type,
-                hotspotType: newItem.hotspotType,
-              };
-            }
-
-            return newItem;
-          });
-        }
-      });
-
       // Create a direct copy of the data that we can manipulate synchronously
       let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
@@ -2496,57 +1994,48 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           (item) => item.id === currentItem.id,
         );
 
-        // Get the existing record if it exists
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+        const isTimedOut =
+          timeoutActive ||
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked));
 
-        // If the item is already properly recorded with isClicked true, don't modify it
-        if (existingRecord && existingRecord.isClicked === true && existingRecord.timedOut === false) {
-          console.log(
-            `Hotspot ${currentItem.name} already properly recorded, skipping re-processing`,
-          );
+        console.log(
+          `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
+        );
+
+        if (isTimedOut) {
+          // Create a clean timeout record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: [],
+          };
+
+          if ("isClicked" in timeoutRecord) {
+            delete timeoutRecord.isClicked;
+          }
+
+          // Update or add the record
+          if (itemIndex >= 0) {
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            finalAttemptData.push(timeoutRecord);
+          }
         } else {
-          // Check if this hotspot was clicked (either in existing record or via ref)
-          const wasClicked = 
-            (existingRecord && existingRecord.isClicked === true) ||
-            lastClickedHotspotRef.current === currentItem.id;
-
-          // Determine if this hotspot has timed out
-          const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-          // Only check timeoutActive if the hotspot wasn't clicked
-          const isTimedOut =
-            !wasClicked && (timeoutActive || hasTimeoutSetting);
-
-          console.log(
-            `Processing current hotspot ${currentItem.name} for end call, clicked: ${wasClicked}, timed out: ${isTimedOut}`,
+          // Normal clicked hotspot
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
+            hotspotType,
           );
 
-          if (isTimedOut) {
-            // Create a clean timeout record WITHOUT isClicked property
-            const timeoutRecord = {
-              ...currentItem,
-              timedOut: true,
-              wrong_clicks: existingRecord?.wrong_clicks || [],
-            };
-
-            if ("isClicked" in timeoutRecord) {
-              delete timeoutRecord.isClicked;
-            }
-
-            // Update or add the record
-            if (itemIndex >= 0) {
-              finalAttemptData[itemIndex] = timeoutRecord;
-            } else {
-              finalAttemptData.push(timeoutRecord);
-            }
-          } else if (itemIndex >= 0) {
-            // If the item was already recorded and clicked, ensure it's properly marked
-            const hotspotType = currentItem.hotspotType || "";
-            const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-              hotspotType,
-            );
-
-            if (shouldBeClicked && !finalAttemptData[itemIndex].isClicked) {
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
               finalAttemptData[itemIndex] = {
                 ...finalAttemptData[itemIndex],
                 isClicked: true,
@@ -2554,12 +2043,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               };
             }
           } else {
-            // Add new record for clicked hotspot that wasn't already in the data
-            const hotspotType = currentItem.hotspotType || "";
-            const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-              hotspotType,
-            );
-
+            // Add new record with appropriate properties
             const newRecord = {
               ...currentItem,
               wrong_clicks: [],

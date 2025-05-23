@@ -18,6 +18,7 @@ import {
   CircularProgress,
   SvgIcon,
 } from "@mui/material";
+import { withAlpha } from "../../../../utils/color";
 import {
   PlayArrow as PlayArrowIcon,
   SmartToy as SmartToyIcon,
@@ -2882,7 +2883,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",
                                   borderRadius: "4px",
-                                  backgroundColor: item.content.settings?.color,
+                                  backgroundColor: item.content.settings?.blur_mask
+                                    ? withAlpha(
+                                        item.content.settings?.color || "rgba(0,0,0,1)",
+                                        0.4,
+                                      )
+                                    : item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
                                   filter: "none",

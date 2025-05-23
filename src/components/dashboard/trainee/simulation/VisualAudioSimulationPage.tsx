@@ -458,7 +458,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               console.log(
                 "Last item is a customer message, ending after speech",
               );
-              setTimeout(() => handleEndCall(false), 500);  // false because speech completed naturally
+              setTimeout(() => handleEndCall(), 500);
             }
           })
           .catch((error) => {
@@ -645,7 +645,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             "Skipping hotspot due to level settings:",
             currentItem.hotspotType,
           );
-          moveToNextItem(true);  // Pass true to indicate this was from user interaction
+          moveToNextItem();
           setIsProcessing(false);
           return;
         }
@@ -704,7 +704,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               }
             });
 
-            moveToNextItem(false);  // Pass false to indicate this was from timeout
+            moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
             setIsProcessing(false);
@@ -749,7 +749,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       //   console.log("Reached end of simulation content");
       //   // Wait a moment for any final animations/transitions
       //   setTimeout(() => {
-      //               handleEndCall(false);  // false because this is error recovery
+      //     handleEndCall();
       //   }, 30000);
       // } else {
       //   console.log(
@@ -771,9 +771,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   // New function to handle end call with direct transcriptions
   const handleEndCallWithTranscriptions = async (
     directTranscriptions: Map<string, string>,
-    wasLastItemClicked: boolean = false,
   ) => {
-    console.log("🔴 END CALL BUTTON PRESSED WITH DIRECT TRANSCRIPTIONS, wasLastItemClicked:", wasLastItemClicked);
+    console.log("🔴 END CALL BUTTON PRESSED WITH DIRECT TRANSCRIPTIONS");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
@@ -913,7 +912,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const isTimedOut =
           timeoutActive ||
           (hasTimeoutSetting && !wasClicked);
-
+        
         console.log(
           `Processing current hotspot ${currentItem.name} for end call, clicked: ${wasClicked}, timed out: ${isTimedOut}`,
         );
@@ -1223,7 +1222,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   };
 
   // Move to next item in sequence
-  const moveToNextItem = (wasClicked: boolean = false) => {
+  const moveToNextItem = () => {
     // Clear any active timeout when manually moving to next item
     if (hotspotTimeoutRef.current) {
       clearTimeout(hotspotTimeoutRef.current);
@@ -1236,8 +1235,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       currentSequenceIndex,
       "in slide",
       currentSlideIndex,
-      "wasClicked:",
-      wasClicked,
     );
 
     // Check if this is the last item in the entire simulation
@@ -1261,8 +1258,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Double check we're not in the middle of recording or transcribing
       if (!isRecording && !isTranscribing) {
-        // Pass the wasClicked flag to handleEndCall
-        handleEndCall(wasClicked);
+        handleEndCall();
       } else {
         console.log("Delaying end call until recording is complete");
         // We'll wait for the recording to finish and user to click next
@@ -1281,15 +1277,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // Skip tracking wrong clicks for dropdown, textbox and coaching hotspots
       const hotspotType = currentItem.hotspotType || "button";
       if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
-        return;
-      }
-
-      // Check if this hotspot has already been clicked
-      const existingItem = attemptSequenceData.find(
-        (item) => item.id === currentItem.id,
-      );
-      if (existingItem && existingItem.isClicked === true) {
-        // Don't record wrong clicks for already clicked hotspots
         return;
       }
 
@@ -1350,7 +1337,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return () => {
       container?.removeEventListener("click", handleClick);
     };
-  }, [currentItem, attemptSequenceData]);
+  }, [currentItem]);
 
   // Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
@@ -1372,10 +1359,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       hotspotTimeoutRef.current = null;
     }
     setTimeoutActive(false);
-
-    // Also clear the timeout flag in the ref to ensure it's immediately available
-    const timeoutFlagRef = useRef(false);
-    timeoutFlagRef.current = false;
 
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
@@ -1443,7 +1426,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // For button and highlight, simply advance
         setHighlightHotspot(false);
         setTimeout(() => {
-          moveToNextItem(true);  // Pass true to indicate this was from a click
+          moveToNextItem();
         }, 100);
         break;
 
@@ -1457,7 +1440,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         setCheckboxChecked(true);
 
         setTimeout(() => {
-          moveToNextItem(true);  // Pass true to indicate this was from a click
+          moveToNextItem();
           setCheckboxChecked(false);
         }, 800);
         break;
@@ -1465,7 +1448,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       case "coaching":
         // For coaching tips, clicking anywhere dismisses it
         setShowCoachingTip(false);
-        moveToNextItem(true);  // Pass true to indicate this was from a click
+        moveToNextItem();
         break;
 
       default:
@@ -1501,7 +1484,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     });
 
     if (currentItem?.settings?.advanceOnSelect) {
-      setTimeout(() => moveToNextItem(true), 500);  // Pass true to indicate this was from user interaction
+      setTimeout(() => moveToNextItem(), 500);
     }
   };
 
@@ -1552,7 +1535,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const timeout = currentItem.settings?.timeoutDuration;
       if (timeout && timeout > 0) {
         hotspotTimeoutRef.current = setTimeout(() => {
-          moveToNextItem(false);  // false because this is an error recovery
+          moveToNextItem();
           setHighlightHotspot(false);
           setTimeoutActive(false);
         }, timeout * 1000);
@@ -1817,11 +1800,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           );
           // For the last trainee message, pass the updated transcriptions directly
           setTimeout(() => {
-            handleEndCallWithTranscriptions(updatedTranscriptions, false);  // false because this isn't from a hotspot click
+            handleEndCallWithTranscriptions(updatedTranscriptions);
           }, 300);
         } else {
           // Move to next item for non-final messages
-          moveToNextItem(false);  // false because this is from Next button, not a hotspot click
+          moveToNextItem();
         }
       } catch (error) {
         console.error("Error processing recording:", error);
@@ -1839,7 +1822,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           currentSequenceIndex >= currentSequence.length - 1;
 
         if (isLastItem) {
-          handleEndCall(false);  // false because this is from Next button
+          handleEndCall();
         } else {
           moveToNextItem();
         }
@@ -1855,7 +1838,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         console.log(
           "Last item acknowledged without recording, ending simulation",
         );
-        handleEndCall(false);  // false because no recording happened
+        handleEndCall();
       } else {
         moveToNextItem();
       }
@@ -1863,8 +1846,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   };
 
   // Handle end call implementation
-  const handleEndCall = async (wasLastItemClicked: boolean = false) => {
-    console.log("🔴 END CALL BUTTON PRESSED, wasLastItemClicked:", wasLastItemClicked);
+  const handleEndCall = async () => {
+    console.log("🔴 END CALL BUTTON PRESSED");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
@@ -2027,78 +2010,71 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
 
-        // If the item is already properly recorded with isClicked true, don't modify it
-        if (existingRecord && existingRecord.isClicked === true && existingRecord.timedOut === false) {
-          console.log(
-            `Hotspot ${currentItem.name} already properly recorded, skipping re-processing`,
-          );
-        } else {
-          // Check if this hotspot was clicked (either in existing record or via ref)
-          const wasClicked = 
-            (existingRecord && existingRecord.isClicked === true) ||
-            lastClickedHotspotRef.current === currentItem.id;
+        // Check if this hotspot was clicked (either in existing record or via ref)
+        const wasClicked = 
+          (existingRecord && existingRecord.isClicked === true) ||
+          lastClickedHotspotRef.current === currentItem.id;
 
-          // Determine if this hotspot has timed out
-          const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-          // Only check timeoutActive if the hotspot wasn't clicked
-          const isTimedOut =
-            !wasClicked && (timeoutActive || hasTimeoutSetting);
+        // Determine if this hotspot has timed out
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const isTimedOut =
+          timeoutActive ||
+          (hasTimeoutSetting && !wasClicked);
 
-          console.log(
-            `Processing current hotspot ${currentItem.name} for end call, clicked: ${wasClicked}, timed out: ${isTimedOut}`,
-          );
+        console.log(
+          `Processing current hotspot ${currentItem.name} for end call, clicked: ${wasClicked}, timed out: ${isTimedOut}`,
+        );
 
-          if (isTimedOut) {
-            // Create a clean timeout record WITHOUT isClicked property
-            const timeoutRecord = {
-              ...currentItem,
-              timedOut: true,
-              wrong_clicks: existingRecord?.wrong_clicks || [],
-            };
+        if (isTimedOut) {
+          // Create a clean timeout record WITHOUT isClicked property
+          const timeoutRecord = {
+            ...currentItem,
+            timedOut: true,
+            wrong_clicks: existingRecord?.wrong_clicks || [],
+          };
 
-            if ("isClicked" in timeoutRecord) {
-              delete timeoutRecord.isClicked;
-            }
-
-            // Update or add the record
-            if (itemIndex >= 0) {
-              finalAttemptData[itemIndex] = timeoutRecord;
-            } else {
-              finalAttemptData.push(timeoutRecord);
-            }
-          } else if (itemIndex >= 0) {
-            // If the item was already recorded and clicked, ensure it's properly marked
-            const hotspotType = currentItem.hotspotType || "";
-            const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-              hotspotType,
-            );
-
-            if (shouldBeClicked && !finalAttemptData[itemIndex].isClicked) {
-              finalAttemptData[itemIndex] = {
-                ...finalAttemptData[itemIndex],
-                isClicked: true,
-                timedOut: false,
-              };
-            }
-          } else {
-            // Add new record for clicked hotspot that wasn't already in the data
-            const hotspotType = currentItem.hotspotType || "";
-            const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-              hotspotType,
-            );
-
-            const newRecord = {
-              ...currentItem,
-              wrong_clicks: [],
-            };
-
-            if (shouldBeClicked) {
-              newRecord.isClicked = true;
-              newRecord.timedOut = false;
-            }
-
-            finalAttemptData.push(newRecord);
+          if ("isClicked" in timeoutRecord) {
+            delete timeoutRecord.isClicked;
           }
+
+          // Update or add the record
+          if (itemIndex >= 0) {
+            finalAttemptData[itemIndex] = timeoutRecord;
+          } else {
+            finalAttemptData.push(timeoutRecord);
+          }
+        } else if (itemIndex >= 0) {
+          // If the item was already recorded and clicked, ensure it's properly marked
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
+            hotspotType,
+          );
+
+          if (shouldBeClicked && !finalAttemptData[itemIndex].isClicked) {
+            finalAttemptData[itemIndex] = {
+              ...finalAttemptData[itemIndex],
+              isClicked: true,
+              timedOut: false,
+            };
+          }
+        } else {
+          // Add new record for clicked hotspot that wasn't already in the data
+          const hotspotType = currentItem.hotspotType || "";
+          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
+            hotspotType,
+          );
+
+          const newRecord = {
+            ...currentItem,
+            wrong_clicks: [],
+          };
+
+          if (shouldBeClicked) {
+            newRecord.isClicked = true;
+            newRecord.timedOut = false;
+          }
+
+          finalAttemptData.push(newRecord);
         }
       }
 
@@ -2995,7 +2971,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                     </IconButton>
 
                     <IconButton
-                      onClick={() => handleEndCall(false)}  // false because this is from button click
+                      onClick={handleEndCall}
                       sx={{
                         bgcolor: "error.main",
                         color: "white",
@@ -3162,7 +3138,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 audioRef.current = null;
                               }
                               setSpeaking(false);
-                              moveToNextItem(false);  // false because this is from Next button
+                              moveToNextItem();
                             }
                             // For trainee messages, use the new handler
                             else {

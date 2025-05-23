@@ -1377,9 +1377,11 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
                                 item.content.coordinates,
                             )?.height
                           }px`,
-                          border: "4px solid",
+                          border: item.content.settings?.blur_mask
+                            ? "none"
+                            : "4px solid",
                           borderColor: item.content.settings?.blur_mask
-                            ? "gray"
+                            ? "transparent"
                             : item.content.settings?.color ||
                               "rgba(68, 76, 231, 0.7)",
                           boxShadow: item.content.settings?.blur_mask

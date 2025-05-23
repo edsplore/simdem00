@@ -1813,7 +1813,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             border: "2px solid #00AB55 ",
             backgroundColor: masking.settings?.color,
             cursor: "pointer",
-            filter: masking.settings?.blur_mask ? "blur(2px)" : "none",
+            filter: "none",
             backdropFilter: masking.settings?.blur_mask ? "blur(2px)" : "none",
             transition: "background-color 0.2s ease",
           }}

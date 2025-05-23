@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
   Box,
@@ -234,6 +234,9 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     },
   });
 
+  // Add ref to track if settings have been initialized
+  const settingsInitializedRef = useRef(false);
+
   // Check if the current simulation type is visual-audio, visual-chat, or visual
   const simType = watch("simulationType");
   const isVisualAudioOrChat =
@@ -253,9 +256,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
   // FIXED: Reset form when settings arrive from API (one-time initialization)
   useEffect(() => {
-    if (settings && settings.levels) {
+    // Only reset form if settings haven't been initialized yet
+    if (settings && settings.levels && !settingsInitializedRef.current) {
       console.log(
-        "Resetting AdvancedSettings form with API settings:",
+        "Initial load - Resetting AdvancedSettings form with API settings:",
         settings,
       );
 
@@ -273,6 +277,9 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         },
         overviewVideo: settings.overviewVideo || { enabled: false },
       });
+
+      // Mark as initialized
+      settingsInitializedRef.current = true;
     }
   }, [settings, reset, initialSimType]);
 

@@ -1296,7 +1296,7 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
             backgroundColor: masking.settings?.color,
             transition: "box-shadow 0.3s",
             zIndex: 0,
-            filter: masking.settings?.blur_mask ? "blur(5px)" : "none",
+            filter: "none",
             backdropFilter: masking.settings?.blur_mask ? "blur(5px)" : "none",
             cursor: isMoving ? "move" : "pointer",
             // Add masking label for better identification

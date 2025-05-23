@@ -1341,9 +1341,7 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
                           backgroundColor: item.content.settings?.color,
                           transition: "box-shadow 0.3s",
                           zIndex: 10,
-                          filter: item.content.settings?.blur_mask
-                            ? "blur(8px)"
-                            : "none",
+                          filter: "none",
                           backdropFilter: item.content.settings?.blur_mask
                             ? "blur(8px)"
                             : "none",

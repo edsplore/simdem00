@@ -97,6 +97,20 @@ const Header: React.FC<HeaderProps> = ({
     setIsProfileOpen(true);
   };
 
+  // Function to get user initials with better logic
+  const getUserInitials = (name: string | undefined): string => {
+    if (!name) return "?";
+
+    const names = name.trim().split(" ");
+    if (names.length === 1) {
+      // Single name - take first 2 characters
+      return names[0].substring(0, 2).toUpperCase();
+    } else {
+      // Multiple names - take first letter of first and last name
+      return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+    }
+  };
+
   return (
     <Stack
       component="header"
@@ -178,25 +192,22 @@ const Header: React.FC<HeaderProps> = ({
                 {profileImageUrl ? (
                   <Avatar
                     src={profileImageUrl}
-                    sx={{ width: 32, height: 32 }}
+                    sx={{ width: 40, height: 40 }}
                     alt={user?.name || "User"}
                   />
                 ) : (
                   <Avatar
                     sx={{
-                      width: 32,
-                      height: 32,
+                      width: 40,
+                      height: 40,
                       bgcolor: "#F2F4F7",
                       color: "#475467",
+                      fontSize: "22px",
+                      fontWeight: 600,
+                      fontFamily: "Inter",
                     }}
                   >
-                    {user?.name
-                      ? user.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                      : "?"}
+                    {getUserInitials(user?.name)}
                   </Avatar>
                 )}
               </Box>
@@ -217,25 +228,22 @@ const Header: React.FC<HeaderProps> = ({
                   {profileImageUrl ? (
                     <Avatar
                       src={profileImageUrl}
-                      sx={{ width: 40, height: 40 }}
+                      sx={{ width: 48, height: 48 }}
                       alt={user?.name || "User"}
                     />
                   ) : (
                     <Avatar
                       sx={{
-                        width: 40,
-                        height: 40,
+                        width: 48,
+                        height: 48,
                         bgcolor: "#F2F4F7",
                         color: "#475467",
+                        fontSize: "20px",
+                        fontWeight: 600,
+                        fontFamily: "Inter",
                       }}
                     >
-                      {user?.name
-                        ? user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                        : "?"}
+                      {getUserInitials(user?.name)}
                     </Avatar>
                   )}
                 </Box>

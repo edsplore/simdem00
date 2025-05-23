@@ -242,6 +242,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
+  const lastClickedHotspotRef = useRef<string | null>(null);
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -899,8 +900,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         // Determine if this hotspot has timed out or should be considered clicked
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const existingRecord =
+          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+        const wasClicked = lastClickedHotspotRef.current === currentItem.id;
         const isTimedOut =
-          timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+          timeoutActive ||
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked) &&
+            !wasClicked);
 
         console.log(
           `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
@@ -1354,6 +1362,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
       hotspotType,
     );
+
+    if (shouldSetIsClicked) {
+      lastClickedHotspotRef.current = currentItem.id;
+    }
 
     // Create a clean clicked hotspot record
     const clickRecord = {
@@ -1991,8 +2003,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         // Determine if this hotspot has timed out or should be considered clicked
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const existingRecord =
+          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+        const wasClicked = lastClickedHotspotRef.current === currentItem.id;
         const isTimedOut =
-          timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+          timeoutActive ||
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked) &&
+            !wasClicked);
 
         console.log(
           `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,

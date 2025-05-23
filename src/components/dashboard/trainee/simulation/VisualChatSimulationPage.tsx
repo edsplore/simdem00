@@ -353,6 +353,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
+  const lastClickedHotspotRef = useRef<string | null>(null);
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -904,6 +905,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       hotspotType,
     );
 
+    if (shouldSetIsClicked) {
+      lastClickedHotspotRef.current = currentItem.id;
+    }
+
     // Create a clean clicked hotspot record
     const clickRecord = {
       ...currentItem,
@@ -1237,8 +1242,15 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
         // Determine if this hotspot has timed out or should be considered clicked
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const existingRecord =
+          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+        const wasClicked = lastClickedHotspotRef.current === currentItem.id;
         const isTimedOut =
-          timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+          timeoutActive ||
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked) &&
+            !wasClicked);
 
         console.log(
           `Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`,

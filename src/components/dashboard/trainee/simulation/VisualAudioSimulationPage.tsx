@@ -841,7 +841,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     try {
-    try {
       console.log(
         "Preparing modified simulation data with direct transcriptions",
       );

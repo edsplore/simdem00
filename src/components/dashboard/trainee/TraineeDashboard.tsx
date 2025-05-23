@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Stack, Container, Typography } from '@mui/material';
+import { Stack, Container, Typography, Chip, styled  } from '@mui/material';
 import { useAuth } from '../../../context/AuthContext';
 import DashboardContent from '../DashboardContent';
 import WelcomeBanner from './WelcomeBanner';
@@ -8,12 +8,31 @@ import TrainingPlanTable from './TrainingPlanTable';
 import { fetchTrainingData } from '../../../services/training';
 import type { TrainingData } from '../../../types/training';
 
+const HeaderChip = styled(Chip)(({ theme }) => ({
+  backgroundColor: theme.palette.primary.main,
+  color: theme.palette.primary.contrastText,
+  borderRadius: theme.shape.borderRadius,
+  height: 24,
+  fontSize: '0.75rem',
+}));
+
 const TraineeDashboard = () => {
   const { user } = useAuth();
   const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const totalSimulationsCount =
+    (trainingData?.training_plans?.reduce(
+      (acc, plan) => acc + plan.total_simulations,
+      0,
+    ) ?? 0) +
+    (trainingData?.modules?.reduce(
+      (acc, module) => acc + module.total_simulations,
+      0,
+    ) ?? 0) +
+    (trainingData?.simulations?.length ?? 0);
+  
   useEffect(() => {
     const loadTrainingData = async () => {
       if (user?.id) {
@@ -44,13 +63,21 @@ const TraineeDashboard = () => {
           </Typography>
           {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
           {trainingData && (
-            <TrainingPlanTable 
-              trainingPlans={trainingData.training_plans || []}
-              modules={trainingData.modules || []}
-              simulations={trainingData.simulations || []}
-              isLoading={isLoading}
-              error={error}
-            />
+            <>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="h5" fontWeight="600">Training Plan</Typography>
+                  <HeaderChip label={`${totalSimulationsCount} Simulations`} size="small" />
+                </Stack>
+              </Stack>
+              <TrainingPlanTable
+                trainingPlans={trainingData.training_plans || []}
+                modules={trainingData.modules || []}
+                simulations={trainingData.simulations || []}
+                isLoading={isLoading}
+                error={error}
+              />
+            </>
           )}
         </Stack>
       </Container>

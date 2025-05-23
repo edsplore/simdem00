@@ -151,9 +151,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const [filteredVoices, setFilteredVoices] = useState<Voice[]>([]);
   const [weightageError, setWeightageError] = useState<string | null>(null);
 
-  // Add ref to track if settings have been initialized
-  const settingsInitializedRef = useRef(false);
-
   // Calculate number of enabled levels
   const enabledLevelsCount = enabledLevels
     ? (enabledLevels.lvl1 ? 1 : 0) +
@@ -244,17 +241,8 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
   // FIXED: Reset form when settings arrive from API (one-time initialization)
   useEffect(() => {
-    // Only reset form if settings haven't been initialized yet
-    if (
-      settings &&
-      settings.voice &&
-      settings.scoring &&
-      !settingsInitializedRef.current
-    ) {
-      console.log(
-        "Initial load - Resetting VoiceAndScore form with API settings:",
-        settings,
-      );
+    if (settings && settings.voice && settings.scoring) {
+      console.log("Resetting VoiceAndScore form with API settings:", settings);
 
       reset({
         language: settings.voice?.language || "English",
@@ -304,9 +292,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       if (settings.voice?.voiceId) {
         setSelectedVoice(settings.voice.voiceId);
       }
-
-      // Mark as initialized
-      settingsInitializedRef.current = true;
     }
   }, [settings, reset, hasScript, isAnyVisualType, enabledLevelsCount]);
 

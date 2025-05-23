@@ -213,9 +213,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
-  // Add a ref to track if settings have been initialized from API
-  const settingsInitializedRef = useRef(false);
-
   // Log when simulation data changes
   useEffect(() => {
     console.log("SettingTab received simulationData:", simulationData);
@@ -491,47 +488,36 @@ const SettingTab: React.FC<SettingTabProps> = ({
     return createSettingsFromData();
   });
 
-  // FIXED: Only update settings when simulationData arrives (one-time)
+  // Only update settings when simulationData arrives (one-time)
   useEffect(() => {
-    // Check if we already have settings in localStorage (from a previous session)
-    const storedSettings = localStorage.getItem(
-      `simulation_settings_${simulationId}`,
-    );
+    if (simulationData) {
+      console.log(
+        "Received simulationData, updating settings:",
+        simulationData,
+      );
 
-    if (storedSettings) {
-      // If we have stored settings, use them instead of API data
-      try {
-        const parsedSettings = JSON.parse(storedSettings);
-        setSettingsState(parsedSettings);
-        settingsInitializedRef.current = true;
-        console.log("Restored settings from localStorage");
-        return; // Don't process simulationData
-      } catch (e) {
-        console.error("Error parsing stored settings:", e);
+      // Clear any cached settings to avoid conflicts
+      if (simulationId) {
+        localStorage.removeItem(`simulation_settings_${simulationId}`);
       }
-    }
-
-    // Only initialize from API data if we haven't already
-    if (simulationData && !settingsInitializedRef.current) {
-      console.log("Initial load - setting up from API data:", simulationData);
 
       const newSettings = createSettingsFromData();
       setSettingsState(newSettings);
-      settingsInitializedRef.current = true;
     }
-  }, [simulationData, simulationId]);
+  }, [simulationData]); // Only simulationData dependency
 
-  // FIXED: Save to localStorage immediately when settings change
+  // Save to localStorage after user changes (debounced)
   useEffect(() => {
-    // Save settings immediately when they change (no debounce for critical saves)
-    if (simulationId && settingsInitializedRef.current) {
-      localStorage.setItem(
-        `simulation_settings_${simulationId}`,
-        JSON.stringify(settingsState),
-      );
-      console.log("Saved settings to localStorage");
+    if (simulationId && simulationData) {
+      const timeoutId = setTimeout(() => {
+        localStorage.setItem(
+          `simulation_settings_${simulationId}`,
+          JSON.stringify(settingsState),
+        );
+      }, 1000); // 1 second debounce for saving
+      return () => clearTimeout(timeoutId);
     }
-  }, [settingsState, simulationId]);
+  }, [settingsState, simulationId, simulationData]);
 
   // NEW: Validate settings before publishing
   const validateSettings = () => {
@@ -1014,19 +1000,11 @@ const SettingTab: React.FC<SettingTabProps> = ({
     }
   };
 
-  // FIXED: Helper function to handle the publish response
+  // Helper function to handle the publish response
   const handlePublishResponse = (response: any) => {
     console.log("Publish response:", response);
     if (response) {
       if (response.status === "success" || response.status === "published") {
-        // Save current settings to ensure they persist
-        if (simulationId) {
-          localStorage.setItem(
-            `simulation_settings_${simulationId}`,
-            JSON.stringify(settingsState),
-          );
-        }
-
         setPublishedSimId(simulationId);
         setShowPreview(true);
         if (onPublish) {

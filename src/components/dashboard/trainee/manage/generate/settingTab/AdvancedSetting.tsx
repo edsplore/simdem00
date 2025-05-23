@@ -72,6 +72,7 @@ interface AdvancedSettingsProps {
   onSettingsChange: (settings: SimulationSettings) => void;
   simulationType?: string;
   activeSection?: string;
+  hasPublishedChanges?: boolean; // Add this prop
 }
 
 interface FormData {
@@ -205,9 +206,14 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   onSettingsChange,
   simulationType: initialSimType,
   activeSection,
+  hasPublishedChanges = false, // Add with default value
 }) => {
+  // Add a ref to track if we've already initialized from API
+  const hasInitializedRef = useRef(false);
+
   // Use reset() approach for proper API data initialization
   const { control, handleSubmit, watch, setValue, reset } = useForm<FormData>({
+    mode: "onChange",
     defaultValues: {
       simulationType: initialSimType || "audio",
       settings: Object.fromEntries(
@@ -234,9 +240,6 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     },
   });
 
-  // Add ref to track if settings have been initialized
-  const settingsInitializedRef = useRef(false);
-
   // Check if the current simulation type is visual-audio, visual-chat, or visual
   const simType = watch("simulationType");
   const isVisualAudioOrChat =
@@ -256,11 +259,20 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
   // FIXED: Reset form when settings arrive from API (one-time initialization)
   useEffect(() => {
-    // Only reset form if settings haven't been initialized yet
-    if (settings && settings.levels && !settingsInitializedRef.current) {
+    // Only reset if:
+    // 1. We have settings from API
+    // 2. We haven't initialized yet OR we haven't published changes
+    // 3. Avoid resetting if user has published changes
+    if (
+      settings &&
+      settings.levels &&
+      (!hasInitializedRef.current || !hasPublishedChanges)
+    ) {
       console.log(
-        "Initial load - Resetting AdvancedSettings form with API settings:",
+        "Resetting AdvancedSettings form with API settings:",
         settings,
+        "hasPublishedChanges:",
+        hasPublishedChanges,
       );
 
       reset({
@@ -278,10 +290,9 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         overviewVideo: settings.overviewVideo || { enabled: false },
       });
 
-      // Mark as initialized
-      settingsInitializedRef.current = true;
+      hasInitializedRef.current = true;
     }
-  }, [settings, reset, initialSimType]);
+  }, [settings, reset, initialSimType]); // Remove hasPublishedChanges from dependencies
 
   // Log form states for debugging
   useEffect(() => {

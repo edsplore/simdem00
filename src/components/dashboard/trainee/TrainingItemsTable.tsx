@@ -59,14 +59,6 @@ const StyledPaper = styled(Paper)(({ theme }) => ({
   boxShadow: "none",
 }));
 
-const HeaderChip = styled(Chip)(({ theme }) => ({
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.primary.contrastText,
-  borderRadius: theme.shape.borderRadius,
-  height: 24,
-  fontSize: "0.75rem",
-}));
-
 const SectionHeader = styled(Typography)(({ theme }) => ({
   padding: theme.spacing(1.5),
   backgroundColor: theme.palette.grey[100],
@@ -113,14 +105,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
       dateRange[1] !== null
     );
   }, [searchQuery, statusFilter, dateRange]);
-
-  // Calculate total simulations count
-  const totalSimulationsCount = showTrainingPlans
-    ? trainingPlans.reduce((acc, plan) => acc + plan.total_simulations, 0) +
-      modules.reduce((acc, module) => acc + module.total_simulations, 0) +
-      simulations.length
-    : modules.reduce((acc, module) => acc + module.total_simulations, 0) +
-      simulations.length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -352,22 +336,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Stack spacing={3}>
-        <Stack
-          direction="row"
-          justifyContent="space-between"
-          alignItems="center"
-        >
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Typography variant="h5" fontWeight="600">
-              {showTrainingPlans ? "Training Plan" : "Training Plan Contents"}
-            </Typography>
-            <HeaderChip
-              label={`${totalSimulationsCount} Simulations`}
-              size="small"
-            />
-          </Stack>
-        </Stack>
-
         <Paper
           elevation={0}
           sx={{

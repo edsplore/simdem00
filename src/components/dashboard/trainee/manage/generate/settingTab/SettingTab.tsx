@@ -215,9 +215,36 @@ const SettingTab: React.FC<SettingTabProps> = ({
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
+  // FIXED: State initialization - don't call createSettingsFromData until we have simulationData
+  const [settingsState, setSettingsState] = useState<SimulationSettings | null>(
+    null,
+  );
+
+  // FIXED: Add state to track if settings have been loaded from API
+  const [settingsLoadedFromAPI, setSettingsLoadedFromAPI] = useState(false);
+
   // Log when simulation data changes
   useEffect(() => {
     console.log("SettingTab received simulationData:", simulationData);
+    console.log("=== Simulation Data Debug ===");
+    console.log("voice_id:", simulationData?.voice_id);
+    console.log(
+      "minimum_passing_score:",
+      simulationData?.minimum_passing_score,
+    );
+    console.log(
+      "simulation_max_repetition:",
+      simulationData?.simulation_max_repetition,
+    );
+    console.log(
+      "simulation_completion_repetition:",
+      simulationData?.simulation_completion_repetition,
+    );
+    console.log(
+      "simulation_scoring_metrics:",
+      simulationData?.simulation_scoring_metrics,
+    );
+    console.log("metric_weightage:", simulationData?.metric_weightage);
   }, [simulationData]);
 
   // Update the edited prompt when prop changes, this is important
@@ -242,12 +269,105 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const showPromptSettings =
     simulationType === "audio" || simulationType === "chat";
 
-  // Helper function to create settings object from simulationData
-  const createSettingsFromData = () => {
+  // Load settings from localStorage if available
+  const loadSettingsFromStorage = () => {
+    if (!simulationId) return null;
+
+    const storedSettings = localStorage.getItem(
+      `simulation_settings_${simulationId}`,
+    );
+    if (storedSettings) {
+      try {
+        return JSON.parse(storedSettings);
+      } catch (e) {
+        console.error("Error parsing stored settings:", e);
+      }
+    }
+    return null;
+  };
+
+  // Default settings function
+  const getDefaultSettings = (): SimulationSettings => {
+    return {
+      advancedSettings: {
+        simulationType: simulationType || "audio",
+        levels: {
+          simulationLevels: { lvl1: true, lvl2: false, lvl3: false },
+          enablePractice: { lvl1: false, lvl2: false, lvl3: false },
+          hideAgentScript: { lvl1: false, lvl2: false, lvl3: false },
+          hideCustomerScript: { lvl1: false, lvl2: false, lvl3: false },
+          hideKeywordScores: { lvl1: false, lvl2: false, lvl3: false },
+          hideSentimentScores: { lvl1: false, lvl2: false, lvl3: false },
+          hideHighlights: { lvl1: false, lvl2: false, lvl3: false },
+          hideCoachingTips: { lvl1: false, lvl2: false, lvl3: false },
+          enablePostSurvey: { lvl1: false, lvl2: false, lvl3: false },
+          aiPoweredPauses: { lvl1: false, lvl2: false, lvl3: false },
+        },
+        estimatedTime: { enabled: false, value: "" },
+        objectives: {
+          enabled: false,
+          text: "Learn basic customer service\nUnderstand refund process",
+        },
+        quickTips: {
+          enabled: false,
+          text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
+        },
+        overviewVideo: { enabled: false },
+      },
+      voiceSettings: {
+        voice: {
+          language: "English",
+          accent: "American",
+          gender: "Male",
+          ageGroup: "Middle Aged",
+          voiceId: DEFAULT_VOICE_ID,
+        },
+        scoring: {
+          simulationScore: "best",
+          keywordScore: hasScript ? "20" : "0",
+          clickScore: hasScript ? "80" : "100",
+          pointsPerKeyword: "1",
+          pointsPerClick: "1",
+          practiceMode: "limited",
+          practiceLimit: "3",
+          repetitionsAllowed: "3",
+          repetitionsNeeded: "2",
+          minimumPassingScore: "60",
+          scoringMetrics: {
+            enabled: true,
+            keywordScore: "20%",
+            clickScore: "80%",
+          },
+          metricWeightage: {
+            clickAccuracy: isAnyVisualType ? "30%" : "0%",
+            keywordAccuracy: hasScript ? "30%" : "0%",
+            dataEntryAccuracy: isAnyVisualType ? "20%" : "0%",
+            contextualAccuracy: "10%",
+            sentimentMeasures: "10%",
+          },
+        },
+      },
+    };
+  };
+
+  // FIXED: Enhanced helper function to create settings object from simulationData
+  const createSettingsFromData = (): SimulationSettings => {
+    console.log("=== Creating Settings from Data ===");
+    console.log("simulationData:", simulationData);
+
+    if (!simulationData) {
+      console.log("No simulationData available, returning defaults");
+      return getDefaultSettings();
+    }
+
     const levels = simulationData?.levels || {};
+    console.log("Levels from API:", levels);
+
     const lvl1 = levels.lvl1 || {};
     const lvl2 = levels.lvl2 || {};
     const lvl3 = levels.lvl3 || {};
+
+    console.log("Individual levels:", { lvl1, lvl2, lvl3 });
 
     // Convert API format to internal settings format
     const convertedLevels = {
@@ -279,9 +399,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
         lvl3: lvl3.hideKeywordScores === true,
       },
       hideSentimentScores: {
-        lvl1: lvl1.hideSentimentScores !== false, // Default to true
-        lvl2: lvl2.hideSentimentScores !== false, // Default to true
-        lvl3: lvl3.hideSentimentScores === true, // Default to false
+        lvl1: lvl1.hideSentimentScores === true,
+        lvl2: lvl2.hideSentimentScores === true,
+        lvl3: lvl3.hideSentimentScores === true,
       },
       hideHighlights: {
         lvl1: lvl1.hideHighlights === true,
@@ -289,26 +409,32 @@ const SettingTab: React.FC<SettingTabProps> = ({
         lvl3: lvl3.hideHighlights === true,
       },
       hideCoachingTips: {
-        lvl1: lvl1.hideCoachingTips !== false, // Default to true
-        lvl2: lvl2.hideCoachingTips !== false, // Default to true
-        lvl3: lvl3.hideCoachingTips === true, // Default to false
+        lvl1: lvl1.hideCoachingTips === true,
+        lvl2: lvl2.hideCoachingTips === true,
+        lvl3: lvl3.hideCoachingTips === true,
       },
       enablePostSurvey: {
         lvl1: lvl1.enablePostSimulationSurvey === true,
-        lvl2: lvl2.enablePostSimulationSurvey === false,
-        lvl3: lvl3.enablePostSimulationSurvey === false,
+        lvl2: lvl2.enablePostSimulationSurvey === true,
+        lvl3: lvl3.enablePostSimulationSurvey === true,
       },
       aiPoweredPauses: {
         lvl1: lvl1.aiPoweredPausesAndFeedback === true,
         lvl2: lvl2.aiPoweredPausesAndFeedback === true,
-        lvl3: lvl3.aiPoweredPausesAndFeedback === false,
+        lvl3: lvl3.aiPoweredPausesAndFeedback === true,
       },
     };
 
-    // Get estimated time (convert from minutes to "X mins" format)
-    // CHANGED: Default to false (OFF) instead of checking for existence
+    console.log("Converted levels:", convertedLevels);
+
+    // FIXED: Check if estimated time exists in API response to determine enabled state
+    const hasEstimatedTime = !!(
+      simulationData?.estimated_time_to_attempt_in_mins ||
+      simulationData?.est_time
+    );
+
     const estimatedTime = {
-      enabled: false, // Default to OFF
+      enabled: hasEstimatedTime, // Enable if API has a value
       value: simulationData?.estimated_time_to_attempt_in_mins
         ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
         : simulationData?.est_time
@@ -316,9 +442,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
           : "",
     };
 
+    console.log("Estimated time:", estimatedTime);
+
     // FIXED: Properly handle objectives from API
-    // If the array is empty, it means it was disabled
-    // If it has content, it was enabled
     const keyObjectives = simulationData?.key_objectives || [];
     const objectives = {
       enabled: keyObjectives.length > 0, // Enable only if there are actual objectives
@@ -328,9 +454,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
           : "Learn basic customer service\nUnderstand refund process", // Default placeholder
     };
 
+    console.log("Objectives:", objectives);
+
     // FIXED: Properly handle quick tips from API
-    // If the array is empty, it means it was disabled
-    // If it has content, it was enabled
     const quickTipsArray = simulationData?.quick_tips || [];
     const quickTips = {
       enabled: quickTipsArray.length > 0, // Enable only if there are actual tips
@@ -340,16 +466,38 @@ const SettingTab: React.FC<SettingTabProps> = ({
           : "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information", // Default placeholder
     };
 
+    console.log("Quick tips:", quickTips);
+
     // Get overview video setting
     const overviewVideo = {
       enabled:
         !!simulationData?.overviewVideo || !!simulationData?.overview_video,
     };
 
-    // Get metric weightage values
+    // FIXED: Get metric weightage values with proper type conversion
     const metricWeightage = simulationData?.metric_weightage || {};
+    console.log("Metric weightage from API:", metricWeightage);
 
-    // Voice and scoring settings
+    // FIXED: Correct the final simulation score criteria mapping
+    const getSimulationScore = () => {
+      const criteria = simulationData?.final_simulation_score_criteria;
+      console.log("Raw score criteria from API:", criteria);
+
+      switch (criteria) {
+        case "last":
+          return "last";
+        case "average":
+          return "average";
+        case "best":
+        default:
+          return "best";
+      }
+    };
+
+    const simulationScore = getSimulationScore();
+    console.log("Mapped simulation score:", simulationScore);
+
+    // FIXED: Enhanced voice and scoring settings with proper type conversions
     const voiceSettings = {
       voice: {
         language: simulationData?.language || "English",
@@ -359,53 +507,67 @@ const SettingTab: React.FC<SettingTabProps> = ({
         voiceId: simulationData?.voice_id || DEFAULT_VOICE_ID,
       },
       scoring: {
-        simulationScore:
-          simulationData?.final_simulation_score_criteria === "Last attempt"
-            ? "last"
-            : simulationData?.final_simulation_score_criteria ===
-                "Average of all"
-              ? "average"
-              : "best",
-        keywordScore:
-          simulationData?.simulation_scoring_metrics?.keyword_score?.toString() ||
-          (hasScript ? "20" : "0"),
-        clickScore:
-          simulationData?.simulation_scoring_metrics?.click_score?.toString() ||
-          (hasScript ? "80" : "100"),
-        pointsPerKeyword:
-          simulationData?.simulation_scoring_metrics?.points_per_keyword?.toString() ||
-          "1",
-        pointsPerClick:
-          simulationData?.simulation_scoring_metrics?.points_per_click?.toString() ||
-          "1",
+        simulationScore,
+
+        // FIXED: Ensure these are strings for the form
+        keywordScore: String(
+          simulationData?.simulation_scoring_metrics?.keyword_score ??
+            (hasScript ? 20 : 0),
+        ),
+        clickScore: String(
+          simulationData?.simulation_scoring_metrics?.click_score ??
+            (hasScript ? 80 : 100),
+        ),
+        pointsPerKeyword: String(
+          simulationData?.simulation_scoring_metrics?.points_per_keyword ?? 1,
+        ),
+        pointsPerClick: String(
+          simulationData?.simulation_scoring_metrics?.points_per_click ?? 1,
+        ),
+
         practiceMode: simulationData?.sim_practice?.is_unlimited
           ? "unlimited"
           : "limited",
-        practiceLimit:
-          simulationData?.sim_practice?.pre_requisite_limit?.toString() || "3",
-        repetitionsAllowed:
-          simulationData?.simulation_max_repetition?.toString() || "3",
-        repetitionsNeeded:
-          simulationData?.simulation_completion_repetition?.toString() || "2",
-        minimumPassingScore:
-          simulationData?.minimum_passing_score?.toString() || "60",
+        practiceLimit: String(
+          simulationData?.sim_practice?.pre_requisite_limit ?? 3,
+        ),
+
+        // FIXED: Ensure repetition values are strings
+        repetitionsAllowed: String(
+          simulationData?.simulation_max_repetition ?? 3,
+        ),
+        repetitionsNeeded: String(
+          simulationData?.simulation_completion_repetition ?? 2,
+        ),
+
+        // FIXED: Ensure minimum passing score is a string
+        minimumPassingScore: String(
+          simulationData?.minimum_passing_score ?? 60,
+        ),
+
         scoringMetrics: {
           enabled:
             simulationData?.simulation_scoring_metrics?.is_enabled !== false, // Default to true
-          keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score || (hasScript ? 20 : 0)}%`,
-          clickScore: `${simulationData?.simulation_scoring_metrics?.click_score || (hasScript ? 80 : 100)}%`,
+
+          // FIXED: Ensure these include % sign
+          keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score ?? (hasScript ? 20 : 0)}%`,
+          clickScore: `${simulationData?.simulation_scoring_metrics?.click_score ?? (hasScript ? 80 : 100)}%`,
         },
         metricWeightage: {
-          clickAccuracy: `${metricWeightage.click_accuracy || (isAnyVisualType ? 30 : 0)}%`,
-          keywordAccuracy: `${metricWeightage.keyword_accuracy || (hasScript ? 30 : 0)}%`,
-          dataEntryAccuracy: `${metricWeightage.data_entry_accuracy || (isAnyVisualType ? 20 : 0)}%`,
-          contextualAccuracy: `${metricWeightage.contextual_accuracy || 10}%`,
-          sentimentMeasures: `${metricWeightage.sentiment_measures || 10}%`,
+          // FIXED: Ensure all weightage values include % sign and are properly converted
+          clickAccuracy: `${metricWeightage.click_accuracy ?? (isAnyVisualType ? 30 : 0)}%`,
+          keywordAccuracy: `${metricWeightage.keyword_accuracy ?? (hasScript ? 30 : 0)}%`,
+          dataEntryAccuracy: `${metricWeightage.data_entry_accuracy ?? (isAnyVisualType ? 20 : 0)}%`,
+          contextualAccuracy: `${metricWeightage.contextual_accuracy ?? 10}%`,
+          sentimentMeasures: `${metricWeightage.sentiment_measures ?? 10}%`,
         },
       },
     };
 
-    return {
+    console.log("Final voice settings:", voiceSettings);
+    console.log("Voice ID in voice settings:", voiceSettings.voice.voiceId);
+
+    const finalSettings = {
       advancedSettings: {
         simulationType: simulationType || "audio",
         levels: convertedLevels,
@@ -416,36 +578,55 @@ const SettingTab: React.FC<SettingTabProps> = ({
       },
       voiceSettings,
     };
+
+    console.log("Final created settings:", finalSettings);
+    return finalSettings;
   };
 
-  // Load settings from localStorage if available, or create from simulationData
-  const loadSettingsFromStorage = () => {
-    if (!simulationId) return null;
-
-    const storedSettings = localStorage.getItem(
-      `simulation_settings_${simulationId}`,
+  // FIXED: Only create settings from data when simulationData is actually available
+  // This is the MAIN effect that loads settings - NEVER load from localStorage here
+  useEffect(() => {
+    console.log("=== Settings Update Effect ===");
+    console.log("simulationData available:", !!simulationData);
+    console.log("simulationData.voice_id:", simulationData?.voice_id);
+    console.log(
+      "simulationData.minimum_passing_score:",
+      simulationData?.minimum_passing_score,
     );
-    if (storedSettings) {
-      try {
-        return JSON.parse(storedSettings);
-      } catch (e) {
-        console.error("Error parsing stored settings:", e);
+
+    if (simulationData) {
+      // Create settings from API data - this will override any localStorage
+      const newSettings = createSettingsFromData();
+      console.log("Created settings from API data:", newSettings);
+      console.log(
+        "Voice ID in new settings:",
+        newSettings.voiceSettings?.voice?.voiceId,
+      );
+      setSettingsState(newSettings);
+
+      // FIXED: Mark that settings have been loaded from API
+      setSettingsLoadedFromAPI(true);
+
+      // IMPORTANT: Don't save to localStorage immediately to avoid override loops
+      // Only save when user actually changes something
+    } else if (!settingsLoadedFromAPI) {
+      // FIXED: Only try localStorage if no simulationData is available yet AND we haven't loaded from API
+      const storedSettings = loadSettingsFromStorage();
+      if (storedSettings) {
+        console.log("Using stored settings as fallback:", storedSettings);
+        setSettingsState(storedSettings);
+      } else {
+        // If no localStorage either, use defaults
+        console.log("No stored settings, using defaults");
+        setSettingsState(getDefaultSettings());
       }
     }
-    return null;
-  };
-
-  // Add state to track all settings
-  const [settingsState, setSettingsState] = useState<SimulationSettings>(() => {
-    const storedSettings = loadSettingsFromStorage();
-    if (storedSettings) return storedSettings;
-
-    // If no stored settings, create from simulationData
-    return createSettingsFromData();
-  });
+  }, [simulationData]); // Remove other dependencies to avoid unnecessary re-runs
 
   // NEW: Validate settings before publishing
   const validateSettings = () => {
+    if (!settingsState) return false;
+
     // Check if at least one level is enabled
     const levels = settingsState.advancedSettings?.levels?.simulationLevels;
     const isAnyLevelEnabled = levels?.lvl1 || levels?.lvl2 || levels?.lvl3;
@@ -503,7 +684,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
   // NEW: Check validation state for UI (disabling buttons, etc.)
   const isPublishDisabled = useMemo(() => {
-    if (isPublishing || !simulationId) return true;
+    if (isPublishing || !simulationId || !settingsState) return true;
 
     // Check if at least one level is enabled
     const levels = settingsState.advancedSettings?.levels?.simulationLevels;
@@ -519,42 +700,29 @@ const SettingTab: React.FC<SettingTabProps> = ({
         estimatedTime.value.trim() !== "");
 
     return !isAnyLevelEnabled || !isEstimatedTimeValid || !isWeightageValid;
-  }, [
-    isPublishing,
-    simulationId,
-    settingsState.advancedSettings?.levels?.simulationLevels,
-    settingsState.advancedSettings?.estimatedTime,
-    isWeightageValid, // Add this dependency
-  ]);
+  }, [isPublishing, simulationId, settingsState, isWeightageValid]);
 
-  // Save settings to localStorage when they change
+  // FIXED: Save to localStorage only when user makes changes, not on API data load
+  // Add delay and check to prevent saving immediately after API load
   useEffect(() => {
-    if (simulationId) {
-      localStorage.setItem(
-        `simulation_settings_${simulationId}`,
-        JSON.stringify(settingsState),
-      );
+    // Only save if we have settings and simulationId, and settings came from user interaction
+    // AND enough time has passed since API load to distinguish user changes
+    if (settingsState && simulationId && settingsLoadedFromAPI) {
+      // Add a delay to distinguish between API updates and user updates
+      const timeoutId = setTimeout(() => {
+        // Double-check that we still have the same settings (user didn't navigate away)
+        if (settingsState && simulationId) {
+          console.log("Saving settings to localStorage after user interaction");
+          localStorage.setItem(
+            `simulation_settings_${simulationId}`,
+            JSON.stringify(settingsState),
+          );
+        }
+      }, 2000); // Increased delay to 2 seconds
+
+      return () => clearTimeout(timeoutId);
     }
-  }, [settingsState, simulationId]);
-
-  // When simulationData changes, update settings
-  useEffect(() => {
-    if (simulationData) {
-      console.log("Received new simulationData:", simulationData);
-
-      // Create settings from new data
-      const newSettings = createSettingsFromData();
-      console.log("Created new settings from simulationData:", newSettings);
-
-      // Update the settings state
-      setSettingsState(newSettings);
-    }
-  }, [simulationData]);
-
-  // Log current settings for debugging
-  useEffect(() => {
-    console.log("Current settings state:", settingsState);
-  }, [settingsState]);
+  }, [settingsState, simulationId, settingsLoadedFromAPI]);
 
   // Add handler functions to update settings
   const handleAdvancedSettingsChange = (newSettings: any) => {
@@ -584,15 +752,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
     setIsWeightageValid(isValid);
   };
 
-  // When returning from preview, restore settings
-  useEffect(() => {
-    if (!showPreview) {
-      const storedSettings = loadSettingsFromStorage();
-      if (storedSettings) {
-        setSettingsState(storedSettings);
-      }
-    }
-  }, [showPreview]);
+  // FIXED: Remove the effect that loads from localStorage when returning from preview
+  // This was causing the override issue!
+  // The localStorage loading should only happen once at initialization, not when toggling preview
 
   // Smoothly scroll to a section when clicked
   const scrollToSection = (sectionId: string) => {
@@ -632,6 +794,10 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
   // ENHANCED Helper function to create the simulation payload
   const createSimulationPayload = (status: "published" | "draft") => {
+    if (!settingsState) {
+      throw new Error("Settings not available");
+    }
+
     // Get the latest script data directly from context
     const latestScriptData = scriptData;
 
@@ -1035,8 +1201,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
           buildPathWithWorkspace(
             "/manage-simulations",
             currentWorkspaceId,
-            currentTimeZone
-          )
+            currentTimeZone,
+          ),
         );
       } else {
         setError("Failed to save simulation as draft. Please try again.");
@@ -1063,12 +1229,18 @@ const SettingTab: React.FC<SettingTabProps> = ({
     >
       <CircularProgress size={60} sx={{ mb: 4, color: "#444CE7" }} />
       <Typography variant="h5" sx={{ mb: 2, fontWeight: "bold" }}>
-        {isPublishing ? "Creating Your Simulation" : "Saving Your Draft"}
+        {isPublishing
+          ? "Creating Your Simulation"
+          : isSavingDraft
+            ? "Saving Your Draft"
+            : "Loading Settings"}
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
         {isPublishing
           ? "Please wait while we process your simulation..."
-          : "Please wait while we save your draft..."}
+          : isSavingDraft
+            ? "Please wait while we save your draft..."
+            : "Please wait while we load your simulation settings..."}
       </Typography>
       <Typography variant="body2" color="text.secondary">
         This may take a few moments
@@ -1099,6 +1271,11 @@ const SettingTab: React.FC<SettingTabProps> = ({
         />
       </>
     );
+  }
+
+  // FIXED: Don't render until we have either API data or stored settings
+  if (!settingsState) {
+    return <LoadingScreen />;
   }
 
   // If we're loading, publishing, or saving draft, show the loading screen

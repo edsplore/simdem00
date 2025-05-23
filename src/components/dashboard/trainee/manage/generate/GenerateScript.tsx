@@ -164,11 +164,21 @@ interface SimulationData {
     is_enabled?: boolean;
     keyword_score?: number;
     click_score?: number;
+    points_per_keyword?: number;
+    points_per_click?: number;
+  };
+  metric_weightage?: {
+    click_accuracy?: number;
+    keyword_accuracy?: number;
+    data_entry_accuracy?: number;
+    contextual_accuracy?: number;
+    sentiment_measures?: number;
   };
   sim_practice?: {
     is_unlimited?: boolean;
     pre_requisite_limit?: number;
   };
+  minimum_passing_score?: number;
 }
 
 interface Message {
@@ -368,7 +378,7 @@ const GenerateScriptContent = () => {
   const [loadedSimulation, setLoadedSimulation] =
     useState<SimulationData | null>(null);
 
-  // Load simulation data on mount
+  // FIXED: Load simulation data on mount with enhanced field mapping
   useEffect(() => {
     const loadSimulationData = async () => {
       if (!id) {
@@ -392,63 +402,249 @@ const GenerateScriptContent = () => {
             responseData ||
             {};
 
-          console.log("API Response simulation data:", simulation);
+          console.log("=== API Response Debug ===");
+          console.log("Full responseData:", responseData);
+          console.log("Extracted simulation:", simulation);
+          console.log("Level data:", {
+            lvl1: simulation.lvl1,
+            lvl2: simulation.lvl2,
+            lvl3: simulation.lvl3,
+          });
+          console.log("Scoring data:", {
+            final_simulation_score_criteria:
+              simulation.final_simulation_score_criteria,
+            simulation_scoring_metrics: simulation.simulation_scoring_metrics,
+            metric_weightage: simulation.metric_weightage,
+            minimum_passing_score: simulation.minimum_passing_score,
+            voice_id: simulation.voice_id,
+            simulation_max_repetition: simulation.simulation_max_repetition,
+            simulation_completion_repetition:
+              simulation.simulation_completion_repetition,
+          });
 
-          // Map level settings from the response format to our internal format
+          // ENHANCED: More robust level settings mapping
           const mappedLevels = {
-            lvl1: simulation.lvl1 || {},
-            lvl2: simulation.lvl2 || {},
-            lvl3: simulation.lvl3 || {},
+            lvl1: {
+              isEnabled:
+                simulation.lvl1?.isEnabled ??
+                simulation.lvl1?.is_enabled ??
+                true,
+              enablePractice:
+                simulation.lvl1?.enablePractice ??
+                simulation.lvl1?.enable_practice ??
+                false,
+              hideAgentScript:
+                simulation.lvl1?.hideAgentScript ??
+                simulation.lvl1?.hide_agent_script ??
+                false,
+              hideCustomerScript:
+                simulation.lvl1?.hideCustomerScript ??
+                simulation.lvl1?.hide_customer_script ??
+                false,
+              hideKeywordScores:
+                simulation.lvl1?.hideKeywordScores ??
+                simulation.lvl1?.hide_keyword_scores ??
+                false,
+              hideSentimentScores:
+                simulation.lvl1?.hideSentimentScores ??
+                simulation.lvl1?.hide_sentiment_scores ??
+                false,
+              hideHighlights:
+                simulation.lvl1?.hideHighlights ??
+                simulation.lvl1?.hide_highlights ??
+                false,
+              hideCoachingTips:
+                simulation.lvl1?.hideCoachingTips ??
+                simulation.lvl1?.hide_coaching_tips ??
+                false,
+              enablePostSimulationSurvey:
+                simulation.lvl1?.enablePostSimulationSurvey ??
+                simulation.lvl1?.enable_post_simulation_survey ??
+                false,
+              aiPoweredPausesAndFeedback:
+                simulation.lvl1?.aiPoweredPausesAndFeedback ??
+                simulation.lvl1?.ai_powered_pauses_and_feedback ??
+                false,
+            },
+            lvl2: {
+              isEnabled:
+                simulation.lvl2?.isEnabled ??
+                simulation.lvl2?.is_enabled ??
+                false,
+              enablePractice:
+                simulation.lvl2?.enablePractice ??
+                simulation.lvl2?.enable_practice ??
+                false,
+              hideAgentScript:
+                simulation.lvl2?.hideAgentScript ??
+                simulation.lvl2?.hide_agent_script ??
+                false,
+              hideCustomerScript:
+                simulation.lvl2?.hideCustomerScript ??
+                simulation.lvl2?.hide_customer_script ??
+                false,
+              hideKeywordScores:
+                simulation.lvl2?.hideKeywordScores ??
+                simulation.lvl2?.hide_keyword_scores ??
+                false,
+              hideSentimentScores:
+                simulation.lvl2?.hideSentimentScores ??
+                simulation.lvl2?.hide_sentiment_scores ??
+                false,
+              hideHighlights:
+                simulation.lvl2?.hideHighlights ??
+                simulation.lvl2?.hide_highlights ??
+                false,
+              hideCoachingTips:
+                simulation.lvl2?.hideCoachingTips ??
+                simulation.lvl2?.hide_coaching_tips ??
+                false,
+              enablePostSimulationSurvey:
+                simulation.lvl2?.enablePostSimulationSurvey ??
+                simulation.lvl2?.enable_post_simulation_survey ??
+                false,
+              aiPoweredPausesAndFeedback:
+                simulation.lvl2?.aiPoweredPausesAndFeedback ??
+                simulation.lvl2?.ai_powered_pauses_and_feedback ??
+                false,
+            },
+            lvl3: {
+              isEnabled:
+                simulation.lvl3?.isEnabled ??
+                simulation.lvl3?.is_enabled ??
+                false,
+              enablePractice:
+                simulation.lvl3?.enablePractice ??
+                simulation.lvl3?.enable_practice ??
+                false,
+              hideAgentScript:
+                simulation.lvl3?.hideAgentScript ??
+                simulation.lvl3?.hide_agent_script ??
+                false,
+              hideCustomerScript:
+                simulation.lvl3?.hideCustomerScript ??
+                simulation.lvl3?.hide_customer_script ??
+                false,
+              hideKeywordScores:
+                simulation.lvl3?.hideKeywordScores ??
+                simulation.lvl3?.hide_keyword_scores ??
+                false,
+              hideSentimentScores:
+                simulation.lvl3?.hideSentimentScores ??
+                simulation.lvl3?.hide_sentiment_scores ??
+                false,
+              hideHighlights:
+                simulation.lvl3?.hideHighlights ??
+                simulation.lvl3?.hide_highlights ??
+                false,
+              hideCoachingTips:
+                simulation.lvl3?.hideCoachingTips ??
+                simulation.lvl3?.hide_coaching_tips ??
+                false,
+              enablePostSimulationSurvey:
+                simulation.lvl3?.enablePostSimulationSurvey ??
+                simulation.lvl3?.enable_post_simulation_survey ??
+                false,
+              aiPoweredPausesAndFeedback:
+                simulation.lvl3?.aiPoweredPausesAndFeedback ??
+                simulation.lvl3?.ai_powered_pauses_and_feedback ??
+                false,
+            },
           };
 
-          // Always proceed with whatever data we have - use defaults for missing parts
+          console.log("Mapped levels:", mappedLevels);
+
+          // ENHANCED: Complete simulation data mapping
           setLoadedSimulation({
-            id: simulation.id || simulation._id || id, // Fallback to route ID if API doesn't return it
-            name: simulation.sim_name || "New Simulation", // Changed to match API response
-            division: simulation.division_id || "",
-            department: simulation.department_id || "",
+            id: simulation.id || simulation._id || id,
+            name: simulation.sim_name || simulation.name || "New Simulation",
+            division: simulation.division_id || simulation.division || "",
+            department: simulation.department_id || simulation.department || "",
             tags: simulation.tags || [],
-            simulationType: simulation.sim_type || "audio", // Changed to match API response
+            simulationType:
+              simulation.sim_type || simulation.simulationType || "audio",
             script: simulation.script || [],
             slidesData: simulation.slidesData || [],
             status: simulation.status || "draft",
             prompt: simulation.prompt || "",
-            levels: mappedLevels,
-            // Map all other fields from the API response
-            est_time: simulation.est_time || "",
+            levels: mappedLevels, // Use the enhanced mapped levels
+
+            // ENHANCED: All timing and content fields - FIXED to handle est_time properly
+            est_time: simulation.est_time,
             estimated_time_to_attempt_in_mins:
               simulation.estimated_time_to_attempt_in_mins,
-            key_objectives: simulation.key_objectives || [
-              "Learn basic customer service",
-              "Understand refund process",
-            ],
-            quick_tips: simulation.quick_tips || [
-              "Listen to the customer carefully",
-              "Be polite and empathetic",
-              "Provide accurate information",
-            ],
-            overviewVideo: simulation.overview_video || "",
-            overview_video: simulation.overview_video || "",
-            voice_id: simulation.voice_id || "",
+            key_objectives: simulation.key_objectives || [],
+            quick_tips: simulation.quick_tips || [],
+            overviewVideo:
+              simulation.overview_video || simulation.overviewVideo || "",
+            overview_video:
+              simulation.overview_video || simulation.overviewVideo || "",
+
+            // ENHANCED: All voice settings - FIXED to properly capture voice_id
+            voice_id: simulation.voice_id,
             language: simulation.language || "English",
             voice_speed: simulation.voice_speed || "Normal",
             mood: simulation.mood || "Neutral",
+
+            // ENHANCED: All scoring settings - FIXED to capture all repetition values
             simulation_completion_repetition:
               simulation.simulation_completion_repetition || 3,
             simulation_max_repetition:
               simulation.simulation_max_repetition || 5,
             final_simulation_score_criteria:
-              simulation.final_simulation_score_criteria || "Best of three",
-            simulation_scoring_metrics:
-              simulation.simulation_scoring_metrics || {
-                is_enabled: true,
-                keyword_score: 20,
-                click_score: 80,
-              },
-            sim_practice: simulation.sim_practice || {
-              is_unlimited: false,
-              pre_requisite_limit: 3,
+              simulation.final_simulation_score_criteria || "best",
+            minimum_passing_score: simulation.minimum_passing_score || 60,
+
+            // ENHANCED: Scoring metrics with proper mapping - FIXED to capture all values
+            simulation_scoring_metrics: {
+              is_enabled:
+                simulation.simulation_scoring_metrics?.is_enabled ?? true,
+              keyword_score:
+                simulation.simulation_scoring_metrics?.keyword_score ?? 20,
+              click_score:
+                simulation.simulation_scoring_metrics?.click_score ?? 80,
+              points_per_keyword:
+                simulation.simulation_scoring_metrics?.points_per_keyword ?? 1,
+              points_per_click:
+                simulation.simulation_scoring_metrics?.points_per_click ?? 1,
             },
+
+            // ENHANCED: Metric weightage with proper mapping - FIXED to capture all values
+            metric_weightage: {
+              click_accuracy: simulation.metric_weightage?.click_accuracy ?? 30,
+              keyword_accuracy:
+                simulation.metric_weightage?.keyword_accuracy ?? 30,
+              data_entry_accuracy:
+                simulation.metric_weightage?.data_entry_accuracy ?? 20,
+              contextual_accuracy:
+                simulation.metric_weightage?.contextual_accuracy ?? 10,
+              sentiment_measures:
+                simulation.metric_weightage?.sentiment_measures ?? 10,
+            },
+
+            // ENHANCED: Practice settings - FIXED to capture practice limit
+            sim_practice: {
+              is_unlimited: simulation.sim_practice?.is_unlimited ?? false,
+              pre_requisite_limit:
+                simulation.sim_practice?.pre_requisite_limit ?? 3,
+            },
+          });
+
+          console.log("Final loadedSimulation data will be:", {
+            levels: mappedLevels,
+            voice_id: simulation.voice_id,
+            estimated_time_to_attempt_in_mins:
+              simulation.estimated_time_to_attempt_in_mins,
+            key_objectives: simulation.key_objectives,
+            quick_tips: simulation.quick_tips,
+            final_simulation_score_criteria:
+              simulation.final_simulation_score_criteria,
+            minimum_passing_score: simulation.minimum_passing_score,
+            simulation_max_repetition: simulation.simulation_max_repetition,
+            simulation_completion_repetition:
+              simulation.simulation_completion_repetition,
+            simulation_scoring_metrics: simulation.simulation_scoring_metrics,
+            metric_weightage: simulation.metric_weightage,
           });
 
           // Initialize SimulationResponse with defaults for missing fields
@@ -1248,8 +1444,8 @@ const GenerateScriptContent = () => {
                 buildPathWithWorkspace(
                   "/manage-simulations",
                   currentWorkspaceId,
-                  currentTimeZone
-                )
+                  currentTimeZone,
+                ),
               )
             }
             sx={{ mt: 2 }}
@@ -1418,8 +1614,8 @@ const GenerateScriptContent = () => {
               buildPathWithWorkspace(
                 "/manage-simulations",
                 currentWorkspaceId,
-                currentTimeZone
-              )
+                currentTimeZone,
+              ),
             )
           }
           sx={{ mt: 2 }}

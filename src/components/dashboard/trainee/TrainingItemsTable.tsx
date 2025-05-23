@@ -724,7 +724,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                                       : "error.main",
                               }}
                             >
-                              {sim.final_score ? `${sim.final_score}%` : "N/A"}
+                              {sim.final_score != null ? `${sim.final_score}%` : "N/A"}
                             </Typography>
                           </Grid>
                           <Grid item xs={1.5}>
@@ -824,7 +824,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                                 : "error.main",
                         }}
                       >
-                        {simulation.final_score
+                        {simulation.final_score != null
                           ? `${simulation.final_score}%`
                           : "N/A"}
                       </Typography>

@@ -138,8 +138,6 @@ interface SimulationSettings {
   };
   scoring?: {
     simulationScore?: "best" | "last" | "average";
-    keywordScore?: string;
-    clickScore?: string;
     pointsPerKeyword?: string;
     pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
@@ -215,6 +213,9 @@ const SettingTab: React.FC<SettingTabProps> = ({
   // Add state to track the edited prompt
   const [editedPrompt, setEditedPrompt] = useState(prompt);
 
+  // Add a ref to track if settings have been initialized from API
+  const settingsInitializedRef = useRef(false);
+
   // Log when simulation data changes
   useEffect(() => {
     console.log("SettingTab received simulationData:", simulationData);
@@ -242,7 +243,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
   const showPromptSettings =
     simulationType === "audio" || simulationType === "chat";
 
-  // Helper function to create settings object from simulationData
+  // FIXED: Helper function to create settings object from simulationData - removed duplicate fields
   const createSettingsFromData = () => {
     // Add safety check and early return with defaults if no data
     if (!simulationData) {
@@ -283,8 +284,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
           },
           scoring: {
             simulationScore: "best",
-            keywordScore: hasScript ? "20" : "0",
-            clickScore: hasScript ? "80" : "100",
             pointsPerKeyword: "1",
             pointsPerClick: "1",
             practiceMode: "limited",
@@ -294,8 +293,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
             minimumPassingScore: "60",
             scoringMetrics: {
               enabled: true,
-              keywordScore: "20%",
-              clickScore: "80%",
+              keywordScore: hasScript ? "20%" : "0%",
+              clickScore: hasScript ? "80%" : "100%",
             },
             metricWeightage: {
               clickAccuracy: isAnyVisualType ? "30%" : "0%",
@@ -398,7 +397,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
       text:
         quickTipsArray.length > 0
           ? quickTipsArray.join("\n")
-          : "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information",
+          : "Listen to the customer carefully\nBe polite and empathetic",
     };
 
     // Get overview video setting
@@ -412,14 +411,14 @@ const SettingTab: React.FC<SettingTabProps> = ({
     const metricWeightage = simulationData?.metric_weightage || {};
     console.log("Metric weightage from API:", metricWeightage);
 
-    // FIXED: Voice and scoring settings from API
+    // FIXED: Voice and scoring settings from API - REMOVED duplicate fields
     const voiceSettings = {
       voice: {
-        language: simulationData?.language || "English",
+        language: simulationData?.language ?? "English",
         accent: "American", // Default as not in API
         gender: "Male", // Default as not in API
         ageGroup: "Middle Aged", // Default as not in API
-        voiceId: simulationData?.voice_id || DEFAULT_VOICE_ID,
+        voiceId: simulationData?.voice_id ?? DEFAULT_VOICE_ID,
       },
       scoring: {
         simulationScore:
@@ -428,41 +427,44 @@ const SettingTab: React.FC<SettingTabProps> = ({
             : simulationData?.final_simulation_score_criteria === "average"
               ? "average"
               : "best",
-        keywordScore:
-          simulationData?.simulation_scoring_metrics?.keyword_score?.toString() ||
-          (hasScript ? "20" : "0"),
-        clickScore:
-          simulationData?.simulation_scoring_metrics?.click_score?.toString() ||
-          (hasScript ? "80" : "100"),
-        pointsPerKeyword:
-          simulationData?.simulation_scoring_metrics?.points_per_keyword?.toString() ||
-          "1",
-        pointsPerClick:
-          simulationData?.simulation_scoring_metrics?.points_per_click?.toString() ||
-          "1",
+
+        // FIXED: Convert numbers to strings properly
+        pointsPerKeyword: String(
+          simulationData?.simulation_scoring_metrics?.points_per_keyword ?? 1,
+        ),
+        pointsPerClick: String(
+          simulationData?.simulation_scoring_metrics?.points_per_click ?? 1,
+        ),
+
         practiceMode: simulationData?.sim_practice?.is_unlimited
           ? "unlimited"
           : "limited",
-        practiceLimit:
-          simulationData?.sim_practice?.pre_requisite_limit?.toString() || "3",
-        repetitionsAllowed:
-          simulationData?.simulation_max_repetition?.toString() || "3",
-        repetitionsNeeded:
-          simulationData?.simulation_completion_repetition?.toString() || "1",
-        minimumPassingScore:
-          simulationData?.minimum_passing_score?.toString() || "60",
+        practiceLimit: String(
+          simulationData?.sim_practice?.pre_requisite_limit ?? 3,
+        ),
+        repetitionsAllowed: String(
+          simulationData?.simulation_max_repetition ?? 3,
+        ),
+        repetitionsNeeded: String(
+          simulationData?.simulation_completion_repetition ?? 1,
+        ),
+        minimumPassingScore: String(
+          simulationData?.minimum_passing_score ?? 60,
+        ),
+
         scoringMetrics: {
           enabled:
             simulationData?.simulation_scoring_metrics?.is_enabled !== false,
-          keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score || (hasScript ? 20 : 0)}%`,
-          clickScore: `${simulationData?.simulation_scoring_metrics?.click_score || (hasScript ? 80 : 100)}%`,
+          keywordScore: `${simulationData?.simulation_scoring_metrics?.keyword_score ?? (hasScript ? 20 : 0)}%`,
+          clickScore: `${simulationData?.simulation_scoring_metrics?.click_score ?? (hasScript ? 80 : 100)}%`,
         },
+
         metricWeightage: {
-          clickAccuracy: `${metricWeightage.click_accuracy || (isAnyVisualType ? 30 : 0)}%`,
-          keywordAccuracy: `${metricWeightage.keyword_accuracy || (hasScript ? 30 : 0)}%`,
-          dataEntryAccuracy: `${metricWeightage.data_entry_accuracy || (isAnyVisualType ? 20 : 0)}%`,
-          contextualAccuracy: `${metricWeightage.contextual_accuracy || 0}%`,
-          sentimentMeasures: `${metricWeightage.sentiment_measures || 0}%`,
+          clickAccuracy: `${metricWeightage.click_accuracy ?? (isAnyVisualType ? 30 : 0)}%`,
+          keywordAccuracy: `${metricWeightage.keyword_accuracy ?? (hasScript ? 30 : 0)}%`,
+          dataEntryAccuracy: `${metricWeightage.data_entry_accuracy ?? (isAnyVisualType ? 20 : 0)}%`,
+          contextualAccuracy: `${metricWeightage.contextual_accuracy ?? 0}%`,
+          sentimentMeasures: `${metricWeightage.sentiment_measures ?? 0}%`,
         },
       },
     };
@@ -489,36 +491,47 @@ const SettingTab: React.FC<SettingTabProps> = ({
     return createSettingsFromData();
   });
 
-  // Only update settings when simulationData arrives (one-time)
+  // FIXED: Only update settings when simulationData arrives (one-time)
   useEffect(() => {
-    if (simulationData) {
-      console.log(
-        "Received simulationData, updating settings:",
-        simulationData,
-      );
+    // Check if we already have settings in localStorage (from a previous session)
+    const storedSettings = localStorage.getItem(
+      `simulation_settings_${simulationId}`,
+    );
 
-      // Clear any cached settings to avoid conflicts
-      if (simulationId) {
-        localStorage.removeItem(`simulation_settings_${simulationId}`);
+    if (storedSettings) {
+      // If we have stored settings, use them instead of API data
+      try {
+        const parsedSettings = JSON.parse(storedSettings);
+        setSettingsState(parsedSettings);
+        settingsInitializedRef.current = true;
+        console.log("Restored settings from localStorage");
+        return; // Don't process simulationData
+      } catch (e) {
+        console.error("Error parsing stored settings:", e);
       }
+    }
+
+    // Only initialize from API data if we haven't already
+    if (simulationData && !settingsInitializedRef.current) {
+      console.log("Initial load - setting up from API data:", simulationData);
 
       const newSettings = createSettingsFromData();
       setSettingsState(newSettings);
+      settingsInitializedRef.current = true;
     }
-  }, [simulationData]); // Only simulationData dependency
+  }, [simulationData, simulationId]);
 
-  // Save to localStorage after user changes (debounced)
+  // FIXED: Save to localStorage immediately when settings change
   useEffect(() => {
-    if (simulationId && simulationData) {
-      const timeoutId = setTimeout(() => {
-        localStorage.setItem(
-          `simulation_settings_${simulationId}`,
-          JSON.stringify(settingsState),
-        );
-      }, 1000); // 1 second debounce for saving
-      return () => clearTimeout(timeoutId);
+    // Save settings immediately when they change (no debounce for critical saves)
+    if (simulationId && settingsInitializedRef.current) {
+      localStorage.setItem(
+        `simulation_settings_${simulationId}`,
+        JSON.stringify(settingsState),
+      );
+      console.log("Saved settings to localStorage");
     }
-  }, [settingsState, simulationId, simulationData]);
+  }, [settingsState, simulationId]);
 
   // NEW: Validate settings before publishing
   const validateSettings = () => {
@@ -528,12 +541,16 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
     // Check if estimated time is specified and enabled
     // CHANGED: Only require time value if toggle is ON
-    const estimatedTime = settingsState.advancedSettings?.estimatedTime;
-    const isEstimatedTimeValid =
-      !estimatedTime?.enabled ||
-      (estimatedTime.enabled &&
-        estimatedTime.value &&
-        estimatedTime.value.trim() !== "");
+    const estimatedTime = {
+      enabled:
+        simulationData?.estimated_time_to_attempt_in_mins !== null &&
+        simulationData?.estimated_time_to_attempt_in_mins !== undefined,
+      value:
+        simulationData?.estimated_time_to_attempt_in_mins !== null &&
+        simulationData?.estimated_time_to_attempt_in_mins !== undefined
+          ? `${simulationData.estimated_time_to_attempt_in_mins} mins`
+          : (simulationData?.est_time ?? ""),
+    };
 
     // Build validation error message if needed
     let errorMessage = null;
@@ -789,6 +806,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
     console.log(`- Metric weightage:`, metricWeightage);
     console.log(`- Objectives enabled: ${objectivesSettings.enabled}`);
     console.log(`- Quick tips enabled: ${tipsSettings.enabled}`);
+    console.log(`- Points per keyword: ${scoringConfig.pointsPerKeyword}`);
+    console.log(`- Points per click: ${scoringConfig.pointsPerClick}`);
 
     // Create the payload with all the data
     const payload = {
@@ -874,19 +893,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
       simulation_scoring_metrics: {
         is_enabled: scoringConfig.scoringMetrics?.enabled === true,
         keyword_score: parseInt(
-          (scoringConfig.keywordScore || (hasScript ? "20" : "0")).replace(
-            "%",
-            "",
-          ),
+          (
+            scoringConfig.scoringMetrics?.keywordScore ??
+            (hasScript ? "20%" : "0%")
+          ).replace("%", ""),
         ),
         click_score: parseInt(
-          (scoringConfig.clickScore || (hasScript ? "80" : "100")).replace(
-            "%",
-            "",
-          ),
+          (
+            scoringConfig.scoringMetrics?.clickScore ??
+            (hasScript ? "80%" : "100%")
+          ).replace("%", ""),
         ),
-        points_per_keyword: parseInt(scoringConfig.pointsPerKeyword || "1"),
-        points_per_click: parseInt(scoringConfig.pointsPerClick || "1"),
+        points_per_keyword: parseInt(scoringConfig.pointsPerKeyword ?? "1"),
+        points_per_click: parseInt(scoringConfig.pointsPerClick ?? "1"),
       },
       metric_weightage: {
         click_accuracy: parsePercentage(metricWeightage.clickAccuracy),
@@ -915,6 +934,10 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
     console.log("Final payload objectives:", payload.key_objectives);
     console.log("Final payload quick_tips:", payload.quick_tips);
+    console.log(
+      "Final payload simulation_scoring_metrics:",
+      payload.simulation_scoring_metrics,
+    );
     console.log("Created payload with latest script and visual data:", payload);
     return payload;
   };
@@ -991,11 +1014,19 @@ const SettingTab: React.FC<SettingTabProps> = ({
     }
   };
 
-  // Helper function to handle the publish response
+  // FIXED: Helper function to handle the publish response
   const handlePublishResponse = (response: any) => {
     console.log("Publish response:", response);
     if (response) {
       if (response.status === "success" || response.status === "published") {
+        // Save current settings to ensure they persist
+        if (simulationId) {
+          localStorage.setItem(
+            `simulation_settings_${simulationId}`,
+            JSON.stringify(settingsState),
+          );
+        }
+
         setPublishedSimId(simulationId);
         setShowPreview(true);
         if (onPublish) {

@@ -33,7 +33,7 @@ export interface VisualImage {
   hotspots?: Hotspot[];
 }
 
-// FIXED: Complete SimulationSettings interface with all missing fields
+// FIXED: Complete SimulationSettings interface with all fields properly organized
 export interface SimulationSettings {
   simulationType?: string;
   levels?: {
@@ -67,23 +67,19 @@ export interface SimulationSettings {
   };
   scoring?: {
     simulationScore?: "best" | "last" | "average";
-    keywordScore?: string;
-    clickScore?: string;
-    // ADDED: Missing fields
+    // REMOVED: duplicate keywordScore and clickScore fields
     pointsPerKeyword?: string;
     pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
-    practiceLimit?: string; // ADDED: This was missing
+    practiceLimit?: string;
     repetitionsAllowed?: string;
     repetitionsNeeded?: string;
-    minimumPassingScore?: string; // ADDED: This was missing
-    // ADDED: Missing scoringMetrics object
+    minimumPassingScore?: string;
     scoringMetrics?: {
       enabled?: boolean;
-      keywordScore?: string;
-      clickScore?: string;
+      keywordScore?: string; // These are the correct ones
+      clickScore?: string; // These are the correct ones
     };
-    // ADDED: Missing metricWeightage object - this is the main issue!
     metricWeightage?: {
       clickAccuracy?: string;
       keywordAccuracy?: string;
@@ -138,7 +134,7 @@ export const SimulationWizardProvider: React.FC<{
     Set<string>
   >(new Set());
 
-  // FIXED: Initialize settings with complete default values including missing fields
+  // FIXED: Initialize settings with complete default values - removed duplicate fields
   const [settings, setSettings] = useState<SimulationSettings>({
     simulationType: "audio",
     levels: {},
@@ -166,23 +162,19 @@ export const SimulationWizardProvider: React.FC<{
     },
     scoring: {
       simulationScore: "best",
-      keywordScore: "20%",
-      clickScore: "80%",
-      // ADDED: All the missing fields with proper defaults
+      // REMOVED: duplicate keywordScore and clickScore fields
       pointsPerKeyword: "1",
       pointsPerClick: "1",
       practiceMode: "unlimited",
-      practiceLimit: "3", // ADDED: This was missing
+      practiceLimit: "3",
       repetitionsAllowed: "3",
       repetitionsNeeded: "2",
-      minimumPassingScore: "60", // ADDED: This was missing
-      // ADDED: Missing scoringMetrics object
+      minimumPassingScore: "60",
       scoringMetrics: {
         enabled: true,
-        keywordScore: "20%",
-        clickScore: "80%",
+        keywordScore: "20%", // These are the correct ones
+        clickScore: "80%", // These are the correct ones
       },
-      // ADDED: Missing metricWeightage object - this was the main issue!
       metricWeightage: {
         clickAccuracy: "30%",
         keywordAccuracy: "30%",
@@ -200,7 +192,7 @@ export const SimulationWizardProvider: React.FC<{
   } | null>(null);
   const [isPublished, setIsPublished] = useState(false);
 
-  // FIXED: Update settings while preserving ALL existing values including new fields
+  // FIXED: Update settings while preserving ALL existing values
   const updateSettings = (newSettings: Partial<SimulationSettings>) => {
     setSettings((prevSettings) => ({
       ...prevSettings,

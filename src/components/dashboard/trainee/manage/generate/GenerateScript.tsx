@@ -429,48 +429,45 @@ const GenerateScriptContent = () => {
             est_time: simulation.est_time || "",
             estimated_time_to_attempt_in_mins:
               simulation.estimated_time_to_attempt_in_mins,
-            key_objectives: simulation.key_objectives || [
+            key_objectives: simulation.key_objectives ?? [
               "Learn basic customer service",
               "Understand refund process",
             ],
-            quick_tips: simulation.quick_tips || [
+            quick_tips: simulation.quick_tips ?? [
               "Listen to the customer carefully",
               "Be polite and empathetic",
               "Provide accurate information",
             ],
-            overviewVideo: simulation.overview_video || "",
-            overview_video: simulation.overview_video || "",
-            voice_id: simulation.voice_id || "",
-            language: simulation.language || "English",
-            voice_speed: simulation.voice_speed || "Normal",
-            mood: simulation.mood || "Neutral",
+            voice_id: simulation.voice_id ?? "",
+            language: simulation.language ?? "English",
+            voice_speed: simulation.voice_speed ?? "Normal",
+            mood: simulation.mood ?? "Neutral",
             simulation_completion_repetition:
-              simulation.simulation_completion_repetition || 3,
+              simulation.simulation_completion_repetition ?? 3,
             simulation_max_repetition:
-              simulation.simulation_max_repetition || 5,
+              simulation.simulation_max_repetition ?? 5,
             final_simulation_score_criteria:
-              simulation.final_simulation_score_criteria || "Best of three",
+              simulation.final_simulation_score_criteria ?? "Best of three",
             simulation_scoring_metrics:
-              simulation.simulation_scoring_metrics || {
+              simulation.simulation_scoring_metrics ?? {
                 is_enabled: true,
                 keyword_score: 20,
                 click_score: 80,
                 points_per_keyword: 1,
                 points_per_click: 1,
               },
-            // FIXED: Add the missing metric_weightage field mapping
-            metric_weightage: simulation.metric_weightage || {
+            metric_weightage: simulation.metric_weightage ?? {
               click_accuracy: 0,
               keyword_accuracy: 0,
               data_entry_accuracy: 0,
               contextual_accuracy: 0,
               sentiment_measures: 0,
             },
-            sim_practice: simulation.sim_practice || {
+            sim_practice: simulation.sim_practice ?? {
               is_unlimited: false,
               pre_requisite_limit: 3,
             },
-            minimum_passing_score: simulation.minimum_passing_score || 60,
+            minimum_passing_score: simulation.minimum_passing_score ?? 60,
           });
 
           // Initialize SimulationResponse with defaults for missing fields

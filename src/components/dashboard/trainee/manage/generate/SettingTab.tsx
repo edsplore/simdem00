@@ -26,6 +26,12 @@ const NavItem = styled(ListItem)(({ theme }) => ({
   },
 }));
 
+const DEFAULT_AUDIO_VOICE_ID = "11labs-Adrian";
+const DEFAULT_VISUAL_AUDIO_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
+
+const getDefaultVoiceId = (simType?: string) =>
+  simType === "visual-audio" ? DEFAULT_VISUAL_AUDIO_VOICE_ID : DEFAULT_AUDIO_VOICE_ID;
+
 interface SettingsTabProps {
   simulationId?: string;
   prompt?: string;
@@ -103,7 +109,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
           "Be polite and empathetic.",
           "Provide accurate information.",
         ],
-        voice_id: "11labs-Adrian",
+        voice_id: getDefaultVoiceId(simulationType),
         language: "English",
         mood: "Neutral",
         voice_speed: "Normal",

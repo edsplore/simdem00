@@ -36,7 +36,11 @@ const NavItem = styled(ListItem)(({ theme }) => ({
   },
 }));
 
-const DEFAULT_VOICE_ID = "11labs-Adrian";
+const DEFAULT_AUDIO_VOICE_ID = "11labs-Adrian";
+const DEFAULT_VISUAL_AUDIO_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
+
+const getDefaultVoiceId = (simType?: string) =>
+  simType === "visual-audio" ? DEFAULT_VISUAL_AUDIO_VOICE_ID : DEFAULT_AUDIO_VOICE_ID;
 
 interface SettingTabProps {
   simulationId?: string;
@@ -277,7 +281,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
             accent: "American",
             gender: "Male",
             ageGroup: "Middle Aged",
-            voiceId: DEFAULT_VOICE_ID,
+            voiceId: getDefaultVoiceId(simulationType),
           },
           scoring: {
             simulationScore: "best",
@@ -415,7 +419,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
         accent: "American", // Default as not in API
         gender: "Male", // Default as not in API
         ageGroup: "Middle Aged", // Default as not in API
-        voiceId: simulationData?.voice_id ?? DEFAULT_VOICE_ID,
+        voiceId: simulationData?.voice_id ?? getDefaultVoiceId(simulationType),
       },
       scoring: {
         simulationScore:
@@ -858,7 +862,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
         ? processTextToArray(tipsSettings.text)
         : [],
       voice_id: showVoiceSettings
-        ? voiceConfig.voiceId || DEFAULT_VOICE_ID
+        ? voiceConfig.voiceId || getDefaultVoiceId(simulationType)
         : "",
       language: voiceConfig.language || "English",
       mood: "Neutral",

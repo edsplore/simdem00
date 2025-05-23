@@ -297,6 +297,9 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   const [isDraggingModal, setIsDraggingModal] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Add state to track if dialog has been manually dragged
+  const [hasBeenManuallyDragged, setHasBeenManuallyDragged] = useState(false);
+
   const commonColors: ColorOption[] = [
     { name: "Blue", value: "#1976D2" },
     { name: "Green", value: "#2E7D32" },
@@ -349,6 +352,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
           top: e.clientY - dragOffset.y,
           left: e.clientX - dragOffset.x,
         }));
+        // Mark that the dialog has been manually dragged
+        setHasBeenManuallyDragged(true);
       };
 
       const handleMouseUp = () => {
@@ -624,6 +629,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       setCurrentHotspot(editingHotspot);
       setShowSettings(true);
       calculateDialogPosition(editingHotspot);
+      // Reset the manually dragged flag when opening a new/existing hotspot dialog
+      setHasBeenManuallyDragged(false);
     }
   }, [editingHotspot]);
 
@@ -769,6 +776,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     if (hasSize) {
       calculateDialogPosition(currentHotspot);
       setShowSettings(true);
+      // Reset the manually dragged flag when opening a new dialog
+      setHasBeenManuallyDragged(false);
     }
   };
 
@@ -1162,7 +1171,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       !containerRef.current ||
       !hotspot ||
       (!hotspot.coordinates && !hotspot.percentageCoordinates) ||
-      !imageElementRef.current
+      !imageElementRef.current ||
+      hasBeenManuallyDragged // Don't recalculate if user has dragged the dialog
     )
       return;
 
@@ -1294,7 +1304,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setDialogPosition({ top, left });
   };
 
-  // Also add this effect to recalculate positions when the container changes
+  // Modified effect to recalculate positions ONLY when container changes, not when currentHotspot changes
   useEffect(() => {
     const mainContentElement =
       containerRef.current?.closest('[role="main"]') ||
@@ -1303,7 +1313,8 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
 
     if (mainContentElement) {
       const resizeObserver = new ResizeObserver(() => {
-        if (currentHotspot && showSettings) {
+        // Only recalculate if dialog hasn't been manually dragged
+        if (currentHotspot && showSettings && !hasBeenManuallyDragged) {
           calculateDialogPosition(currentHotspot);
         }
       });
@@ -1314,7 +1325,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         resizeObserver.disconnect();
       };
     }
-  }, [showSettings, currentHotspot]);
+  }, [showSettings, hasBeenManuallyDragged]); // Removed currentHotspot from dependencies
 
   // Handle adding option to the dropdown
   const handleAddOption = () => {
@@ -1534,6 +1545,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setShowSettings(false);
     setEditMode(false);
     setEditingId(null);
+    setHasBeenManuallyDragged(false); // Reset when closing
     onHotspotsChange?.(newHotspots);
   };
 
@@ -1816,7 +1828,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
   return (
     <Box sx={{ position: "relative", width: "100%", height: "100%" }}>
       {imageError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
           {imageError}
         </Alert>
       )}
@@ -2053,6 +2065,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   setCurrentHotspot(null);
                   setEditMode(false);
                   setEditingId(null);
+                  setHasBeenManuallyDragged(false); // Reset when closing
                 }}
                 size="small"
               >
@@ -3054,6 +3067,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
                   setCurrentHotspot(null);
                   setEditMode(false);
                   setEditingId(null);
+                  setHasBeenManuallyDragged(false); // Reset when closing
                 }}
                 sx={{ textTransform: "none", py: 1 }}
               >

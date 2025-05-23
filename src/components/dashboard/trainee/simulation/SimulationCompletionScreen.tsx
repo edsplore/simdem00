@@ -60,7 +60,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   // Format click score as X/Y if it's a fraction
   const formatClickScore = (score: number) => {
     if (Number.isInteger(score)) {
-      return `${score}`;
+      return `${score}%`; // ← Added % sign
     }
     // If it has a denominator (like in the 62/70 example)
     if (
@@ -72,10 +72,6 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
     }
     return `${Math.round(score)}%`;
   };
-
-  if (!showCompletionScreen) {
-    return null;
-  }
 
   return (
     <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-50">

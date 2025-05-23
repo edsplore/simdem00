@@ -333,7 +333,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     const path = buildPathWithWorkspace(
       `/simulation/${simulationId}/${assignmentId}/attempt`,
       currentWorkspaceId,
-      currentTimeZone
+      currentTimeZone,
     );
     navigate(path);
   };
@@ -342,7 +342,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     const path = buildPathWithWorkspace(
       `/training/${trainingPlan.id}`,
       currentWorkspaceId,
-      currentTimeZone
+      currentTimeZone,
     );
     navigate(path, {
       state: { trainingPlan },

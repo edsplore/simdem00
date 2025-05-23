@@ -139,7 +139,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
 
   // Get display value for a simulation score
   const getScoreDisplay = (score: number | null, status: string) => {
-    return isSimulationCompleted(status) && score !== null ? `${score}%` : "N/A";
+    return isSimulationCompleted(status) && score !== null ? `${score}%` : "NA";
   };
 
 

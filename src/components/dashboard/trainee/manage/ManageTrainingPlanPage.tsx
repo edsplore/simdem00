@@ -196,10 +196,6 @@ const ManageTrainingPlanPage = () => {
       params.status = [selectedStatus.toLowerCase()];
     }
 
-    if (selectedStatus !== 'All') {
-      params.status = [selectedStatus.toLowerCase()];
-    }
-
     return params;
   }, [
     page,
@@ -234,7 +230,10 @@ const ManageTrainingPlanPage = () => {
       params.createdBy = selectedCreator;
     }
 
-    if (selectedStatus !== 'All') {
+    if (selectedStatus === 'All') {
+      // Include both published and archived modules when "All" is selected
+      params.status = ['published', 'archived'];
+    } else {
       params.status = [selectedStatus.toLowerCase()];
     }
 
@@ -928,7 +927,6 @@ const ManageTrainingPlanPage = () => {
                           sx={{
                             cursor: isArchived ? 'default' : 'pointer',
                             opacity: isArchived ? 0.6 : 1,
-                            pointerEvents: isArchived ? 'none' : 'auto',
                             '&:hover': {
                               bgcolor: isArchived ? 'transparent' : 'action.hover',
                             },

@@ -1261,9 +1261,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const container = imageContainerRef.current;
       if (!container) return;
 
-      // Skip tracking wrong clicks for dropdown and textbox hotspots
+      // Skip tracking wrong clicks for dropdown, textbox and coaching hotspots
       const hotspotType = currentItem.hotspotType || "button";
-      if (["dropdown", "textfield"].includes(hotspotType)) {
+      if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
         return;
       }
 

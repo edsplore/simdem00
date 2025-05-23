@@ -1364,6 +1364,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const container = imageContainerRef.current;
       if (!container) return;
 
+      // Skip tracking wrong clicks for dropdown, textfield and coaching hotspots
+      const hotspotType = currentItem.hotspotType || "button";
+      if (["dropdown", "textfield", "coaching"].includes(hotspotType)) {
+        return;
+      }
+
       // Get click position relative to the container
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;

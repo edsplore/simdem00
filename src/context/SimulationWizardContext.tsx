@@ -115,6 +115,10 @@ interface SimulationWizardContextType {
   isPublished: boolean;
   setIsPublished: (published: boolean) => void;
 
+  // Track if the user has published changes during this session
+  hasPublishedChanges: boolean;
+  setHasPublishedChanges: (published: boolean) => void;
+
   // Track which script message IDs are assigned to visuals
   assignedScriptMessageIds: Set<string>;
   setAssignedScriptMessageIds: (ids: Set<string>) => void;
@@ -191,6 +195,7 @@ export const SimulationWizardProvider: React.FC<{
     prompt: string;
   } | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [hasPublishedChanges, setHasPublishedChanges] = useState(false);
 
   // FIXED: Update settings while preserving ALL existing values
   const updateSettings = (newSettings: Partial<SimulationSettings>) => {
@@ -233,6 +238,8 @@ export const SimulationWizardProvider: React.FC<{
         setSimulationResponse,
         isPublished,
         setIsPublished,
+        hasPublishedChanges,
+        setHasPublishedChanges,
         assignedScriptMessageIds,
         setAssignedScriptMessageIds,
       }}

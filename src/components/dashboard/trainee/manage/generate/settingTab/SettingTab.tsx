@@ -194,6 +194,8 @@ const SettingTab: React.FC<SettingTabProps> = ({
     visualImages,
     setIsScriptLocked,
     assignedScriptMessageIds,
+    hasPublishedChanges,
+    setHasPublishedChanges,
   } = useSimulationWizard();
 
   // Use ID from URL params if available, fallback to prop
@@ -494,21 +496,23 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
   // Only update settings when simulationData arrives (one-time)
   useEffect(() => {
-    if (simulationData) {
+    if (simulationData && !hasPublishedChanges) {
       console.log(
         "Received simulationData, updating settings:",
         simulationData,
       );
 
-      // Clear any cached settings to avoid conflicts
-      if (simulationId) {
+      // Clear any cached settings to avoid conflicts only when no published changes
+      if (simulationId && !hasPublishedChanges) {
         localStorage.removeItem(`simulation_settings_${simulationId}`);
       }
 
-      const newSettings = createSettingsFromData();
-      setSettingsState(newSettings);
+      if (!hasPublishedChanges) {
+        const newSettings = createSettingsFromData();
+        setSettingsState(newSettings);
+      }
     }
-  }, [simulationData]); // Only simulationData dependency
+  }, [simulationData, hasPublishedChanges]);
 
   // Save to localStorage after user changes (debounced)
   useEffect(() => {
@@ -1011,6 +1015,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
       if (response.status === "success" || response.status === "published") {
         setPublishedSimId(simulationId);
         setShowPreview(true);
+        setHasPublishedChanges(true);
         if (onPublish) {
           onPublish();
         }
@@ -1523,6 +1528,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               onSettingsChange={handleAdvancedSettingsChange}
               simulationType={simulationType}
               activeSection={activeSection}
+              hasPublishedChanges={hasPublishedChanges}
             />
 
             {/* Voice and Score settings with the prompt handler */}
@@ -1539,6 +1545,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
               enabledLevels={
                 settingsState.advancedSettings?.levels?.simulationLevels
               } // Pass enabled levels
+              hasPublishedChanges={hasPublishedChanges}
             />
           </Box>
         </Box>

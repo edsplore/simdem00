@@ -122,6 +122,27 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     }
   };
 
+  // Determine if a simulation is completed
+  const isSimulationCompleted = (status: string) =>
+    status === "finished" || status === "completed";
+
+  // Get color for simulation score based on completion status and score
+  const getScoreColor = (score: number | null, status: string) => {
+    if (!isSimulationCompleted(status) || score === null) {
+      return "text.primary";
+    }
+
+    if (score >= 80) return "success.main";
+    if (score >= 60) return "warning.main";
+    return "error.main";
+  };
+
+  // Get display value for a simulation score
+  const getScoreDisplay = (score: number | null, status: string) => {
+    return isSimulationCompleted(status) && score !== null ? `${score}%` : "N/A";
+  };
+
+
   // Handle page change
   const handlePageChange = (
     event: React.ChangeEvent<unknown>,
@@ -715,16 +736,9 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                           <Grid item xs={1.5}>
                             <Typography
                               variant="body2"
-                              sx={{
-                                color:
-                                  sim.final_score && sim.final_score >= 80
-                                    ? "success.main"
-                                    : sim.final_score && sim.final_score >= 60
-                                      ? "warning.main"
-                                      : "error.main",
-                              }}
+                              sx={{ color: getScoreColor(sim.final_score, sim.status) }}
                             >
-                              {sim.final_score != null ? `${sim.final_score}%` : "N/A"}
+                              {getScoreDisplay(sim.final_score, sim.status)}
                             </Typography>
                           </Grid>
                           <Grid item xs={1.5}>
@@ -813,20 +827,9 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
                     <Grid item xs={1.5}>
                       <Typography
                         variant="body2"
-                        sx={{
-                          color:
-                            simulation.final_score &&
-                            simulation.final_score >= 80
-                              ? "success.main"
-                              : simulation.final_score &&
-                                  simulation.final_score >= 60
-                                ? "warning.main"
-                                : "error.main",
-                        }}
+                        sx={{ color: getScoreColor(simulation.final_score, simulation.status) }}
                       >
-                        {simulation.final_score != null
-                          ? `${simulation.final_score}%`
-                          : "N/A"}
+                        {getScoreDisplay(simulation.final_score, simulation.status)}
                       </Typography>
                     </Grid>
                     <Grid item xs={1.5}>

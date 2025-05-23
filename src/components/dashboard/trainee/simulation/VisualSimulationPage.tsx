@@ -1057,6 +1057,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
         const wasClicked = lastClickedHotspotRef.current === currentItem.id;
+
         const isTimedOutHotspot =
           timeoutActive ||
           (currentItem.settings?.timeoutDuration > 0 &&

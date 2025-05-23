@@ -902,14 +902,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+
         const wasClicked = lastClickedHotspotRef.current === currentItem.id;
+
         const isTimedOut =
           timeoutActive ||
           (hasTimeoutSetting &&
             !currentItem.isClicked &&
             !(existingRecord && (existingRecord as any).isClicked) &&
             !wasClicked);
-
         console.log(
           `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
         );
@@ -2006,6 +2007,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
         const wasClicked = lastClickedHotspotRef.current === currentItem.id;
+
         const isTimedOut =
           timeoutActive ||
           (hasTimeoutSetting &&

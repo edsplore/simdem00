@@ -1245,6 +1245,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
         const wasClicked = lastClickedHotspotRef.current === currentItem.id;
+
         const isTimedOut =
           timeoutActive ||
           (hasTimeoutSetting &&

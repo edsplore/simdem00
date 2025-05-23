@@ -194,6 +194,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     visualImages,
     setIsScriptLocked,
     assignedScriptMessageIds,
+    isPublished,
   } = useSimulationWizard();
 
   // Use ID from URL params if available, fallback to prop
@@ -492,7 +493,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     return createSettingsFromData();
   });
 
-  // Only update settings when simulationData arrives (one-time)
+  // Update settings when simulationData arrives
   useEffect(() => {
     if (simulationData) {
       console.log(
@@ -500,15 +501,30 @@ const SettingTab: React.FC<SettingTabProps> = ({
         simulationData,
       );
 
-      // Clear any cached settings to avoid conflicts
+      let storedSettings: SimulationSettings | null = null;
       if (simulationId) {
-        localStorage.removeItem(`simulation_settings_${simulationId}`);
+        const raw = localStorage.getItem(`simulation_settings_${simulationId}`);
+        if (raw) {
+          try {
+            storedSettings = JSON.parse(raw);
+          } catch (e) {
+            console.error("Error parsing stored settings:", e);
+          }
+        }
       }
 
-      const newSettings = createSettingsFromData();
-      setSettingsState(newSettings);
+      if (isPublished && storedSettings) {
+        // When already published, prefer stored settings to keep latest values
+        setSettingsState(storedSettings);
+      } else {
+        if (simulationId) {
+          localStorage.removeItem(`simulation_settings_${simulationId}`);
+        }
+        const newSettings = createSettingsFromData();
+        setSettingsState(newSettings);
+      }
     }
-  }, [simulationData]); // Only simulationData dependency
+  }, [simulationData, isPublished, simulationId]);
 
   // Save to localStorage after user changes (debounced)
   useEffect(() => {

@@ -484,6 +484,7 @@ const AssignSimulationsPage = () => {
         <TableCell>{row.trainee_id?.length || 0} Trainees</TableCell>
         <TableCell>{formatDate(row.start_date, currentTimeZone)}</TableCell>
         <TableCell>{formatDate(row.end_date, currentTimeZone)}</TableCell>
+        {/*
         <TableCell>
           <Stack direction="row" spacing={1} alignItems="center">
             <Tooltip title={formatStatus(row.status)} arrow>
@@ -518,6 +519,7 @@ const AssignSimulationsPage = () => {
             </Tooltip>
           </Stack>
         </TableCell>
+         */}
         <TableCell sx={{ minWidth: 180 }}>
           <Stack>
             <Typography variant="body2" fontWeight="600">{formatDate(row.last_modified_at, currentTimeZone)}</Typography>
@@ -826,6 +828,7 @@ const AssignSimulationsPage = () => {
                         Due Date
                       </TableSortLabel>
                     </TableCell>
+                    {/*
                     <TableCell sx={{ color: '#959697', padding: '6px 16px' }}>
                       <TableSortLabel
                         active={orderBy === 'status'}
@@ -835,6 +838,7 @@ const AssignSimulationsPage = () => {
                         Status
                       </TableSortLabel>
                     </TableCell>
+                    */}
                     <TableCell sx={{ color: '#959697', padding: '6px 16px', width: 180 }}>
                       <TableSortLabel
                         active={orderBy === 'last_modified_at'}

@@ -2875,10 +2875,14 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     scaleCoordinates(item.content.coordinates)
                                       ?.height
                                   }px`,
-                                  border: "4px solid",
+                                  border: item.content.settings?.blur_mask
+                                    ? "none"
+                                    : "4px solid",
                                   borderColor:
-                                    item.content.settings?.color ||
-                                    "rgba(68, 76, 231, 0.7)",
+                                    item.content.settings?.blur_mask
+                                      ? "transparent"
+                                      : item.content.settings?.color ||
+                                        "rgba(68, 76, 231, 0.7)",
                                   boxShadow: item.content.settings?.blur_mask
                                     ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",

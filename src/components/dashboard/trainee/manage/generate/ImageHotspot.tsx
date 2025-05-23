@@ -29,6 +29,7 @@ import {
   CircularProgress,
   Tooltip,
 } from "@mui/material";
+import { withAlpha } from "../../../../../utils/color";
 import {
   Close as CloseIcon,
   Add as AddIcon,
@@ -1811,7 +1812,12 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             width: `${renderedCoords.width}px`,
             height: `${renderedCoords.height}px`,
             border: "2px solid #00AB55 ",
-            backgroundColor: masking.settings?.color,
+            backgroundColor: masking.settings?.blur_mask
+              ? withAlpha(
+                  masking.settings?.color || "rgba(0,0,0,1)",
+                  0.4,
+                )
+              : masking.settings?.color,
             cursor: "pointer",
             filter: "none",
             backdropFilter: masking.settings?.blur_mask ? "blur(2px)" : "none",

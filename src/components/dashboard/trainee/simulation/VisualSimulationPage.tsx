@@ -217,6 +217,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
+  const lastClickedHotspotRef = useRef<string | null>(null);
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -745,6 +746,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       hotspotType,
     );
 
+    if (shouldSetIsClicked) {
+      lastClickedHotspotRef.current = currentItem.id;
+    }
+
     // Update attempt data for this hotspot
     setAttemptSequenceData((prevData) => {
       const existingItemIndex = prevData.findIndex(
@@ -1051,11 +1056,14 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         // Create the appropriate record based on the current state
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
+        const wasClicked = lastClickedHotspotRef.current === currentItem.id;
+
         const isTimedOutHotspot =
           timeoutActive ||
           (currentItem.settings?.timeoutDuration > 0 &&
             !currentItem.isClicked &&
-            !(existingRecord && (existingRecord as any).isClicked));
+            !(existingRecord && (existingRecord as any).isClicked) &&
+            !wasClicked);
 
         console.log(
           `Hotspot ${currentItem.name} timed out? ${isTimedOutHotspot}`,

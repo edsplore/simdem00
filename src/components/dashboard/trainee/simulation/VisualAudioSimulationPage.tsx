@@ -2885,11 +2885,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   backgroundColor: item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
-                                  filter: item.content.settings?.blur_mask
-                                    ? "blur(8px)"
-                                    : "none",
-                                  backdropFilter: item.content.settings
-                                    ?.blur_mask
+                                  filter: "none",
+                                  backdropFilter: item.content.settings?.blur_mask
                                     ? "blur(8px)"
                                     : "none",
                                 }}

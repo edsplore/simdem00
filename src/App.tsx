@@ -15,6 +15,7 @@ import Layout from "./components/layout/Layout";
 import Unauthorized from "./components/Unauthorized";
 import { NotificationProvider } from './context/NotificationContext';
 import ErrorListener from './components/common/ErrorListener';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Lazy load components
 const TraineeDashboard = React.lazy(
@@ -137,7 +138,8 @@ const App: React.FC = () => {
             <ErrorListener />
             <WorkspaceHandler>
               <Layout>
-                <Suspense fallback={<LoadingSpinner />}>
+                <ErrorBoundary>
+                  <Suspense fallback={<LoadingSpinner />}>
                   <Routes>
                     {/* Public routes */}
                     <Route path="/unauthorized" element={<Unauthorized />} />
@@ -257,6 +259,7 @@ const App: React.FC = () => {
                     <Route path="*" element={<RootRedirect />} />
                   </Routes>
                 </Suspense>
+                </ErrorBoundary>
               </Layout>
             </WorkspaceHandler>
           </AuthProvider>

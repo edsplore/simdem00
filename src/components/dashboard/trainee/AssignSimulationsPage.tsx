@@ -34,6 +34,7 @@ import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
 import AssignModuleDialog from './AssignModuleDialog';
 import AssignSimulationsDialog from './AssignSimulationsDialog';
+import OverflowTooltip from '../../common/OverflowTooltip';
 import { 
   fetchAssignments, 
   type Assignment, 
@@ -64,6 +65,10 @@ const formatStatus = (status: string): string => {
 // Helper function to format type with capital first letter of all words
 const formatType = (type: string): string => {
   if (!type) return '';
+  const normalized = type.replace(/\s+/g, '').toLowerCase();
+  if (normalized === 'trainingplan') {
+    return 'Training Plan';
+  }
 
   // Split by common delimiters and capitalize each word
   return type
@@ -455,7 +460,7 @@ const AssignSimulationsPage = () => {
         }}
       >
         <TableCell sx={{ minWidth: 250 }}>
-          {row.name || 'Untitled Assignment'}
+          <OverflowTooltip>{row.name || 'Untitled Assignment'}</OverflowTooltip>
         </TableCell>
         <TableCell>
           <Tooltip title={formatType(row.type)} arrow>
@@ -523,7 +528,7 @@ const AssignSimulationsPage = () => {
         </TableCell>
         <TableCell>
           <Stack>
-            <Typography variant="body2" noWrap>{getUserName(row.last_modified_by)}</Typography>
+            <OverflowTooltip>{getUserName(row.last_modified_by)}</OverflowTooltip>
           </Stack>
         </TableCell>
         <TableCell sx={{ minWidth: 180 }}>
@@ -536,7 +541,7 @@ const AssignSimulationsPage = () => {
         </TableCell>
         <TableCell>
           <Stack>
-            <Typography variant="body2" noWrap>{getUserName(row.created_by)}</Typography>
+            <OverflowTooltip>{getUserName(row.created_by)}</OverflowTooltip>
           </Stack>
         </TableCell>
       </TableRow>

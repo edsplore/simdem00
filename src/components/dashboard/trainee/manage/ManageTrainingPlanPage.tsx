@@ -38,6 +38,7 @@ import TrainingPlanDetailsDialog from './TrainingPlanDetailsDialog';
 import ModuleDetailsDialog from './ModuleDetailsDialog';
 import EditTrainingPlanDialog from './EditTrainingPlanDialog';
 import EditModuleDialog from './EditModuleDialog';
+import OverflowTooltip from '../../../common/OverflowTooltip';
 import TrainingPlanActionsMenu from './TrainingPlanActionsMenu';
 import { useAuth } from '../../../../context/AuthContext';
 import { 
@@ -932,26 +933,29 @@ const ManageTrainingPlanPage = () => {
                             },
                           }}
                         >
-                          <TableCell sx={{ minWidth: 250 }}>{item.name}</TableCell>
+                          <TableCell sx={{ minWidth: 250 }}>
+                            <OverflowTooltip>{item.name}</OverflowTooltip>
+                          </TableCell>
                           <TableCell sx={{ width: 200 }}>
                             <Stack direction="row" spacing={1}>
                               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, maxWidth: 180 }}>
                                 {item.tags.map((tag, i) => (
-                                  <Chip
-                                    key={i}
-                                    label={tag}
-                                    size="small"
-                                    sx={{ 
-                                      bgcolor: '#F5F6FF', 
-                                      color: '#444CE7',
-                                      maxWidth: '100%',
-                                      '& .MuiChip-label': {
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                      }
-                                    }}
-                                  />
+                                  <Tooltip key={i} title={tag} arrow>
+                                    <Chip
+                                      label={tag}
+                                      size="small"
+                                      sx={{
+                                        bgcolor: '#F5F6FF',
+                                        color: '#444CE7',
+                                        maxWidth: '100%',
+                                        '& .MuiChip-label': {
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis',
+                                          whiteSpace: 'nowrap'
+                                        }
+                                      }}
+                                    />
+                                  </Tooltip>
                                 ))}
                               </Box>
                             </Stack>
@@ -995,7 +999,9 @@ const ManageTrainingPlanPage = () => {
                           </TableCell>
                           <TableCell>
                             <Stack sx={{ minWidth: 150 }}>
-                              <Typography variant="body2" noWrap>{getUserName(item.created_by)}</Typography>
+                              <OverflowTooltip>
+                                {getUserName(item.created_by)}
+                              </OverflowTooltip>
                             </Stack>
                           </TableCell>
                           <TableCell>
@@ -1008,7 +1014,9 @@ const ManageTrainingPlanPage = () => {
                           </TableCell>
                           <TableCell>
                             <Stack sx={{ minWidth: 150 }}>
-                              <Typography variant="body2" noWrap>{getUserName(item.last_modified_by)}</Typography>
+                              <OverflowTooltip>
+                                {getUserName(item.last_modified_by)}
+                              </OverflowTooltip>
                             </Stack>
                           </TableCell>
                           <TableCell align="right" sx={{ width: 100 }}>

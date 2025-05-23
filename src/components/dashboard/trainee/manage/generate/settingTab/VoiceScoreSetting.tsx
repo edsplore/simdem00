@@ -277,9 +277,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
             settings.scoring?.metricWeightage?.dataEntryAccuracy ||
             (isAnyVisualType ? "20%" : "0%"),
           contextualAccuracy:
-            settings.scoring?.metricWeightage?.contextualAccuracy || "10%",
+            settings.scoring?.metricWeightage?.contextualAccuracy || "0%",
           sentimentMeasures:
-            settings.scoring?.metricWeightage?.sentimentMeasures || "10%",
+            settings.scoring?.metricWeightage?.sentimentMeasures || "0%",
         },
       });
 

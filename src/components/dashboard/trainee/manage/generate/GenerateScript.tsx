@@ -460,11 +460,11 @@ const GenerateScriptContent = () => {
               },
             // FIXED: Add the missing metric_weightage field mapping
             metric_weightage: simulation.metric_weightage || {
-              click_accuracy: 30,
-              keyword_accuracy: 30,
-              data_entry_accuracy: 20,
-              contextual_accuracy: 10,
-              sentiment_measures: 10,
+              click_accuracy: 0,
+              keyword_accuracy: 0,
+              data_entry_accuracy: 0,
+              contextual_accuracy: 0,
+              sentiment_measures: 0,
             },
             sim_practice: simulation.sim_practice || {
               is_unlimited: false,

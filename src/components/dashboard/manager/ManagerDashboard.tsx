@@ -2090,10 +2090,11 @@ const ManagerDashboard = () => {
     setAdherenceSortBy(newSortBy);
   };
 
-  // Helper function to check if any individual users are selected
+  // Helper function to check if any users or teams are selected in the filter.
+  // Leaderboards should be disabled whenever the filter has at least one
+  // selected value. They are only enabled when nothing is selected.
   const hasUserSelections = () => {
-    // Check if any selected items are from the users list
-    return teamframe.some((selectedId) => allUserIds.includes(selectedId));
+    return teamframe.length > 0;
   };
 
   useEffect(() => {

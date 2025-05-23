@@ -1237,8 +1237,13 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
         // Determine if this hotspot has timed out or should be considered clicked
         const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
+        const existingRecord =
+          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
         const isTimedOut =
-          timeoutActive || (hasTimeoutSetting && !currentItem.isClicked);
+          timeoutActive ||
+          (hasTimeoutSetting &&
+            !currentItem.isClicked &&
+            !(existingRecord && (existingRecord as any).isClicked));
 
         console.log(
           `Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`,

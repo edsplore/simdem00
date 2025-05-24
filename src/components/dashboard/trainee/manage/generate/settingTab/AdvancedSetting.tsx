@@ -67,12 +67,65 @@ interface SimulationType {
   icon: React.ReactNode;
 }
 
+interface SimulationSettings {
+  simulationType?: string;
+  voice?: {
+    language?: string;
+    accent?: string;
+    gender?: string;
+    ageGroup?: string;
+    voiceId?: string;
+    mood?: string;
+    voiceSpeed?: string;
+  };
+  levels?: {
+    [key: string]: any;
+  };
+  scoring?: {
+    simulationScore?: "best" | "last" | "average";
+    pointsPerKeyword?: string;
+    pointsPerClick?: string;
+    practiceMode?: "unlimited" | "limited";
+    practiceLimit?: string;
+    repetitionsAllowed?: string;
+    repetitionsNeeded?: string;
+    minimumPassingScore?: string;
+    scoringMetrics?: {
+      enabled?: boolean;
+      keywordScore?: string;
+      clickScore?: string;
+    };
+    metricWeightage?: {
+      clickAccuracy?: string;
+      keywordAccuracy?: string;
+      dataEntryAccuracy?: string;
+      contextualAccuracy?: string;
+      sentimentMeasures?: string;
+    };
+  };
+  estimatedTime?: {
+    enabled: boolean;
+    value: string;
+  };
+  objectives?: {
+    enabled: boolean;
+    text: string;
+  };
+  quickTips?: {
+    enabled: boolean;
+    text: string;
+  };
+  overviewVideo?: {
+    enabled: boolean;
+    url?: string;
+  };
+}
+
 interface AdvancedSettingsProps {
   settings: SimulationSettings;
   onSettingsChange: (settings: SimulationSettings) => void;
   simulationType?: string;
   activeSection?: string;
-  hasPublishedChanges?: boolean; // Add this prop
 }
 
 interface FormData {
@@ -94,6 +147,7 @@ interface FormData {
   };
   overviewVideo: {
     enabled: boolean;
+    url?: string;
   };
   quickTips: {
     enabled: boolean;
@@ -141,7 +195,6 @@ const defaultSettings = {
     levels: { lvl1: true, lvl2: true, lvl3: false },
   },
   enablePractice: {
-    // This is the practice setting
     id: "enablePractice",
     name: "Enable Practice",
     description: "This will enable practice mode for users",
@@ -206,12 +259,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   onSettingsChange,
   simulationType: initialSimType,
   activeSection,
-  hasPublishedChanges = false, // Add with default value
 }) => {
-  // Add a ref to track if we've already initialized from API
-  const hasInitializedRef = useRef(false);
-
-  // Use reset() approach for proper API data initialization
+  // Initialize form with values from props
   const { control, handleSubmit, watch, setValue, reset } = useForm<FormData>({
     mode: "onChange",
     defaultValues: {
@@ -232,6 +281,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       },
       overviewVideo: {
         enabled: false,
+        url: "",
       },
       quickTips: {
         enabled: false,
@@ -240,88 +290,95 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     },
   });
 
-  // Check if the current simulation type is visual-audio, visual-chat, or visual
+  // Track if form has been initialized from settings
+  const hasInitializedFromSettings = useRef(false);
+
+  // Reset initialization flag on unmount
+  useEffect(() => {
+    return () => {
+      hasInitializedFromSettings.current = false;
+    };
+  }, []);
+
+  // Initialize form values from settings ONLY on mount or when settings genuinely change from outside
+  useEffect(() => {
+    // Only initialize if we have settings and haven't initialized yet
+    if (
+      settings &&
+      Object.keys(settings).length > 0 &&
+      !hasInitializedFromSettings.current
+    ) {
+      console.log("Initializing AdvancedSettings form - one time only");
+
+      // Delay initialization slightly to ensure settings are stable
+      setTimeout(() => {
+        // Build complete form data from settings
+        const formData: FormData = {
+          simulationType: settings.simulationType || initialSimType || "audio",
+          settings:
+            settings.levels ||
+            Object.fromEntries(
+              Object.entries(defaultSettings).map(([key, value]) => [
+                key,
+                value.levels,
+              ]),
+            ),
+          estimatedTime: settings.estimatedTime || {
+            enabled: false,
+            value: "",
+          },
+          objectives: settings.objectives || {
+            enabled: false,
+            text: "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
+          },
+          overviewVideo: settings.overviewVideo || {
+            enabled: false,
+            url: "",
+          },
+          quickTips: settings.quickTips || {
+            enabled: false,
+            text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
+          },
+        };
+
+        // Reset the entire form with new values
+        reset(formData);
+
+        hasInitializedFromSettings.current = true;
+      }, 100);
+    }
+  }, [settings, reset, initialSimType]); // Add dependencies properly
+
+  // Check if the current simulation type is visual
   const simType = watch("simulationType");
   const isVisualAudioOrChat =
     simType === "visual-audio" || simType === "visual-chat";
   const isVisualOnly = simType === "visual";
   const isAnyVisualType = isVisualAudioOrChat || isVisualOnly;
-
-  // Check if simulation has script
   const hasScript = simType !== "visual";
 
   // Get the current state of all level enablement switches
-  // Watch for changes to simulation level enablement
   const simulationLevelsSettings = watch("settings.simulationLevels") || {};
-  const level1Enabled = simulationLevelsSettings.lvl1 !== false; // Default to true if undefined
-  const level2Enabled = simulationLevelsSettings.lvl2 === true; // Default to false if undefined
-  const level3Enabled = simulationLevelsSettings.lvl3 === true; // Default to false if undefined
+  const level1Enabled = simulationLevelsSettings.lvl1 !== false;
+  const level2Enabled = simulationLevelsSettings.lvl2 === true;
+  const level3Enabled = simulationLevelsSettings.lvl3 === true;
 
-  // FIXED: Reset form when settings arrive from API (one-time initialization)
-  useEffect(() => {
-    // Only reset if:
-    // 1. We have settings from API
-    // 2. We haven't initialized yet OR we haven't published changes
-    // 3. Avoid resetting if user has published changes
-    if (
-      settings &&
-      settings.levels &&
-      (!hasInitializedRef.current || !hasPublishedChanges)
-    ) {
-      console.log(
-        "Resetting AdvancedSettings form with API settings:",
-        settings,
-        "hasPublishedChanges:",
-        hasPublishedChanges,
-      );
-
-      reset({
-        simulationType: settings.simulationType || initialSimType || "audio",
-        settings: settings.levels,
-        estimatedTime: settings.estimatedTime || { enabled: false, value: "" },
-        objectives: settings.objectives || {
-          enabled: false,
-          text: "Learn effective communication through different media\nDevelop decision-making skills through realistic scenarios\nImprove response time and adaptability in different situations\nReinforce learning through interactive feedback and analysis",
-        },
-        quickTips: settings.quickTips || {
-          enabled: false,
-          text: "Listen to the customer carefully\nBe polite and empathetic\nProvide accurate information\nFollow proper procedures",
-        },
-        overviewVideo: settings.overviewVideo || { enabled: false },
-      });
-
-      hasInitializedRef.current = true;
-    }
-  }, [settings, reset, initialSimType]); // Remove hasPublishedChanges from dependencies
-
-  // Log form states for debugging
-  useEffect(() => {
-    const formSettings = watch("settings");
-    console.log("Current form settings:", formSettings);
-    console.log("Enable Practice settings:", formSettings.enablePractice);
-    console.log("Level enablement status:", {
-      level1: level1Enabled,
-      level2: level2Enabled,
-      level3: level3Enabled,
-    });
-  }, [watch, level1Enabled, level2Enabled, level3Enabled]);
-
-  // FIXED: Watch for form changes and update settings with proper disabled level handling
+  // Update parent component when form values change
   useEffect(() => {
     const subscription = watch((value) => {
       // Get the current levels enabled status
       const simulationLevels = value.settings?.simulationLevels || {};
-      const level1Enabled = simulationLevels.lvl1 !== false; // Default to true if undefined
+      const level1Enabled = simulationLevels.lvl1 !== false;
       const level2Enabled = simulationLevels.lvl2 === true;
       const level3Enabled = simulationLevels.lvl3 === true;
 
-      // Create a cleaned version of settings where disabled levels always have false values
+      // Create a cleaned version of settings
       const cleanedSettings = { ...value.settings };
 
       // For each setting other than simulationLevels
       Object.keys(cleanedSettings).forEach((key) => {
         if (key !== "simulationLevels") {
-          // For each level that's disabled, ensure its value is false in the output
+          // For each level that's disabled, ensure its value is false
           if (!level1Enabled) {
             cleanedSettings[key].lvl1 = false;
           }
@@ -334,20 +391,23 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         }
       });
 
-      // Now update the settings with the cleaned values
-      onSettingsChange({
-        ...settings,
-        simulationType: value.simulationType,
-        levels: cleanedSettings,
-        estimatedTime: value.estimatedTime,
-        objectives: value.objectives,
-        quickTips: value.quickTips,
-        overviewVideo: value.overviewVideo,
-      });
+      // Only update if form has been initialized
+      if (hasInitializedFromSettings.current) {
+        // Update parent with the cleaned values
+        onSettingsChange({
+          ...settings,
+          simulationType: value.simulationType,
+          levels: cleanedSettings,
+          estimatedTime: value.estimatedTime,
+          objectives: value.objectives,
+          quickTips: value.quickTips,
+          overviewVideo: value.overviewVideo,
+        });
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [watch, settings, onSettingsChange]);
+  }, [watch, onSettingsChange]); // Remove settings from dependencies to prevent loops
 
   const onSubmit = (data: FormData) => {
     onSettingsChange({
@@ -521,18 +581,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                           (level === "lvl2" && level2Enabled) ||
                           (level === "lvl3" && level3Enabled);
 
-                        // If this is the "simulationLevels" key itself, which controls the main level enablement,
-                        // we allow toggling regardless (this is the master switch for each level)
                         const isLevelSettingRow = key === "simulationLevels";
-
-                        // Determine if this switch should be disabled:
-                        // - If this is not the simulationLevels row AND the level is disabled
                         const isDisabled =
                           !isLevelSettingRow && !isLevelEnabled;
 
-                        // For simulationLevels row, use the actual field value
-                        // For other rows, if the level is disabled, force display as OFF (false)
-                        // Otherwise, use the actual field value
                         const displayValue = (field: any) => {
                           if (isLevelSettingRow) {
                             return field.value || false;
@@ -550,13 +602,8 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                               control={control}
                               render={({ field }) => (
                                 <StyledSwitch
-                                  // Key change: Use displayValue to show the correct state
                                   checked={displayValue(field)}
                                   onChange={(e) => {
-                                    console.log(
-                                      `Switching ${key}.${level} to:`,
-                                      e.target.checked,
-                                    );
                                     field.onChange(e.target.checked);
                                   }}
                                   disabled={isDisabled}
@@ -682,7 +729,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
                     rows={5}
                     fullWidth
                     variant="outlined"
-                    disabled={!watch("objectives.enabled")} // Disable when toggle is off
+                    disabled={!watch("objectives.enabled")}
                     placeholder="Enter each objective on a separate line without numbering.
 Example:
 Learn basic customer service
@@ -708,7 +755,7 @@ Understand refund process"
                     }}
                   />
 
-                  {/* Preview section - only show when enabled */}
+                  {/* Preview section */}
                   {watch("objectives.enabled") && (
                     <Box
                       sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
@@ -725,7 +772,6 @@ Understand refund process"
                           .split("\n")
                           .filter((line) => line.trim())
                           .map((line, index) => {
-                            // Remove any existing numbering pattern like "1:", "2:", etc.
                             const cleanLine = line.replace(
                               /^\d+[\s:.)-]*\s*/,
                               "",
@@ -885,7 +931,7 @@ Understand refund process"
                     rows={5}
                     fullWidth
                     variant="outlined"
-                    disabled={!watch("quickTips.enabled")} // Disable when toggle is off
+                    disabled={!watch("quickTips.enabled")}
                     placeholder="Enter each tip on a separate line without numbering.
 Example:
 Listen to the customer carefully
@@ -912,7 +958,7 @@ Provide accurate information"
                     }}
                   />
 
-                  {/* Preview section - only show when enabled */}
+                  {/* Preview section */}
                   {watch("quickTips.enabled") && (
                     <Box
                       sx={{ mt: 1, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}
@@ -929,7 +975,6 @@ Provide accurate information"
                           .split("\n")
                           .filter((line) => line.trim())
                           .map((line, index) => {
-                            // Remove any existing numbering pattern like "1:", "2:", etc.
                             const cleanLine = line.replace(
                               /^\d+[\s:.)-]*\s*/,
                               "",

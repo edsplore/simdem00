@@ -33,7 +33,7 @@ export interface VisualImage {
   hotspots?: Hotspot[];
 }
 
-// FIXED: Complete SimulationSettings interface with all fields properly organized
+// Complete SimulationSettings interface
 export interface SimulationSettings {
   simulationType?: string;
   levels?: {
@@ -53,6 +53,7 @@ export interface SimulationSettings {
   };
   overviewVideo?: {
     enabled: boolean;
+    url?: string;
   };
   quickTips?: {
     enabled: boolean;
@@ -64,10 +65,11 @@ export interface SimulationSettings {
     gender?: string;
     ageGroup?: string;
     voiceId?: string;
+    mood?: string;
+    voiceSpeed?: string;
   };
   scoring?: {
     simulationScore?: "best" | "last" | "average";
-    // REMOVED: duplicate keywordScore and clickScore fields
     pointsPerKeyword?: string;
     pointsPerClick?: string;
     practiceMode?: "unlimited" | "limited";
@@ -77,8 +79,8 @@ export interface SimulationSettings {
     minimumPassingScore?: string;
     scoringMetrics?: {
       enabled?: boolean;
-      keywordScore?: string; // These are the correct ones
-      clickScore?: string; // These are the correct ones
+      keywordScore?: string;
+      clickScore?: string;
     };
     metricWeightage?: {
       clickAccuracy?: string;
@@ -134,56 +136,8 @@ export const SimulationWizardProvider: React.FC<{
     Set<string>
   >(new Set());
 
-  // FIXED: Initialize settings with complete default values - removed duplicate fields
-  const [settings, setSettings] = useState<SimulationSettings>({
-    simulationType: "audio",
-    levels: {},
-    estimatedTime: {
-      enabled: false,
-      value: "10 mins",
-    },
-    objectives: {
-      enabled: false,
-      text: "",
-    },
-    overviewVideo: {
-      enabled: false,
-    },
-    quickTips: {
-      enabled: false,
-      text: "",
-    },
-    voice: {
-      language: "English",
-      accent: "American",
-      gender: "Male",
-      ageGroup: "Middle Age",
-      voiceId: "",
-    },
-    scoring: {
-      simulationScore: "best",
-      // REMOVED: duplicate keywordScore and clickScore fields
-      pointsPerKeyword: "1",
-      pointsPerClick: "1",
-      practiceMode: "unlimited",
-      practiceLimit: "3",
-      repetitionsAllowed: "3",
-      repetitionsNeeded: "2",
-      minimumPassingScore: "60",
-      scoringMetrics: {
-        enabled: true,
-        keywordScore: "20%", // These are the correct ones
-        clickScore: "80%", // These are the correct ones
-      },
-      metricWeightage: {
-        clickAccuracy: "30%",
-        keywordAccuracy: "30%",
-        dataEntryAccuracy: "20%",
-        contextualAccuracy: "10%",
-        sentimentMeasures: "10%",
-      },
-    },
-  });
+  // Initialize settings with empty object - will be populated from API
+  const [settings, setSettings] = useState<SimulationSettings>({});
 
   const [simulationResponse, setSimulationResponse] = useState<{
     id: string;
@@ -192,30 +146,9 @@ export const SimulationWizardProvider: React.FC<{
   } | null>(null);
   const [isPublished, setIsPublished] = useState(false);
 
-  // FIXED: Update settings while preserving ALL existing values
-  const updateSettings = (newSettings: Partial<SimulationSettings>) => {
-    setSettings((prevSettings) => ({
-      ...prevSettings,
-      ...newSettings,
-      voice: {
-        ...prevSettings.voice,
-        ...(newSettings.voice || {}),
-      },
-      scoring: {
-        ...prevSettings.scoring,
-        ...(newSettings.scoring || {}),
-        // FIXED: Ensure metricWeightage is properly merged
-        metricWeightage: {
-          ...prevSettings.scoring?.metricWeightage,
-          ...(newSettings.scoring?.metricWeightage || {}),
-        },
-        // FIXED: Ensure scoringMetrics is properly merged
-        scoringMetrics: {
-          ...prevSettings.scoring?.scoringMetrics,
-          ...(newSettings.scoring?.scoringMetrics || {}),
-        },
-      },
-    }));
+  // Simple setter that replaces the entire settings object
+  const updateSettings = (newSettings: SimulationSettings) => {
+    setSettings(newSettings);
   };
 
   return (

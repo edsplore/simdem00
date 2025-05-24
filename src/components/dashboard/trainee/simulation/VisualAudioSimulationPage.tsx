@@ -767,6 +767,183 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     isTranscribing,
   ]);
 
+  // NEW: Function to handle end call with direct data
+  const handleEndCallWithUpdatedData = async (
+    updatedAttemptData: AttemptInterface[],
+    directTranscriptions?: Map<string, string>,
+  ) => {
+    console.log("🔴 END CALL WITH UPDATED DATA");
+
+    // Prevent multiple simultaneous end call attempts
+    if (isEndingCall) {
+      console.log("Already ending call, ignoring duplicate request");
+      return;
+    }
+
+    // Verify user ID exists
+    if (!userId) {
+      console.error("Error: User ID is required to end simulation");
+      return;
+    }
+
+    // Set flag to prevent duplicate ending
+    setIsEndingCall(true);
+    console.log("Setting isEndingCall to true");
+
+    // Stop any active recording
+    if (recordingInstance) {
+      try {
+        recordingInstance.stop();
+        recordingInstance.stream?.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        // Ignore errors if already stopped
+      }
+      setRecordingInstance(null);
+    }
+
+    // Stop the timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+      console.log("Timer stopped");
+    }
+
+    // Cancel any ongoing speech
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+    setTimeoutActive(false);
+
+    // Stop recording if active
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+      setIsRecording(false);
+    }
+
+    // Update UI state
+    setIsCallActive(false);
+    console.log("Set isCallActive to false, call should now be inactive");
+
+    // Ensure we have the required IDs
+    if (!simulationProgressId) {
+      console.error("⚠️ Missing simulationProgressId for end call API");
+      setIsEndingCall(false);
+      return;
+    }
+
+    try {
+      console.log("Preparing modified simulation data with transcriptions");
+
+      // Create a deep copy of the slides data to modify
+      const modifiedSlidesData = simulationData?.slidesData
+        ? JSON.parse(JSON.stringify(simulationData.slidesData))
+        : [];
+
+      // Use direct transcriptions if provided, otherwise use state
+      const transcriptionsToUse = directTranscriptions || messageTranscriptions;
+
+      // Replace trainee messages with transcriptions and simplify hotspots
+      modifiedSlidesData.forEach((slide) => {
+        if (slide.sequence) {
+          slide.sequence = slide.sequence.map((item) => {
+            // Create a copy we can modify
+            const newItem = { ...item };
+
+            // For message items, replace trainee messages with transcriptions
+            if (
+              newItem.type === "message" &&
+              (newItem.role === "Trainee" || newItem.role === "assistant") &&
+              newItem.id &&
+              transcriptionsToUse.has(newItem.id)
+            ) {
+              // Replace the original text with the transcription
+              newItem.text = transcriptionsToUse.get(newItem.id);
+              console.log(
+                `Replacing text for ${newItem.id} with transcription:`,
+                newItem.text,
+              );
+            }
+
+            // For hotspots, just keep the ID and type
+            if (newItem.type === "hotspot") {
+              // Keep only essential properties
+              return {
+                id: newItem.id,
+                type: newItem.type,
+                hotspotType: newItem.hotspotType,
+              };
+            }
+
+            return newItem;
+          });
+        }
+      });
+
+      // Use the updated data directly passed to this function
+      const finalAttemptData = updatedAttemptData;
+
+      console.log(
+        "Final attempt data before API call:",
+        JSON.stringify(finalAttemptData),
+      );
+
+      // Use the endVisualAudioAttempt function
+      const response = await endVisualAudioAttempt(
+        userId,
+        simulationId,
+        simulationProgressId,
+        finalAttemptData,
+        modifiedSlidesData,
+      );
+
+      console.log("End API call completed with response:", response);
+
+      if (response && response.scores) {
+        console.log("Setting scores and showing completion screen");
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+          console.log("Set showCompletionScreen to true for Test attempt");
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+          console.log("Practice attempt completed, returning to list");
+        }
+      } else {
+        console.warn("No scores received in response");
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to end visual-audio simulation:", error);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
+    } finally {
+      console.log("End call flow completed");
+      setIsEndingCall(false);
+    }
+  };
+
   // New function to handle end call with direct transcriptions
   const handleEndCallWithTranscriptions = async (
     directTranscriptions: Map<string, string>,
@@ -1213,8 +1390,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     return "rgba(68, 76, 231, 0.7)"; // Default color
   };
 
-  // Move to next item in sequence
-  const moveToNextItem = () => {
+  // MODIFIED: Move to next item in sequence with optional updated data
+  const moveToNextItem = (updatedAttemptData?: AttemptInterface[]) => {
     // Clear any active timeout when manually moving to next item
     if (hotspotTimeoutRef.current) {
       clearTimeout(hotspotTimeoutRef.current);
@@ -1222,26 +1399,57 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
     setTimeoutActive(false);
 
+    // Safety check - ensure we have valid data
+    if (!slidesData || slidesData.length === 0) {
+      console.error("No slides data available");
+      return;
+    }
+
+    if (!currentSequence || currentSequence.length === 0) {
+      console.error("No sequence data available");
+      return;
+    }
+
     console.log(
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
       currentSlideIndex,
+      "Total slides:",
+      slidesData.length,
+      "Current sequence length:",
+      currentSequence.length,
+      "Updated data provided:",
+      !!updatedAttemptData,
+      "Updated data length:",
+      updatedAttemptData?.length,
     );
 
     // Check if this is the last item in the entire simulation
-    const isLastItem =
-      currentSlideIndex >= slidesData.length - 1 &&
+    const isLastSlide = currentSlideIndex >= slidesData.length - 1;
+    const isLastItemInSequence =
       currentSequenceIndex >= currentSequence.length - 1;
+    const isLastItem = isLastSlide && isLastItemInSequence;
+
+    console.log("Navigation check:", {
+      isLastSlide,
+      isLastItemInSequence,
+      isLastItem,
+      currentSlideIndex,
+      totalSlides: slidesData.length,
+      currentSequenceIndex,
+      sequenceLength: currentSequence.length,
+    });
 
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
+      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
+      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
-      console.log("Moving to next slide:", currentSlideIndex + 1);
       setImageLoaded(false);
     } else if (isLastItem) {
       // End of slideshow
@@ -1250,11 +1458,20 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // Double check we're not in the middle of recording or transcribing
       if (!isRecording && !isTranscribing) {
-        handleEndCall();
+        // Use the updated data if provided
+        if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
+          console.log("Using updated attempt data for end call");
+          handleEndCallWithUpdatedData(updatedAttemptData);
+        } else {
+          console.log("No updated data provided, using regular end call");
+          handleEndCall();
+        }
       } else {
         console.log("Delaying end call until recording is complete");
         // We'll wait for the recording to finish and user to click next
       }
+    } else {
+      console.error("Unexpected state - no valid navigation path");
     }
   };
 
@@ -1331,7 +1548,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     };
   }, [currentItem]);
 
-  // Handle hotspot click based on type
+  // MODIFIED: Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
     // Prevent event bubbling to container
     event?.stopPropagation();
@@ -1341,7 +1558,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       !currentItem ||
       currentItem.type !== "hotspot" ||
       isProcessing ||
-      isPaused
+      isPaused ||
+      isEndingCall // Add guard to prevent clicks during end call
     )
       return;
 
@@ -1353,7 +1571,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
+    console.log(
+      "Hotspot clicked:",
+      hotspotType,
+      "ID:",
+      currentItem.id,
+      "Current item index:",
+      currentSequenceIndex,
+      "Sequence length:",
+      currentSequence?.length,
+    );
+
+    // For coaching tips, handle differently - they don't need to be tracked
+    if (hotspotType === "coaching") {
+      console.log("Coaching tip clicked, dismissing and moving to next item");
+      setShowCoachingTip(false);
+
+      // Add a processing flag to prevent double-clicks
+      setIsProcessing(true);
+
+      // Simply move to next item without tracking the coaching tip
+      // Don't pass any data - let it use the default path
+      setTimeout(() => {
+        moveToNextItem();
+        setIsProcessing(false);
+      }, 100);
+      return;
+    }
 
     // Only set isClicked for certain hotspot types (button, highlight, checkbox)
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
@@ -1373,6 +1617,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     console.log("Adding click record:", JSON.stringify(clickRecord));
+
+    // Variable to store the updated data
+    let updatedData: AttemptInterface[] = [];
 
     // Update the attempt sequence data
     setAttemptSequenceData((prevData) => {
@@ -1399,10 +1646,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           wrong_clicks: updatedWrongClicks,
         };
 
+        updatedData = newData;
         return newData;
       } else {
         // If item doesn't exist, add it
-        return [...prevData, clickRecord];
+        updatedData = [...prevData, clickRecord];
+        return updatedData;
       }
     });
 
@@ -1414,7 +1663,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // For button and highlight, simply advance
         setHighlightHotspot(false);
         setTimeout(() => {
-          moveToNextItem();
+          moveToNextItem(updatedData);
         }, 100);
         break;
 
@@ -1428,15 +1677,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         setCheckboxChecked(true);
 
         setTimeout(() => {
-          moveToNextItem();
+          moveToNextItem(updatedData);
           setCheckboxChecked(false);
         }, 800);
-        break;
-
-      case "coaching":
-        // For coaching tips, clicking anywhere dismisses it
-        setShowCoachingTip(false);
-        moveToNextItem();
         break;
 
       default:
@@ -1444,39 +1687,47 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // Handle dropdown option selection
+  // MODIFIED: Handle dropdown option selection
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
     setDropdownOpen(false);
 
-    setAttemptSequenceData((prevData) => {
-      const existingItem = prevData.find((item) => item.id === currentItem.id);
+    setTimeout(() => {
+      setAttemptSequenceData((prevData) => {
+        const existingItem = prevData.find(
+          (item) => item.id === currentItem.id,
+        );
 
-      const dropdownRecord = {
-        ...currentItem,
-        userInput: option,
-        wrong_clicks: [],
-        timedOut: false,
-      };
+        const dropdownRecord = {
+          ...currentItem,
+          userInput: option,
+          wrong_clicks: [],
+          timedOut: false,
+        };
 
-      // Do NOT add isClicked for dropdown type
+        // Do NOT add isClicked for dropdown type
 
-      if (existingItem) {
-        return [
-          ...prevData.filter((item) => item.id !== currentItem.id),
-          dropdownRecord,
-        ];
-      } else {
-        return [...prevData, dropdownRecord];
-      }
-    });
+        let newData: AttemptInterface[];
+        if (existingItem) {
+          newData = [
+            ...prevData.filter((item) => item.id !== currentItem.id),
+            dropdownRecord,
+          ];
+        } else {
+          newData = [...prevData, dropdownRecord];
+        }
 
-    if (currentItem?.settings?.advanceOnSelect) {
-      setTimeout(() => moveToNextItem(), 500);
-    }
+        // If advanceOnSelect is true, move to next item
+        if (currentItem?.settings?.advanceOnSelect) {
+          setTimeout(() => moveToNextItem(newData), 400);
+        }
+
+        return newData;
+      });
+    }, 100);
   };
 
-  // Handle text input submission
+  // MODIFIED: Handle text input submission
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -1495,16 +1746,18 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           (item) => item.id === currentItem.id,
         );
 
+        let newData: AttemptInterface[];
         if (existingItemIndex >= 0) {
-          const newData = [...prevData];
+          newData = [...prevData];
           newData[existingItemIndex] = textInputRecord;
-          return newData;
         } else {
-          return [...prevData, textInputRecord];
+          newData = [...prevData, textInputRecord];
         }
-      });
 
-      moveToNextItem();
+        // Move to next item with the updated data
+        moveToNextItem(newData);
+        return newData;
+      });
     }
   };
 
@@ -1755,7 +2008,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
   };
 
-  // Handle trainee next button click - process recording
+  // MODIFIED: Handle trainee next button click - process recording
   const handleTraineeNext = async () => {
     if (isRecording) {
       try {
@@ -2888,25 +3141,27 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                   border: item.content.settings?.blur_mask
                                     ? "none"
                                     : "4px solid",
-                                  borderColor:
-                                    item.content.settings?.blur_mask
-                                      ? "transparent"
-                                      : item.content.settings?.color ||
-                                        "rgba(68, 76, 231, 0.7)",
+                                  borderColor: item.content.settings?.blur_mask
+                                    ? "transparent"
+                                    : item.content.settings?.color ||
+                                      "rgba(68, 76, 231, 0.7)",
                                   boxShadow: item.content.settings?.blur_mask
                                     ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",
                                   borderRadius: "4px",
-                                  backgroundColor: item.content.settings?.blur_mask
+                                  backgroundColor: item.content.settings
+                                    ?.blur_mask
                                     ? withAlpha(
-                                        item.content.settings?.color || "rgba(0,0,0,1)",
+                                        item.content.settings?.color ||
+                                          "rgba(0,0,0,1)",
                                         0.4,
                                       )
                                     : item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
                                   filter: "none",
-                                  backdropFilter: item.content.settings?.blur_mask
+                                  backdropFilter: item.content.settings
+                                    ?.blur_mask
                                     ? "blur(8px)"
                                     : "none",
                                 }}

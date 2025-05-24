@@ -41,6 +41,60 @@ interface Voice {
   preview_audio_url: string;
 }
 
+interface SimulationSettings {
+  simulationType?: string;
+  voice?: {
+    language?: string;
+    accent?: string;
+    gender?: string;
+    ageGroup?: string;
+    voiceId?: string;
+    mood?: string;
+    voiceSpeed?: string;
+  };
+  levels?: {
+    [key: string]: any;
+  };
+  scoring?: {
+    simulationScore?: "best" | "last" | "average";
+    pointsPerKeyword?: string;
+    pointsPerClick?: string;
+    practiceMode?: "unlimited" | "limited";
+    practiceLimit?: string;
+    repetitionsAllowed?: string;
+    repetitionsNeeded?: string;
+    minimumPassingScore?: string;
+    scoringMetrics?: {
+      enabled?: boolean;
+      keywordScore?: string;
+      clickScore?: string;
+    };
+    metricWeightage?: {
+      clickAccuracy?: string;
+      keywordAccuracy?: string;
+      dataEntryAccuracy?: string;
+      contextualAccuracy?: string;
+      sentimentMeasures?: string;
+    };
+  };
+  estimatedTime?: {
+    enabled: boolean;
+    value: string;
+  };
+  objectives?: {
+    enabled: boolean;
+    text: string;
+  };
+  quickTips?: {
+    enabled: boolean;
+    text: string;
+  };
+  overviewVideo?: {
+    enabled: boolean;
+    url?: string;
+  };
+}
+
 interface VoiceScoreSettingProps {
   prompt?: string;
   settings: SimulationSettings;
@@ -51,7 +105,6 @@ interface VoiceScoreSettingProps {
   showPromptSettings?: boolean;
   simulationType?: string;
   onWeightageValidationChange?: (isValid: boolean) => void;
-  // Add this prop to get enabled levels
   enabledLevels?: {
     lvl1: boolean;
     lvl2: boolean;
@@ -59,15 +112,6 @@ interface VoiceScoreSettingProps {
   };
 }
 
-interface ScoreMetricWeightage {
-  clickAccuracy: number;
-  keywordAccuracy: number;
-  dataEntryAccuracy: number;
-  contextualAccuracy: number;
-  sentimentMeasures: number;
-}
-
-// FIXED: Removed duplicate keywordScore and clickScore fields
 interface FormData {
   language: string;
   accent: string;
@@ -114,7 +158,6 @@ const DEFAULT_PERCENTAGE_VALUES = [
   "100%",
 ];
 
-// Practice limit dropdown values
 const PRACTICE_LIMIT_VALUES = [
   "1",
   "2",
@@ -143,7 +186,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const [voices, setVoices] = useState<Voice[]>([]);
   const { user } = useAuth();
   const [selectedVoice, setSelectedVoice] = useState<string>(
-    settings.voice?.voiceId || "",
+    settings?.voice?.voiceId || "",
   );
   const [isPlaying, setIsPlaying] = useState<{ [key: string]: boolean }>({});
   const wavesurferRefs = useRef<{ [key: string]: WaveSurfer }>({});
@@ -156,7 +199,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     ? (enabledLevels.lvl1 ? 1 : 0) +
       (enabledLevels.lvl2 ? 1 : 0) +
       (enabledLevels.lvl3 ? 1 : 0)
-    : 1; // Default to 1 if not provided
+    : 1;
 
   // Check if simulation type is visual
   const isVisualOnly = simulationType === "visual";
@@ -165,7 +208,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const isAnyVisualType = isVisualOnly || isVisualAudioOrChat;
   const hasScript = simulationType !== "visual";
 
-  // FIXED: Initialize form with default values - removed duplicate fields
+  // Initialize form with values from props - use basic defaults
   const { control, handleSubmit, watch, setValue, getValues, reset } =
     useForm<FormData>({
       mode: "onChange",
@@ -191,11 +234,79 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
           clickAccuracy: isAnyVisualType ? "30%" : "0%",
           keywordAccuracy: hasScript ? "30%" : "0%",
           dataEntryAccuracy: isAnyVisualType ? "20%" : "0%",
-          contextualAccuracy: "10%",
-          sentimentMeasures: "10%",
+          contextualAccuracy: "0%",
+          sentimentMeasures: "0%",
         },
       },
     });
+
+  // Track if form has been initialized from settings
+  const hasInitializedFromSettings = useRef(false);
+
+  // Reset initialization flag on unmount
+  useEffect(() => {
+    return () => {
+      hasInitializedFromSettings.current = false;
+    };
+  }, []);
+
+  // Initialize form values from settings ONLY on mount
+  useEffect(() => {
+    if (
+      settings &&
+      Object.keys(settings).length > 0 &&
+      !hasInitializedFromSettings.current
+    ) {
+      console.log(
+        "Initializing voice/score form with settings from context:",
+        settings,
+      );
+
+      // Update voice settings
+      if (settings.voice) {
+        setValue("language", settings.voice.language || "English");
+        setValue("accent", settings.voice.accent || "American");
+        setValue("gender", settings.voice.gender || "Male");
+        setValue("ageGroup", settings.voice.ageGroup || "Middle Aged");
+
+        // Update selected voice
+        if (settings.voice.voiceId) {
+          setSelectedVoice(settings.voice.voiceId);
+        }
+      }
+
+      // Update scoring settings
+      if (settings.scoring) {
+        setValue("simulationScore", settings.scoring.simulationScore || "best");
+        setValue("pointsPerKeyword", settings.scoring.pointsPerKeyword || "1");
+        setValue("pointsPerClick", settings.scoring.pointsPerClick || "1");
+        setValue("practiceMode", settings.scoring.practiceMode || "limited");
+        setValue("practiceLimit", settings.scoring.practiceLimit || "3");
+        setValue(
+          "repetitionsAllowed",
+          settings.scoring.repetitionsAllowed || "3",
+        );
+        setValue(
+          "repetitionsNeeded",
+          settings.scoring.repetitionsNeeded || "1",
+        );
+        setValue(
+          "minimumPassingScore",
+          settings.scoring.minimumPassingScore || "60",
+        );
+
+        if (settings.scoring.scoringMetrics) {
+          setValue("scoringMetrics", settings.scoring.scoringMetrics);
+        }
+
+        if (settings.scoring.metricWeightage) {
+          setValue("metricWeightage", settings.scoring.metricWeightage);
+        }
+      }
+
+      hasInitializedFromSettings.current = true;
+    }
+  }, []); // Only run on mount
 
   const accent = watch("accent");
   const gender = watch("gender");
@@ -210,7 +321,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   const practiceLimit = watch("practiceLimit");
   const minimumPassingScore = watch("minimumPassingScore");
 
-  // FIXED: Watch the points fields
+  // Watch the points fields
   const pointsPerKeyword = watch("pointsPerKeyword");
   const pointsPerClick = watch("pointsPerClick");
 
@@ -239,65 +350,15 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     return options;
   };
 
-  // FIXED: Reset form when settings arrive from API (one-time initialization)
+  // Update voice selection from settings
   useEffect(() => {
-    if (settings && settings.voice && settings.scoring) {
-      console.log("Resetting VoiceAndScore form with API settings:", settings);
-
-      reset({
-        language: settings.voice?.language || "English",
-        accent: settings.voice?.accent || "American",
-        gender: settings.voice?.gender || "Male",
-        ageGroup: settings.voice?.ageGroup || "Middle Aged",
-        simulationScore: settings.scoring?.simulationScore || "best",
-        practiceMode: settings.scoring?.practiceMode || "limited",
-        practiceLimit: settings.scoring?.practiceLimit || "3",
-        repetitionsAllowed: settings.scoring?.repetitionsAllowed || "3",
-        repetitionsNeeded:
-          settings.scoring?.repetitionsNeeded ||
-          Math.max(enabledLevelsCount, 1).toString(),
-        minimumPassingScore: settings.scoring?.minimumPassingScore || "60",
-
-        // FIXED: Use the actual values from settings without toString() calls on strings
-        pointsPerKeyword: settings.scoring?.pointsPerKeyword || "1",
-        pointsPerClick: settings.scoring?.pointsPerClick || "1",
-
-        scoringMetrics: {
-          enabled: settings.scoring?.scoringMetrics?.enabled ?? true,
-          keywordScore:
-            settings.scoring?.scoringMetrics?.keywordScore ||
-            (hasScript ? "20%" : "0%"),
-          clickScore:
-            settings.scoring?.scoringMetrics?.clickScore ||
-            (hasScript ? "80%" : "100%"),
-        },
-        metricWeightage: {
-          clickAccuracy:
-            settings.scoring?.metricWeightage?.clickAccuracy ||
-            (isAnyVisualType ? "30%" : "0%"),
-          keywordAccuracy:
-            settings.scoring?.metricWeightage?.keywordAccuracy ||
-            (hasScript ? "30%" : "0%"),
-          dataEntryAccuracy:
-            settings.scoring?.metricWeightage?.dataEntryAccuracy ||
-            (isAnyVisualType ? "20%" : "0%"),
-          contextualAccuracy:
-            settings.scoring?.metricWeightage?.contextualAccuracy || "0%",
-          sentimentMeasures:
-            settings.scoring?.metricWeightage?.sentimentMeasures || "0%",
-        },
-      });
-
-      // Update voice selection
-      if (settings.voice?.voiceId) {
-        setSelectedVoice(settings.voice.voiceId);
-      }
+    if (settings?.voice?.voiceId && settings.voice.voiceId !== selectedVoice) {
+      setSelectedVoice(settings.voice.voiceId);
     }
-  }, [settings, reset, hasScript, isAnyVisualType, enabledLevelsCount]);
+  }, [settings?.voice?.voiceId]);
 
   // Validate weightage totals
   useEffect(() => {
-    // Remove % and convert to numbers
     const parsePercentage = (value: string) =>
       parseInt(value.replace("%", "")) || 0;
 
@@ -318,7 +379,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       setWeightageError(null);
     }
 
-    // Notify parent component about validation state
     if (onWeightageValidationChange) {
       onWeightageValidationChange(isValid);
     }
@@ -348,29 +408,16 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     }
   }, [repetitionsNeeded, repetitionsAllowed, setValue]);
 
-  // Log when component mounts and when settings change
-  useEffect(() => {
-    console.log("VoiceScore component mounted with settings:", settings);
-    console.log("Initial voice ID:", settings.voice?.voiceId);
-    console.log("Simulation type:", simulationType);
-  }, []);
-
-  // FIXED: Update parent component when form values change - include pointsPerKeyword and pointsPerClick
+  // Update parent component when form values change
   useEffect(() => {
     const updateParentSettings = () => {
-      // Update settings only if we have values to update
-      if (simulationScore && repetitionsAllowed && repetitionsNeeded) {
-        console.log("Updating parent with new scoring settings:", {
-          simulationScore,
-          repetitionsAllowed,
-          repetitionsNeeded,
-          practiceMode,
-          practiceLimit,
-          minimumPassingScore,
-          pointsPerKeyword,
-          pointsPerClick,
-        });
-
+      // Only update if form has been initialized
+      if (
+        hasInitializedFromSettings.current &&
+        simulationScore &&
+        repetitionsAllowed &&
+        repetitionsNeeded
+      ) {
         onSettingsChange({
           ...settings,
           voice: {
@@ -416,20 +463,20 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     practiceLimit,
     selectedVoice,
     minimumPassingScore,
-    pointsPerKeyword, // FIXED: Added as dependency
-    pointsPerClick, // FIXED: Added as dependency
+    pointsPerKeyword,
+    pointsPerClick,
     clickAccuracy,
     keywordAccuracy,
     dataEntryAccuracy,
     contextualAccuracy,
     sentimentMeasures,
     onSettingsChange,
-  ]);
+    watch,
+  ]); // Removed settings from dependencies to prevent loops
 
   const fetchVoices = async () => {
     try {
       const response = await listVoices({ user_id: user?.id || "user123" });
-      console.log("API response - voices:", response);
       if (response.voices && Array.isArray(response.voices)) {
         setVoices(response.voices);
       }
@@ -445,22 +492,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   }, [showVoiceSettings, simulationType]);
 
   useEffect(() => {
-    // If we have a voice ID from settings, select it
-    if (settings.voice?.voiceId && settings.voice.voiceId !== selectedVoice) {
-      console.log(
-        "Updating selected voice from settings:",
-        settings.voice.voiceId,
-      );
-      setSelectedVoice(settings.voice.voiceId);
-    }
-  }, [settings.voice?.voiceId]);
-
-  useEffect(() => {
     const voiceLimit = simulationType === "visual-audio" ? 5 : 3;
 
     if (simulationType === "visual-audio") {
-      // For visual-audio simulations, the API already returned the
-      // voices matching the provided parameters, so use them directly
       setFilteredVoices(voices.slice(0, voiceLimit));
     } else {
       const filtered = filterVoices(voices, {
@@ -505,11 +539,9 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     };
   }, [filteredVoices, showVoiceSettings]);
 
-  // Add effect to update parent component when voice selection changes
+  // Update parent component when voice selection changes
   useEffect(() => {
-    // Update parent component with the selected voice ID immediately
     if (selectedVoice) {
-      console.log("Voice ID changed, updating parent:", selectedVoice);
       onSettingsChange({
         ...settings,
         voice: {
@@ -526,7 +558,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       if (isPlaying[voiceId]) {
         wavesurfer.pause();
       } else {
-        // Pause all other playing wavesurfers
         Object.entries(wavesurferRefs.current).forEach(([id, ws]) => {
           if (id !== voiceId && isPlaying[id]) {
             ws.pause();
@@ -543,7 +574,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
     if (simulationType !== "visual-audio") {
       setIsProcessing(true);
       try {
-        // Preserve existing behavior for non visual-audio simulations
         await new Promise((resolve) => setTimeout(resolve, 2000));
       } finally {
         setIsProcessing(false);
@@ -573,18 +603,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
   };
 
   const onSubmit = (data: FormData) => {
-    // Ensure we capture the current selectedVoice state
-    console.log("Form submitted with voice ID:", selectedVoice);
-    console.log("Form submitted with simulation score:", data.simulationScore);
-    console.log(
-      "Form submitted with repetitions allowed:",
-      data.repetitionsAllowed,
-    );
-    console.log(
-      "Form submitted with repetitions needed:",
-      data.repetitionsNeeded,
-    );
-
     onSettingsChange({
       ...settings,
       voice: {
@@ -592,7 +610,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
         accent: data.accent,
         gender: data.gender,
         ageGroup: data.ageGroup,
-        voiceId: selectedVoice, // Use the actual selected voice ID
+        voiceId: selectedVoice,
       },
       scoring: {
         simulationScore: data.simulationScore,
@@ -714,7 +732,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 <RadioGroup
                   value={selectedVoice}
                   onChange={(e) => {
-                    console.log("Selected voice changed to:", e.target.value);
                     setSelectedVoice(e.target.value);
                   }}
                 >
@@ -820,7 +837,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               label="Prompt"
               placeholder="Enter a conversation prompt for the AI customer..."
               onChange={(e) => {
-                console.log("Prompt change:", e.target.value);
                 if (onPromptChange) {
                   onPromptChange(e.target.value);
                 }
@@ -881,10 +897,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     size="small"
                     value={field.value}
                     onChange={(e) => {
-                      console.log(
-                        "Repetitions needed changed to:",
-                        e.target.value,
-                      );
                       field.onChange(e.target.value);
                     }}
                   >
@@ -924,10 +936,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     size="small"
                     value={field.value}
                     onChange={(e) => {
-                      console.log(
-                        "Repetitions allowed changed to:",
-                        e.target.value,
-                      );
                       field.onChange(e.target.value);
                     }}
                   >
@@ -958,7 +966,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
                     onClick={() => {
-                      console.log("Setting simulation score to: best");
                       field.onChange("best");
                     }}
                     sx={{
@@ -978,7 +985,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log("Setting simulation score to: last");
                       field.onChange("last");
                     }}
                     sx={{
@@ -998,7 +1004,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log("Setting simulation score to: average");
                       field.onChange("average");
                     }}
                     sx={{
@@ -1299,7 +1304,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                 <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
                   <Button
                     onClick={() => {
-                      console.log("Setting practice mode to: unlimited");
                       field.onChange("unlimited");
                     }}
                     sx={{
@@ -1320,7 +1324,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                   </Button>
                   <Button
                     onClick={() => {
-                      console.log("Setting practice mode to: limited");
                       field.onChange("limited");
                     }}
                     sx={{
@@ -1340,7 +1343,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
                     Prerequisite Limited
                   </Button>
 
-                  {/* Changed from TextField to FormControl with Select */}
                   {practiceMode === "limited" && (
                     <Controller
                       name="practiceLimit"
@@ -1372,7 +1374,7 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
 
-          {/* Changed Minimum Passing Score section to use dropdown */}
+          {/* Minimum Passing Score */}
           <Box sx={{ mb: 3 }} data-section="Minimum Passing Score">
             <Typography variant="h6" gutterBottom>
               Minimum Passing Score
@@ -1387,7 +1389,11 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
               render={({ field }) => (
                 <FormControl sx={{ minWidth: 200 }}>
                   <InputLabel>Passing Score</InputLabel>
-                  <Select {...field} label="Passing Score">
+                  <Select
+                    {...field}
+                    label="Passing Score"
+                    value={field.value || "60"}
+                  >
                     {DEFAULT_PERCENTAGE_VALUES.map((val) => (
                       <MenuItem key={val} value={val.replace("%", "")}>
                         {val}

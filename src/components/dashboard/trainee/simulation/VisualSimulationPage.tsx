@@ -217,7 +217,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
-  const lastClickedHotspotRef = useRef<string | null>(null);
+  // NEW: Ref to store wrong clicks immediately
+  const wrongClicksRef = useRef<Record<string, any[]>>({});
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -400,52 +401,96 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             clearTimeout(hotspotTimeoutRef.current);
           }
 
+          // Capture current item in closure to ensure we have the right reference
+          const capturedItem = { ...currentItem };
+          const capturedItemId = currentItem.id;
+
           setTimeoutActive(true);
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
             console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`,
+              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
             );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
-              const existingItemIndex = prevData.findIndex(
-                (item) => item.id === currentItem.id,
+              console.log(
+                `Processing timeout for ${capturedItem.name}, current attempt data:`,
+                prevData,
               );
 
-              // Create timeout record with explicit timedOut=true and isClicked=false
+              const existingItemIndex = prevData.findIndex(
+                (item) => item.id === capturedItemId,
+              );
+
+              // Get existing wrong clicks from state or ref
+              let existingWrongClicks: any[] = [];
+              if (existingItemIndex >= 0) {
+                existingWrongClicks =
+                  prevData[existingItemIndex].wrong_clicks || [];
+              }
+
+              // Also check the ref for any wrong clicks that might not be in state yet
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                existingWrongClicks = wrongClicksRef.current[capturedItemId];
+                console.log(
+                  `Using wrong clicks from ref for ${capturedItem.name}:`,
+                  existingWrongClicks,
+                );
+              }
+
+              console.log(
+                `Final wrong clicks for ${capturedItem.name}:`,
+                existingWrongClicks,
+              );
+
+              // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
-                ...currentItem,
-                isClicked: false, // Never clicked
-                timedOut: true, // Explicitly timed out
-                wrong_clicks: [],
+                ...capturedItem,
+                timedOut: true,
+                wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
               };
 
-              // Remove isClicked property if it exists
-              delete timeoutRecord.isClicked;
+              // Explicitly REMOVE isClicked property if it exists
+              if ("isClicked" in timeoutRecord) {
+                delete timeoutRecord.isClicked;
+              }
 
-              // Log the timeout record for debugging
               console.log(
-                "Adding timeout record:",
+                `Adding timeout record for hotspot ${capturedItem.name}:`,
                 JSON.stringify(timeoutRecord),
               );
 
+              let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
                 // Replace existing item with timeout version
-                const newData = [...prevData];
+                newData = [...prevData];
                 newData[existingItemIndex] = timeoutRecord;
-                return newData;
               } else {
                 // Add new timeout record
-                return [...prevData, timeoutRecord];
+                newData = [...prevData, timeoutRecord];
               }
-            });
 
-            moveToNextItem();
-            setHighlightHotspot(false);
-            setTimeoutActive(false);
-            setIsProcessing(false);
+              // Clear the ref data for this item
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                delete wrongClicksRef.current[capturedItemId];
+              }
+
+              // Pass the updated data to moveToNextItem
+              setTimeout(() => {
+                console.log(
+                  `Moving to next item after timeout with data:`,
+                  newData,
+                );
+                moveToNextItem(newData);
+                setHighlightHotspot(false);
+                setTimeoutActive(false);
+                setIsProcessing(false);
+              }, 0);
+
+              return newData;
+            });
           }, timeout * 1000);
         }
 
@@ -646,7 +691,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
   };
 
-  // to check if user is clicking outside the hotspot
+  // Check for clicks outside of active hotspot areas
   useEffect(() => {
     if (currentItem?.type !== "hotspot") return;
 
@@ -660,65 +705,110 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         return;
       }
 
+      // Check if the click is actually on the hotspot element
+      const target = event.target as HTMLElement;
+      const hotspotElement = target.closest('[data-hotspot="true"]');
+      if (hotspotElement) {
+        // This click is on the actual hotspot, don't record as wrong click
+        console.log("Click on hotspot element, not recording as wrong click");
+        return;
+      }
+
       // Get click position relative to the container
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
+      // Check if click is within the hotspot bounds
+      const coords = scaleCoordinates(
+        currentItem.coordinates || currentItem.percentageCoordinates,
+      );
+      if (coords) {
+        const clickWithinHotspot =
+          x >= coords.left &&
+          x <= coords.left + coords.width &&
+          y >= coords.top &&
+          y <= coords.top + coords.height;
+
+        if (clickWithinHotspot) {
+          // Click is within hotspot bounds, don't record as wrong click
+          console.log(
+            "Click within hotspot bounds, not recording as wrong click",
+          );
+          return;
+        }
+      }
+
+      // Record as wrong click
+      console.log(
+        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
+      );
+
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
       const yPercent = (y / rect.height) * 100;
 
-      // Record all clicks as wrong clicks initially
-      console.log(`Recording click at x=${x}, y=${y}`);
+      const newWrongClick = {
+        x_cordinates: x,
+        y_cordinates: y,
+        x_percent: xPercent,
+        y_percent: yPercent,
+      };
+
+      // Store in ref immediately
+      if (currentItem.id) {
+        if (!wrongClicksRef.current[currentItem.id]) {
+          wrongClicksRef.current[currentItem.id] = [];
+        }
+        wrongClicksRef.current[currentItem.id].push(newWrongClick);
+        console.log(
+          `Stored wrong click in ref for ${currentItem.id}:`,
+          wrongClicksRef.current[currentItem.id],
+        );
+      }
+
+      // Also update state
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
         );
+
         if (existingItem) {
+          const updatedItem = {
+            ...existingItem,
+            wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
+          };
+          console.log(
+            `Updated wrong clicks for ${currentItem.id}:`,
+            updatedItem.wrong_clicks,
+          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              wrong_clicks: [
-                ...(existingItem.wrong_clicks || []),
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
+            updatedItem,
           ];
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
-          ];
+          const newItem = {
+            ...currentItem,
+            wrong_clicks: [newWrongClick],
+          };
+          console.log(
+            `Created new record with wrong click for ${currentItem.id}`,
+          );
+          return [...prevData, newItem];
         }
       });
     };
 
     const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
+    // Use capture phase to ensure we get the event before any child handlers
+    container?.addEventListener("click", handleClick, true);
 
     return () => {
-      container?.removeEventListener("click", handleClick);
+      container?.removeEventListener("click", handleClick, true);
     };
   }, [currentItem]);
 
-  // Handle hotspot click based on type
+  // MODIFIED: Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
     // Prevent event bubbling if event is provided
     event?.stopPropagation();
@@ -728,7 +818,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       !currentItem ||
       currentItem.type !== "hotspot" ||
       isProcessing ||
-      isPaused
+      isPaused ||
+      isEndingSimulation // Add guard to prevent clicks during end simulation
     )
       return;
 
@@ -740,60 +831,93 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
+    console.log(
+      "Hotspot clicked:",
+      hotspotType,
+      "ID:",
+      currentItem.id,
+      "Current item index:",
+      currentSequenceIndex,
+      "Sequence length:",
+      currentSequence?.length,
+    );
 
-    // Determine if the hotspot should set isClicked (scored types)
+    // For coaching tips, handle differently - they don't need to be tracked
+    if (hotspotType === "coaching") {
+      console.log("Coaching tip clicked, dismissing and moving to next item");
+      setShowCoachingTip(false);
+
+      // Add a processing flag to prevent double-clicks
+      setIsProcessing(true);
+
+      // Simply move to next item without tracking the coaching tip
+      // Don't pass any data - let it use the default path
+      setTimeout(() => {
+        moveToNextItem();
+        setIsProcessing(false);
+      }, 100);
+      return;
+    }
+
+    // Only set isClicked for certain hotspot types (button, highlight, checkbox)
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
       hotspotType,
     );
 
+    // Create a clean clicked hotspot record
+    const clickRecord = {
+      ...currentItem,
+      timedOut: false,
+      wrong_clicks: [],
+    };
+
+    // Only add isClicked property for clickable hotspot types
     if (shouldSetIsClicked) {
-      lastClickedHotspotRef.current = currentItem.id;
+      clickRecord.isClicked = true;
     }
 
-    // Update attempt data for this hotspot
+    console.log("Adding click record:", JSON.stringify(clickRecord));
+
+    // Variable to store the updated data
+    let updatedData: AttemptInterface[] = [];
+
+    // Update the attempt sequence data
     setAttemptSequenceData((prevData) => {
+      // Find if this item already exists in our data
       const existingItemIndex = prevData.findIndex(
         (item) => item.id === currentItem.id,
       );
 
-      const clickRecord = {
-        ...currentItem,
-        ...(shouldSetIsClicked ? { isClicked: true } : {}),
-        timedOut: false, // Explicitly mark as not timed out since user clicked
-        wrong_clicks: [],
-      };
-
-      // Log the click record for debugging
-      console.log("Adding click record:", JSON.stringify(clickRecord));
-
       if (existingItemIndex >= 0) {
-        // Update existing record with click information
+        // Make a copy of the data
         const newData = [...prevData];
 
-        // Get existing wrong clicks if any
-        let updatedWrongClicks = [
-          ...(newData[existingItemIndex].wrong_clicks || []),
-        ];
-        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
-        }
-
+        // Update the existing item with our click record
+        // Keep existing wrong clicks as they are now properly filtered
         newData[existingItemIndex] = {
           ...clickRecord,
-          wrong_clicks: updatedWrongClicks,
+          wrong_clicks: newData[existingItemIndex].wrong_clicks || [],
         };
 
+        updatedData = newData;
         return newData;
       } else {
-        return [...prevData, clickRecord];
+        // If item doesn't exist, add it with empty wrong clicks
+        // (wrong clicks will be added separately by container handler)
+        updatedData = [...prevData, { ...clickRecord, wrong_clicks: [] }];
+        return updatedData;
       }
     });
+
+    console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
       case "button":
         // For button, simply advance
         setHighlightHotspot(false);
-        moveToNextItem();
+        setTimeout(() => {
+          moveToNextItem(updatedData);
+        }, 100);
         break;
 
       case "dropdown":
@@ -806,7 +930,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         setCheckboxChecked(true);
 
         setTimeout(() => {
-          moveToNextItem();
+          moveToNextItem(updatedData);
           setCheckboxChecked(false);
         }, 800);
         break;
@@ -814,13 +938,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       case "highlight":
         // For highlight, clicking also dismisses it
         setHighlightHotspot(false);
-        moveToNextItem();
-        break;
-
-      case "coaching":
-        // For coaching tips, clicking anywhere dismisses it
-        setShowCoachingTip(false);
-        moveToNextItem();
+        setTimeout(() => {
+          moveToNextItem(updatedData);
+        }, 100);
         break;
 
       default:
@@ -828,66 +948,77 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
   };
 
-  // Handle dropdown option selection
+  // MODIFIED: Handle dropdown option selection
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
     setDropdownOpen(false);
 
-    setAttemptSequenceData((prevData) => {
-      const existingItem = prevData.find((item) => item.id === currentItem.id);
-      if (existingItem) {
-        return [
-          ...prevData.filter((item) => item.id !== currentItem.id),
-          {
-            ...existingItem,
-            userInput: option,
-          },
-        ];
-      } else {
-        return [
-          ...prevData,
-          {
-            ...currentItem,
-            userInput: option,
-          },
-        ];
-      }
-    });
-
-    if (currentItem?.settings?.advanceOnSelect) {
-      setTimeout(() => moveToNextItem(), 500);
-    }
-  };
-
-  // Handle text input submission
-  const handleTextInputSubmit = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
+    setTimeout(() => {
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
         );
+
+        const dropdownRecord = {
+          ...currentItem,
+          userInput: option,
+          wrong_clicks: [],
+          timedOut: false,
+        };
+
+        // Do NOT add isClicked for dropdown type
+
+        let newData: AttemptInterface[];
         if (existingItem) {
-          return [
+          newData = [
             ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
+            dropdownRecord,
           ];
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              userInput: textInputValue,
-              wrong_clicks: [], // Add this line to set wrong_clicks to empty array
-            },
-          ];
+          newData = [...prevData, dropdownRecord];
         }
+
+        // If advanceOnSelect is true, move to next item
+        if (currentItem?.settings?.advanceOnSelect) {
+          setTimeout(() => moveToNextItem(newData), 400);
+        }
+
+        return newData;
       });
-      moveToNextItem();
+    }, 100);
+  };
+
+  // MODIFIED: Handle text input submission
+  const handleTextInputSubmit = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      const textInputRecord = {
+        ...currentItem,
+        userInput: textInputValue,
+        wrong_clicks: [],
+        timedOut: false,
+      };
+
+      // Do NOT add isClicked for text input
+
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
+
+        let newData: AttemptInterface[];
+        if (existingItemIndex >= 0) {
+          newData = [...prevData];
+          newData[existingItemIndex] = textInputRecord;
+        } else {
+          newData = [...prevData, textInputRecord];
+        }
+
+        // Move to next item with the updated data
+        moveToNextItem(newData);
+        return newData;
+      });
     }
   };
 
@@ -963,8 +1094,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
   };
 
-  // Move to next item in sequence
-  const moveToNextItem = () => {
+  // MODIFIED: Move to next item in sequence with optional updated data
+  const moveToNextItem = (updatedAttemptData?: AttemptInterface[]) => {
     // Clear any active timeout when manually moving to next item
     if (hotspotTimeoutRef.current) {
       clearTimeout(hotspotTimeoutRef.current);
@@ -972,26 +1103,169 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
     setTimeoutActive(false);
 
+    // Safety check - ensure we have valid data
+    if (!slidesData || slidesData.length === 0) {
+      console.error("No slides data available");
+      return;
+    }
+
+    if (!currentSequence || currentSequence.length === 0) {
+      console.error("No sequence data available");
+      return;
+    }
+
     console.log(
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
       currentSlideIndex,
+      "Total slides:",
+      slidesData.length,
+      "Current sequence length:",
+      currentSequence.length,
+      "Updated data provided:",
+      !!updatedAttemptData,
+      "Updated data length:",
+      updatedAttemptData?.length,
     );
+
+    // Check if this is the last item in the entire simulation
+    const isLastSlide = currentSlideIndex >= slidesData.length - 1;
+    const isLastItemInSequence =
+      currentSequenceIndex >= currentSequence.length - 1;
+    const isLastItem = isLastSlide && isLastItemInSequence;
+
+    console.log("Navigation check:", {
+      isLastSlide,
+      isLastItemInSequence,
+      isLastItem,
+      currentSlideIndex,
+      totalSlides: slidesData.length,
+      currentSequenceIndex,
+      sequenceLength: currentSequence.length,
+    });
+
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
+      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
+      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
-      console.log("Moving to next slide:", currentSlideIndex + 1);
       setImageLoaded(false);
-    } else {
+    } else if (isLastItem) {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete");
-      handleEndSimulation();
+      console.log("Simulation complete - last item reached");
+
+      // Use the updated data if provided
+      if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
+        console.log("Using updated attempt data for end simulation");
+        handleEndSimulationWithUpdatedData(updatedAttemptData);
+      } else {
+        console.log("No updated data provided, using regular end simulation");
+        handleEndSimulation();
+      }
+    } else {
+      console.error("Unexpected state - no valid navigation path");
+    }
+  };
+
+  // NEW: Handle end simulation with direct data
+  const handleEndSimulationWithUpdatedData = async (
+    updatedAttemptData: AttemptInterface[],
+  ) => {
+    console.log("🔴 END SIMULATION WITH UPDATED DATA");
+
+    // Prevent multiple simultaneous end simulation attempts
+    if (isEndingSimulation) {
+      console.log("Already ending simulation, ignoring duplicate request");
+      return;
+    }
+
+    // Verify user ID exists
+    if (!userId) {
+      console.error("Error: User ID is required to end simulation");
+      return;
+    }
+
+    setIsEndingSimulation(true);
+
+    // Stop the timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+      console.log("Timer stopped");
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    // Update UI state
+    setIsStarted(false);
+    setSimulationStatus("Ended");
+
+    // Ensure we have the required IDs
+    if (!simulationProgressId) {
+      console.error("⚠️ Missing simulationProgressId for end simulation API");
+      setIsEndingSimulation(false);
+      return;
+    }
+
+    try {
+      // Use the updated data directly passed to this function
+      const finalAttemptData = updatedAttemptData;
+
+      console.log(
+        "Final attempt data before API call:",
+        JSON.stringify(finalAttemptData),
+      );
+
+      // Use the endVisualSimulation function from simulation_visual_attempts
+      const response = await endVisualSimulation(
+        userId,
+        simulationId,
+        simulationProgressId,
+        finalAttemptData,
+      );
+
+      if (response && response.scores) {
+        console.log("Setting scores and showing completion screen");
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+        }
+      } else {
+        console.warn("No scores received in response");
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to end visual simulation:", error);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
+    } finally {
+      console.log("End simulation flow completed");
+      setIsEndingSimulation(false);
     }
   };
 
@@ -1038,129 +1312,100 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     }
 
     try {
-      // IMPORTANT: Clone the current attemptSequenceData directly
-      // This allows us to modify it without waiting for setState
+      // IMPORTANT: Make a direct copy of the current data that we can manipulate synchronously
+      // This avoids relying on asynchronous state updates
       let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
 
-      console.log("Starting attempt data processing...");
-
-      // Process the current item if it's a hotspot - do this BEFORE API call
+      // Process the current item if it's a hotspot
       if (currentItem && currentItem.type === "hotspot") {
+        // Check if this item already exists in the data
         const itemIndex = finalAttemptData.findIndex(
           (item) => item.id === currentItem.id,
         );
-        console.log(
-          `Current hotspot: ${currentItem.name}, exists in data: ${itemIndex >= 0}`,
-        );
 
-        // Create the appropriate record based on the current state
+        // Determine if this hotspot has timed out or should be considered clicked
+        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
         const existingRecord =
           itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
-        const wasClicked = lastClickedHotspotRef.current === currentItem.id;
-
-        const isTimedOutHotspot =
+        const isTimedOut =
           timeoutActive ||
-          (currentItem.settings?.timeoutDuration > 0 &&
+          (hasTimeoutSetting &&
             !currentItem.isClicked &&
-            !(existingRecord && (existingRecord as any).isClicked) &&
-            !wasClicked);
+            !(existingRecord && (existingRecord as any).isClicked));
 
         console.log(
-          `Hotspot ${currentItem.name} timed out? ${isTimedOutHotspot}`,
+          `Processing current hotspot ${currentItem.name} for end simulation, timed out: ${isTimedOut}`,
         );
 
-        if (isTimedOutHotspot) {
-          // Create a clean timed out record WITHOUT isClicked property
+        if (isTimedOut) {
+          // Get existing wrong clicks if any
+          const existingWrongClicks = existingRecord
+            ? existingRecord.wrong_clicks || []
+            : [];
+
+          // Create a clean timeout record WITHOUT isClicked property
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: [],
+            wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
           };
 
-          delete timeoutRecord.isClicked; // Explicitly remove isClicked
+          if ("isClicked" in timeoutRecord) {
+            delete timeoutRecord.isClicked;
+          }
 
           // Update or add the record
           if (itemIndex >= 0) {
-            console.log(
-              `Updating existing record for ${currentItem.name} as timed out`,
-            );
             finalAttemptData[itemIndex] = timeoutRecord;
           } else {
-            console.log(
-              `Adding new record for ${currentItem.name} as timed out`,
-            );
             finalAttemptData.push(timeoutRecord);
           }
-        } else if (itemIndex === -1) {
-          // Only add a normal record if it doesn't already exist
+        } else {
+          // Normal clicked hotspot
           const hotspotType = currentItem.hotspotType || "";
           const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
             hotspotType,
           );
 
-          // For non-timed out hotspots, we only add isClicked if appropriate
-          const newRecord = {
-            ...currentItem,
-            timedOut: false,
-            wrong_clicks: [],
-          };
-
-          if (shouldBeClicked) {
-            newRecord.isClicked = true;
-          }
-
-          console.log(`Adding new regular record for ${currentItem.name}`);
-          finalAttemptData.push(newRecord);
-        }
-      }
-
-      // Final cleanup pass through ALL items
-      for (let i = 0; i < finalAttemptData.length; i++) {
-        const item = finalAttemptData[i];
-
-        // Only process hotspot items
-        if (item.type === "hotspot") {
-          // Special handling for hotspots with timeout settings
-          if (item.settings?.timeoutDuration > 0) {
-            console.log(`Processing hotspot with timeout: ${item.name}`);
-
-            // Check for explicit timed out status
-            if (item.timedOut === true) {
-              // For timed out items, remove isClicked property completely
-              if ("isClicked" in item) {
-                console.log(
-                  `Removing isClicked from timed out hotspot: ${item.name}`,
-                );
-                const { isClicked, ...cleanItem } = item;
-                finalAttemptData[i] = cleanItem;
-              }
+          if (itemIndex >= 0) {
+            // Update existing record based on hotspot type
+            if (shouldBeClicked) {
+              finalAttemptData[itemIndex] = {
+                ...finalAttemptData[itemIndex],
+                isClicked: true,
+                timedOut: false,
+              };
             }
-            // If hotspot has timeout duration but unclear status, assume it timed out
-            // This applies to all button-type hotspots with timeouts, regardless of name
-            else if (item.timedOut === undefined || item.timedOut === null) {
-              console.log(
-                `Hotspot ${item.name} has timeout setting but unclear status - marking as timed out`,
-              );
+          } else {
+            // Add new record with appropriate properties
+            const newRecord = {
+              ...currentItem,
+              wrong_clicks: [],
+            };
 
-              // Remove isClicked to be safe if it exists
-              if ("isClicked" in item) {
-                const { isClicked, ...cleanItem } = item;
-                finalAttemptData[i] = {
-                  ...cleanItem,
-                  timedOut: true,
-                };
-              } else {
-                finalAttemptData[i] = {
-                  ...item,
-                  timedOut: true,
-                };
-              }
+            if (shouldBeClicked) {
+              newRecord.isClicked = true;
+              newRecord.timedOut = false;
             }
+
+            finalAttemptData.push(newRecord);
           }
         }
       }
 
-      // Log the final data before submission
+      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
+      // does NOT have an isClicked property
+      finalAttemptData = finalAttemptData.map((item) => {
+        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
+          if (item.timedOut === true && "isClicked" in item) {
+            // Create a clean copy without the isClicked property
+            const { isClicked, ...cleanItem } = item;
+            return cleanItem;
+          }
+        }
+        return item;
+      });
+
       console.log(
         "Final attempt data before API call:",
         JSON.stringify(finalAttemptData),
@@ -1241,6 +1486,12 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   // Get highlight color from settings or use default
   const getHighlightColor = () => {
+    if (
+      currentItem?.type === "hotspot" &&
+      currentItem.settings?.highlightColor
+    ) {
+      return currentItem.settings.highlightColor;
+    }
     return "rgba(68, 76, 231, 0.7)"; // Default color
   };
 
@@ -1515,7 +1766,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                         onLoad={handleImageLoad}
                       />
 
-                      {/* Timeout indicator (simplified, without text) */}
+                      {/* Timeout indicator */}
                       {timeoutActive &&
                         currentItem?.type === "hotspot" &&
                         currentItem.settings?.timeoutDuration &&
@@ -1534,7 +1785,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               gap: 1,
                               zIndex: 100,
                             }}
-                          ></Box>
+                          >
+                            <AccessTimeIcon fontSize="small" />
+                            <Typography variant="caption">
+                              Auto-advance in{" "}
+                              {currentItem.settings?.timeoutDuration}s
+                            </Typography>
+                          </Box>
                         )}
 
                       {/* Render hotspots directly on the image */}
@@ -1549,6 +1806,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               !currentItem.hotspotType) && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -1609,6 +1867,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {/* Dropdown hotspot */}
                             {currentItem.hotspotType === "dropdown" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1687,6 +1946,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {currentItem.hotspotType === "checkbox" && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1733,6 +1993,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {/* Text field hotspot */}
                             {currentItem.hotspotType === "textfield" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1801,7 +2062,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                             {currentItem.hotspotType === "highlight" &&
                               !levelSettings.hideHighlights && (
                                 <Box
-                                  onClick={handleHotspotClick}
+                                  onClick={(e) => handleHotspotClick(e)}
+                                  data-hotspot="true"
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -1809,13 +2071,13 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     top: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.top}px`,
                                     width: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.width}px`,
                                     height: `${scaleCoordinates(currentItem.percentageCoordinates || currentItem.coordinates)?.height}px`,
-                                    border: "7px solid", // INCREASED from 4px
-                                    borderColor: getHighlightColor(), // Maintain user color
+                                    border: "8px solid", // INCREASED from 4px to 8px
+                                    borderColor: getHighlightColor(), // Use the function already defined that respects user settings
                                     boxShadow: highlightHotspot
-                                      ? `0 0 16px 8px ${getHighlightColor()}` // Use same color for shadow
+                                      ? `0 0 18px 8px ${getHighlightColor()}` // Use same user-defined color
                                       : "none",
-                                    borderRadius: "5px", // Slightly increased
-                                    transition: "box-shadow 0.3s",
+                                    borderRadius: "6px", // Slightly increased from 4px
+                                    transition: "all 0.3s ease",
                                     zIndex: 10,
                                   }}
                                 />
@@ -1826,6 +2088,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                               !levelSettings.hideCoachingTips && (
                                 <Box
                                   onClick={(e) => handleHotspotClick(e)}
+                                  data-hotspot="true"
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -1855,10 +2118,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                     }px`,
                                     zIndex: 50,
                                     border: highlightHotspot
-                                      ? `2px solid ${
-                                          currentItem.settings
-                                            ?.highlightColor || "#1e293b"
-                                        }`
+                                      ? `2px solid ${getHighlightColor()}`
                                       : "none",
                                     boxShadow: highlightHotspot ? 3 : 0,
                                     transition: "all 0.3s ease",
@@ -1882,9 +2142,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                           : "#0f172a",
                                       },
                                       boxShadow: highlightHotspot ? 4 : 0,
-                                      border: highlightHotspot
-                                        ? `2px solid ${getHighlightColor()}`
-                                        : "none",
                                     }}
                                   >
                                     {currentItem.settings?.tipText ||
@@ -1936,25 +2193,27 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                                   border: item.content.settings?.blur_mask
                                     ? "none"
                                     : "4px solid",
-                                  borderColor:
-                                    item.content.settings?.blur_mask
-                                      ? "transparent"
-                                      : item.content.settings?.color ||
-                                        "rgba(68, 76, 231, 0.7)",
+                                  borderColor: item.content.settings?.blur_mask
+                                    ? "transparent"
+                                    : item.content.settings?.color ||
+                                      "rgba(68, 76, 231, 0.7)",
                                   boxShadow: item.content.settings?.blur_mask
                                     ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",
                                   borderRadius: "4px",
-                                  backgroundColor: item.content.settings?.blur_mask
+                                  backgroundColor: item.content.settings
+                                    ?.blur_mask
                                     ? withAlpha(
-                                        item.content.settings?.color || "rgba(0,0,0,1)",
+                                        item.content.settings?.color ||
+                                          "rgba(0,0,0,1)",
                                         0.4,
                                       )
                                     : item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
                                   filter: "none",
-                                  backdropFilter: item.content.settings?.blur_mask
+                                  backdropFilter: item.content.settings
+                                    ?.blur_mask
                                     ? "blur(8px)"
                                     : "none",
                                 }}

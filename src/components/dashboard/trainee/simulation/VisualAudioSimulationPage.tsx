@@ -242,6 +242,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     width: 0,
     height: 0,
   });
+  // NEW: Ref to store wrong clicks immediately
+  const wrongClicksRef = useRef<Record<string, any[]>>({});
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -661,25 +663,55 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             clearTimeout(hotspotTimeoutRef.current);
           }
 
+          // Capture current item in closure to ensure we have the right reference
+          const capturedItem = { ...currentItem };
+          const capturedItemId = currentItem.id;
+
           // Set a new timeout that will advance if no interaction occurs
           setTimeoutActive(true);
 
           hotspotTimeoutRef.current = setTimeout(() => {
             console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`,
+              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
             );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
+              console.log(
+                `Processing timeout for ${capturedItem.name}, current attempt data:`,
+                prevData,
+              );
+
               const existingItemIndex = prevData.findIndex(
-                (item) => item.id === currentItem.id,
+                (item) => item.id === capturedItemId,
+              );
+
+              // Get existing wrong clicks from state or ref
+              let existingWrongClicks: any[] = [];
+              if (existingItemIndex >= 0) {
+                existingWrongClicks =
+                  prevData[existingItemIndex].wrong_clicks || [];
+              }
+
+              // Also check the ref for any wrong clicks that might not be in state yet
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                existingWrongClicks = wrongClicksRef.current[capturedItemId];
+                console.log(
+                  `Using wrong clicks from ref for ${capturedItem.name}:`,
+                  existingWrongClicks,
+                );
+              }
+
+              console.log(
+                `Final wrong clicks for ${capturedItem.name}:`,
+                existingWrongClicks,
               );
 
               // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
-                ...currentItem,
+                ...capturedItem,
                 timedOut: true,
-                wrong_clicks: [],
+                wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
               };
 
               // Explicitly REMOVE isClicked property if it exists
@@ -688,25 +720,39 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               }
 
               console.log(
-                `Adding timeout record for hotspot ${currentItem.name}:`,
+                `Adding timeout record for hotspot ${capturedItem.name}:`,
                 JSON.stringify(timeoutRecord),
               );
 
+              let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
                 // Replace existing item with timeout version
-                const newData = [...prevData];
+                newData = [...prevData];
                 newData[existingItemIndex] = timeoutRecord;
-                return newData;
               } else {
                 // Add new timeout record
-                return [...prevData, timeoutRecord];
+                newData = [...prevData, timeoutRecord];
               }
-            });
 
-            moveToNextItem();
-            setHighlightHotspot(false);
-            setTimeoutActive(false);
-            setIsProcessing(false);
+              // Clear the ref data for this item
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                delete wrongClicksRef.current[capturedItemId];
+              }
+
+              // Pass the updated data to moveToNextItem
+              setTimeout(() => {
+                console.log(
+                  `Moving to next item after timeout with data:`,
+                  newData,
+                );
+                moveToNextItem(newData);
+                setHighlightHotspot(false);
+                setTimeoutActive(false);
+                setIsProcessing(false);
+              }, 0);
+
+              return newData;
+            });
           }, timeout * 1000);
         }
 
@@ -1089,11 +1135,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         );
 
         if (isTimedOut) {
+          // Get existing wrong clicks if any
+          const existingWrongClicks = existingRecord
+            ? existingRecord.wrong_clicks || []
+            : [];
+
           // Create a clean timeout record WITHOUT isClicked property
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: [],
+            wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
           };
 
           if ("isClicked" in timeoutRecord) {
@@ -1489,62 +1540,104 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         return;
       }
 
+      // Check if the click is actually on the hotspot element
+      const target = event.target as HTMLElement;
+      const hotspotElement = target.closest('[data-hotspot="true"]');
+      if (hotspotElement) {
+        // This click is on the actual hotspot, don't record as wrong click
+        console.log("Click on hotspot element, not recording as wrong click");
+        return;
+      }
+
       // Get click position relative to the container
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Record all clicks as wrong clicks initially
-      console.log(`Recording click at x=${x}, y=${y}`);
+      // Check if click is within the hotspot bounds
+      const coords = scaleCoordinates(currentItem.coordinates);
+      if (coords) {
+        const clickWithinHotspot =
+          x >= coords.left &&
+          x <= coords.left + coords.width &&
+          y >= coords.top &&
+          y <= coords.top + coords.height;
+
+        if (clickWithinHotspot) {
+          // Click is within hotspot bounds, don't record as wrong click
+          console.log(
+            "Click within hotspot bounds, not recording as wrong click",
+          );
+          return;
+        }
+      }
+
+      // Record as wrong click
+      console.log(
+        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
+      );
 
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
       const yPercent = (y / rect.height) * 100;
 
+      const newWrongClick = {
+        x_cordinates: x,
+        y_cordinates: y,
+        x_percent: xPercent,
+        y_percent: yPercent,
+      };
+
+      // Store in ref immediately
+      if (currentItem.id) {
+        if (!wrongClicksRef.current[currentItem.id]) {
+          wrongClicksRef.current[currentItem.id] = [];
+        }
+        wrongClicksRef.current[currentItem.id].push(newWrongClick);
+        console.log(
+          `Stored wrong click in ref for ${currentItem.id}:`,
+          wrongClicksRef.current[currentItem.id],
+        );
+      }
+
+      // Also update state
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
         );
+
         if (existingItem) {
+          const updatedItem = {
+            ...existingItem,
+            wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
+          };
+          console.log(
+            `Updated wrong clicks for ${currentItem.id}:`,
+            updatedItem.wrong_clicks,
+          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              wrong_clicks: [
-                ...(existingItem.wrong_clicks || []),
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
+            updatedItem,
           ];
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
-          ];
+          const newItem = {
+            ...currentItem,
+            wrong_clicks: [newWrongClick],
+          };
+          console.log(
+            `Created new record with wrong click for ${currentItem.id}`,
+          );
+          return [...prevData, newItem];
         }
       });
     };
 
     const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
+    // Use capture phase to ensure we get the event before any child handlers
+    container?.addEventListener("click", handleClick, true);
 
     return () => {
-      container?.removeEventListener("click", handleClick);
+      container?.removeEventListener("click", handleClick, true);
     };
   }, [currentItem]);
 
@@ -1632,25 +1725,19 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Make a copy of the data
         const newData = [...prevData];
 
-        // Get existing wrong clicks if any
-        let updatedWrongClicks = [
-          ...(newData[existingItemIndex].wrong_clicks || []),
-        ];
-        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
-        }
-
         // Update the existing item with our click record
+        // Keep existing wrong clicks as they are now properly filtered
         newData[existingItemIndex] = {
           ...clickRecord,
-          wrong_clicks: updatedWrongClicks,
+          wrong_clicks: newData[existingItemIndex].wrong_clicks || [],
         };
 
         updatedData = newData;
         return newData;
       } else {
-        // If item doesn't exist, add it
-        updatedData = [...prevData, clickRecord];
+        // If item doesn't exist, add it with empty wrong clicks
+        // (wrong clicks will be added separately by container handler)
+        updatedData = [...prevData, { ...clickRecord, wrong_clicks: [] }];
         return updatedData;
       }
     });
@@ -2262,11 +2349,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         );
 
         if (isTimedOut) {
+          // Get existing wrong clicks if any
+          const existingWrongClicks = existingRecord
+            ? existingRecord.wrong_clicks || []
+            : [];
+
           // Create a clean timeout record WITHOUT isClicked property
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: [],
+            wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
           };
 
           if ("isClicked" in timeoutRecord) {
@@ -2798,6 +2890,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               !currentItem.hotspotType) && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -2850,6 +2943,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {/* Dropdown hotspot */}
                             {currentItem.hotspotType === "dropdown" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -2921,6 +3015,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {currentItem.hotspotType === "checkbox" && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -2962,6 +3057,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                             {/* Text field hotspot */}
                             {currentItem.hotspotType === "textfield" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -3028,6 +3124,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                     console.log("Highlight hotspot clicked");
                                     handleHotspotClick(e);
                                   }}
+                                  data-hotspot="true"
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -3061,6 +3158,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                               e.stopPropagation();
                               handleHotspotClick(e);
                             }}
+                            data-hotspot="true"
                             sx={{
                               position: "absolute",
                               cursor: "pointer",

@@ -354,6 +354,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     height: 0,
   });
   const lastClickedHotspotRef = useRef<string | null>(null);
+  // NEW: Ref to store wrong clicks immediately
+  const wrongClicksRef = useRef<Record<string, any[]>>({});
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -572,25 +574,55 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             clearTimeout(hotspotTimeoutRef.current);
           }
 
+          // Capture current item in closure to ensure we have the right reference
+          const capturedItem = { ...currentItem };
+          const capturedItemId = currentItem.id;
+
           setTimeoutActive(true);
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
             console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${currentItem.name}`,
+              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
             );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
+              console.log(
+                `Processing timeout for ${capturedItem.name}, current attempt data:`,
+                prevData,
+              );
+
               const existingItemIndex = prevData.findIndex(
-                (item) => item.id === currentItem.id,
+                (item) => item.id === capturedItemId,
+              );
+
+              // Get existing wrong clicks from state or ref
+              let existingWrongClicks: any[] = [];
+              if (existingItemIndex >= 0) {
+                existingWrongClicks =
+                  prevData[existingItemIndex].wrong_clicks || [];
+              }
+
+              // Also check the ref for any wrong clicks that might not be in state yet
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                existingWrongClicks = wrongClicksRef.current[capturedItemId];
+                console.log(
+                  `Using wrong clicks from ref for ${capturedItem.name}:`,
+                  existingWrongClicks,
+                );
+              }
+
+              console.log(
+                `Final wrong clicks for ${capturedItem.name}:`,
+                existingWrongClicks,
               );
 
               // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
-                ...currentItem,
+                ...capturedItem,
                 timedOut: true,
-                wrong_clicks: [],
+                wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
               };
 
               // Explicitly REMOVE isClicked property if it exists
@@ -599,25 +631,39 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               }
 
               console.log(
-                `Adding timeout record for hotspot ${currentItem.name}:`,
+                `Adding timeout record for hotspot ${capturedItem.name}:`,
                 JSON.stringify(timeoutRecord),
               );
 
+              let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
                 // Replace existing item with timeout version
-                const newData = [...prevData];
+                newData = [...prevData];
                 newData[existingItemIndex] = timeoutRecord;
-                return newData;
               } else {
                 // Add new timeout record
-                return [...prevData, timeoutRecord];
+                newData = [...prevData, timeoutRecord];
               }
-            });
 
-            moveToNextItem();
-            setHighlightHotspot(false);
-            setTimeoutActive(false);
-            setIsProcessing(false);
+              // Clear the ref data for this item
+              if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
+                delete wrongClicksRef.current[capturedItemId];
+              }
+
+              // Pass the updated data to moveToNextItem
+              setTimeout(() => {
+                console.log(
+                  `Moving to next item after timeout with data:`,
+                  newData,
+                );
+                moveToNextItem(newData);
+                setHighlightHotspot(false);
+                setTimeoutActive(false);
+                setIsProcessing(false);
+              }, 0);
+
+              return newData;
+            });
           }, timeout * 1000);
         }
 
@@ -841,8 +887,105 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     return "rgba(68, 76, 231, 0.7)"; // Default color
   };
 
-  // Move to next item in sequence
-  const moveToNextItem = () => {
+  // NEW: Function to handle end chat with updated data
+  const handleEndChatWithUpdatedData = async (
+    updatedAttemptData: AttemptInterface[],
+  ) => {
+    console.log("🔴 END CHAT WITH UPDATED DATA");
+
+    // Prevent multiple simultaneous end call attempts
+    if (isEndingChat) {
+      console.log("Already ending chat, ignoring duplicate request");
+      return;
+    }
+
+    // Verify user ID exists
+    if (!userId) {
+      console.error("Error: User ID is required to end simulation");
+      return;
+    }
+
+    setIsEndingChat(true);
+
+    // Stop the timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+      console.log("Timer stopped");
+    }
+
+    // Clear any active timeout
+    if (hotspotTimeoutRef.current) {
+      clearTimeout(hotspotTimeoutRef.current);
+      hotspotTimeoutRef.current = null;
+    }
+
+    // Update UI state
+    setIsStarted(false);
+
+    // Ensure we have the required IDs
+    if (!simulationProgressId) {
+      console.error("⚠️ Missing simulationProgressId for end chat API");
+      setIsEndingChat(false);
+      return;
+    }
+
+    try {
+      console.log("Executing end-visual-chat API call");
+
+      // Use the updated data directly passed to this function
+      const finalAttemptData = updatedAttemptData;
+
+      console.log(
+        "Final attempt data before API call:",
+        JSON.stringify(finalAttemptData),
+      );
+
+      // Use the endVisualChatAttempt function instead of direct axios call
+      const response = await endVisualChatAttempt(
+        userId,
+        simulationId,
+        simulationProgressId,
+        finalAttemptData,
+      );
+
+      if (response && response.scores) {
+        console.log("Setting scores and showing completion screen");
+        setScores(response.scores);
+        setDuration(response.duration || elapsedTime);
+
+        // Only show completion screen for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          // For Practice attempts, go back to list
+          onBackToList();
+        }
+      } else {
+        console.warn("No scores received in response");
+        // Even without scores, only show completion for Test attempts
+        if (attemptType === "Test") {
+          setShowCompletionScreen(true);
+        } else {
+          onBackToList();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to end visual-chat simulation:", error);
+      // Even on error, check attempt type
+      if (attemptType === "Test") {
+        setShowCompletionScreen(true);
+      } else {
+        onBackToList();
+      }
+    } finally {
+      console.log("End chat flow completed");
+      setIsEndingChat(false);
+    }
+  };
+
+  // MODIFIED: Move to next item in sequence with optional updated data
+  const moveToNextItem = (updatedAttemptData?: AttemptInterface[]) => {
     // Clear any active timeout when manually moving to next item
     if (hotspotTimeoutRef.current) {
       clearTimeout(hotspotTimeoutRef.current);
@@ -850,33 +993,81 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
     setTimeoutActive(false);
 
+    // Safety check - ensure we have valid data
+    if (!slidesData || slidesData.length === 0) {
+      console.error("No slides data available");
+      return;
+    }
+
+    if (!currentSequence || currentSequence.length === 0) {
+      console.error("No sequence data available");
+      return;
+    }
+
     console.log(
       "Moving to next item from",
       currentSequenceIndex,
       "in slide",
       currentSlideIndex,
+      "Total slides:",
+      slidesData.length,
+      "Current sequence length:",
+      currentSequence.length,
+      "Updated data provided:",
+      !!updatedAttemptData,
     );
+
+    // Check if this is the last item in the entire simulation
+    const isLastSlide = currentSlideIndex >= slidesData.length - 1;
+    const isLastItemInSequence =
+      currentSequenceIndex >= currentSequence.length - 1;
+    const isLastItem = isLastSlide && isLastItemInSequence;
+
+    console.log("Navigation check:", {
+      isLastSlide,
+      isLastItemInSequence,
+      isLastItem,
+      currentSlideIndex,
+      totalSlides: slidesData.length,
+      currentSequenceIndex,
+      sequenceLength: currentSequence.length,
+    });
+
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
+      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
+      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
-      console.log("Moving to next slide:", currentSlideIndex + 1);
       setImageLoaded(false);
-    } else {
+    } else if (isLastItem) {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete");
-      // Add a short delay to ensure state updates are processed
-      setTimeout(() => {
-        handleEndChat();
-      }, 300); // 300ms should be enough for state to update
+      console.log("Simulation complete - last item reached");
+
+      // Use the updated data if provided
+      if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
+        console.log("Using updated attempt data for end chat");
+        // Add a short delay to ensure state updates are processed
+        setTimeout(() => {
+          handleEndChatWithUpdatedData(updatedAttemptData);
+        }, 300);
+      } else {
+        console.log("No updated data provided, using regular end chat");
+        // Add a short delay to ensure state updates are processed
+        setTimeout(() => {
+          handleEndChat();
+        }, 300);
+      }
+    } else {
+      console.error("Unexpected state - no valid navigation path");
     }
   };
 
-  // Handle hotspot click based on type
+  // MODIFIED: Handle hotspot click based on type
   const handleHotspotClick = (event?: React.MouseEvent) => {
     // Prevent event bubbling if event is provided
     event?.stopPropagation();
@@ -886,7 +1077,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       !currentItem ||
       currentItem.type !== "hotspot" ||
       isProcessing ||
-      isPaused
+      isPaused ||
+      isEndingChat // Add guard to prevent clicks during end chat
     )
       return;
 
@@ -900,6 +1092,23 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     const hotspotType = currentItem.hotspotType || "button";
     console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
+    // For coaching tips, handle differently - they don't need to be tracked
+    if (hotspotType === "coaching") {
+      console.log("Coaching tip clicked, dismissing and moving to next item");
+      setShowCoachingTip(false);
+
+      // Add a processing flag to prevent double-clicks
+      setIsProcessing(true);
+
+      // Simply move to next item without tracking the coaching tip
+      // Don't pass any data - let it use the default path
+      setTimeout(() => {
+        moveToNextItem();
+        setIsProcessing(false);
+      }, 100);
+      return;
+    }
+
     // Determine if this hotspot should set isClicked based on its type
     const shouldSetIsClicked = ["button", "highlight", "checkbox"].includes(
       hotspotType,
@@ -909,19 +1118,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       lastClickedHotspotRef.current = currentItem.id;
     }
 
-    // Create a clean clicked hotspot record
-    const clickRecord = {
-      ...currentItem,
-      timedOut: false,
-      wrong_clicks: [],
-    };
-
-    // Only add isClicked property for clickable hotspot types
-    if (shouldSetIsClicked) {
-      clickRecord.isClicked = true;
-    }
-
-    console.log("Adding click record:", JSON.stringify(clickRecord));
+    // Variable to store the updated data
+    let updatedData: AttemptInterface[] = [];
 
     // Update the attempt sequence data
     setAttemptSequenceData((prevData) => {
@@ -930,28 +1128,56 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         (item) => item.id === currentItem.id,
       );
 
+      // Create a clean clicked hotspot record
+      const clickRecord = {
+        ...currentItem,
+        timedOut: false,
+        wrong_clicks: [],
+      };
+
+      // Only add isClicked property for clickable hotspot types
+      if (shouldSetIsClicked) {
+        clickRecord.isClicked = true;
+      }
+
+      console.log("Adding click record:", JSON.stringify(clickRecord));
+
       if (existingItemIndex >= 0) {
         // Make a copy of the data
         const newData = [...prevData];
 
-        // Get existing wrong clicks if any
-        let updatedWrongClicks = [
-          ...(newData[existingItemIndex].wrong_clicks || []),
-        ];
-        if (shouldSetIsClicked && updatedWrongClicks.length > 0) {
-          updatedWrongClicks.pop(); // Remove last wrong click as it was actually correct
-        }
-
         // Update the existing item with our click record
+        // Keep existing wrong clicks as they are now properly filtered
         newData[existingItemIndex] = {
           ...clickRecord,
-          wrong_clicks: updatedWrongClicks,
+          wrong_clicks:
+            wrongClicksRef.current[currentItem.id] ||
+            newData[existingItemIndex].wrong_clicks ||
+            [],
         };
 
+        // Clear the ref data for this item
+        if (currentItem.id && wrongClicksRef.current[currentItem.id]) {
+          delete wrongClicksRef.current[currentItem.id];
+        }
+
+        updatedData = newData;
         return newData;
       } else {
-        // If item doesn't exist, add it
-        return [...prevData, clickRecord];
+        // If item doesn't exist, add it with empty wrong clicks
+        // (wrong clicks will be added separately by container handler)
+        const newClickRecord = {
+          ...clickRecord,
+          wrong_clicks: wrongClicksRef.current[currentItem.id] || [],
+        };
+
+        // Clear the ref data for this item
+        if (currentItem.id && wrongClicksRef.current[currentItem.id]) {
+          delete wrongClicksRef.current[currentItem.id];
+        }
+
+        updatedData = [...prevData, newClickRecord];
+        return updatedData;
       }
     });
 
@@ -961,7 +1187,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         // For button and highlight, add delay before moving to next item
         setHighlightHotspot(false);
         setTimeout(() => {
-          moveToNextItem();
+          moveToNextItem(updatedData);
         }, 100); // Small delay to allow state update
         break;
 
@@ -975,15 +1201,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         setCheckboxChecked(true);
 
         setTimeout(() => {
-          moveToNextItem();
+          moveToNextItem(updatedData);
           setCheckboxChecked(false);
         }, 800);
-        break;
-
-      case "coaching":
-        // For coaching tips, clicking anywhere dismisses it
-        setShowCoachingTip(false);
-        moveToNextItem();
         break;
 
       default:
@@ -991,70 +1211,88 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
   };
 
-  // Handle dropdown option selection
+  // MODIFIED: Handle dropdown option selection
   const handleDropdownSelect = (option: string) => {
     setDropdownValue(option);
     setDropdownOpen(false);
 
-    // Create a dropdown record that doesn't include isClicked property
-    const dropdownRecord = {
-      ...currentItem,
-      userInput: option,
-      timedOut: false,
-      wrong_clicks: [],
-    };
+    // Wrap in setTimeout for better reliability
+    setTimeout(() => {
+      setAttemptSequenceData((prevData) => {
+        const existingItemIndex = prevData.findIndex(
+          (item) => item.id === currentItem.id,
+        );
 
-    setAttemptSequenceData((prevData) => {
-      const existingItemIndex = prevData.findIndex(
-        (item) => item.id === currentItem.id,
-      );
+        // Create a dropdown record that doesn't include isClicked property
+        const dropdownRecord = {
+          ...currentItem,
+          userInput: option,
+          timedOut: false,
+          wrong_clicks: wrongClicksRef.current[currentItem.id] || [],
+        };
 
-      if (existingItemIndex >= 0) {
-        // Update existing record
-        const newData = [...prevData];
-        newData[existingItemIndex] = dropdownRecord;
+        // Clear the ref data for this item
+        if (currentItem.id && wrongClicksRef.current[currentItem.id]) {
+          delete wrongClicksRef.current[currentItem.id];
+        }
+
+        let newData: AttemptInterface[];
+        if (existingItemIndex >= 0) {
+          // Update existing record
+          newData = [...prevData];
+          newData[existingItemIndex] = dropdownRecord;
+        } else {
+          // Add new record
+          newData = [...prevData, dropdownRecord];
+        }
+
+        // If advanceOnSelect is true, move to next item with updated data
+        if (currentItem?.settings?.advanceOnSelect) {
+          setTimeout(() => moveToNextItem(newData), 400);
+        }
+
         return newData;
-      } else {
-        // Add new record
-        return [...prevData, dropdownRecord];
-      }
-    });
-
-    if (currentItem?.settings?.advanceOnSelect) {
-      setTimeout(() => moveToNextItem(), 500);
-    }
+      });
+    }, 100);
   };
 
-  // Handle text input submission
+  // MODIFIED: Handle text input submission
   const handleTextInputSubmit = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-
-      // Create a text input record that doesn't include isClicked property
-      const textInputRecord = {
-        ...currentItem,
-        userInput: textInputValue,
-        timedOut: false,
-        wrong_clicks: [],
-      };
 
       setAttemptSequenceData((prevData) => {
         const existingItemIndex = prevData.findIndex(
           (item) => item.id === currentItem.id,
         );
 
+        // Create a text input record that doesn't include isClicked property
+        const textInputRecord = {
+          ...currentItem,
+          userInput: textInputValue,
+          timedOut: false,
+          wrong_clicks: wrongClicksRef.current[currentItem.id] || [],
+        };
+
+        // Clear the ref data for this item
+        if (currentItem.id && wrongClicksRef.current[currentItem.id]) {
+          delete wrongClicksRef.current[currentItem.id];
+        }
+
+        let newData: AttemptInterface[];
         if (existingItemIndex >= 0) {
           // Update existing record
-          const newData = [...prevData];
+          newData = [...prevData];
           newData[existingItemIndex] = textInputRecord;
-          return newData;
         } else {
           // Add new record
-          return [...prevData, textInputRecord];
+          newData = [...prevData, textInputRecord];
         }
-      });
 
-      moveToNextItem();
+        // Move to next item with the updated data
+        moveToNextItem(newData);
+        return newData;
+      });
     }
   };
 
@@ -1258,11 +1496,16 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         );
 
         if (isTimedOut) {
+          // Get existing wrong clicks if any
+          const existingWrongClicks = existingRecord
+            ? existingRecord.wrong_clicks || []
+            : wrongClicksRef.current[currentItem.id] || [];
+
           // Create a clean timeout record WITHOUT isClicked property
           const timeoutRecord = {
             ...currentItem,
             timedOut: true,
-            wrong_clicks: [],
+            wrong_clicks: existingWrongClicks,
           };
 
           if ("isClicked" in timeoutRecord) {
@@ -1295,7 +1538,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             // Add new record with appropriate properties
             const newRecord = {
               ...currentItem,
-              wrong_clicks: [],
+              wrong_clicks: wrongClicksRef.current[currentItem.id] || [],
             };
 
             if (shouldBeClicked) {
@@ -1307,6 +1550,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           }
         }
       }
+
+      // Clear the ref data for all items
+      wrongClicksRef.current = {};
 
       // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
       // does NOT have an isClicked property
@@ -1383,63 +1629,104 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         return;
       }
 
+      // Check if the click is actually on the hotspot element
+      const target = event.target as HTMLElement;
+      const hotspotElement = target.closest('[data-hotspot="true"]');
+      if (hotspotElement) {
+        // This click is on the actual hotspot, don't record as wrong click
+        console.log("Click on hotspot element, not recording as wrong click");
+        return;
+      }
+
       // Get click position relative to the container
       const rect = container.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      // Record every click on the container
-      // We'll remove it later if it turns out to be a correct click on the hotspot
-      console.log(`Recording click at x=${x}, y=${y}`);
+      // Check if click is within the hotspot bounds
+      const coords = scaleCoordinates(currentItem.coordinates);
+      if (coords) {
+        const clickWithinHotspot =
+          x >= coords.left &&
+          x <= coords.left + coords.width &&
+          y >= coords.top &&
+          y <= coords.top + coords.height;
+
+        if (clickWithinHotspot) {
+          // Click is within hotspot bounds, don't record as wrong click
+          console.log(
+            "Click within hotspot bounds, not recording as wrong click",
+          );
+          return;
+        }
+      }
+
+      // Record as wrong click
+      console.log(
+        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
+      );
 
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
       const yPercent = (y / rect.height) * 100;
 
+      const newWrongClick = {
+        x_cordinates: x,
+        y_cordinates: y,
+        x_percent: xPercent,
+        y_percent: yPercent,
+      };
+
+      // Store in ref immediately
+      if (currentItem.id) {
+        if (!wrongClicksRef.current[currentItem.id]) {
+          wrongClicksRef.current[currentItem.id] = [];
+        }
+        wrongClicksRef.current[currentItem.id].push(newWrongClick);
+        console.log(
+          `Stored wrong click in ref for ${currentItem.id}:`,
+          wrongClicksRef.current[currentItem.id],
+        );
+      }
+
+      // Also update state
       setAttemptSequenceData((prevData) => {
         const existingItem = prevData.find(
           (item) => item.id === currentItem.id,
         );
+
         if (existingItem) {
+          const updatedItem = {
+            ...existingItem,
+            wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
+          };
+          console.log(
+            `Updated wrong clicks for ${currentItem.id}:`,
+            updatedItem.wrong_clicks,
+          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
-            {
-              ...existingItem,
-              wrong_clicks: [
-                ...(existingItem.wrong_clicks || []),
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
+            updatedItem,
           ];
         } else {
-          return [
-            ...prevData,
-            {
-              ...currentItem,
-              wrong_clicks: [
-                {
-                  x_cordinates: x,
-                  y_cordinates: y,
-                  x_percent: xPercent,
-                  y_percent: yPercent,
-                },
-              ],
-            },
-          ];
+          const newItem = {
+            ...currentItem,
+            wrong_clicks: [newWrongClick],
+          };
+          console.log(
+            `Created new record with wrong click for ${currentItem.id}`,
+          );
+          return [...prevData, newItem];
         }
       });
     };
 
     const container = imageContainerRef.current;
-    container?.addEventListener("click", handleClick);
+    // Use capture phase to ensure we get the event before any child handlers
+    container?.addEventListener("click", handleClick, true);
 
     return () => {
-      container?.removeEventListener("click", handleClick);
+      container?.removeEventListener("click", handleClick, true);
     };
   }, [currentItem]);
 
@@ -1793,6 +2080,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               !currentItem.hotspotType) && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   cursor: "pointer",
@@ -1845,6 +2133,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             {/* Dropdown hotspot */}
                             {currentItem.hotspotType === "dropdown" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1916,6 +2205,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             {currentItem.hotspotType === "checkbox" && (
                               <Box
                                 onClick={(e) => handleHotspotClick(e)}
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -1957,6 +2247,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                             {/* Text field hotspot */}
                             {currentItem.hotspotType === "textfield" && (
                               <Box
+                                data-hotspot="true"
                                 sx={{
                                   position: "absolute",
                                   left: `${
@@ -2023,6 +2314,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                     console.log("Highlight hotspot clicked");
                                     handleHotspotClick(e);
                                   }}
+                                  data-hotspot="true"
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -2047,6 +2339,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                               !levelSettings.hideCoachingTips && (
                                 <Box
                                   onClick={(e) => handleHotspotClick(e)}
+                                  data-hotspot="true"
                                   sx={{
                                     position: "absolute",
                                     cursor: "pointer",
@@ -2101,6 +2394,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                           </>
                         )}
 
+                      {/* Render maskings directly on the image */}
                       {imageLoaded &&
                         currentMasking &&
                         currentMasking.map(
@@ -2130,25 +2424,27 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                   border: item.content.settings?.blur_mask
                                     ? "none"
                                     : "4px solid",
-                                  borderColor:
-                                    item.content.settings?.blur_mask
-                                      ? "transparent"
-                                      : item.content.settings?.color ||
-                                        "rgba(68, 76, 231, 0.7)",
+                                  borderColor: item.content.settings?.blur_mask
+                                    ? "transparent"
+                                    : item.content.settings?.color ||
+                                      "rgba(68, 76, 231, 0.7)",
                                   boxShadow: item.content.settings?.blur_mask
                                     ? `0 0 12px 3px ${item.content.settings?.color}`
                                     : "none",
                                   borderRadius: "4px",
-                                  backgroundColor: item.content.settings?.blur_mask
+                                  backgroundColor: item.content.settings
+                                    ?.blur_mask
                                     ? withAlpha(
-                                        item.content.settings?.color || "rgba(0,0,0,1)",
+                                        item.content.settings?.color ||
+                                          "rgba(0,0,0,1)",
                                         0.4,
                                       )
                                     : item.content.settings?.color,
                                   transition: "box-shadow 0.3s",
                                   zIndex: 10,
                                   filter: "none",
-                                  backdropFilter: item.content.settings?.blur_mask
+                                  backdropFilter: item.content.settings
+                                    ?.blur_mask
                                     ? "blur(8px)"
                                     : "none",
                                 }}

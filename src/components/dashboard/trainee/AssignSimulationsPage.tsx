@@ -492,8 +492,8 @@ const AssignSimulationsPage = () => {
                 label={formatStatus(row.status)}
                 size="small"
                 sx={{
-                  bgcolor: 
-                    row.status?.toLowerCase() === "active" 
+                  bgcolor:
+                    row.status?.toLowerCase() === "active"
                       ? "#ECFDF3"
                       : row.status?.toLowerCase() === "completed"
                         ? "#F0F9FF"

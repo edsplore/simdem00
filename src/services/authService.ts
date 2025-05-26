@@ -168,10 +168,12 @@ class AuthService {
       const decodedToken = jwtDecode<DecodedToken>(token);
       console.log("FULL DECODED TOKEN:", decodedToken);
 
-      // Store the workspace ID if provided
-      if (workspaceId) {
-        this.currentWorkspaceId = workspaceId;
-      }
+    // Always prefer workspace ID provided explicitly (e.g. from URL)
+    // This ensures the workspace used for API requests matches the one
+    // in the browser URL and isn't overridden by values in the token.
+    if (workspaceId) {
+      this.currentWorkspaceId = workspaceId;
+    }
 
       // Find all workspace keys by looking for keys that contain roles and permissions
       const workspaceKeys = Object.keys(decodedToken).filter(
@@ -350,7 +352,8 @@ class AuthService {
 
       console.log("Final permissions object:", permissions);
 
-      // Create user object
+      // Create user object using the workspace ID from the URL if available
+      const finalWorkspaceId = workspaceId || this.currentWorkspaceId || selectedWorkspaceKey;
       const user: User = {
         id: decodedToken.user_id,
         email: decodedToken.sub,
@@ -360,7 +363,7 @@ class AuthService {
         division: decodedToken.division || "",
         department: decodedToken.department || "",
         profileImageUrl: decodedToken.profile_img_url || "",
-        workspaceId: selectedWorkspaceKey,
+        workspaceId: finalWorkspaceId,
         internalId: decodedToken.internal_user_id || "",
         externalId: decodedToken.external_user_id || "",
         phoneNumber: decodedToken.phone_no || "",
@@ -369,9 +372,9 @@ class AuthService {
 
       console.log("Created user object:", user);
 
-      // Store user in memory
+      // Store user in memory and ensure the workspace ID matches the one from the URL
       this.currentUser = user;
-      this.currentWorkspaceId = selectedWorkspaceKey;
+      this.currentWorkspaceId = finalWorkspaceId;
 
       return user;
     } catch (error) {

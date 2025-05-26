@@ -19,8 +19,6 @@ const HeaderChip = styled(Chip)(({ theme }) => ({
 const TraineeDashboard = () => {
   const { user } = useAuth();
   const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const totalSimulationsCount =
     (trainingData?.training_plans?.reduce(
@@ -37,15 +35,10 @@ const TraineeDashboard = () => {
     const loadTrainingData = async () => {
       if (user?.id) {
         try {
-          setIsLoading(true);
-          setError(null);
           const data = await fetchTrainingData(user.id);
           setTrainingData(data);
         } catch (error) {
           console.error('Error loading training data:', error);
-          setError('Failed to load training data');
-        } finally {
-          setIsLoading(false);
         }
       }
     };
@@ -70,13 +63,7 @@ const TraineeDashboard = () => {
                   <HeaderChip label={`${totalSimulationsCount} Simulations`} size="small" />
                 </Stack>
               </Stack>
-              <TrainingPlanTable
-                trainingPlans={trainingData.training_plans || []}
-                modules={trainingData.modules || []}
-                simulations={trainingData.simulations || []}
-                isLoading={isLoading}
-                error={error}
-              />
+              <TrainingPlanTable />
             </>
           )}
         </Stack>

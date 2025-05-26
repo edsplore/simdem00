@@ -4,23 +4,23 @@ import DashboardContent from '../DashboardContent';
 import StatsGrid from './StatsGrid';
 import TrainingPlanTable from './TrainingPlanTable';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchTrainingData } from '../../../services/training';
-import type { TrainingData } from '../../../types/training';
+import { fetchTrainingStats } from '../../../services/training';
+import type { TrainingStats } from '../../../types/training';
 
 const TrainingPlanPage = () => {
   const { user } = useAuth();
-  const [trainingData, setTrainingData] = useState<TrainingData | null>(null);
+  const [stats, setStats] = useState<TrainingStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadTrainingData = async () => {
+    const loadStats = async () => {
       if (user?.id) {
         try {
           setIsLoading(true);
           setError(null);
-          const data = await fetchTrainingData(user.id);
-          setTrainingData(data);
+          const data = await fetchTrainingStats(user.id);
+          setStats(data.stats ?? data);
         } catch (error) {
           console.error('Error loading training data:', error);
           setError('Failed to load training data');
@@ -30,7 +30,7 @@ const TrainingPlanPage = () => {
       }
     };
 
-    loadTrainingData();
+    loadStats();
   }, [user?.id]);
 
   return (
@@ -45,16 +45,8 @@ const TrainingPlanPage = () => {
                 Monitor your score and progress on your assigned training plans
               </Typography>
             </Stack>
-            {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
-            {trainingData && (
-              <TrainingPlanTable 
-                trainingPlans={trainingData.training_plans || []}
-                modules={trainingData.modules || []}
-                simulations={trainingData.simulations || []}
-                isLoading={isLoading}
-                error={error}
-              />
-            )}
+            {stats && <StatsGrid stats={stats} />}
+            <TrainingPlanTable />
           </Stack>
         </Container>
       </DashboardContent>

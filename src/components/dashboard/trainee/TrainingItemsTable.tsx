@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Stack,
@@ -38,6 +38,10 @@ import timezone from "dayjs/plugin/timezone";
 import type { TrainingPlan, Module, Simulation } from "../../../types/training";
 import { useAuth } from "../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../utils/navigation";
+import {
+  fetchTrainingItems,
+  type TrainingItemsPaginationParams,
+} from "../../../services/training";
 import DateSelector from "../../common/DateSelector";
 
 // Extend dayjs with plugins
@@ -45,11 +49,6 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 interface TrainingItemsTableProps {
-  trainingPlans?: TrainingPlan[];
-  modules?: Module[];
-  simulations?: Simulation[];
-  isLoading?: boolean;
-  error?: string | null;
   showTrainingPlans?: boolean; // Control whether to show training plans section
 }
 
@@ -67,15 +66,10 @@ const SectionHeader = styled(Typography)(({ theme }) => ({
 }));
 
 const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
-  trainingPlans = [],
-  modules = [],
-  simulations = [],
-  isLoading = false,
-  error = null,
   showTrainingPlans = true,
 }) => {
   const navigate = useNavigate();
-  const { currentWorkspaceId, currentTimeZone } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const [rowsPerPage, setRowsPerPage] = useState("5");
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +78,13 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   const [expandedModules, setExpandedModules] = useState<{
     [key: string]: boolean;
   }>({});
+  const [trainingPlans, setTrainingPlans] = useState<TrainingPlan[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Format status labels to proper capitalization
   const formatStatusLabel = (status: string) => {
@@ -174,20 +175,65 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     setCurrentPage(1);
   };
 
+  const loadTrainingItems = useCallback(async () => {
+    const params: TrainingItemsPaginationParams = {
+      page: currentPage,
+      pagesize: parseInt(rowsPerPage),
+    };
+
+    if (searchQuery.trim()) {
+      params.search = searchQuery.trim();
+    }
+    if (statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    if (dateRange[0]) {
+      params.startDate = dateRange[0].format("YYYY-MM-DD");
+    }
+    if (dateRange[1]) {
+      params.endDate = dateRange[1].format("YYYY-MM-DD");
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await fetchTrainingItems(user?.id || "user123", params);
+      setTrainingPlans(data.training_plans || []);
+      setModules(data.modules || []);
+      setSimulations(data.simulations || []);
+      if (data.pagination) {
+        setTotalPages(data.pagination.total_pages);
+        setTotalCount(data.pagination.total_count);
+      }
+    } catch (err) {
+      console.error("Error loading training items:", err);
+      setError("Failed to load items");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    currentPage,
+    rowsPerPage,
+    searchQuery,
+    statusFilter,
+    dateRange,
+    currentWorkspaceId,
+  ]);
+
+  useEffect(() => {
+    loadTrainingItems();
+  }, [loadTrainingItems]);
+
   const isDateInRange = (dateStr: string | null) => {
     if (!dateStr) return true;
     if (!dateRange[0] && !dateRange[1]) return true;
 
-    // Parse the backend date (assumed to be in UTC)
     const backendDate = dayjs.utc(dateStr);
 
-    // Convert selected date range to UTC for comparison
-    // The selected dates are in the user's timezone, so we need to convert them
     let startDateUTC = null;
     let endDateUTC = null;
 
     if (dateRange[0]) {
-      // Convert start of day in user's timezone to UTC
       startDateUTC = currentTimeZone
         ? dayjs
             .tz(dateRange[0].format("YYYY-MM-DD"), currentTimeZone)
@@ -197,7 +243,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     }
 
     if (dateRange[1]) {
-      // Convert end of day in user's timezone to UTC
       endDateUTC = currentTimeZone
         ? dayjs
             .tz(dateRange[1].format("YYYY-MM-DD"), currentTimeZone)
@@ -206,7 +251,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
         : dateRange[1].utc().endOf("day");
     }
 
-    // Compare UTC dates
     if (startDateUTC && endDateUTC) {
       return (
         backendDate.isAfter(startDateUTC) && backendDate.isBefore(endDateUTC)
@@ -220,106 +264,9 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     return true;
   };
 
-  // Filter items based on search query, status, and date range
-  const filteredTrainingPlans = showTrainingPlans
-    ? trainingPlans.filter((plan) => {
-        if (
-          searchQuery &&
-          !plan.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-        ) {
-          return false;
-        }
-        if (statusFilter !== "all" && plan.status !== statusFilter) {
-          return false;
-        }
-        if (!isDateInRange(plan.due_date)) {
-          return false;
-        }
-        return true;
-      })
-    : [];
-
-  const filteredModules = modules.filter((module) => {
-    if (
-      searchQuery &&
-      !module.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-    ) {
-      return false;
-    }
-    if (statusFilter !== "all" && module.status !== statusFilter) {
-      return false;
-    }
-    if (!isDateInRange(module.due_date)) {
-      return false;
-    }
-    return true;
-  });
-
-  const filteredSimulations = simulations.filter((sim) => {
-    if (
-      searchQuery &&
-      !sim.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
-    ) {
-      return false;
-    }
-    if (statusFilter !== "all" && sim.status !== statusFilter) {
-      return false;
-    }
-    if (!isDateInRange(sim.dueDate || sim.due_date)) {
-      return false;
-    }
-    return true;
-  });
-
-  // Calculate total filtered items
-  const totalFilteredItems =
-    filteredTrainingPlans.length +
-    filteredModules.length +
-    filteredSimulations.length;
-
-  // Calculate pagination
-  const pageSize = parseInt(rowsPerPage);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-
-  // Get paginated items
-  const paginatedTrainingPlans = filteredTrainingPlans.slice(
-    startIndex,
-    endIndex,
-  );
-  const paginatedModules = filteredModules.slice(
-    Math.max(0, startIndex - filteredTrainingPlans.length),
-    Math.max(0, endIndex - filteredTrainingPlans.length),
-  );
-  const paginatedSimulations = filteredSimulations.slice(
-    Math.max(
-      0,
-      startIndex - filteredTrainingPlans.length - filteredModules.length,
-    ),
-    Math.max(
-      0,
-      endIndex - filteredTrainingPlans.length - filteredModules.length,
-    ),
-  );
-
-  // Ensure we don't exceed page size across all categories
-  let remainingItems = pageSize;
-  const displayedTrainingPlans = showTrainingPlans
-    ? paginatedTrainingPlans.slice(0, remainingItems)
-    : [];
-  if (showTrainingPlans) {
-    remainingItems -= displayedTrainingPlans.length;
-  }
-
-  const displayedModules =
-    remainingItems > 0 ? paginatedModules.slice(0, remainingItems) : [];
-  remainingItems -= displayedModules.length;
-
-  const displayedSimulations =
-    remainingItems > 0 ? paginatedSimulations.slice(0, remainingItems) : [];
-
-  // Calculate total pages
-  const totalPages = Math.max(1, Math.ceil(totalFilteredItems / pageSize));
+  const displayedTrainingPlans = showTrainingPlans ? trainingPlans : [];
+  const displayedModules = modules;
+  const displayedSimulations = simulations;
 
   const toggleModuleExpand = (moduleId: string, event: React.MouseEvent) => {
     event.stopPropagation();
@@ -444,7 +391,7 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
           <Box sx={{ textAlign: "center", my: 4 }}>
             <Alert severity="error">{error}</Alert>
           </Box>
-        ) : totalFilteredItems === 0 ? (
+        ) : totalCount === 0 ? (
           <Box sx={{ textAlign: "center", my: 4 }}>
             <Alert severity="info">No items match your search criteria.</Alert>
           </Box>

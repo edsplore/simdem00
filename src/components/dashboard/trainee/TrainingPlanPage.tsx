@@ -46,15 +46,7 @@ const TrainingPlanPage = () => {
               </Typography>
             </Stack>
             {trainingData?.stats && <StatsGrid stats={trainingData.stats} />}
-            {trainingData && (
-              <TrainingPlanTable 
-                trainingPlans={trainingData.training_plans || []}
-                modules={trainingData.modules || []}
-                simulations={trainingData.simulations || []}
-                isLoading={isLoading}
-                error={error}
-              />
-            )}
+            <TrainingPlanTable />
           </Stack>
         </Container>
       </DashboardContent>

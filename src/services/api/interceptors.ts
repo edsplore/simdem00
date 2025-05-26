@@ -1,6 +1,14 @@
 import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { authService } from "../authService";
 
+// Utility to read workspace ID directly from the URL
+const getWorkspaceIdFromUrl = (): string | null => {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get("workspace_id");
+};
+
+
 // Create a custom event for API errors
 export const API_ERROR_EVENT = 'api-error';
 export const dispatchApiError = (error: { message: string; status?: number }) => {
@@ -37,10 +45,13 @@ apiClient.interceptors.request.use(
 
     // Add workspace ID header if available
     const workspaceId = authService.getCurrentWorkspaceId();
+    const workspaceIdFromUrl = getWorkspaceIdFromUrl()
+
+    const finalWorkspaceId =  workspaceIdFromUrl || workspaceId;
     if (workspaceId) {
       config.headers = {
         ...config.headers,
-        'x-workspace-id': workspaceId,
+        'x-workspace-id': finalWorkspaceId,
       };
     }
 

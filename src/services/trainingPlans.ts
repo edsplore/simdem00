@@ -179,9 +179,7 @@ export const fetchTrainingPlans = async (
       }
     }
 
-    console.log('Fetching training plans with payload:', payload);
     const response = await apiClient.post('/training-plans/fetch', payload);
-    console.log('Training plans API response:', response.data);
 
     // Return the response with the correct structure
     return {
@@ -225,7 +223,6 @@ export const updateTrainingPlan = async (
   payload: UpdateTrainingPlanPayload
 ): Promise<UpdateTrainingPlanResponse> => {
   try {
-    console.log(`Updating training plan ${trainingPlanId} with payload:`, payload);
 
     const response = await apiClient.put(`/training-plans/${trainingPlanId}/update`, {
       user_id: payload.user_id,
@@ -234,7 +231,6 @@ export const updateTrainingPlan = async (
       added_object: payload.added_object
     });
 
-    console.log('Update training plan response:', response.data);
     return response.data;
   } catch (error) {
     console.error(`Error updating training plan ${trainingPlanId}:`, error);

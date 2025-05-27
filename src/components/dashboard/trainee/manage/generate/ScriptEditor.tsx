@@ -210,7 +210,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   useEffect(() => {
     const editor = quillRef?.current?.getEditor();
-    console.log("draft Text ----- ", draftText);
   }, [draftText]);
 
   // We will attach a small ref to Quill
@@ -391,7 +390,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // Start editing
     setEditingId(msg.id);
     // In a real app, 'msg.message' might be plain text or already HTML. We'll assume HTML
-    console.log(msg.message);
     const inputHtml =
       "<p><span class='keyword'>Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I’m here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>";
     const safeHtml = inputHtml
@@ -401,9 +399,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
     // setDraftText(delta);
     setDraftRole(msg.role); // NEW: initialize draft role
-    console.log(editingKeywords, "-------------------------editingKeywords");
     setEditingKeywords(msg.keywords || []);
-    console.log(editingKeywords, "-------------------------editingKeywords");
 
     // measure bubble width
     const rowEl = messageRefs.current[index];
@@ -432,7 +428,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
           }
         : m,
     );
-    console.log("handle svae edit ", draftText);
     setMessages(updatedMessages);
     if (onScriptUpdate) {
       onScriptUpdate(updatedMessages);
@@ -473,7 +468,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     if (!range || range.length === 0) {
       // no selection
       const htmlText = editor.getHTML();
-      console.log("html text ---------", htmlText);
       setDraftText(htmlText);
       setShowKeywordPopper(false);
       return;
@@ -485,8 +479,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       return;
     }
 
-    console.log("range", range);
-    console.log("editor", editor);
     // If the user highlights text, we figure out if it's already a "keyword"
     const format = editor.getText(range.index, range.length);
 
@@ -526,14 +518,12 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
     setEditingKeywords((prev: string[]) => [...prev, substring]);
 
-    // console.log("newmessages ------", messages);
     quill.formatText(selectionIndex, selectionLength, "keyword", true);
 
     setShowKeywordPopper(false);
   };
 
   useEffect(() => {
-    console.log("Updated messages:", messages);
   }, [messages]);
 
   const removeKeyword = (quill: any) => {
@@ -573,7 +563,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   // Update local messages state when script prop changes
   useEffect(() => {
-    console.log("Script updated:", script); // Debug log
     setMessages(script);
   }, [script]);
 

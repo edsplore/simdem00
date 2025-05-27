@@ -460,7 +460,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         const blob = new Blob([bytes], { type: mimeType });
         const blobUrl = URL.createObjectURL(blob);
         setProcessedImageUrl(blobUrl);
-        console.log("Created blob URL from binary data:", blobUrl);
       } catch (e) {
         console.error("Failed to process image data:", e);
         setImageError("Failed to process image data");
@@ -559,7 +558,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
       const naturalHeight = img.naturalHeight;
 
       if (naturalWidth === 0 || naturalHeight === 0) {
-        console.log("Image not fully loaded, waiting...");
         return;
       }
 
@@ -578,9 +576,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
         height: heightScale,
       });
 
-      console.log(
-        `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
-      );
     };
 
     // Initial update

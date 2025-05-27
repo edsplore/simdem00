@@ -297,7 +297,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
     if (currentItem.type === "message") {
       // For trainee/assistant messages - start recording
       if (currentItem.role === "Trainee" || currentItem.role === "assistant") {
-        console.log("Auto-starting recording for trainee message");
         setIsRecording(true);
         setRecordingTime(0);
 
@@ -312,7 +311,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
       // For customer messages - start speaking
       if (currentItem.role === "Customer" || currentItem.role === "customer") {
-        console.log("Auto-speaking customer message");
         setSpeaking(true);
 
         // Strip HTML before speaking
@@ -354,10 +352,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       if (currentItem.type === "hotspot") {
         // Check if this hotspot should be skipped based on settings
         if (shouldSkipHotspot()) {
-          console.log(
-            "Skipping hotspot due to level settings:",
-            currentItem.hotspotType,
-          );
           moveToNextItem();
           setIsProcessing(false);
           return;
@@ -377,7 +371,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
             setIsProcessing(false);
@@ -475,10 +468,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       });
 
       setImageLoaded(true);
-      console.log(
-        `Image loaded with dimensions ${naturalWidth}x${naturalHeight}, scaled to ${renderedWidth}x${renderedHeight}`,
-      );
-      console.log(`Scale factors: width=${widthScale}, height=${heightScale}`);
     });
   };
 
@@ -507,9 +496,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         height: heightScale,
       });
 
-      console.log(
-        `Updated scales - width: ${widthScale}, height: ${heightScale}`,
-      );
     };
 
     // Create resize observer for real-time updates
@@ -557,7 +543,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
       setImageLoaded(false);
     } else {
       // End of slideshow
-      console.log("Simulation complete");
       // Call the end simulation function
       onEndSimulation();
     }
@@ -611,7 +596,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         y > hotspotRect.top + hotspotRect.height;
 
       if (isOutside) {
-        console.log(`Clicked outside currentItem at x=${x}, y=${y}`);
         setAttemptSequenceData((prevData) => [
           ...prevData,
           {
@@ -622,7 +606,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         ]);
         // Your custom logic for outside click
       } else {
-        console.log("Clicked inside currentItem box — ignoring");
       }
     };
 
@@ -684,7 +667,6 @@ const VisualAudioPreview: React.FC<VisualAudioPreviewProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 

@@ -396,10 +396,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
 
       // Check if current hotspot should be skipped based on settings
       if (shouldSkipHotspot()) {
-        console.log(
-          "Skipping hotspot due to level settings:",
-          currentItem.hotspotType,
-        );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
         return;
@@ -451,7 +447,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -524,9 +519,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
       // Mark image as loaded
       setImageLoaded(true);
 
-      console.log(
-        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
-      );
     });
   };
 
@@ -559,9 +551,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         Math.abs(newScales.height - imageScale.height) > 0.001
       ) {
         setImageScale(newScales);
-        console.log(
-          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
-        );
       }
     }
   }, [imageScale.width, imageScale.height]);
@@ -659,7 +648,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
       setImageLoaded(false);
     } else {
       // End of slideshow - simulation complete
-      console.log("Simulation complete");
       // Call the parent's end simulation handler
       onEndSimulation();
     }
@@ -715,7 +703,6 @@ const VisualChatPreview: React.FC<VisualChatPreviewProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 

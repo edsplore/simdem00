@@ -83,7 +83,6 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
       }
 
       if (response && response.status === 'success') {
-        console.log(`${selectedItem.type} cloned successfully:`, response);
         // Call the success callback to refresh the list
         if (onCloneSuccess) {
           onCloneSuccess();
@@ -163,7 +162,6 @@ const TrainingPlanActionsMenu: React.FC<TrainingPlanActionsMenuProps> = ({
 
   const handleDeleteClick = () => {
     if (selectedItem) {
-      console.log(`Delete ${selectedItem.type} with ID: ${selectedItem.id}`);
     }
     onClose();
   };

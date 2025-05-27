@@ -73,9 +73,6 @@ export const fetchTeams = async (
   leaderUserId: string|null = null
 ): Promise<TeamResponse> => {
   try {
-    console.log(
-      `Fetching teams for workspace: ${workspaceId}, page: ${page}, limit: ${limit}`,
-    );
 
     // Build query parameters
     const params = new URLSearchParams({
@@ -96,7 +93,6 @@ export const fetchTeams = async (
 
     const response = await apiClient.get(`${TEAMS_URL}?${params.toString()}`);
 
-    console.log("Teams API response:", response.data);
 
     return response.data;
   } catch (error) {
@@ -117,7 +113,6 @@ export const fetchTeamDetails = async (
   teamId: string
 ): Promise<Team> => {
   try {
-    console.log(`Fetching details for team ${teamId} in workspace ${workspaceId}`);
 
     const response = await apiClient.get(`${TEAMS_URL}/${teamId}`, {
       headers: {
@@ -125,7 +120,6 @@ export const fetchTeamDetails = async (
       }
     });
 
-    console.log('Team details response:', response.data);
 
     return response.data;
   } catch (error) {

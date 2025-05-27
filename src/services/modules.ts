@@ -178,9 +178,7 @@ export const fetchModules = async (
       }
     }
 
-    console.log('Fetching modules with payload:', payload);
     const response = await apiClient.post('/modules/fetch', payload);
-    console.log('Modules API response:', response.data);
 
     // Return the response with the correct structure
     return {
@@ -219,7 +217,6 @@ export const updateModule = async (
   payload: UpdateModulePayload
 ): Promise<UpdateModuleResponse> => {
   try {
-    console.log(`Updating module ${moduleId} with payload:`, payload);
 
     const response = await apiClient.put(`/modules/${moduleId}/update`, {
       user_id: payload.user_id,
@@ -228,7 +225,6 @@ export const updateModule = async (
       simulations: payload.simulations
     });
 
-    console.log('Update module response:', response.data);
     return response.data;
   } catch (error) {
     console.error(`Error updating module ${moduleId}:`, error);

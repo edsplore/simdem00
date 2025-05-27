@@ -180,7 +180,6 @@ const detectImageType = (binaryData: string): string => {
  */
 const processImageUrl = (imageData: string): string => {
   if (!imageData) {
-    console.log("Empty image data");
     return "";
   }
 
@@ -195,10 +194,6 @@ const processImageUrl = (imageData: string): string => {
           decoded.startsWith("http:") ||
           decoded.startsWith("https:")
         ) {
-          console.log(
-            "Decoded blob URL from base64:",
-            decoded.substring(0, 50) + (decoded.length > 50 ? "..." : ""),
-          );
           return decoded; // Return the decoded URL
         }
       } catch (e) {
@@ -398,7 +393,6 @@ export default function VisualsTab({
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  console.log("visual Images ", visualImages);
 
   // Confirm dialog for deleting the last slide
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -510,7 +504,6 @@ export default function VisualsTab({
     // Skip if we've already initialized (only sync from props once)
     if (didInitializeRef.current) return;
 
-    console.log("Initial images processing:", images);
     if (images && images.length > 0) {
       // Transform the input images to our internal format
       const processedImages = images.map((img) => {
@@ -1081,10 +1074,6 @@ export default function VisualsTab({
 
         // Remove these IDs from the assigned messages set so they become available again
         if (messageIds.length > 0) {
-          console.log(
-            "Releasing message IDs back to unassigned pool:",
-            messageIds,
-          );
           setAssignedScriptMessageIds((prev) => {
             const newSet = new Set(prev);
             messageIds.forEach((id) => newSet.delete(id));
@@ -1257,9 +1246,6 @@ export default function VisualsTab({
 
       // Call create/update simulation for all visual-related types
       if (createSimulation) {
-        console.log(
-          `Updating simulation with slides for ${simulationType} type`,
-        );
 
         // Call the update function
         const response = await createSimulation(formData);
@@ -1277,7 +1263,6 @@ export default function VisualsTab({
             status === "published" ||
             status === "draft"
           ) {
-            console.log("Simulation updated successfully with status:", status);
 
             // Call onComplete to move to the next step
             if (onComplete) {
@@ -1329,7 +1314,6 @@ export default function VisualsTab({
         // For new simulations, just update the local state and close mask mode
         // The masks will be saved when the entire simulation is saved
         setMaskingPhi(false);
-        console.log("Masks will be saved when you save the simulation");
         return;
       }
 
@@ -2275,13 +2259,6 @@ export default function VisualsTab({
                         left: "-9999px",
                       }}
                       onLoad={() => {
-                        console.log(
-                          "Hidden reference image loaded, dimensions:",
-                          {
-                            width: imageRef.current?.naturalWidth,
-                            height: imageRef.current?.naturalHeight,
-                          },
-                        );
                       }}
                       alt=""
                     />

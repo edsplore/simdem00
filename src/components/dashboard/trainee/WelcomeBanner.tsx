@@ -66,7 +66,6 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ userName, trainingData })
       navigate(path);
     } else {
       // If no simulation is found, we could show a message or navigate to a default page
-      console.log('No pending simulations found');
     }
   };
 

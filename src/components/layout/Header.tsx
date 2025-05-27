@@ -62,9 +62,6 @@ const Header: React.FC<HeaderProps> = ({
     const loadUserDetails = async () => {
       if (user?.id && currentWorkspaceId) {
         try {
-          console.log(
-            `Fetching user details for user ${user.id} in workspace ${currentWorkspaceId}`,
-          );
           const userDetails = await fetchUserDetails(
             user.id,
             currentWorkspaceId,

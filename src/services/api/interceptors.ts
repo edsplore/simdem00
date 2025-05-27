@@ -31,7 +31,6 @@ apiClient.interceptors.request.use(
   (config: AxiosRequestConfig): AxiosRequestConfig => {
     // Log request details in development
     if (process.env.NODE_ENV === "development") {
-      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
     }
 
     // Add authorization header if token exists
@@ -68,7 +67,6 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse): AxiosResponse => {
     // Log response in development
     if (process.env.NODE_ENV === "development") {
-      console.log(`API Response: ${response.status} ${response.config.url}`);
     }
     return response;
   },

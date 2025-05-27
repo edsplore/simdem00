@@ -160,8 +160,6 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
           fetchTeams(currentWorkspaceId),
         ]);
 
-        console.log("Users response:", usersResponse);
-        console.log("Teams response:", teamsResponse);
 
         // Process users
         const userAssignees: Assignee[] = Array.isArray(usersResponse)
@@ -192,11 +190,6 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
         // Combine users and teams
         setAssignees([...teamAssignees, ...userAssignees]);
 
-        console.log("Loaded assignees:", {
-          teams: teamAssignees.length,
-          users: userAssignees.length,
-          total: teamAssignees.length + userAssignees.length,
-        });
       } catch (error) {
         console.error("Error loading assignees:", error);
         setError("Failed to load users and teams");
@@ -266,7 +259,6 @@ const AssignSimulationsDialog: React.FC<AssignSimulationsDialogProps> = ({
       // Wait for all team details to be fetched
       const teamsWithDetails = await Promise.all(teamDetailsPromises);
 
-      console.log("Teams with details:", teamsWithDetails);
 
       const response = await createAssignment({
         user_id: user?.id || "user123",

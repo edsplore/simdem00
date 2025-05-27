@@ -117,9 +117,7 @@ export const fetchAssignments = async (
       }
     }
 
-    console.log("Fetching assignments with payload:", payload);
     const response = await apiClient.post("/fetch-assignments", payload);
-    console.log("Assignments API response:", response.data);
 
     // Return the response with the correct structure
     return {

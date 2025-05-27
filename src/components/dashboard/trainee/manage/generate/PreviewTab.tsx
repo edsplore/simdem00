@@ -196,26 +196,17 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
   // FIXED: Update the level settings and log detailed information
   const updateLevelSettings = () => {
-    console.log("📋 Updating level settings for preview...");
-    console.log("Simulation details available:", !!simulationDetails);
-    console.log(
-      "Settings previously initialized:",
-      settingsInitializedRef.current,
-    );
 
     // Only update settings if we have simulation details
     if (!simulationDetails) {
-      console.log("⚠️ No simulation details available for level settings");
       // Don't reset settings if we don't have simulation details
       return;
     }
 
     // For preview ALWAYS use level 1 settings
     const settings = simulationDetails.lvl1;
-    console.log("🔍 Using Level 01 settings for preview:", settings);
 
     if (!settings) {
-      console.log("⚠️ Could not find Level 01 settings for preview");
       return;
     }
 
@@ -226,9 +217,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
     // Mark that settings have been properly initialized at least once
     settingsInitializedRef.current = true;
 
-    console.log("🔄 Updated hide settings for preview:");
-    console.log("Hide agent script:", hideAgentScriptRef.current);
-    console.log("Hide customer script:", hideCustomerScriptRef.current);
   };
 
   // Update the settings whenever simulation details changes
@@ -256,11 +244,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
   useEffect(() => {
     if (simulationType === "audio") {
       webClient.on("conversationStarted", () => {
-        console.log("Conversation started");
       });
 
       webClient.on("conversationEnded", ({ code, reason }) => {
-        console.log("Conversation ended:", code, reason);
         handleEndSimulation();
       });
 
@@ -274,16 +260,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
           const newTranscript = update.transcript;
           const previousTranscript = previousTranscriptRef.current || [];
 
-          console.log("🔄 Transcript update received.");
-          console.log("Current hide settings from refs:");
-          console.log(
-            "- Hide agent (trainee) messages:",
-            hideAgentScriptRef.current,
-          );
-          console.log(
-            "- Hide customer messages:",
-            hideCustomerScriptRef.current,
-          );
 
           setAllMessages((prevMessages) => {
             // Clone the current messages
@@ -297,9 +273,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
               const newMsg = newTranscript[newTranscriptLength - 1];
               const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
 
-              console.log(
-                `📝 NEW MESSAGE: ${isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"} says: "${newMsg.content.substring(0, 30)}${newMsg.content.length > 30 ? "..." : ""}"`,
-              );
 
               // Always add the message to allMessages
               // We'll filter them out when rendering, not when adding to state
@@ -352,14 +325,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
   // Log current state of hide settings when visible messages changes
   useEffect(() => {
-    console.log("⚠️ RENDER: Visible messages count:", visibleMessages.length);
-    console.log("⚠️ RENDER: All messages count:", allMessages.length);
-    console.log(
-      "⚠️ RENDER: Hide settings - Agent:",
-      hideAgentScriptRef.current,
-      "Customer:",
-      hideCustomerScriptRef.current,
-    );
   }, [visibleMessages, allMessages]);
 
   const fetchSimulationData = async () => {
@@ -380,7 +345,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         sim_id: simulationId,
       });
 
-      console.log("Simulation data received:", response.data);
 
       if (response.data.simulation) {
         setSimulationData(response.data.simulation);
@@ -508,14 +472,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
         const response = await startAudioPreview("test_user", simulationId);
 
-        console.log("Audio preview response:", response);
 
         // Store simulation details
         if (response.simulation_details) {
-          console.log("📊 SIMULATION DETAILS RECEIVED");
-          console.log("Level 1 settings:", response.simulation_details.lvl1);
-          console.log("Level 2 settings:", response.simulation_details.lvl2);
-          console.log("Level 3 settings:", response.simulation_details.lvl3);
 
           // Store the full simulation details
           setSimulationDetails(response.simulation_details);
@@ -538,16 +497,13 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
         // Chat type
         setIsCallActive(true);
 
-        console.log("Starting chat preview...");
 
         // Make a single API call to start the chat
         const response = await startChatPreview("test_user", simulationId);
-        console.log("Chat preview response:", response);
 
         // Store the progress ID if provided
         if (response.progress_id) {
           setSimulationProgressId(response.progress_id);
-          console.log("Set simulation progress ID:", response.progress_id);
         }
 
         // If a response is returned, determine who speaks first based on the content
@@ -563,7 +519,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
               text: response.response,
             },
           ]);
-          console.log(`Added initial ${firstSpeaker} message:`, response.response);
         }
       }
     } catch (error) {
@@ -589,7 +544,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({
 
     try {
       // Include the simulation progress ID in the request
-      console.log("Sending message with progress ID:", simulationProgressId);
 
       const response = await startChatPreview(
         "user123",

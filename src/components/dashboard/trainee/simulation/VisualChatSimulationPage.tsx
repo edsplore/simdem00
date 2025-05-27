@@ -424,14 +424,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
-      console.log("Current simulation data:", {
-        slidesCount: simulationData.slidesData?.length || 0,
-        currentSlideIndex,
-        currentSequenceIndex,
-        currentSlide: currentSlide?.imageId || "none",
-        currentSequenceLength: currentSequence?.length || 0,
-        slidesMapSize: slides.size,
-      });
     }
   }, [
     simulationData,
@@ -458,9 +450,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   }, [isPaused, isStarted]);
 
   useEffect(() => {
-    console.log("simulation Data ---- ", simulationData);
-    console.log("Attempt simulation Data ---- ", attemptSequenceData);
-    console.log("Chat Messages Data ---- ", chatMessages);
   }, [simulationData, attemptSequenceData, chatMessages]);
 
   // Reset states when moving to a new item
@@ -496,22 +485,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     if (!currentItem || isProcessing || !imageLoaded || isPaused || !isStarted)
       return;
 
-    console.log("Processing current item:", {
-      type: currentItem.type,
-      role: currentItem.role,
-      hotspotType: currentItem.hotspotType,
-      text: currentItem.text?.substring(0, 30) + "...",
-    });
 
     const processItem = async () => {
       setIsProcessing(true);
 
       // Check if current hotspot should be skipped based on settings
       if (shouldSkipHotspot()) {
-        console.log(
-          "Skipping hotspot due to level settings:",
-          currentItem.hotspotType,
-        );
         moveToNextItem(); // Skip to the next item
         setIsProcessing(false);
         return;
@@ -582,16 +561,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
-            );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
-              console.log(
-                `Processing timeout for ${capturedItem.name}, current attempt data:`,
-                prevData,
-              );
 
               const existingItemIndex = prevData.findIndex(
                 (item) => item.id === capturedItemId,
@@ -607,16 +579,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
               // Also check the ref for any wrong clicks that might not be in state yet
               if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
                 existingWrongClicks = wrongClicksRef.current[capturedItemId];
-                console.log(
-                  `Using wrong clicks from ref for ${capturedItem.name}:`,
-                  existingWrongClicks,
-                );
               }
 
-              console.log(
-                `Final wrong clicks for ${capturedItem.name}:`,
-                existingWrongClicks,
-              );
 
               // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
@@ -630,10 +594,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                 delete timeoutRecord.isClicked;
               }
 
-              console.log(
-                `Adding timeout record for hotspot ${capturedItem.name}:`,
-                JSON.stringify(timeoutRecord),
-              );
 
               let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
@@ -652,10 +612,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
               // Pass the updated data to moveToNextItem
               setTimeout(() => {
-                console.log(
-                  `Moving to next item after timeout with data:`,
-                  newData,
-                );
                 moveToNextItem(newData);
                 setHighlightHotspot(false);
                 setTimeoutActive(false);
@@ -713,7 +669,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       !waitingForUserInput
     ) {
       // We've reached the end of the last slide's sequence
-      // console.log("Reached end of simulation content");
       // // Wait a moment for any final animations/transitions
       // setTimeout(() => {
       //   handleEndChat();
@@ -771,9 +726,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // Mark image as loaded
       setImageLoaded(true);
 
-      console.log(
-        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
-      );
     });
   };
 
@@ -806,9 +758,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         Math.abs(newScales.height - imageScale.height) > 0.001
       ) {
         setImageScale(newScales);
-        console.log(
-          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
-        );
       }
     }
   }, [imageScale.width, imageScale.height]);
@@ -891,11 +840,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
   const handleEndChatWithUpdatedData = async (
     updatedAttemptData: AttemptInterface[],
   ) => {
-    console.log("🔴 END CHAT WITH UPDATED DATA");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingChat) {
-      console.log("Already ending chat, ignoring duplicate request");
       return;
     }
 
@@ -911,7 +858,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Clear any active timeout
@@ -931,15 +877,10 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
 
     try {
-      console.log("Executing end-visual-chat API call");
 
       // Use the updated data directly passed to this function
       const finalAttemptData = updatedAttemptData;
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualChatAttempt function instead of direct axios call
       const response = await endVisualChatAttempt(
@@ -950,7 +891,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       );
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
@@ -979,7 +919,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End chat flow completed");
       setIsEndingChat(false);
     }
   };
@@ -1004,18 +943,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       return;
     }
 
-    console.log(
-      "Moving to next item from",
-      currentSequenceIndex,
-      "in slide",
-      currentSlideIndex,
-      "Total slides:",
-      slidesData.length,
-      "Current sequence length:",
-      currentSequence.length,
-      "Updated data provided:",
-      !!updatedAttemptData,
-    );
 
     // Check if this is the last item in the entire simulation
     const isLastSlide = currentSlideIndex >= slidesData.length - 1;
@@ -1023,40 +950,26 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       currentSequenceIndex >= currentSequence.length - 1;
     const isLastItem = isLastSlide && isLastItemInSequence;
 
-    console.log("Navigation check:", {
-      isLastSlide,
-      isLastItemInSequence,
-      isLastItem,
-      currentSlideIndex,
-      totalSlides: slidesData.length,
-      currentSequenceIndex,
-      sequenceLength: currentSequence.length,
-    });
 
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
-      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
-      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
       setImageLoaded(false);
     } else if (isLastItem) {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete - last item reached");
 
       // Use the updated data if provided
       if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
-        console.log("Using updated attempt data for end chat");
         // Add a short delay to ensure state updates are processed
         setTimeout(() => {
           handleEndChatWithUpdatedData(updatedAttemptData);
         }, 300);
       } else {
-        console.log("No updated data provided, using regular end chat");
         // Add a short delay to ensure state updates are processed
         setTimeout(() => {
           handleEndChat();
@@ -1090,11 +1003,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log("Hotspot clicked:", hotspotType, "ID:", currentItem.id);
 
     // For coaching tips, handle differently - they don't need to be tracked
     if (hotspotType === "coaching") {
-      console.log("Coaching tip clicked, dismissing and moving to next item");
       setShowCoachingTip(false);
 
       // Add a processing flag to prevent double-clicks
@@ -1140,7 +1051,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         clickRecord.isClicked = true;
       }
 
-      console.log("Adding click record:", JSON.stringify(clickRecord));
 
       if (existingItemIndex >= 0) {
         // Make a copy of the data
@@ -1207,7 +1117,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 
@@ -1383,10 +1292,8 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         attemptType, // Pass the attemptType
       );
 
-      console.log("Start visual-chat response:", response);
 
       if (response.simulation) {
-        console.log("Setting simulation data");
         setSimulationData(response.simulation);
         setSimulationProgressId(response.id);
         setCallStatus("Online");
@@ -1395,7 +1302,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       // Process image data
       if (response.images && response.images.length > 0) {
         const newSlides = new Map();
-        console.log(`Processing ${response.images.length} images`);
         for (const image of response.images) {
           // Convert base64 string to Uint8Array
           const binaryString = atob(image.image_data);
@@ -1408,11 +1314,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           // Create blob from Uint8Array
           const blob = new Blob([bytes], { type: "image/png" });
           const blobUrl = URL.createObjectURL(blob);
-          console.log(`Created blob URL for image ${image.image_id}`);
           newSlides.set(image.image_id, blobUrl);
         }
         setSlides(newSlides);
-        console.log(`Set ${newSlides.size} slides`);
       }
     } catch (error) {
       console.error("Error starting visual-chat simulation:", error);
@@ -1426,11 +1330,9 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   // Handle end chat implementation
   const handleEndChat = async () => {
-    console.log("🔴 END CHAT BUTTON PRESSED");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingChat) {
-      console.log("Already ending chat, ignoring duplicate request");
       return;
     }
 
@@ -1446,7 +1348,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Clear any active timeout
@@ -1466,7 +1367,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
     }
 
     try {
-      console.log("Executing end-visual-chat API call");
 
       // Create a direct copy of the data that we can manipulate synchronously
       let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
@@ -1491,9 +1391,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             !(existingRecord && (existingRecord as any).isClicked) &&
             !wasClicked);
 
-        console.log(
-          `Processing current hotspot ${currentItem.name} for end chat, timed out: ${isTimedOut}`,
-        );
 
         if (isTimedOut) {
           // Get existing wrong clicks if any
@@ -1567,10 +1464,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         return item;
       });
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualChatAttempt function instead of direct axios call
       const response = await endVisualChatAttempt(
@@ -1581,7 +1474,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       );
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
@@ -1610,7 +1502,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End chat flow completed");
       setIsEndingChat(false);
     }
   };
@@ -1634,7 +1525,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
       const hotspotElement = target.closest('[data-hotspot="true"]');
       if (hotspotElement) {
         // This click is on the actual hotspot, don't record as wrong click
-        console.log("Click on hotspot element, not recording as wrong click");
         return;
       }
 
@@ -1654,17 +1544,11 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
         if (clickWithinHotspot) {
           // Click is within hotspot bounds, don't record as wrong click
-          console.log(
-            "Click within hotspot bounds, not recording as wrong click",
-          );
           return;
         }
       }
 
       // Record as wrong click
-      console.log(
-        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
-      );
 
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
@@ -1683,10 +1567,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
           wrongClicksRef.current[currentItem.id] = [];
         }
         wrongClicksRef.current[currentItem.id].push(newWrongClick);
-        console.log(
-          `Stored wrong click in ref for ${currentItem.id}:`,
-          wrongClicksRef.current[currentItem.id],
-        );
       }
 
       // Also update state
@@ -1700,10 +1580,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             ...existingItem,
             wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
           };
-          console.log(
-            `Updated wrong clicks for ${currentItem.id}:`,
-            updatedItem.wrong_clicks,
-          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
             updatedItem,
@@ -1713,9 +1589,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
             ...currentItem,
             wrong_clicks: [newWrongClick],
           };
-          console.log(
-            `Created new record with wrong click for ${currentItem.id}`,
-          );
           return [...prevData, newItem];
         }
       });
@@ -1744,7 +1617,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
@@ -2311,7 +2183,6 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
                                 <Box
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log("Highlight hotspot clicked");
                                     handleHotspotClick(e);
                                   }}
                                   data-hotspot="true"

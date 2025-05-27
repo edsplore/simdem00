@@ -180,9 +180,7 @@ export const fetchSimulations = async (
       }
     }
 
-    console.log("Fetching simulations with payload:", payload);
     const response = await apiClient.post("/simulations/fetch", payload);
-    console.log("Simulations API response:", response.data);
 
     // Return the response with the correct structure based on the API response
     return {

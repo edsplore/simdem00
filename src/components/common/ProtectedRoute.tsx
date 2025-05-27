@@ -43,7 +43,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       user.permissions["dashboard-admin"];
 
       if (!hasAnyDashboardPermission) {
-        console.log('No dashboard permissions found');
         return (
           <Navigate
             to={buildPathWithWorkspace(
@@ -61,7 +60,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // For other paths, check permission as usual
     if (!hasPermission(path)) {
-      console.log('Permission denied for path:', path);
 
       // Redirect to unauthorized page instead of dashboard
       return (

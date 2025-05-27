@@ -308,7 +308,6 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       Object.keys(settings).length > 0 &&
       !hasInitializedFromSettings.current
     ) {
-      console.log("Initializing AdvancedSettings form - one time only");
 
       // Delay initialization slightly to ensure settings are stable
       setTimeout(() => {

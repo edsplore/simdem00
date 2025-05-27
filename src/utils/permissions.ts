@@ -162,17 +162,13 @@ export const hasPermission = (path: string): boolean => {
     const user = authService.getCurrentUser();
 
     // Log for debugging
-    console.log(`Checking permission for path: ${path}`);
-    console.log('Current user:', user);
 
     if (!user) {
-      console.log('No user found, denying access');
       return false;
     }
 
     // For paths that don't require specific permissions
     if (!PERMISSION_MAP[path]) {
-      console.log(`No permission mapping for path ${path}, allowing access`);
       return true;
     }
 
@@ -180,8 +176,6 @@ export const hasPermission = (path: string): boolean => {
     const permissionKey = PERMISSION_MAP[path];
     const hasAccess = user.permissions[permissionKey] || false;
 
-    console.log(`Permission key: ${permissionKey}, Has access: ${hasAccess}`);
-    console.log('User permissions:', user.permissions);
 
     return hasAccess;
   } catch (error) {

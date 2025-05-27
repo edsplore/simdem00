@@ -169,17 +169,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
   // FIXED: Update the level settings and log detailed information
   const updateLevelSettings = () => {
-    console.log("📋 Updating level settings...");
-    console.log("Current level:", level);
-    console.log("Simulation details available:", !!simulationDetails);
-    console.log(
-      "Settings previously initialized:",
-      settingsInitializedRef.current,
-    );
 
     // Only update settings if we have simulation details
     if (!simulationDetails) {
-      console.log("⚠️ No simulation details available for level settings");
       // Don't reset settings if we don't have simulation details
       return;
     }
@@ -188,17 +180,13 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
     if (level === "Level 01") {
       settings = simulationDetails.lvl1;
-      console.log("🔍 Using Level 01 settings:", settings);
     } else if (level === "Level 02") {
       settings = simulationDetails.lvl2;
-      console.log("🔍 Using Level 02 settings:", settings);
     } else if (level === "Level 03") {
       settings = simulationDetails.lvl3;
-      console.log("🔍 Using Level 03 settings:", settings);
     }
 
     if (!settings) {
-      console.log("⚠️ Could not find settings for level:", level);
       return;
     }
 
@@ -209,9 +197,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     // Mark that settings have been properly initialized at least once
     settingsInitializedRef.current = true;
 
-    console.log("🔄 Updated hide settings:");
-    console.log("Hide agent script:", hideAgentScriptRef.current);
-    console.log("Hide customer script:", hideCustomerScriptRef.current);
   };
 
   // Update the settings whenever simulation details or level changes
@@ -221,14 +206,12 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
   useEffect(() => {
     webClient.on("conversationStarted", (event) => {
-      console.log("Conversation started:", event);
       if (event.call_id) {
         setCallId(event.call_id);
       }
     });
 
     webClient.on("conversationEnded", ({ code, reason }) => {
-      console.log("Conversation ended:", code, reason);
       // Only call handleEndCall if not already ending the call
       if (!isEndingCall) {
         handleEndCall();
@@ -245,13 +228,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         const newTranscript = update.transcript;
         const previousTranscript = previousTranscriptRef.current || [];
 
-        console.log("🔄 Transcript update received.");
-        console.log("Current hide settings from refs:");
-        console.log(
-          "- Hide agent (trainee) messages:",
-          hideAgentScriptRef.current,
-        );
-        console.log("- Hide customer messages:", hideCustomerScriptRef.current);
 
         setAllMessages((prevMessages) => {
           // Clone the current messages
@@ -265,13 +241,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
             const newMsg = newTranscript[newTranscriptLength - 1];
             const isSpeakerCustomer = newMsg.role === "agent"; // "agent" in Retell maps to "customer" in our UI
 
-            console.log(
-              `📝 NEW MESSAGE: ${
-                isSpeakerCustomer ? "CUSTOMER" : "TRAINEE"
-              } says: "${newMsg.content.substring(0, 30)}${
-                newMsg.content.length > 30 ? "..." : ""
-              }"`,
-            );
 
             // Always add the message to allMessages
             // We'll filter them out when rendering, not when adding to state
@@ -371,15 +340,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         attempt_type: attemptType, // Pass the attemptType
       });
 
-      console.log("Start audio response:", response);
 
       // Log detailed info about the simulation details, especially level settings
       if (response.simulation_details) {
-        console.log("📊 SIMULATION DETAILS RECEIVED");
-        console.log("Level 1 settings:", response.simulation_details.lvl1);
-        console.log("Level 2 settings:", response.simulation_details.lvl2);
-        console.log("Level 3 settings:", response.simulation_details.lvl3);
-        console.log("Selected level:", level);
 
         // Store simulation details
         setSimulationDetails(response.simulation_details);
@@ -409,11 +372,9 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   };
 
   const handleEndCall = async () => {
-    console.log("🔴 END CALL BUTTON PRESSED");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
       return;
     }
 
@@ -426,27 +387,18 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     setIsEndingCall(true);
 
     // Stop the WebRTC call first
-    console.log("Stopping WebRTC call");
     webClient.stopCall();
 
     // Stop the timer
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Update UI state
     setIsCallActive(false);
 
     // Log current state to help with debugging
-    console.log("Call end state:", {
-      simulationId,
-      simulationProgressId,
-      callId,
-      userId,
-      isCallActive: false,
-    });
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
@@ -468,17 +420,14 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
       call_id: callId,
     };
 
-    console.log("API Parameters prepared:", apiParams);
 
     // Use a timeout to ensure the API call runs even if there are issues with the state updates
     setTimeout(async () => {
       try {
-        console.log("Executing end-audio API call");
         // Use the endAudioSimulation function instead of direct axios call
         const response = await endAudioSimulation(apiParams);
 
         if (response && response.scores) {
-          console.log("Setting scores and showing completion screen");
           setScores(response.scores);
           setDuration(response.duration || elapsedTime);
 
@@ -508,7 +457,6 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
           onBackToList();
         }
       } finally {
-        console.log("End call flow completed");
         setIsEndingCall(false);
       }
     }, 500); // Small delay to ensure state updates have propagated
@@ -538,21 +486,12 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
 
   // Log current state of hide settings when visible messages changes
   useEffect(() => {
-    console.log("⚠️ RENDER: Visible messages count:", visibleMessages.length);
-    console.log("⚠️ RENDER: All messages count:", allMessages.length);
-    console.log(
-      "⚠️ RENDER: Hide settings - Agent:",
-      hideAgentScriptRef.current,
-      "Customer:",
-      hideCustomerScriptRef.current,
-    );
   }, [visibleMessages, allMessages]);
 
   return (

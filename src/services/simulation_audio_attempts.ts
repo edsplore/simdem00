@@ -134,14 +134,12 @@ export const endAudioSimulation = async (
   params: EndAudioSimulationRequest,
 ): Promise<EndAudioSimulationResponse> => {
   try {
-    console.log("Executing end-audio API call with params:", params);
 
     const response = await apiClient.post<EndAudioSimulationResponse>(
       "/simulations/end-audio",
       params,
     );
 
-    console.log("End audio API success:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error ending audio simulation:", error);

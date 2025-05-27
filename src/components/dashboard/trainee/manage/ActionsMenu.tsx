@@ -79,7 +79,6 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
       const response = await cloneSimulation(user.id, selectedRow.id);
 
       if (response && response.status === "success") {
-        console.log("Simulation cloned successfully:", response);
         // Call the success callback to refresh the simulations list
         if (onCloneSuccess) {
           onCloneSuccess();
@@ -109,7 +108,6 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
         response &&
         (response.status === "archived" || response.status === "success")
       ) {
-        console.log("Simulation archived successfully:", response);
         if (onArchiveSuccess) {
           onArchiveSuccess();
         }
@@ -135,7 +133,6 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
     try {
       const response = await unarchiveSimulation(user.id, selectedRow.id);
       if (response && (response.status === "success" || response.status === "unarchived")) {
-        console.log("Simulation unarchived successfully:", response);
         if (onUnarchiveSuccess) {
           onUnarchiveSuccess();
         }

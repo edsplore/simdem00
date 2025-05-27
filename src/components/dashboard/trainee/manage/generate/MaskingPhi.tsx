@@ -328,7 +328,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
         const blob = new Blob([bytes], { type: mimeType });
         const blobUrl = URL.createObjectURL(blob);
         setProcessedImageUrl(blobUrl);
-        console.log("Created blob URL from binary data:", blobUrl);
       } catch (e) {
         console.error("Failed to process image data:", e);
         setImageError("Failed to process image data");
@@ -412,9 +411,6 @@ const MaskingPhi: React.FC<MaskingPhiProps> = ({
               height: heightScale,
             });
 
-            console.log(
-              `Image scales updated - width: ${widthScale}, height: ${heightScale}`,
-            );
           }
         }
       }

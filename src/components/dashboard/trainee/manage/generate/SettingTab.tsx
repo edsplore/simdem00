@@ -30,7 +30,9 @@ const DEFAULT_AUDIO_VOICE_ID = "11labs-Adrian";
 const DEFAULT_VISUAL_AUDIO_VOICE_ID = "pNInz6obpgDQGcFmaJgB";
 
 const getDefaultVoiceId = (simType?: string) =>
-  simType === "visual-audio" ? DEFAULT_VISUAL_AUDIO_VOICE_ID : DEFAULT_AUDIO_VOICE_ID;
+  simType === "visual-audio"
+    ? DEFAULT_VISUAL_AUDIO_VOICE_ID
+    : DEFAULT_AUDIO_VOICE_ID;
 
 interface SettingsTabProps {
   simulationId?: string;
@@ -341,7 +343,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                     "Simulation Completion",
                     "Number of Repetition Allowed",
                     "Simulation Scoring Metrics",
-                    "Sym Practice",
+                    "Sim Practice",
                   ].map((item) => (
                     <NavItem
                       key={item}

@@ -206,7 +206,7 @@ const PlaybackChat = ({ messages }: PlaybackChatProps) => {
                                   variant="caption"
                                   sx={{ ml: 1, color: "primary.dark" }} // Ensure Typography color is primary.dark
                                 >
-                                  Sym Accuracy
+                                  Sim Accuracy
                                 </Typography>
                               </Box>
                             </Stack>

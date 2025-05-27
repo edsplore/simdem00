@@ -524,7 +524,7 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
             sx={{ fontSize: "13px", mb: 2 }}
           >
             Generate script for {simulationType || "simulation"} scenarios using
-            SymAI
+            SimAI
           </Typography>
           <ActionButton
             variant="contained"

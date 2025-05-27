@@ -1184,7 +1184,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
     "Number of Repetition Allowed",
     "Simulation Scoring Metrics",
     "Score Metric Weightage",
-    "Sym Practice",
+    "Sim Practice",
     "Minimum Passing Score",
   ];
 

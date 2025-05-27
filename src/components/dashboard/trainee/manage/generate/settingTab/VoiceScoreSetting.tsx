@@ -1289,10 +1289,10 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
 
           <Divider sx={{ mb: 3, bgcolor: "grey.300" }} />
 
-          {/* Sym Practice */}
-          <Box sx={{ mb: 3 }} data-section="Sym Practice">
+          {/* Sim Practice */}
+          <Box sx={{ mb: 3 }} data-section="Sim Practice">
             <Typography variant="h6" gutterBottom>
-              Sym Practice
+              Sim Practice
             </Typography>
             <Typography color="text.secondary" gutterBottom>
               Allows trainees to practice before test without impacting scores

@@ -1166,7 +1166,6 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     setResizeOriginal(null);
   };
 
-  // Improved calculateDialogPosition function
   const calculateDialogPosition = (hotspot: Partial<Hotspot>) => {
     if (
       !containerRef.current ||
@@ -1177,129 +1176,30 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
     )
       return;
 
-    const img = imageElementRef.current;
-    if (!img) return;
-
-    const imgRect = img.getBoundingClientRect();
-    const containerRect = containerRef.current.getBoundingClientRect();
-
-    // Calculate offset of image within container
-    const offsetX = imgRect.left - containerRect.left;
-    const offsetY = imgRect.top - containerRect.top;
-
     const dialogHeight = 480; // Fixed dialog height
     const dialogWidth = 400; // Fixed dialog width
-    const padding = 16; // Padding from edges
-
-    // Use getScaledCoordinates for consistent coordinate handling
-    const renderedCoords = getScaledCoordinates(
-      hotspot.percentageCoordinates || hotspot.coordinates,
-      img,
-    );
-
-    if (!renderedCoords) return;
+    const padding = 90; // Increased padding from edges
 
     // Get accurate viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // Calculate the center position of the hotspot
-    const hotspotCenterX = renderedCoords.left + renderedCoords.width / 2;
-    const hotspotCenterY = renderedCoords.top + renderedCoords.height / 2;
+    // Always position in top-right corner with more padding
+    let left = viewportWidth - dialogWidth - padding - 90;
+    let top = padding + 20; // Additional offset from top
 
-    // Start with centered position relative to hotspot
-    let left = containerRect.left + hotspotCenterX - dialogWidth / 2;
-    let top = containerRect.top + hotspotCenterY - dialogHeight / 2;
-
-    // Ensure dialog is within viewport bounds
+    // Ensure dialog is within viewport bounds (in case of very small screens)
     // Left edge
     if (left < padding) {
       left = padding;
-    }
-    // Right edge
-    if (left + dialogWidth > viewportWidth - padding) {
-      left = viewportWidth - dialogWidth - padding;
     }
     // Top edge
     if (top < padding) {
       top = padding;
     }
-    // Bottom edge
+    // Bottom edge - in case dialog height is larger than viewport
     if (top + dialogHeight > viewportHeight - padding) {
       top = viewportHeight - dialogHeight - padding;
-    }
-
-    // If dialog would overlap with the hotspot too much, offset it
-    const overlap = {
-      left: Math.max(
-        0,
-        containerRect.left + renderedCoords.left + renderedCoords.width - left,
-      ),
-      right: Math.max(
-        0,
-        left + dialogWidth - (containerRect.left + renderedCoords.left),
-      ),
-      top: Math.max(
-        0,
-        containerRect.top + renderedCoords.top + renderedCoords.height - top,
-      ),
-      bottom: Math.max(
-        0,
-        top + dialogHeight - (containerRect.top + renderedCoords.top),
-      ),
-    };
-
-    const significantOverlap =
-      (overlap.left > renderedCoords.width * 0.8 &&
-        overlap.right > renderedCoords.width * 0.8) ||
-      (overlap.top > renderedCoords.height * 0.8 &&
-        overlap.bottom > renderedCoords.height * 0.8);
-
-    if (significantOverlap) {
-      // Try positioning to the right of the hotspot first
-      if (
-        containerRect.left +
-          renderedCoords.left +
-          renderedCoords.width +
-          dialogWidth +
-          padding <=
-        viewportWidth
-      ) {
-        left =
-          containerRect.left +
-          renderedCoords.left +
-          renderedCoords.width +
-          padding;
-      }
-      // Or to the left if there's more space
-      else if (
-        containerRect.left + renderedCoords.left - dialogWidth - padding >=
-        0
-      ) {
-        left = containerRect.left + renderedCoords.left - dialogWidth - padding;
-      }
-      // Or below the hotspot
-      else if (
-        containerRect.top +
-          renderedCoords.top +
-          renderedCoords.height +
-          dialogHeight +
-          padding <=
-        viewportHeight
-      ) {
-        top =
-          containerRect.top +
-          renderedCoords.top +
-          renderedCoords.height +
-          padding;
-      }
-      // Or above if possible
-      else if (
-        containerRect.top + renderedCoords.top - dialogHeight - padding >=
-        0
-      ) {
-        top = containerRect.top + renderedCoords.top - dialogHeight - padding;
-      }
     }
 
     setDialogPosition({ top, left });
@@ -1813,10 +1713,7 @@ const ImageHotspot: React.FC<ImageHotspotProps> = ({
             height: `${renderedCoords.height}px`,
             border: "2px solid #00AB55 ",
             backgroundColor: masking.settings?.blur_mask
-              ? withAlpha(
-                  masking.settings?.color || "rgba(0,0,0,1)",
-                  0.4,
-                )
+              ? withAlpha(masking.settings?.color || "rgba(0,0,0,1)", 0.4)
               : masking.settings?.color,
             cursor: "pointer",
             filter: "none",

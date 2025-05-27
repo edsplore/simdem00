@@ -28,7 +28,6 @@ import {
 import {
   Search as SearchIcon,
   Clear as ClearIcon,
-  RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../DashboardContent';
 import AssignTrainingPlanDialog from './AssignTrainingPlanDialog';
@@ -127,13 +126,6 @@ const AssignSimulationsPage = () => {
   // Check if user has create permission for assign-simulations
   const canAssignSimulations = hasCreatePermission('assign-simulations');
 
-  // Check if any filters are applied
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchQuery !== "" ||
-      selectedCreator !== "Created By"
-    );
-  }, [searchQuery, selectedCreator]);
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<AssignmentPaginationParams>(() => {
@@ -380,13 +372,6 @@ const AssignSimulationsPage = () => {
     setSearchQuery("");
   };
 
-  // New function to reset all filters
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setSelectedCreator("Created By");
-    setCreatorSearchQuery("");
-    setPage(0);
-  };
 
   const getButtonText = () => {
     switch (currentTab) {
@@ -707,28 +692,6 @@ const AssignSimulationsPage = () => {
                 sx={{ width: 200 }}
               />
 
-              {/* Reset Filters Button */}
-              <Tooltip title="Reset all filters">
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={<ResetIcon />}
-                    onClick={handleResetFilters}
-                    disabled={!hasActiveFilters}
-                    sx={{
-                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
-                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
-                      "&:hover": {
-                        borderColor: "#3538CD",
-                        bgcolor: "#F5F6FF",
-                      },
-                      borderRadius: 2,
-                      height: 40,
-                    }}
-                  >
-                  </Button>
-                </span>
-              </Tooltip>
             </Stack>
           </Stack>
 

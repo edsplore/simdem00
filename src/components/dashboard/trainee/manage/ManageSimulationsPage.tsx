@@ -34,7 +34,6 @@ import {
   LockOutlined as LockIcon,
   Clear as ClearIcon,
   FilterAlt as FilterIcon,
-  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import DashboardContent from "../../DashboardContent";
 import ActionsMenu from "./ActionsMenu";
@@ -166,17 +165,6 @@ const ManageSimulationsPage = () => {
   // Check if user has create permission for manage-simulations
   const canCreateSimulation = hasCreatePermission("manage-simulations");
 
-  // Check if any filters are applied
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchQuery !== "" ||
-      selectedTags !== "All Tags" ||
-      selectedDepartment !== "All Departments" ||
-      selectedDivision !== "All Divisions" ||
-      selectedCreator !== "Created By" ||
-      currentTab !== "All"
-    );
-  }, [searchQuery, selectedTags, selectedDepartment, selectedDivision, selectedCreator, currentTab]);
 
   // Create a memoized pagination params object
   const paginationParams = useMemo<SimulationPaginationParams>(() => {
@@ -511,20 +499,6 @@ const ManageSimulationsPage = () => {
     setSearchQuery("");
   };
 
-  // New function to reset all filters
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setSelectedTags("All Tags");
-    setSelectedDepartment("All Departments");
-    setSelectedDivision("All Divisions");
-    setSelectedCreator("Created By");
-    setCreatorSearchQuery("");
-    setTagsSearchQuery("");
-    setDepartmentSearchQuery("");
-    setDivisionSearchQuery("");
-    setCurrentTab("All");
-    setPage(0);
-  };
 
   // Helper function to get user name from ID
   const getUserName = (userId: string): string => {
@@ -1051,28 +1025,6 @@ const ManageSimulationsPage = () => {
                 sx={{ width: 200 }}
               />
 
-              {/* Reset Filters Button */}
-              <Tooltip title="Reset all filters">
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={<ResetIcon />}
-                    onClick={handleResetFilters}
-                    disabled={!hasActiveFilters}
-                    sx={{
-                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
-                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
-                      "&:hover": {
-                        borderColor: "#3538CD",
-                        bgcolor: "#F5F6FF",
-                      },
-                      borderRadius: 2,
-                      height: 40,
-                    }}
-                  >
-                  </Button>
-                </span>
-              </Tooltip>
             </Stack>
           </Stack>
 

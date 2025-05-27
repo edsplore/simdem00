@@ -27,7 +27,6 @@ import {
   CalendarMonth as CalendarIcon,
   KeyboardArrowDown as ArrowDownIcon,
   Clear as ClearIcon,
-  RestartAlt as ResetIcon,
 } from "@mui/icons-material";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -96,15 +95,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
       .join(" ");
   };
 
-  // Check if any filters are applied
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchQuery !== "" ||
-      statusFilter !== "all" ||
-      dateRange[0] !== null ||
-      dateRange[1] !== null
-    );
-  }, [searchQuery, statusFilter, dateRange]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -166,13 +156,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
     console.log("Date range applied:", dateRange);
   };
 
-  // New function to reset all filters
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setDateRange([null, null]);
-    setStatusFilter("all");
-    setCurrentPage(1);
-  };
 
   const isDateInRange = (dateStr: string | null) => {
     if (!dateStr) return true;
@@ -412,27 +395,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
               <MenuItem value="over_due">Overdue</MenuItem>
             </Select>
 
-            {/* Reset Filters Button */}
-            <Tooltip title="Reset all filters">
-              <span>
-                <Button
-                  variant="outlined"
-                  startIcon={<ResetIcon />}
-                  onClick={handleResetFilters}
-                  disabled={!hasActiveFilters}
-                  sx={{
-                    borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
-                    color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
-                    "&:hover": {
-                      borderColor: "#3538CD",
-                      bgcolor: "#F5F6FF",
-                    },
-                    borderRadius: 2,
-                    height: 40,
-                  }}
-                ></Button>
-              </span>
-            </Tooltip>
           </Stack>
         </Paper>
 

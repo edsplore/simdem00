@@ -837,7 +837,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
                 sx={{ color: "black", flexGrow: 1 }}
               >
                 <span style={{ fontWeight: "normal" }}>Call with </span>
-                <span style={{ fontWeight: "bold" }}>Lewis Simmons</span>
+                <span style={{ fontWeight: "bold" }}>Customer</span>
                 <span style={{ fontWeight: "normal" }}>
                   {" "}
                   {formatTime(elapsedTime)}

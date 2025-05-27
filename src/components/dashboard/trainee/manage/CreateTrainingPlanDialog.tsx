@@ -437,12 +437,18 @@ const CreateTrainingPlanDialog: React.FC<CreateTrainingPlanDialogProps> = ({
 
                     if (isNewOption) {
                       return (
-                        <ListItem {...props} key={`create-${option}`}>
+                        <ListItem
+                          {...props}
+                          key={`create-${option}`}
+                          button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCreateTag(option);
+                          }}
+                        >
                           <ListItemText
                             primary={
-                              <Box
-                                sx={{ display: "flex", alignItems: "center" }}
-                              >
+                              <Box sx={{ display: "flex", alignItems: "center" }}>
                                 <Typography>Create "{option}"</Typography>
                                 <Button
                                   size="small"

@@ -402,34 +402,40 @@ const CreateModuleDialog: React.FC<CreateModuleDialogProps> = ({
                       (tag) => tag.name === option,
                     );
 
-                    if (isNewOption) {
-                      return (
-                        <ListItem {...props} key={`create-${option}`}>
-                          <ListItemText
-                            primary={
-                              <Box
-                                sx={{ display: "flex", alignItems: "center" }}
-                              >
-                                <Typography>Create "{option}"</Typography>
-                                <Button
-                                  size="small"
-                                  startIcon={<AddIcon />}
-                                  variant="contained"
-                                  color="primary"
-                                  sx={{ ml: 2 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCreateTag(option);
-                                  }}
-                                  disabled={isCreatingTag}
-                                >
-                                  {isCreatingTag ? "Creating..." : "Create"}
-                                </Button>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      );
+                      if (isNewOption) {
+                        return (
+                          <ListItem
+                            {...props}
+                            key={`create-${option}`}
+                            button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCreateTag(option);
+                            }}
+                          >
+                            <ListItemText
+                              primary={
+                                <Box sx={{ display: "flex", alignItems: "center" }}>
+                                  <Typography>Create "{option}"</Typography>
+                                  <Button
+                                    size="small"
+                                    startIcon={<AddIcon />}
+                                    variant="contained"
+                                    color="primary"
+                                    sx={{ ml: 2 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCreateTag(option);
+                                    }}
+                                    disabled={isCreatingTag}
+                                  >
+                                    {isCreatingTag ? "Creating..." : "Create"}
+                                  </Button>
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                        );
                     }
 
                     return (

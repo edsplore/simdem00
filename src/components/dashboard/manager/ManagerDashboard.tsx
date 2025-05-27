@@ -1935,7 +1935,7 @@ const ManagerDashboard = () => {
             ...trainee,
             avgScore:
               trainee.status && trainee.status.toLowerCase() === "in_progress"
-                ? "NA"
+                ? null
                 : trainee.avgScore,
           }));
           return { ...entity, trainees: processedTrainees };

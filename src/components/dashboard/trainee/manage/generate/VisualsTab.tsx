@@ -377,8 +377,12 @@ export default function VisualsTab({
   createSimulation,
   simulationType,
 }: VisualsTabProps) {
-  const { scriptData, assignedScriptMessageIds, setAssignedScriptMessageIds } =
-    useSimulationWizard();
+  const {
+    scriptData,
+    assignedScriptMessageIds,
+    setAssignedScriptMessageIds,
+    isPublished,
+  } = useSimulationWizard();
 
   const { id } = useParams<{ id: string }>();
 
@@ -422,6 +426,9 @@ export default function VisualsTab({
     simulationType === "visual-audio" || simulationType === "visual-chat";
   // Check if this is pure "visual" type (no script)
   const isPureVisual = simulationType === "visual";
+
+  // Check if this is a new simulation that hasn't been saved yet
+  const isNewSimulation = !id || id === "new" || !isPublished;
 
   // Memoize the current sequence to prevent unnecessary recalculations
   const selectedImage = useMemo(
@@ -1183,7 +1190,31 @@ export default function VisualsTab({
           }
         });
 
-        const masking = Array.isArray(img.masking) ? img.masking : [];
+        // Process masking items to ensure they're properly formatted
+        const masking = Array.isArray(img.masking)
+          ? img.masking.map((maskingItem) => {
+              if (maskingItem.type === "masking" && maskingItem.content) {
+                return {
+                  id: maskingItem.id,
+                  type: maskingItem.type,
+                  content: {
+                    id: maskingItem.content.id,
+                    type: maskingItem.content.type,
+                    coordinates: maskingItem.content.coordinates,
+                    percentageCoordinates:
+                      maskingItem.content.percentageCoordinates,
+                    settings: maskingItem.content.settings || {
+                      color: "#000000",
+                      solid_mask: true,
+                      blur_mask: false,
+                    },
+                  },
+                  timestamp: maskingItem.timestamp,
+                };
+              }
+              return maskingItem;
+            })
+          : [];
 
         // Create a clean image URL that doesn't include any base64 data
         // The server will use the uploaded file or existing server-side image
@@ -1203,13 +1234,13 @@ export default function VisualsTab({
           }
         }
 
-        // Return complete slide data object
+        // Return complete slide data object including masking
         return {
           imageId: img.id,
           imageName: img.name,
           imageUrl: cleanImageUrl, // Use the clean URL or empty string
           sequence,
-          masking,
+          masking, // Include masking data here
         };
       });
 
@@ -1292,11 +1323,23 @@ export default function VisualsTab({
         setError("Image not selected or Masking List not found");
         return;
       }
+
+      // Check if this is a new simulation (not yet saved)
+      if (isNewSimulation) {
+        // For new simulations, just update the local state and close mask mode
+        // The masks will be saved when the entire simulation is saved
+        setMaskingPhi(false);
+        console.log("Masks will be saved when you save the simulation");
+        return;
+      }
+
+      // For existing simulations, proceed with the API call
       const simulationId = id || "";
       const imageId = selectedImageId || "";
       const maskingData = selectedImage.masking || [];
       const response: UpdateImageMaskingObjectResponse =
         await updateSimulationWithMasking(simulationId, imageId, maskingData);
+
       if (response) {
         if (response.status === "success") {
           setMaskingPhi(false);
@@ -1704,48 +1747,48 @@ export default function VisualsTab({
             // Update the visualImage with the masking information
             const finalMasking = maskPhiResponse.masking.rectangles.map(
               (rectangle) => {
-              // Create a coordinates object with both absolute and percentage values if available
-              const maskingCoordinates: any = {
-                x: parseInt(rectangle.x),
-                y: parseInt(rectangle.y),
-                width: parseInt(rectangle.width),
-                height: parseInt(rectangle.height),
-              };
+                // Create a coordinates object with both absolute and percentage values if available
+                const maskingCoordinates: any = {
+                  x: parseInt(rectangle.x),
+                  y: parseInt(rectangle.y),
+                  width: parseInt(rectangle.width),
+                  height: parseInt(rectangle.height),
+                };
 
-              // Include percentage coordinates if they exist in the response
-              if (
-                rectangle.xPercent !== undefined &&
-                rectangle.yPercent !== undefined &&
-                rectangle.widthPercent !== undefined &&
-                rectangle.heightPercent !== undefined
-              ) {
-                maskingCoordinates.xPercent = rectangle.xPercent;
-                maskingCoordinates.yPercent = rectangle.yPercent;
-                maskingCoordinates.widthPercent = rectangle.widthPercent;
-                maskingCoordinates.heightPercent = rectangle.heightPercent;
-              }
+                // Include percentage coordinates if they exist in the response
+                if (
+                  rectangle.xPercent !== undefined &&
+                  rectangle.yPercent !== undefined &&
+                  rectangle.widthPercent !== undefined &&
+                  rectangle.heightPercent !== undefined
+                ) {
+                  maskingCoordinates.xPercent = rectangle.xPercent;
+                  maskingCoordinates.yPercent = rectangle.yPercent;
+                  maskingCoordinates.widthPercent = rectangle.widthPercent;
+                  maskingCoordinates.heightPercent = rectangle.heightPercent;
+                }
 
-              return {
-                id: maskPhiResponse.id,
-                type: "masking",
-                content: {
-                  id: rectangle.id,
+                return {
+                  id: maskPhiResponse.id,
                   type: "masking",
-                  coordinates: maskingCoordinates,
-                  settings: {
-                    color: "#000000",
-                    solid_mask: true,
-                    blur_mask: false,
+                  content: {
+                    id: rectangle.id,
+                    type: "masking",
+                    coordinates: maskingCoordinates,
+                    settings: {
+                      color: "#000000",
+                      solid_mask: true,
+                      blur_mask: false,
+                    },
                   },
-                },
-              };
-            },
-          );
+                };
+              },
+            );
 
-          visualImage.masking.push(...finalMasking);
+            visualImage.masking.push(...finalMasking);
+          }
         }
       }
-    }
     } catch (err) {
       console.error("Error detecting PHI:", err);
       setError("Failed to mask PHI");
@@ -1906,19 +1949,27 @@ export default function VisualsTab({
             </Stack>
           )}
           {maskingPhi ? (
-            <Button
-              variant="contained"
-              startIcon={<Visibility />}
-              onClick={handleSaveImageMasking}
-              sx={{
-                bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A",
-                color: maskingPhi ? "#FFFFFF" : "#343F8A",
-                borderRadius: "8px",
-                "&:hover": { bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A" },
-              }}
+            <Tooltip
+              title={
+                isNewSimulation
+                  ? "Masks will be saved when you save the simulation"
+                  : ""
+              }
             >
-              Save Masking
-            </Button>
+              <Button
+                variant="contained"
+                startIcon={<Visibility />}
+                onClick={handleSaveImageMasking}
+                sx={{
+                  bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A",
+                  color: maskingPhi ? "#FFFFFF" : "#343F8A",
+                  borderRadius: "8px",
+                  "&:hover": { bgcolor: maskingPhi ? "#001EEE" : "#001EEE0A" },
+                }}
+              >
+                {isNewSimulation ? "Apply Masking" : "Save Masking"}
+              </Button>
+            </Tooltip>
           ) : (
             <Button
               variant="contained"

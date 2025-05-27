@@ -29,7 +29,6 @@ import {
   MoreVert as MoreVertIcon,
   Search as SearchIcon,
   Clear as ClearIcon,
-  RestartAlt as ResetIcon,
 } from '@mui/icons-material';
 import DashboardContent from '../../DashboardContent';
 import CreateTrainingPlanDialog from './CreateTrainingPlanDialog';
@@ -142,15 +141,6 @@ const ManageTrainingPlanPage = () => {
   // Check if user has create permission for manage-training-plan
   const canCreateTrainingPlan = hasCreatePermission('manage-training-plan');
 
-  // Check if any filters are applied
-  const hasActiveFilters = useMemo(() => {
-    return (
-      searchQuery !== "" ||
-      selectedTags !== "All Tags" ||
-      selectedCreator !== "Created By" ||
-      selectedStatus !== "All"
-    );
-  }, [searchQuery, selectedTags, selectedCreator, selectedStatus]);
 
   // Helper function to check if an item is archived
   // Determine whether a training plan or module is archived. Some APIs may
@@ -476,16 +466,6 @@ const ManageTrainingPlanPage = () => {
     loadData();
   };
 
-  // New function to reset all filters
-  const handleResetFilters = () => {
-    setSearchQuery("");
-    setSelectedTags("All Tags");
-    setSelectedCreator("Created By");
-    setSelectedStatus("All");
-    setCreatorSearchQuery("");
-    setTagsSearchQuery("");
-    setPage(0);
-  };
 
   // Filter users based on search query
   const filteredUsers = useMemo(() => {
@@ -782,28 +762,6 @@ const ManageTrainingPlanPage = () => {
                 sx={{ width: 200 }}
               />
 
-              {/* Reset Filters Button */}
-              <Tooltip title="Reset all filters">
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={<ResetIcon />}
-                    onClick={handleResetFilters}
-                    disabled={!hasActiveFilters}
-                    sx={{
-                      borderColor: hasActiveFilters ? "#444CE7" : "#E0E0E0",
-                      color: hasActiveFilters ? "#444CE7" : "#A0A0A0",
-                      "&:hover": {
-                        borderColor: "#3538CD",
-                        bgcolor: "#F5F6FF",
-                      },
-                      borderRadius: 2,
-                      height: 40,
-                    }}
-                  >
-                  </Button>
-                </span>
-              </Tooltip>
             </Stack>
           </Stack>
 

@@ -1929,7 +1929,19 @@ const ManagerDashboard = () => {
         });
 
         setTrainingEntityPagination(data.pagination);
-        setTrainingEntityAttempts(data.training_entity);
+
+        const processedTrainingEntity = data.training_entity?.map((entity: any) => {
+          const processedTrainees = entity.trainees?.map((trainee: any) => ({
+            ...trainee,
+            avgScore:
+              trainee.status && trainee.status.toLowerCase() === "in_progress"
+                ? "NA"
+                : trainee.avgScore,
+          }));
+          return { ...entity, trainees: processedTrainees };
+        });
+
+        setTrainingEntityAttempts(processedTrainingEntity);
         setError(null);
       }
     } catch (err) {

@@ -32,16 +32,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const workspaceId = params.get('workspace_id');
     const timeZone = params.get('timeZone');
 
-    console.log('URL params:', { workspaceId, timeZone, pathname: location.pathname });
 
     // Update state with new values from URL
     if (workspaceId && workspaceId !== currentWorkspaceId) {
-      console.log('Setting workspace ID:', workspaceId);
       setCurrentWorkspaceId(workspaceId);
     }
 
     if (timeZone && timeZone !== currentTimeZone) {
-      console.log('Setting time zone:', timeZone);
       setCurrentTimeZone(timeZone);
     }
 
@@ -64,7 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (needsUpdate) {
-        console.log('Updating URL with parameters:', currentParams.toString());
         navigate({
           pathname: location.pathname,
           search: currentParams.toString()
@@ -99,7 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Initial token refresh when component mounts or workspace changes
       authService.refreshToken(currentWorkspaceId)
         .then(() => {
-          console.log('Token refresh successful');
           updateUserState();
           setIsRefreshing(false);
           setIsInitialized(true);
@@ -123,7 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const queryString = params.toString();
             const redirectPath = `/unauthorized${queryString ? `?${queryString}` : ''}`;
 
-            console.log('Redirecting to unauthorized with params:', redirectPath);
             navigate(redirectPath);
           }
         });
@@ -131,7 +125,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [updateUserState, currentWorkspaceId, navigate, location.pathname, isInitialized, isRefreshing, currentTimeZone]);
 
   const login = (token: string, workspaceId?: string, timeZone?: string) => {
-    console.log('Login called with:', { token: !!token, workspaceId, timeZone });
 
     authService.setToken(token, workspaceId || currentWorkspaceId);
 
@@ -144,7 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
-    console.log('Logout called');
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
@@ -161,7 +153,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const queryString = params.toString();
     const redirectPath = `/unauthorized${queryString ? `?${queryString}` : ''}`;
 
-    console.log('Logout redirect with params:', redirectPath);
     navigate(redirectPath);
   };
 
@@ -169,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return <LoadingSpinner />;
   }
 
-  console.log('AuthContext state:', { currentWorkspaceId, currentTimeZone, isAuthenticated });
 
   return (
     <AuthContext.Provider value={{ 

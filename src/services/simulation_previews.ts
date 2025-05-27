@@ -221,14 +221,12 @@ export const startChatPreview = async (
       payload.usersimulationprogress_id = progressId;
     }
 
-    console.log("Chat preview request payload:", payload);
 
     const response = await apiClient.post<ChatPreviewResponse>(
       "/simulations/start-chat-preview",
       payload,
     );
 
-    console.log("Chat preview response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error with chat preview:", error);
@@ -264,9 +262,6 @@ export const startVisualAudioPreview = async (
             if (item.coordinates && !item.percentageCoordinates) {
               // This calculation would ideally happen server-side
               // But we can handle it here for backward compatibility
-              console.log(
-                "Converting absolute coordinates to percentage-based in response",
-              );
             }
           });
         }

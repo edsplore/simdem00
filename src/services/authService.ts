@@ -23,7 +23,6 @@ class AuthService {
   async refreshToken(workspaceId?: string | null): Promise<string> {
     // If there's already a refresh in progress, return that promise instead of starting a new one
     if (this.refreshPromise) {
-      console.log("Refresh already in progress, returning existing promise");
       return this.refreshPromise;
     }
 
@@ -40,15 +39,9 @@ class AuthService {
 
   private async doRefreshToken(workspaceId?: string | null): Promise<string> {
     try {
-      console.log(
-        `Refresh token attempt ${this.refreshAttempts + 1}/${
-          this.maxRefreshAttempts
-        }`
-      );
 
       // Use the provided workspace ID or the stored one
       const effectiveWorkspaceId = workspaceId || this.currentWorkspaceId;
-      console.log("Using workspace ID for refresh:", effectiveWorkspaceId);
 
       const response = await axios.post(REFRESH_TOKEN_URL, "", {
         withCredentials: true, // This ensures cookies are sent with the request
@@ -60,12 +53,6 @@ class AuthService {
         },
       });
 
-      console.log("Refresh token response:", {
-        status: response.status,
-        statusText: response.statusText,
-        headers: response.headers,
-        data: response.data,
-      });
 
       const newToken = response.data;
       this.token = newToken;
@@ -111,12 +98,6 @@ class AuthService {
       const decoded = jwtDecode<DecodedToken>(token);
       const expiresIn = decoded.exp * 1000 - Date.now();
 
-      console.log("Setting up refresh timer:", {
-        expiresIn: `${Math.round(expiresIn / 1000)}s`,
-        refreshIn: `${Math.round((expiresIn - 60000) / 1000)}s`,
-        currentTime: new Date().toISOString(),
-        expiresAt: new Date(decoded.exp * 1000).toISOString(),
-      });
 
       // Clear any existing timer
       if (this.refreshTokenTimeout) {
@@ -125,7 +106,6 @@ class AuthService {
 
       // Set timer to refresh 1 minute before expiry
       this.refreshTokenTimeout = setTimeout(() => {
-        console.log("Refresh timer triggered");
         this.refreshToken();
       }, expiresIn - 60000); // Refresh 1 minute before expiry
     } catch (error) {
@@ -166,7 +146,6 @@ class AuthService {
     try {
       // Decode the token and log the full structure for debugging
       const decodedToken = jwtDecode<DecodedToken>(token);
-      console.log("FULL DECODED TOKEN:", decodedToken);
 
     // Always prefer workspace ID provided explicitly (e.g. from URL)
     // This ensures the workspace used for API requests matches the one
@@ -183,7 +162,6 @@ class AuthService {
           decodedToken[key]?.roles
       );
 
-      console.log("Found workspace keys:", workspaceKeys);
 
       if (workspaceKeys.length === 0) {
         console.error("No workspaces found in token");
@@ -197,9 +175,6 @@ class AuthService {
 
       // If we have a specific workspace ID to use
       if (this.currentWorkspaceId) {
-        console.log(
-          `Looking for specific workspace: ${this.currentWorkspaceId}`
-        );
 
         // Try to find the specified workspace
         if (workspaceKeys.includes(this.currentWorkspaceId)) {
@@ -220,9 +195,6 @@ class AuthService {
             selectedRole = allRoles.length > 0 ? allRoles[0] : "Unknown";
           }
 
-          console.log(
-            `Using specified workspace: ${selectedWorkspaceKey} with role: ${selectedRole}`
-          );
         } else {
           console.warn(
             `Specified workspace ${this.currentWorkspaceId} not found in token`
@@ -235,18 +207,12 @@ class AuthService {
         // Check each workspace for simulator permissions
         for (const key of workspaceKeys) {
           const workspace = decodedToken[key];
-          console.log(`Checking workspace: ${key}`, workspace);
 
           // Check if this workspace has simulator roles
           if (workspace.roles?.simulator) {
-            console.log(
-              `Found simulator roles in workspace ${key}:`,
-              workspace.roles.simulator
-            );
 
             // Check if this workspace has simulator permissions
             if (workspace.permissions?.simulator) {
-              console.log(`Found simulator permissions in workspace ${key}`);
               selectedWorkspace = workspace;
               selectedWorkspaceKey = key;
               selectedRole = workspace.roles.simulator[0] || "Unknown";
@@ -261,22 +227,15 @@ class AuthService {
         return null;
       }
 
-      console.log("Selected workspace:", selectedWorkspaceKey);
-      console.log("Selected role:", selectedRole);
 
       // Process permissions
       const permissions: { [key: string]: boolean } = {};
 
       // Process simulator permissions if they exist
       if (selectedWorkspace.permissions?.simulator) {
-        console.log(
-          "Processing simulator permissions:",
-          selectedWorkspace.permissions.simulator
-        );
 
         Object.entries(selectedWorkspace.permissions.simulator).forEach(
           ([permKey, permValues]) => {
-            console.log(`Processing permission: ${permKey}`, permValues);
 
             // Check if the permission has ACCESS and READ
             const hasAccess =
@@ -316,9 +275,6 @@ class AuthService {
 
             const hasWrite = hasCreate || hasUpdate;
 
-            console.log(
-              `Permission ${permKey}: Access=${hasAccess}, Read=${hasRead}, Create=${hasCreate}, Update=${hasUpdate}, Delete=${hasDelete}, Write=${hasWrite}`
-            );
 
             // Only add permission if it has both ACCESS and READ
             if (hasAccess && hasRead) {
@@ -350,7 +306,6 @@ class AuthService {
         console.warn("No simulator permissions found in selected workspace");
       }
 
-      console.log("Final permissions object:", permissions);
 
       // Create user object using the workspace ID from the URL if available
       const finalWorkspaceId = workspaceId || this.currentWorkspaceId || selectedWorkspaceKey;
@@ -370,7 +325,6 @@ class AuthService {
         reportingTo: decodedToken.reporting_to?.name || "",
       };
 
-      console.log("Created user object:", user);
 
       // Store user in memory and ensure the workspace ID matches the one from the URL
       this.currentUser = user;

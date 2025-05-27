@@ -66,7 +66,6 @@ const WorkspaceHandler: React.FC<{ children: React.ReactNode }> = ({
     const params = new URLSearchParams(location.search);
     const workspaceId = params.get("workspace_id");
     if (workspaceId) {
-      console.log("Workspace ID detected in URL:", workspaceId);
     }
   }, [location.search]);
 
@@ -106,7 +105,6 @@ const RootRedirect = () => {
     const workspaceId = params.get('workspace_id');
     const timeZone = params.get('timeZone');
 
-    console.log('RootRedirect - URL params:', { workspaceId, timeZone });
 
     // Build redirect URL with all available parameters
     const targetParams = new URLSearchParams();
@@ -122,7 +120,6 @@ const RootRedirect = () => {
     const queryString = targetParams.toString();
     const target = `/dashboard${queryString ? `?${queryString}` : ''}`;
 
-    console.log('RootRedirect - Navigating to:', target);
     navigate(target, { replace: true });
   }, [location, navigate]);
 

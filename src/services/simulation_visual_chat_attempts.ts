@@ -191,10 +191,6 @@ export const startVisualChatAttempt = async (
             // If only absolute coordinates exist, we'll rely on the component to handle conversion
             // This ensures backward compatibility with older data
             if (item.coordinates && !item.percentageCoordinates) {
-              console.log(
-                "Found item with only absolute coordinates, will convert in component:",
-                item.id,
-              );
             }
           });
         }
@@ -206,10 +202,6 @@ export const startVisualChatAttempt = async (
               maskItem.content.coordinates &&
               !maskItem.content.percentageCoordinates
             ) {
-              console.log(
-                "Found masking with only absolute coordinates, will convert in component:",
-                maskItem.id,
-              );
             }
           });
         }

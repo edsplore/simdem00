@@ -138,7 +138,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
         payload,
       );
 
-      console.log(response.data);
 
       if (response.data.status === "success") {
         setPublishedSimId(simulationId);
@@ -244,7 +243,6 @@ const SettingsTab: React.FC<SettingsTabProps> = ({
                 </Typography>
                 <Button
                   onClick={() => {
-                    console.log("Practice mode set to 'limited'");
                   }}
                   sx={{
                     borderRadius: "20px",

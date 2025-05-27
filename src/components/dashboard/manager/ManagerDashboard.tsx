@@ -137,7 +137,6 @@ const getStatusColor = (status) => {
     case "not_started":
       return { bg: "#FFFAEB", color: "#B54708" };
     default:
-      console.log("Unknown status:", status);
       return { bg: "#FFFAEB", color: "#B54708" };
   }
 };
@@ -1605,7 +1604,6 @@ const ManagerDashboard = () => {
 
   const handleApplyClick = () => {
     // Handle the selected users/teams here
-    console.log("teamframe", teamframe, dropdownSearchQuery);
     let selectedUserIds = teamframe.filter((id: string) =>
       allUserIds.includes(id),
     );
@@ -1632,7 +1630,6 @@ const ManagerDashboard = () => {
         const params = new URLSearchParams(location.search);
         const workspaceId = params.get("workspace_id");
         const data = await fetchReporteeUsers(workspaceId || "");
-        console.log("repoertee users --------", data);
         const userData = data?.map((user: User) => user.user_id) || [];
         setReporteeUser(data);
         setFilteredReporteeUserIds(userData);
@@ -1674,7 +1671,6 @@ const ManagerDashboard = () => {
           undefined,
           user.id,
         );
-        console.log("repoertee users --------", data);
         const teamsData = data?.items?.map((team: Team) => team.team_id);
         setReporteeTeam(data);
         if (teamsData) {
@@ -1708,10 +1704,6 @@ const ManagerDashboard = () => {
       // Fetch ALL users without role filtering for the table
       const response = await fetchUsersSummary(workspaceId || "");
 
-      console.log(
-        "All platform users from fetchUsersSummary (no role filter):",
-        response,
-      );
 
       // Create comprehensive maps for both names and class IDs
       const comprehensiveUserNamesMap = new Map<string, string>();
@@ -1735,14 +1727,6 @@ const ManagerDashboard = () => {
       setAllUserNamesMap(comprehensiveUserNamesMap);
       setAllUserClassIdsMap(comprehensiveUserClassIdsMap);
 
-      console.log(
-        "Updated comprehensive user names map:",
-        comprehensiveUserNamesMap,
-      );
-      console.log(
-        "Updated comprehensive user class IDs map:",
-        comprehensiveUserClassIdsMap,
-      );
     } catch (error) {
       console.error("Error loading all platform users:", error);
       setError("Failed to load platform users");
@@ -1767,7 +1751,6 @@ const ManagerDashboard = () => {
         "anmol_test",
       ]);
 
-      console.log("Creators and Managers from fetchUsersSummary:", response);
 
       // Update creator maps for the creator dropdown
       const creatorIdsList = response?.map((user: any) => user.user_id);

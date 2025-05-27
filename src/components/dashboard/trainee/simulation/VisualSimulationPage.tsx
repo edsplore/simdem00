@@ -277,7 +277,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   >([]);
 
   useEffect(() => {
-    console.log("attempt Simulation page ------- ", attemptSequenceData);
   }, [attemptSequenceData]);
 
   // Create just-in-time URL for current slide
@@ -307,13 +306,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
-      console.log("Current simulation data:", {
-        slidesCount: simulationData.slidesData?.length || 0,
-        currentSlideIndex,
-        currentSequenceIndex,
-        currentSlide: currentSlide?.imageId || "none",
-        currentSequenceLength: currentSequence?.length || 0,
-      });
     }
   }, [
     simulationData,
@@ -371,19 +363,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
     // Check if this hotspot should be skipped based on settings
     if (shouldSkipHotspot()) {
-      console.log(
-        "Skipping hotspot due to level settings:",
-        currentItem.hotspotType,
-      );
       // Skip to the next item
       moveToNextItem();
       return;
     }
 
-    console.log("Processing current item:", {
-      type: currentItem.type,
-      hotspotType: currentItem.hotspotType,
-    });
 
     const processItem = async () => {
       setIsProcessing(true);
@@ -409,16 +393,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
-            );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
-              console.log(
-                `Processing timeout for ${capturedItem.name}, current attempt data:`,
-                prevData,
-              );
 
               const existingItemIndex = prevData.findIndex(
                 (item) => item.id === capturedItemId,
@@ -434,16 +411,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
               // Also check the ref for any wrong clicks that might not be in state yet
               if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
                 existingWrongClicks = wrongClicksRef.current[capturedItemId];
-                console.log(
-                  `Using wrong clicks from ref for ${capturedItem.name}:`,
-                  existingWrongClicks,
-                );
               }
 
-              console.log(
-                `Final wrong clicks for ${capturedItem.name}:`,
-                existingWrongClicks,
-              );
 
               // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
@@ -457,10 +426,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
                 delete timeoutRecord.isClicked;
               }
 
-              console.log(
-                `Adding timeout record for hotspot ${capturedItem.name}:`,
-                JSON.stringify(timeoutRecord),
-              );
 
               let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
@@ -479,10 +444,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
               // Pass the updated data to moveToNextItem
               setTimeout(() => {
-                console.log(
-                  `Moving to next item after timeout with data:`,
-                  newData,
-                );
                 moveToNextItem(newData);
                 setHighlightHotspot(false);
                 setTimeoutActive(false);
@@ -536,7 +497,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       !isEndingSimulation
     ) {
       // We've reached the end of the last slide's sequence
-      // console.log("Reached end of simulation content");
       // Wait a moment for any final animations/transitions
       // setTimeout(() => {
       //   handleEndSimulation();
@@ -586,9 +546,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       // Mark image as loaded
       setImageLoaded(true);
 
-      console.log(
-        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
-      );
     });
   };
 
@@ -621,9 +578,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         Math.abs(newScales.height - imageScale.height) > 0.001
       ) {
         setImageScale(newScales);
-        console.log(
-          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
-        );
       }
     }
   }, [imageScale.width, imageScale.height]);
@@ -710,7 +664,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       const hotspotElement = target.closest('[data-hotspot="true"]');
       if (hotspotElement) {
         // This click is on the actual hotspot, don't record as wrong click
-        console.log("Click on hotspot element, not recording as wrong click");
         return;
       }
 
@@ -732,17 +685,11 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
         if (clickWithinHotspot) {
           // Click is within hotspot bounds, don't record as wrong click
-          console.log(
-            "Click within hotspot bounds, not recording as wrong click",
-          );
           return;
         }
       }
 
       // Record as wrong click
-      console.log(
-        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
-      );
 
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
@@ -761,10 +708,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
           wrongClicksRef.current[currentItem.id] = [];
         }
         wrongClicksRef.current[currentItem.id].push(newWrongClick);
-        console.log(
-          `Stored wrong click in ref for ${currentItem.id}:`,
-          wrongClicksRef.current[currentItem.id],
-        );
       }
 
       // Also update state
@@ -778,10 +721,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             ...existingItem,
             wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
           };
-          console.log(
-            `Updated wrong clicks for ${currentItem.id}:`,
-            updatedItem.wrong_clicks,
-          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
             updatedItem,
@@ -791,9 +730,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             ...currentItem,
             wrong_clicks: [newWrongClick],
           };
-          console.log(
-            `Created new record with wrong click for ${currentItem.id}`,
-          );
           return [...prevData, newItem];
         }
       });
@@ -831,20 +767,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log(
-      "Hotspot clicked:",
-      hotspotType,
-      "ID:",
-      currentItem.id,
-      "Current item index:",
-      currentSequenceIndex,
-      "Sequence length:",
-      currentSequence?.length,
-    );
 
     // For coaching tips, handle differently - they don't need to be tracked
     if (hotspotType === "coaching") {
-      console.log("Coaching tip clicked, dismissing and moving to next item");
       setShowCoachingTip(false);
 
       // Add a processing flag to prevent double-clicks
@@ -876,7 +801,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       clickRecord.isClicked = true;
     }
 
-    console.log("Adding click record:", JSON.stringify(clickRecord));
 
     // Variable to store the updated data
     let updatedData: AttemptInterface[] = [];
@@ -909,7 +833,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       }
     });
 
-    console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
       case "button":
@@ -944,7 +867,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 
@@ -1065,10 +987,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         attemptType, // Pass the attemptType
       );
 
-      console.log("Start visual simulation response:", response);
 
       if (response.simulation) {
-        console.log("Setting simulation data");
         setSimulationData(response.simulation);
         setSimulationProgressId(response.id);
         setSimulationStatus("Active");
@@ -1076,13 +996,10 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
       // Process image data - store raw base64 for just-in-time URL creation
       if (response.images && response.images.length > 0) {
-        console.log(`Processing ${response.images.length} images`);
         for (const image of response.images) {
           // Store raw base64 data in the ref
           slideDataRef.current[image.image_id] = image.image_data;
-          console.log(`Stored base64 data for image ${image.image_id}`);
         }
-        console.log(`Stored ${response.images.length} image data items`);
       }
     } catch (error) {
       console.error("Error starting visual simulation:", error);
@@ -1114,20 +1031,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       return;
     }
 
-    console.log(
-      "Moving to next item from",
-      currentSequenceIndex,
-      "in slide",
-      currentSlideIndex,
-      "Total slides:",
-      slidesData.length,
-      "Current sequence length:",
-      currentSequence.length,
-      "Updated data provided:",
-      !!updatedAttemptData,
-      "Updated data length:",
-      updatedAttemptData?.length,
-    );
 
     // Check if this is the last item in the entire simulation
     const isLastSlide = currentSlideIndex >= slidesData.length - 1;
@@ -1135,37 +1038,23 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       currentSequenceIndex >= currentSequence.length - 1;
     const isLastItem = isLastSlide && isLastItemInSequence;
 
-    console.log("Navigation check:", {
-      isLastSlide,
-      isLastItemInSequence,
-      isLastItem,
-      currentSlideIndex,
-      totalSlides: slidesData.length,
-      currentSequenceIndex,
-      sequenceLength: currentSequence.length,
-    });
 
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
-      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
-      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
       setImageLoaded(false);
     } else if (isLastItem) {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete - last item reached");
 
       // Use the updated data if provided
       if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
-        console.log("Using updated attempt data for end simulation");
         handleEndSimulationWithUpdatedData(updatedAttemptData);
       } else {
-        console.log("No updated data provided, using regular end simulation");
         handleEndSimulation();
       }
     } else {
@@ -1177,11 +1066,9 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   const handleEndSimulationWithUpdatedData = async (
     updatedAttemptData: AttemptInterface[],
   ) => {
-    console.log("🔴 END SIMULATION WITH UPDATED DATA");
 
     // Prevent multiple simultaneous end simulation attempts
     if (isEndingSimulation) {
-      console.log("Already ending simulation, ignoring duplicate request");
       return;
     }
 
@@ -1197,7 +1084,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Clear any active timeout
@@ -1221,10 +1107,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       // Use the updated data directly passed to this function
       const finalAttemptData = updatedAttemptData;
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(
@@ -1235,7 +1117,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       );
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
@@ -1264,18 +1145,15 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End simulation flow completed");
       setIsEndingSimulation(false);
     }
   };
 
   // Handle end simulation implementation
   const handleEndSimulation = async () => {
-    console.log("🔴 END SIMULATION BUTTON PRESSED");
 
     // Prevent multiple simultaneous end simulation attempts
     if (isEndingSimulation) {
-      console.log("Already ending simulation, ignoring duplicate request");
       return;
     }
 
@@ -1291,7 +1169,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Clear any active timeout
@@ -1333,9 +1210,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
             !currentItem.isClicked &&
             !(existingRecord && (existingRecord as any).isClicked));
 
-        console.log(
-          `Processing current hotspot ${currentItem.name} for end simulation, timed out: ${isTimedOut}`,
-        );
 
         if (isTimedOut) {
           // Get existing wrong clicks if any
@@ -1406,10 +1280,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         return item;
       });
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualSimulation function from simulation_visual_attempts
       const response = await endVisualSimulation(
@@ -1420,7 +1290,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
       );
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
@@ -1449,7 +1318,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End simulation flow completed");
       setIsEndingSimulation(false);
     }
   };
@@ -1479,7 +1347,6 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };

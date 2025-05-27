@@ -316,10 +316,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
 
     // Check if this hotspot should be skipped based on settings
     if (shouldSkipHotspot()) {
-      console.log(
-        "Skipping hotspot due to level settings:",
-        currentItem.hotspotType,
-      );
       // Skip to the next item
       moveToNextItem();
       return;
@@ -345,7 +341,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
 
           // Set a new timeout that will advance if no interaction occurs
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(`Timeout of ${timeout} seconds reached for hotspot`);
             moveToNextItem();
             setHighlightHotspot(false);
             setTimeoutActive(false);
@@ -414,9 +409,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
       // Mark image as loaded
       setImageLoaded(true);
 
-      console.log(
-        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
-      );
     });
   };
 
@@ -449,9 +441,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
         Math.abs(newScales.height - imageScale.height) > 0.001
       ) {
         setImageScale(newScales);
-        console.log(
-          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
-        );
       }
     }
   }, [imageScale.width, imageScale.height]);
@@ -550,7 +539,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
     } else {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete");
       setSimulationStatus("Completed");
       // Call the onEndSimulation prop
       onEndSimulation();
@@ -612,7 +600,6 @@ const VisualPreview: React.FC<VisualPreviewProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 

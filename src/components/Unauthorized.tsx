@@ -27,13 +27,11 @@ const Unauthorized = () => {
         const workspaceId = params.get('workspace_id');
         const timeZone = params.get('timeZone');
 
-        console.log(`Unauthorized page: Attempting token refresh (attempt ${retryCount + 1}/${maxRetries})`);
 
         // Try to refresh the token
         await authService.refreshToken(workspaceId || null);
 
         // If successful, redirect to dashboard with both workspace_id and timeZone
-        console.log('Token refresh successful, redirecting to dashboard');
 
         const redirectParams = new URLSearchParams();
         if (workspaceId) {

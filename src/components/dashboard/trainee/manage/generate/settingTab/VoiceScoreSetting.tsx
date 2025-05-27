@@ -257,10 +257,6 @@ const VoiceAndScoreSettings: React.FC<VoiceScoreSettingProps> = ({
       Object.keys(settings).length > 0 &&
       !hasInitializedFromSettings.current
     ) {
-      console.log(
-        "Initializing voice/score form with settings from context:",
-        settings,
-      );
 
       // Update voice settings
       if (settings.voice) {

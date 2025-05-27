@@ -153,7 +153,6 @@ const TrainingItemsTable: React.FC<TrainingItemsTableProps> = ({
   const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
     // The dateRange state contains dates in the user's timezone
     // The isDateInRange function will handle conversion to UTC for backend comparison
-    console.log("Date range applied:", dateRange);
   };
 
 

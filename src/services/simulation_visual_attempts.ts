@@ -184,10 +184,6 @@ export const startVisualSimulation = async (
             if (item.coordinates && !item.percentageCoordinates) {
               // The calculation would ideally happen server-side
               // This is just a placeholder - actual implementation would need image dimensions
-              console.log(
-                "Adding percentage coordinates compatibility layer for sequence item:",
-                item.id,
-              );
             }
           });
         }
@@ -200,10 +196,6 @@ export const startVisualSimulation = async (
               maskingItem.content.coordinates &&
               !maskingItem.content.percentageCoordinates
             ) {
-              console.log(
-                "Adding percentage coordinates compatibility layer for masking item:",
-                maskingItem.id,
-              );
             }
           });
         }
@@ -246,7 +238,6 @@ export const endVisualSimulation = async (
           ) {
             // We need container dimensions to calculate percentages accurately
             // This is a placeholder - actual implementation would need container dimensions
-            console.log("Adding percentage values for click tracking");
             return {
               ...click,
               // These are placeholder values - real implementation would calculate from container dimensions

@@ -57,7 +57,6 @@ interface PlaybackChatProps {
 
 const PlaybackChat = ({ messages }: PlaybackChatProps) => {
   useEffect(() => {
-    console.log("messages ----playbck-", messages);
   }, [messages]);
   return (
     <>

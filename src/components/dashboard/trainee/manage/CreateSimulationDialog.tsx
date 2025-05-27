@@ -132,7 +132,6 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         setIsLoadingDivisions(true);
         try {
           const divisionsData = await fetchDivisions(currentWorkspaceId);
-          console.log("Loaded divisions:", divisionsData);
           setDivisions(divisionsData);
         } catch (error) {
           console.error("Failed to load divisions:", error);
@@ -146,7 +145,6 @@ const CreateSimulationDialog: React.FC<CreateSimulationDialogProps> = ({
         setIsLoadingDepartments(true);
         try {
           const departmentsData = await fetchDepartments(currentWorkspaceId);
-          console.log("Loaded departments:", departmentsData);
           setDepartments(departmentsData);
         } catch (error) {
           console.error("Failed to load departments:", error);

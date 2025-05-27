@@ -264,11 +264,9 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
           const percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total!,
           );
-          console.log("Upload Progress:", percentCompleted + "%");
         },
       );
 
-      console.log("API Response:", response);
 
       if (response && Array.isArray(response.script)) {
         const transformedScript: Message[] = response.script.map(
@@ -280,7 +278,6 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
           }),
         );
 
-        console.log("Transformed Script:", transformedScript);
         setScriptData(transformedScript);
       } else {
         throw new Error("Invalid response format from server");
@@ -326,12 +323,10 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
       };
 
       // Log before updating
-      console.log("Current script data before adding:", scriptData);
 
       // Create a completely new array with the existing messages plus the new one
       const updatedScript = [...scriptData, newMessage];
 
-      console.log("Updated script data after adding:", updatedScript);
 
       // Use the updated array to set the state
       setScriptData(updatedScript);
@@ -345,7 +340,6 @@ Trainee: You're welcome! I'll send that information now. Let me know if you need
   };
 
   const handleScriptGenerated = (script: Message[]) => {
-    console.log("Received script:", script);
     setShowAIGenerator(false);
     setScriptData(script);
   };

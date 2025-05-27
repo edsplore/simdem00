@@ -43,11 +43,9 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
   useEffect(() => {
     if (simulationType === 'audio') {
       webClient.on('conversationStarted', () => {
-        console.log('Conversation started');
       });
 
       webClient.on('conversationEnded', ({ code, reason }) => {
-        console.log('Conversation ended:', code, reason);
         setIsCallActive(false);
       });
 
@@ -125,7 +123,6 @@ const PreviewTab: React.FC<PreviewTabProps> = ({ simulationId, simulationType = 
           sim_id: simulationId  // Make sure to include the simulation ID
         });
 
-        console.log('Audio preview response:', response.data);
 
         if (response.data.access_token) {
           await webClient.startCall({

@@ -142,7 +142,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
 
     setIsStarted(true);
     try {
-      console.log("Starting chat simulation...");
 
       // Make a single API call to start the simulation
       const response = await startChatSimulation(
@@ -152,7 +151,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         attemptType,
       );
 
-      console.log("Start chat response:", response);
 
       if (response.id) {
         setSimulationProgressId(response.id);
@@ -188,7 +186,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     setIsLoading(true);
 
     try {
-      console.log("Sending message:", inputMessage);
 
       // Use the sendChatMessage function instead of direct axios call
       const response = await sendChatMessage(
@@ -199,7 +196,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationProgressId,
       );
 
-      console.log("Message response:", response);
 
       if (response.response) {
         setMessages((prev) => [
@@ -239,7 +235,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         role: msg.speaker === "customer" ? "Customer" : "Trainee",
       }));
 
-      console.log("Ending chat with history:", chatHistory);
 
       // Use the endChatSimulation function instead of direct axios call
       const response = await endChatSimulation(
@@ -249,7 +244,6 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         chatHistory,
       );
 
-      console.log("End chat response:", response);
 
       if (response.scores) {
         setScores(response.scores);

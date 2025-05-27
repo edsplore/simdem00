@@ -248,108 +248,22 @@ const SettingTab: React.FC<SettingTabProps> = ({
     console.group("Settings Mapping Debug");
 
     // Check level mappings
-    console.log("=== LEVEL MAPPINGS ===");
-    console.log("API lvl1:", apiData.levels?.lvl1);
-    console.log(
-      "Mapped lvl1:",
-      mappedSettings.levels?.simulationLevels?.lvl1,
-      mappedSettings.levels?.enablePractice?.lvl1,
-    );
 
-    console.log("API lvl2:", apiData.levels?.lvl2);
-    console.log(
-      "Mapped lvl2:",
-      mappedSettings.levels?.simulationLevels?.lvl2,
-      mappedSettings.levels?.enablePractice?.lvl2,
-    );
 
-    console.log("API lvl3:", apiData.levels?.lvl3);
-    console.log(
-      "Mapped lvl3:",
-      mappedSettings.levels?.simulationLevels?.lvl3,
-      mappedSettings.levels?.enablePractice?.lvl3,
-    );
 
     // Check time mapping
-    console.log("\n=== TIME MAPPING ===");
-    console.log(
-      "API estimated_time_to_attempt_in_mins:",
-      apiData.estimated_time_to_attempt_in_mins,
-    );
-    console.log("API est_time:", apiData.est_time);
-    console.log("Mapped estimatedTime:", mappedSettings.estimatedTime);
 
     // Check objectives and tips
-    console.log("\n=== OBJECTIVES & TIPS ===");
-    console.log("API key_objectives:", apiData.key_objectives);
-    console.log("Mapped objectives:", mappedSettings.objectives);
-    console.log("API quick_tips:", apiData.quick_tips);
-    console.log("Mapped quickTips:", mappedSettings.quickTips);
 
     // Check voice settings
-    console.log("\n=== VOICE SETTINGS ===");
-    console.log("API voice_id:", apiData.voice_id);
-    console.log("API language:", apiData.language);
-    console.log("API mood:", apiData.mood);
-    console.log("API voice_speed:", apiData.voice_speed);
-    console.log("Mapped voice:", mappedSettings.voice);
 
     // Check scoring settings
-    console.log("\n=== SCORING SETTINGS ===");
-    console.log(
-      "API simulation_completion_repetition:",
-      apiData.simulation_completion_repetition,
-    );
-    console.log(
-      "API simulation_max_repetition:",
-      apiData.simulation_max_repetition,
-    );
-    console.log(
-      "API final_simulation_score_criteria:",
-      apiData.final_simulation_score_criteria,
-    );
-    console.log("API minimum_passing_score:", apiData.minimum_passing_score);
-    console.log(
-      "Mapped scoring.repetitionsNeeded:",
-      mappedSettings.scoring?.repetitionsNeeded,
-    );
-    console.log(
-      "Mapped scoring.repetitionsAllowed:",
-      mappedSettings.scoring?.repetitionsAllowed,
-    );
-    console.log(
-      "Mapped scoring.simulationScore:",
-      mappedSettings.scoring?.simulationScore,
-    );
-    console.log(
-      "Mapped scoring.minimumPassingScore:",
-      mappedSettings.scoring?.minimumPassingScore,
-    );
 
     // Check scoring metrics
-    console.log("\n=== SCORING METRICS ===");
-    console.log(
-      "API simulation_scoring_metrics:",
-      apiData.simulation_scoring_metrics,
-    );
-    console.log(
-      "Mapped scoringMetrics:",
-      mappedSettings.scoring?.scoringMetrics,
-    );
 
     // Check metric weightage
-    console.log("\n=== METRIC WEIGHTAGE ===");
-    console.log("API metric_weightage:", apiData.metric_weightage);
-    console.log(
-      "Mapped metricWeightage:",
-      mappedSettings.scoring?.metricWeightage,
-    );
 
     // Check practice settings
-    console.log("\n=== PRACTICE SETTINGS ===");
-    console.log("API sim_practice:", apiData.sim_practice);
-    console.log("Mapped practiceMode:", mappedSettings.scoring?.practiceMode);
-    console.log("Mapped practiceLimit:", mappedSettings.scoring?.practiceLimit);
 
     console.groupEnd();
   };
@@ -361,7 +275,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
       const data = simData || simulationData;
 
       if (!data) {
-        console.log("No simulation data available, returning defaults");
         // Return defaults if no data
         return {
           simulationType: simulationType || "audio",
@@ -421,7 +334,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
         };
       }
 
-      console.log("Creating settings from API data");
 
       // Convert API data to internal format
       const levels = data.levels || {};
@@ -576,7 +488,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
         scoring,
       };
 
-      console.log("Created settings from API:", finalSettings);
       return finalSettings;
     },
     [simulationType, hasScript, isAnyVisualType],
@@ -590,7 +501,6 @@ const SettingTab: React.FC<SettingTabProps> = ({
       !hasInitializedFromAPI.current &&
       Object.keys(contextSettings).length === 0
     ) {
-      console.log("Initializing settings from API data for the first time");
       const apiSettings = createSettingsFromData(simulationData);
 
       // Debug the mapping
@@ -598,14 +508,12 @@ const SettingTab: React.FC<SettingTabProps> = ({
 
       setContextSettings(apiSettings);
       hasInitializedFromAPI.current = true;
-      console.log("Context settings have been initialized from API");
     } else if (
       simulationData &&
       Object.keys(contextSettings).length > 0 &&
       !hasInitializedFromAPI.current
     ) {
       // Context already has settings, don't overwrite them
-      console.log("Context already has settings, preserving existing values");
       hasInitializedFromAPI.current = true;
     }
   }, [simulationData, createSettingsFromData, setContextSettings]); // Remove contextSettings from dependencies

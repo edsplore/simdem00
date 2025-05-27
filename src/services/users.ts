@@ -115,9 +115,7 @@ export const fetchUsersSummary = async (
 ): Promise<User[]> => {
   try {
     // Directly encode the workspaceId since Axios handles its own URL encoding
-    console.log(`Fetching users summary for workspace: ${workspaceId}`)
     const encodedWorkspaceId = encodeURIComponent(workspaceId);
-    console.log(`Encoded workspace: ${encodedWorkspaceId}`)
 
     // Build the base URL with required parameters
     let url = `${USERS_URL}/platform?page=0&limit=50&workspace_id=${encodedWorkspaceId}&status=ACTIVE&fields=(user_id,email,first_name,last_name,class_id)`;
@@ -126,10 +124,8 @@ export const fetchUsersSummary = async (
     if (roleNames && roleNames.length > 0) {
       const encodedRoleNames = roleNames.map(role => encodeURIComponent(role)).join(',');
       url += `&role_names=${encodedRoleNames}`;
-      console.log(`Added role names filter: ${roleNames.join(', ')}`);
     }
 
-    console.log(`Final URL: ${url}`);
 
     const response = await apiClient.get(url, {
       headers: {
@@ -175,15 +171,11 @@ export const fetchUserDetails = async (
   workspaceId: string,
 ): Promise<UserDetails> => {
   try {
-    console.log(
-      `Fetching user details from ${USERS_URL}/${userId} with workspace ID ${workspaceId}`,
-    );
     const response = await apiClient.get(`${USERS_URL}/self`, {
       headers: {
         "X-WORKSPACE-ID": workspaceId,
       },
     });
-    console.log("User details response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching user details:", error);
@@ -195,9 +187,7 @@ export const createUser = async (
   payload: createUserPaylod,
 ): Promise<createUserResponse> => {
   try {
-    console.log(`Add Users to DB`);
     const response = await apiClient.post(`/users/create`, payload);
-    console.log("User details response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error fetching user details:", error);

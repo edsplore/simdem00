@@ -46,7 +46,6 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
                 };
               })
               .filter((entry): entry => entry !== null && entry.text !== "");
-            console.log("messages test -------- ", data?.transcript);
             setMessages(messages);
           }
           setPlaybackData(data);

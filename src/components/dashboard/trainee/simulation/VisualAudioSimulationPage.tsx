@@ -303,19 +303,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   >([]);
 
   useEffect(() => {
-    console.log("Attempt Sequence Data:", attemptSequenceData);
   }, [attemptSequenceData]);
 
   // Debug current slide and sequence
   useEffect(() => {
     if (simulationData) {
-      console.log("Current simulation data:", {
-        slidesCount: simulationData.slidesData?.length || 0,
-        currentSlideIndex,
-        currentSequenceIndex,
-        currentSlide: currentSlide?.imageId || "none",
-        currentSequenceLength: currentSequence?.length || 0,
-      });
     }
   }, [
     simulationData,
@@ -413,7 +405,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (currentItem.type === "message") {
       // For trainee/assistant messages - start recording
       if (currentItem.role === "Trainee" || currentItem.role === "assistant") {
-        console.log("Auto-starting recording for trainee message");
 
         // Check if this is the only item in the simulation (edge case)
         const isSingleItem =
@@ -437,7 +428,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // For customer messages - start speaking
       if (currentItem.role === "Customer" || currentItem.role === "customer") {
-        console.log("Auto-speaking customer message");
         setSpeaking(true);
 
         speakText(
@@ -456,9 +446,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
             // If it's the last item and it's a customer message, auto-advance to end
             if (isLastItem) {
-              console.log(
-                "Last item is a customer message, ending after speech",
-              );
               setTimeout(() => handleEndCall(), 500);
             }
           })
@@ -523,7 +510,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         // Start recording
         recorder.start(1000); // Collect data every second for continuous chunks
-        console.log("Audio recording started");
       })
       .catch((error) => {
         console.error("Error accessing microphone:", error);
@@ -537,16 +523,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const stopAndProcessRecording = async (): Promise<string> => {
     return new Promise((resolve, reject) => {
       if (!recordingInstance) {
-        console.log("No recording instance to stop");
         resolve("");
         return;
       }
 
       // Set up onstop handler before stopping
       recordingInstance.onstop = async () => {
-        console.log("Recording stopped, processing audio...");
         if (audioChunks.length === 0) {
-          console.log("No audio chunks to process");
           resolve("");
           return;
         }
@@ -557,10 +540,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
 
           // Convert audio to text
-          console.log("Sending audio for transcription, size:", audioBlob.size);
           const response = await convertAudioToText(userId, audioBlob);
           const transcribedText = response.text.replace(/\n/g, "");
-          console.log("Transcription result:", transcribedText);
 
           setIsTranscribing(false);
           // Set current transcription for UI feedback
@@ -587,21 +568,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           recordingInstance.state === "paused"
         ) {
           // Stop recording - this will trigger onstop handler
-          console.log("Stopping recorder in state:", recordingInstance.state);
           recordingInstance.stop();
 
           // Release microphone
           if (recordingInstance.stream) {
-            console.log("Releasing microphone tracks");
             recordingInstance.stream
               .getTracks()
               .forEach((track) => track.stop());
           }
         } else {
-          console.log(
-            "Recorder not in recording state:",
-            recordingInstance.state,
-          );
           resolve("");
         }
 
@@ -629,12 +604,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     )
       return;
 
-    console.log("Processing current item:", {
-      type: currentItem.type,
-      role: currentItem.role,
-      hotspotType: currentItem.hotspotType,
-      text: currentItem.text?.substring(0, 30) + "...",
-    });
 
     const processItem = async () => {
       setIsProcessing(true);
@@ -642,10 +611,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       if (currentItem.type === "hotspot") {
         // Check if this hotspot should be skipped based on settings
         if (shouldSkipHotspot()) {
-          console.log(
-            "Skipping hotspot due to level settings:",
-            currentItem.hotspotType,
-          );
           moveToNextItem();
           setIsProcessing(false);
           return;
@@ -671,16 +636,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           setTimeoutActive(true);
 
           hotspotTimeoutRef.current = setTimeout(() => {
-            console.log(
-              `Timeout of ${timeout} seconds reached for hotspot ${capturedItem.name} (ID: ${capturedItemId})`,
-            );
 
             // Add this hotspot to attemptSequenceData WITHOUT setting isClicked to true
             setAttemptSequenceData((prevData) => {
-              console.log(
-                `Processing timeout for ${capturedItem.name}, current attempt data:`,
-                prevData,
-              );
 
               const existingItemIndex = prevData.findIndex(
                 (item) => item.id === capturedItemId,
@@ -696,16 +654,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
               // Also check the ref for any wrong clicks that might not be in state yet
               if (capturedItemId && wrongClicksRef.current[capturedItemId]) {
                 existingWrongClicks = wrongClicksRef.current[capturedItemId];
-                console.log(
-                  `Using wrong clicks from ref for ${capturedItem.name}:`,
-                  existingWrongClicks,
-                );
               }
 
-              console.log(
-                `Final wrong clicks for ${capturedItem.name}:`,
-                existingWrongClicks,
-              );
 
               // Create a clean timeout record with timedOut=true and NO isClicked property
               const timeoutRecord = {
@@ -719,10 +669,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                 delete timeoutRecord.isClicked;
               }
 
-              console.log(
-                `Adding timeout record for hotspot ${capturedItem.name}:`,
-                JSON.stringify(timeoutRecord),
-              );
 
               let newData: AttemptInterface[];
               if (existingItemIndex >= 0) {
@@ -741,10 +687,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
               // Pass the updated data to moveToNextItem
               setTimeout(() => {
-                console.log(
-                  `Moving to next item after timeout with data:`,
-                  newData,
-                );
                 moveToNextItem(newData);
                 setHighlightHotspot(false);
                 setTimeoutActive(false);
@@ -791,15 +733,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       //   (lastItem.role === "Trainee" || lastItem.role === "assistant");
       // if (!isLastItemTraineeMessage) {
       //   // We've reached the end of the last slide's sequence and it's not a trainee message
-      //   console.log("Reached end of simulation content");
       //   // Wait a moment for any final animations/transitions
       //   setTimeout(() => {
       //     handleEndCall();
       //   }, 30000);
       // } else {
-      //   console.log(
-      //     "Last item is a trainee message, waiting for user to click Next",
-      //   );
       // }
     }
   }, [
@@ -818,11 +756,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     updatedAttemptData: AttemptInterface[],
     directTranscriptions?: Map<string, string>,
   ) => {
-    console.log("🔴 END CALL WITH UPDATED DATA");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
       return;
     }
 
@@ -834,7 +770,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Set flag to prevent duplicate ending
     setIsEndingCall(true);
-    console.log("Setting isEndingCall to true");
 
     // Stop any active recording
     if (recordingInstance) {
@@ -851,7 +786,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Cancel any ongoing speech
@@ -877,7 +811,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Update UI state
     setIsCallActive(false);
-    console.log("Set isCallActive to false, call should now be inactive");
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
@@ -887,7 +820,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     try {
-      console.log("Preparing modified simulation data with transcriptions");
 
       // Create a deep copy of the slides data to modify
       const modifiedSlidesData = simulationData?.slidesData
@@ -913,10 +845,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ) {
               // Replace the original text with the transcription
               newItem.text = transcriptionsToUse.get(newItem.id);
-              console.log(
-                `Replacing text for ${newItem.id} with transcription:`,
-                newItem.text,
-              );
             }
 
             // For hotspots, just keep the ID and type
@@ -937,10 +865,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // Use the updated data directly passed to this function
       const finalAttemptData = updatedAttemptData;
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualAudioAttempt function
       const response = await endVisualAudioAttempt(
@@ -951,21 +875,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         modifiedSlidesData,
       );
 
-      console.log("End API call completed with response:", response);
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
         // Only show completion screen for Test attempts
         if (attemptType === "Test") {
           setShowCompletionScreen(true);
-          console.log("Set showCompletionScreen to true for Test attempt");
         } else {
           // For Practice attempts, go back to list
           onBackToList();
-          console.log("Practice attempt completed, returning to list");
         }
       } else {
         console.warn("No scores received in response");
@@ -985,7 +905,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End call flow completed");
       setIsEndingCall(false);
     }
   };
@@ -994,11 +913,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const handleEndCallWithTranscriptions = async (
     directTranscriptions: Map<string, string>,
   ) => {
-    console.log("🔴 END CALL BUTTON PRESSED WITH DIRECT TRANSCRIPTIONS");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
       return;
     }
 
@@ -1010,7 +927,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Set flag to prevent duplicate ending
     setIsEndingCall(true);
-    console.log("Setting isEndingCall to true");
 
     // Stop any active recording (though it should already be stopped)
     if (recordingInstance) {
@@ -1027,7 +943,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Cancel any ongoing speech
@@ -1053,7 +968,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Update UI state
     setIsCallActive(false);
-    console.log("Set isCallActive to false, call should now be inactive");
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
@@ -1063,9 +977,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     try {
-      console.log(
-        "Preparing modified simulation data with direct transcriptions",
-      );
 
       // Create a deep copy of the slides data to modify
       const modifiedSlidesData = simulationData?.slidesData
@@ -1088,10 +999,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ) {
               // Replace the original text with the transcription
               newItem.text = directTranscriptions.get(newItem.id);
-              console.log(
-                `Replacing text for ${newItem.id} with direct transcription:`,
-                newItem.text,
-              );
             }
 
             // For hotspots, just keep the ID and type
@@ -1130,9 +1037,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             !currentItem.isClicked &&
             !(existingRecord && (existingRecord as any).isClicked));
 
-        console.log(
-          `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
-        );
 
         if (isTimedOut) {
           // Get existing wrong clicks if any
@@ -1203,10 +1107,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         return item;
       });
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
       // Use the endVisualAudioAttempt function from simulation_visual_audio_attempts
       const response = await endVisualAudioAttempt(
@@ -1217,21 +1117,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         modifiedSlidesData, // Send modified slides data with direct transcriptions
       );
 
-      console.log("End API call completed with response:", response);
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
         // Only show completion screen for Test attempts
         if (attemptType === "Test") {
           setShowCompletionScreen(true);
-          console.log("Set showCompletionScreen to true for Test attempt");
         } else {
           // For Practice attempts, go back to list
           onBackToList();
-          console.log("Practice attempt completed, returning to list");
         }
       } else {
         console.warn("No scores received in response");
@@ -1251,7 +1147,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End call flow completed");
       setIsEndingCall(false);
     }
   };
@@ -1325,9 +1220,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       // Mark image as loaded
       setImageLoaded(true);
 
-      console.log(
-        `Image loaded with natural dimensions: ${naturalWidth}x${naturalHeight}`,
-      );
     });
   };
 
@@ -1360,9 +1252,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         Math.abs(newScales.height - imageScale.height) > 0.001
       ) {
         setImageScale(newScales);
-        console.log(
-          `Image scales updated: width=${newScales.width.toFixed(4)}, height=${newScales.height.toFixed(4)}`,
-        );
       }
     }
   }, [imageScale.width, imageScale.height]);
@@ -1461,20 +1350,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       return;
     }
 
-    console.log(
-      "Moving to next item from",
-      currentSequenceIndex,
-      "in slide",
-      currentSlideIndex,
-      "Total slides:",
-      slidesData.length,
-      "Current sequence length:",
-      currentSequence.length,
-      "Updated data provided:",
-      !!updatedAttemptData,
-      "Updated data length:",
-      updatedAttemptData?.length,
-    );
 
     // Check if this is the last item in the entire simulation
     const isLastSlide = currentSlideIndex >= slidesData.length - 1;
@@ -1482,43 +1357,28 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       currentSequenceIndex >= currentSequence.length - 1;
     const isLastItem = isLastSlide && isLastItemInSequence;
 
-    console.log("Navigation check:", {
-      isLastSlide,
-      isLastItemInSequence,
-      isLastItem,
-      currentSlideIndex,
-      totalSlides: slidesData.length,
-      currentSequenceIndex,
-      sequenceLength: currentSequence.length,
-    });
 
     if (currentSequenceIndex < currentSequence.length - 1) {
       // Next item in current slide
-      console.log("Moving to next item in current slide");
       setCurrentSequenceIndex((prevIndex) => prevIndex + 1);
     } else if (currentSlideIndex < slidesData.length - 1) {
       // First item in next slide
-      console.log("Moving to next slide");
       setCurrentSlideIndex((prevIndex) => prevIndex + 1);
       setCurrentSequenceIndex(0);
       setImageLoaded(false);
     } else if (isLastItem) {
       // End of slideshow
       setHighlightHotspot(false);
-      console.log("Simulation complete - last item reached and acknowledged");
 
       // Double check we're not in the middle of recording or transcribing
       if (!isRecording && !isTranscribing) {
         // Use the updated data if provided
         if (updatedAttemptData !== undefined && updatedAttemptData.length > 0) {
-          console.log("Using updated attempt data for end call");
           handleEndCallWithUpdatedData(updatedAttemptData);
         } else {
-          console.log("No updated data provided, using regular end call");
           handleEndCall();
         }
       } else {
-        console.log("Delaying end call until recording is complete");
         // We'll wait for the recording to finish and user to click next
       }
     } else {
@@ -1545,7 +1405,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const hotspotElement = target.closest('[data-hotspot="true"]');
       if (hotspotElement) {
         // This click is on the actual hotspot, don't record as wrong click
-        console.log("Click on hotspot element, not recording as wrong click");
         return;
       }
 
@@ -1565,17 +1424,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
         if (clickWithinHotspot) {
           // Click is within hotspot bounds, don't record as wrong click
-          console.log(
-            "Click within hotspot bounds, not recording as wrong click",
-          );
           return;
         }
       }
 
       // Record as wrong click
-      console.log(
-        `Recording wrong click at x=${x}, y=${y} for hotspot ${currentItem.id}`,
-      );
 
       // Convert to percentages for more stable storage
       const xPercent = (x / rect.width) * 100;
@@ -1594,10 +1447,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           wrongClicksRef.current[currentItem.id] = [];
         }
         wrongClicksRef.current[currentItem.id].push(newWrongClick);
-        console.log(
-          `Stored wrong click in ref for ${currentItem.id}:`,
-          wrongClicksRef.current[currentItem.id],
-        );
       }
 
       // Also update state
@@ -1611,10 +1460,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...existingItem,
             wrong_clicks: [...(existingItem.wrong_clicks || []), newWrongClick],
           };
-          console.log(
-            `Updated wrong clicks for ${currentItem.id}:`,
-            updatedItem.wrong_clicks,
-          );
           return [
             ...prevData.filter((item) => item.id !== currentItem.id),
             updatedItem,
@@ -1624,9 +1469,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ...currentItem,
             wrong_clicks: [newWrongClick],
           };
-          console.log(
-            `Created new record with wrong click for ${currentItem.id}`,
-          );
           return [...prevData, newItem];
         }
       });
@@ -1664,20 +1506,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     setTimeoutActive(false);
 
     const hotspotType = currentItem.hotspotType || "button";
-    console.log(
-      "Hotspot clicked:",
-      hotspotType,
-      "ID:",
-      currentItem.id,
-      "Current item index:",
-      currentSequenceIndex,
-      "Sequence length:",
-      currentSequence?.length,
-    );
 
     // For coaching tips, handle differently - they don't need to be tracked
     if (hotspotType === "coaching") {
-      console.log("Coaching tip clicked, dismissing and moving to next item");
       setShowCoachingTip(false);
 
       // Add a processing flag to prevent double-clicks
@@ -1709,7 +1540,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       clickRecord.isClicked = true;
     }
 
-    console.log("Adding click record:", JSON.stringify(clickRecord));
 
     // Variable to store the updated data
     let updatedData: AttemptInterface[] = [];
@@ -1742,7 +1572,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       }
     });
 
-    console.log("Hotspot clicked:", hotspotType);
 
     switch (hotspotType) {
       case "button":
@@ -1770,7 +1599,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         break;
 
       default:
-        console.log("Unknown hotspot type:", hotspotType);
     }
   };
 
@@ -1889,7 +1717,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           recordingInstance.pause();
         } catch (e) {
           // Some browsers might not support pause
-          console.log("Recording pause not supported");
         }
       }
     } else if (isRecording && isPaused) {
@@ -1903,7 +1730,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           recordingInstance.resume();
         } catch (e) {
           // Some browsers might not support resume
-          console.log("Recording resume not supported");
         }
       }
     }
@@ -2066,10 +1892,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         attemptType, // Pass the attemptType
       );
 
-      console.log("Start visual-audio response:", response);
 
       if (response.simulation) {
-        console.log("Setting simulation data");
         setSimulationData(response.simulation);
         setSimulationProgressId(response.id);
         setCallStatus("Connected");
@@ -2077,13 +1901,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
       // CHANGED: Store base64 data instead of creating blob URLs
       if (response.images && response.images.length > 0) {
-        console.log(`Processing ${response.images.length} images`);
         for (const image of response.images) {
           // Store raw base64 data in the ref
           slideDataRef.current[image.image_id] = image.image_data;
-          console.log(`Stored base64 data for image ${image.image_id}`);
         }
-        console.log(`Stored ${response.images.length} image data items`);
       }
     } catch (error) {
       console.error("Error starting visual-audio simulation:", error);
@@ -2108,10 +1929,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         if (currentItem && currentItem.id) {
           // Update local copy immediately
           updatedTranscriptions.set(currentItem.id!, transcribedText);
-          console.log(
-            `Stored transcription for item ${currentItem.id}:`,
-            transcribedText,
-          );
 
           // Update state (though this might not be available immediately)
           setMessageTranscriptions(updatedTranscriptions);
@@ -2123,9 +1940,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           currentSequenceIndex >= currentSequence.length - 1;
 
         if (isLastItem) {
-          console.log(
-            "Last trainee message completed, ending simulation directly",
-          );
           // For the last trainee message, pass the updated transcriptions directly
           setTimeout(() => {
             handleEndCallWithTranscriptions(updatedTranscriptions);
@@ -2163,9 +1977,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         currentSequenceIndex >= currentSequence.length - 1;
 
       if (isLastItem) {
-        console.log(
-          "Last item acknowledged without recording, ending simulation",
-        );
         handleEndCall();
       } else {
         moveToNextItem();
@@ -2175,11 +1986,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Handle end call implementation
   const handleEndCall = async () => {
-    console.log("🔴 END CALL BUTTON PRESSED");
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
-      console.log("Already ending call, ignoring duplicate request");
       return;
     }
 
@@ -2211,20 +2020,15 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       isTraineeMessageActive &&
       isRecording
     ) {
-      console.log(
-        "Cannot auto-end during trainee recording, waiting for user input",
-      );
       return;
     }
 
     // Set flag to prevent duplicate ending
     setIsEndingCall(true);
-    console.log("Setting isEndingCall to true");
 
     // Stop current recording if active
     if (isRecording && recordingInstance) {
       try {
-        console.log("Stopping active recording before ending call");
         const transcribedText = await stopAndProcessRecording();
 
         // Store transcription with current item ID if we have one
@@ -2244,7 +2048,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
-      console.log("Timer stopped");
     }
 
     // Cancel any ongoing speech
@@ -2270,7 +2073,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Update UI state
     setIsCallActive(false);
-    console.log("Set isCallActive to false, call should now be inactive");
 
     // Ensure we have the required IDs
     if (!simulationProgressId) {
@@ -2280,7 +2082,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     try {
-      console.log("Preparing modified simulation data with transcriptions");
 
       // Create a deep copy of the slides data to modify
       const modifiedSlidesData = simulationData?.slidesData
@@ -2303,10 +2104,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             ) {
               // Replace the original text with the transcription
               newItem.text = messageTranscriptions.get(newItem.id);
-              console.log(
-                `Replacing text for ${newItem.id} with transcription:`,
-                newItem.text,
-              );
             }
 
             // For hotspots, just keep the ID and type
@@ -2344,9 +2141,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
             !currentItem.isClicked &&
             !(existingRecord && (existingRecord as any).isClicked));
 
-        console.log(
-          `Processing current hotspot ${currentItem.name} for end call, timed out: ${isTimedOut}`,
-        );
 
         if (isTimedOut) {
           // Get existing wrong clicks if any
@@ -2417,12 +2211,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         return item;
       });
 
-      console.log(
-        "Final attempt data before API call:",
-        JSON.stringify(finalAttemptData),
-      );
 
-      console.log("Executing end-visual-audio API call with modified data");
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
@@ -2431,21 +2220,17 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         modifiedSlidesData, // Send modified slides data with transcriptions
       );
 
-      console.log("End API call completed with response:", response);
 
       if (response && response.scores) {
-        console.log("Setting scores and showing completion screen");
         setScores(response.scores);
         setDuration(response.duration || elapsedTime);
 
         // Only show completion screen for Test attempts
         if (attemptType === "Test") {
           setShowCompletionScreen(true);
-          console.log("Set showCompletionScreen to true for Test attempt");
         } else {
           // For Practice attempts, go back to list
           onBackToList();
-          console.log("Practice attempt completed, returning to list");
         }
       } else {
         console.warn("No scores received in response");
@@ -2465,14 +2250,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         onBackToList();
       }
     } finally {
-      console.log("End call flow completed");
       setIsEndingCall(false);
     }
   };
 
   // Navigation handlers for completion screen
   const handleRestartSim = () => {
-    console.log("Restarting simulation");
     // Reset state but preserve simulation data
     setShowCompletionScreen(false);
     setIsCallActive(false);
@@ -2491,14 +2274,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Small delay before automatically starting the simulation again
     setTimeout(() => {
-      console.log("Auto-starting simulation after restart");
       handleStart();
     }, 500);
   };
 
   const handleViewPlayback = () => {
     // Handle playback view action
-    console.log("View playback clicked");
     // For now, just close the completion screen
     setShowCompletionScreen(false);
   };
@@ -3121,7 +2902,6 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
                                 <Box
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log("Highlight hotspot clicked");
                                     handleHotspotClick(e);
                                   }}
                                   data-hotspot="true"

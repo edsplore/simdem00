@@ -170,8 +170,6 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
           fetchTeams(currentWorkspaceId),
         ]);
 
-        console.log("Users response:", usersResponse);
-        console.log("Teams response:", teamsResponse);
 
         // Process users
         const userAssignees: Assignee[] = Array.isArray(usersResponse)
@@ -202,11 +200,6 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
         // Combine users and teams
         setAssignees([...teamAssignees, ...userAssignees]);
 
-        console.log("Loaded assignees:", {
-          teams: teamAssignees.length,
-          users: userAssignees.length,
-          total: teamAssignees.length + userAssignees.length,
-        });
       } catch (error) {
         console.error("Error loading assignees:", error);
       } finally {
@@ -293,7 +286,6 @@ const AssignTrainingPlanDialog: React.FC<AssignTrainingPlanDialogProps> = ({
       // Wait for all team details to be fetched
       const teamsWithDetails = await Promise.all(teamDetailsPromises);
 
-      console.log("Teams with details:", teamsWithDetails);
 
       // Create the assignment with detailed team information
       const response = await createAssignment({

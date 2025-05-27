@@ -237,7 +237,6 @@ const ManageSimulationsPage = () => {
       if (userIds.size === 0) return;
 
       const userIdsArray = Array.from(userIds);
-      console.log("Fetching user details for IDs:", userIdsArray);
 
       const usersData = await fetchUsersByIds(currentWorkspaceId, userIdsArray);
 
@@ -385,7 +384,6 @@ const ManageSimulationsPage = () => {
         setIsLoadingDivisions(true);
         try {
           const divisionsData = await fetchDivisions(currentWorkspaceId);
-          console.log("Loaded divisions:", divisionsData);
           setDivisions(divisionsData);
         } catch (error) {
           console.error("Failed to load divisions:", error);
@@ -399,7 +397,6 @@ const ManageSimulationsPage = () => {
         setIsLoadingDepartments(true);
         try {
           const departmentsData = await fetchDepartments(currentWorkspaceId);
-          console.log("Loaded departments:", departmentsData);
           setDepartments(departmentsData);
         } catch (error) {
           console.error("Failed to load departments:", error);

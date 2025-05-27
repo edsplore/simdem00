@@ -103,9 +103,6 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
       setError(null);
 
       try {
-        console.log('Loading assignment details for:', assignment);
-        console.log('Team IDs:', assignment.team_id);
-        console.log('Trainee IDs:', assignment.trainee_id);
 
         // Load users and teams in parallel
         const [usersData, teamsResponse] = await Promise.all([
@@ -119,8 +116,6 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
             : Promise.resolve({ teams: [], items: [] })
         ]);
 
-        console.log('Users data:', usersData);
-        console.log('Teams response:', teamsResponse);
 
         setUsers(usersData);
 
@@ -133,14 +128,12 @@ const AssignmentDetailsDialog: React.FC<AssignmentDetailsDialogProps> = ({
           teamsList = teamsResponse.items;
         }
 
-        console.log('Teams list before filtering:', teamsList);
 
         // Filter teams to only include those in the assignment
         if (assignment.team_id && assignment.team_id.length > 0) {
           const filteredTeams = teamsList.filter(team => 
             assignment.team_id.includes(team.team_id)
           );
-          console.log('Filtered teams:', filteredTeams);
           setTeams(filteredTeams);
         } else {
           setTeams([]);

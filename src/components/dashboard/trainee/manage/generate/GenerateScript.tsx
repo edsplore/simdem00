@@ -403,7 +403,6 @@ const GenerateScriptContent = () => {
             responseData ||
             {};
 
-          console.log("API Response simulation data:", simulation);
 
           // Map level settings from the response format to our internal format
           const mappedLevels = {
@@ -510,7 +509,6 @@ const GenerateScriptContent = () => {
             Array.isArray(simulation.slidesData) &&
             simulation.slidesData.length > 0
           ) {
-            console.log("Processing slidesData:", simulation.slidesData);
 
             // Create a map of image data by id for quick lookup if images array exists
             const imageDataMap = new Map();
@@ -726,15 +724,10 @@ const GenerateScriptContent = () => {
                 file: undefined, // No file reference for loaded images
               });
 
-              console.log(
-                `Processed image ${slide.imageId} with URL:`,
-                blobUrl,
-              );
             }
           }
           // If no slidesData but we have images array
           else if (responseData.images && Array.isArray(responseData.images)) {
-            console.log("Processing just images array:", responseData.images);
 
             // Process each image
             for (let index = 0; index < responseData.images.length; index++) {
@@ -788,10 +781,6 @@ const GenerateScriptContent = () => {
             responseData.document?.images &&
             Array.isArray(responseData.document.images)
           ) {
-            console.log(
-              "Processing images from document wrapper:",
-              responseData.document.images,
-            );
 
             // Process each image
             for (
@@ -847,14 +836,12 @@ const GenerateScriptContent = () => {
 
           // Update visual images state
           if (processedImages.length > 0) {
-            console.log("Setting processed visual images:", processedImages);
             setVisualImages(processedImages);
           } else {
             setVisualImages([]);
           }
 
           // Set assigned message IDs to context
-          console.log("Setting assigned message IDs:", assignedMessageIds);
           setAssignedScriptMessageIds(assignedMessageIds);
 
           // If status is published, set isPublished
@@ -1043,10 +1030,6 @@ const GenerateScriptContent = () => {
         tags: loadedSimulation.tags,
       });
 
-      console.log("API update request sent with:", {
-        sim_name: loadedSimulation.name,
-        sim_type: loadedSimulation.simulationType.toLowerCase(),
-      });
 
       if (response) {
         // Extract data from response
@@ -1055,8 +1038,6 @@ const GenerateScriptContent = () => {
         const responsePrompt = response.prompt || "";
 
         // Log the prompt received from API response
-        console.log("Received prompt from API:", responsePrompt);
-        console.log("Full API response:", response);
 
         // Update simulation response with all available data
         setSimulationResponse({
@@ -1065,10 +1046,6 @@ const GenerateScriptContent = () => {
           prompt: responsePrompt,
         });
 
-        console.log(
-          "Updated simulationResponse state with prompt:",
-          responsePrompt,
-        );
       }
     } catch (error) {
       console.error("Error handling continue:", error);
@@ -1092,16 +1069,6 @@ const GenerateScriptContent = () => {
     setIsLoading(true);
     try {
       // Log what's in the FormData for debugging
-      console.log(
-        "FormData entries:",
-        [...formData.entries()].map((entry) => {
-          // Don't log file contents, just their presence
-          if (entry[1] instanceof File) {
-            return [entry[0], `File: ${(entry[1] as File).name}`];
-          }
-          return entry;
-        }),
-      );
 
       // Get slidesData from FormData and add percentage coordinates
       const slidesDataEntry = formData.get("slidesData");
@@ -1193,10 +1160,6 @@ const GenerateScriptContent = () => {
 
       formData.append("tags", JSON.stringify(loadedSimulation.tags));
 
-      console.log("Sent visual update with fields:", {
-        sim_name: loadedSimulation.name,
-        sim_type: loadedSimulation.simulationType.toLowerCase(),
-      });
 
       // Use updateSimulationWithFormData from simulation_operations
       const response = await updateSimulationWithFormData(id, formData);
@@ -1209,8 +1172,6 @@ const GenerateScriptContent = () => {
         const responsePrompt = response.prompt || "";
 
         // Log the prompt received from API response
-        console.log("Received prompt from visual update API:", responsePrompt);
-        console.log("Full visual update API response:", response);
 
         // Update simulation response with all available data
         setSimulationResponse({
@@ -1219,10 +1180,6 @@ const GenerateScriptContent = () => {
           prompt: responsePrompt,
         });
 
-        console.log(
-          "Updated simulationResponse state with prompt from slides update:",
-          responsePrompt,
-        );
         return response;
       }
       return null;

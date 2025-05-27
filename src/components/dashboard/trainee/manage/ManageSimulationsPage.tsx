@@ -426,23 +426,24 @@ const ManageSimulationsPage = () => {
   }, [currentWorkspaceId]);
 
   // Load tags
-  useEffect(() => {
-    const loadTags = async () => {
-      if (!user?.id) return;
+  const loadTags = useCallback(async () => {
+    if (!user?.id) return;
 
-      try {
-        setIsLoadingTags(true);
-        const tagsData = await fetchTags(user.id);
-        setTags(tagsData);
-      } catch (error) {
-        console.error("Error loading tags:", error);
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    loadTags();
+    try {
+      setIsLoadingTags(true);
+      const tagsData = await fetchTags(user.id);
+      setTags(tagsData);
+    } catch (error) {
+      console.error("Error loading tags:", error);
+    } finally {
+      setIsLoadingTags(false);
+    }
   }, [user?.id]);
+
+  // Load tags when component mounts or user changes
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
 
   const handleTabChange = (_: React.SyntheticEvent, newValue: string) => {
     setCurrentTab(newValue);
@@ -894,6 +895,7 @@ const ManageSimulationsPage = () => {
               <Autocomplete
                 value={selectedTags === "All Tags" ? null : selectedTags}
                 onChange={handleTagsChange}
+                onOpen={loadTags}
                 inputValue={tagsSearchQuery}
                 onInputChange={(event, newInputValue) => {
                   setTagsSearchQuery(newInputValue);

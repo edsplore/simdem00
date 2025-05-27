@@ -284,23 +284,23 @@ const ManageTrainingPlanPage = () => {
   }, [currentWorkspaceId]); // Only run once when component mounts or workspace changes
 
   // Load tags
-  useEffect(() => {
-    const loadTags = async () => {
-      if (!user?.id) return;
+  const loadTags = useCallback(async () => {
+    if (!user?.id) return;
 
-      try {
-        setIsLoadingTags(true);
-        const tagsData = await fetchTags(user.id);
-        setTags(tagsData);
-      } catch (error) {
-        console.error('Error loading tags:', error);
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    loadTags();
+    try {
+      setIsLoadingTags(true);
+      const tagsData = await fetchTags(user.id);
+      setTags(tagsData);
+    } catch (error) {
+      console.error('Error loading tags:', error);
+    } finally {
+      setIsLoadingTags(false);
+    }
   }, [user?.id]);
+
+  useEffect(() => {
+    loadTags();
+  }, [loadTags]);
 
   const loadData = async () => {
     try {
@@ -679,6 +679,7 @@ const ManageTrainingPlanPage = () => {
                   setSelectedTags(newValue || "All Tags");
                   setPage(0);
                 }}
+                onOpen={loadTags}
                 inputValue={tagsSearchQuery}
                 onInputChange={(event, newInputValue) => {
                   setTagsSearchQuery(newInputValue);
@@ -699,8 +700,19 @@ const ManageTrainingPlanPage = () => {
                         height: 40,
                       },
                     }}
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {isLoadingTags ? <CircularProgress size={20} /> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
                   />
                 )}
+                loading={isLoadingTags}
+                loadingText="Loading tags..."
                 noOptionsText="No tags found"
                 sx={{ width: 150 }}
               />

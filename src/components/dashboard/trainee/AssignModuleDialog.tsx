@@ -339,11 +339,7 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
     return assignees.find((assignee) => assignee.id === id)?.name || "";
   };
 
-  const handleDeleteAssignee = (
-    assigneeId: string,
-    event: React.MouseEvent,
-  ) => {
-    event.stopPropagation();
+  const handleDeleteAssignee = (assigneeId: string) => {
     const newValue = selectedAssignees.filter((id) => id !== assigneeId);
     setValue("assignTo", newValue, { shouldValidate: true });
   };
@@ -706,7 +702,8 @@ const AssignModuleDialog: React.FC<AssignModuleDialogProps> = ({
                             <Chip
                               key={value}
                               label={getSelectedAssigneeName(value)}
-                              onDelete={(e) => handleDeleteAssignee(value, e)}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onDelete={() => handleDeleteAssignee(value)}
                               deleteIcon={<CloseIcon />}
                               avatar={
                                 <Avatar sx={{ bgcolor: "#F5F6FF" }}>

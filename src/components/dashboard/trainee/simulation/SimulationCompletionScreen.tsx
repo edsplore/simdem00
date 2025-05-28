@@ -1,4 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
+import FeedbackDialog from "./FeedbackDialog";
+import { submitFeedback, FeedbackFormData } from "../../../../services/feedback";
+import { useAuth } from "../../../../context/AuthContext";
+import { useNotification } from "../../../../context/NotificationContext";
 
 interface ScoresType {
   FinalScore: number;
@@ -46,10 +50,13 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   onGoToNextSim,
   onRestartSim,
   onViewPlayback,
-  onShareFeedback,
   hasNextSimulation = false,
   minPassingScore,
 }) => {
+  const { user } = useAuth();
+  const { showNotification } = useNotification();
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+
   // Format completion time as Xm Ys
   const formatCompletionTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -71,6 +78,35 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
       return scores.ClickScore;
     }
     return `${Math.round(score)}%`;
+  };
+
+  const handleOpenFeedbackDialog = () => {
+    setIsFeedbackDialogOpen(true);
+  };
+
+  const handleCloseFeedbackDialog = () => {
+    setIsFeedbackDialogOpen(false);
+  };
+
+  const handleSubmitFeedback = async (data: FeedbackFormData) => {
+    try {
+      if (!user?.id) {
+        showNotification("User ID not found", "error");
+        return;
+      }
+
+      await submitFeedback({
+        user_id: user.id,
+        simulation_id: simulationName, // Using simulation name as ID for now
+        attempt_id: "latest", // Assuming latest attempt
+        feedback: data
+      });
+
+      showNotification("Feedback submitted successfully", "success");
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      showNotification("Failed to submit feedback", "error");
+    }
   };
 
   if (!showCompletionScreen) {
@@ -376,7 +412,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
 
           {/* Action Buttons */}
           <div className="mt-8 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={onRestartSim}
                 className="py-3 px-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 font-bold border border-gray-200"
@@ -385,9 +421,15 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               </button>
               <button
                 onClick={onViewPlayback}
-                className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+                className="py-3 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-bold"
               >
                 View Playback
+              </button>
+              <button
+                onClick={handleOpenFeedbackDialog}
+                className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+              >
+                Share Feedback
               </button>
             </div>
           </div>
@@ -436,6 +478,14 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
           )}
         </div>
       </div>
+
+      {/* Feedback Dialog */}
+      <FeedbackDialog
+        open={isFeedbackDialogOpen}
+        onClose={handleCloseFeedbackDialog}
+        onSubmit={handleSubmitFeedback}
+        simulationName={simulationName}
+      />
     </div>
   );
 };

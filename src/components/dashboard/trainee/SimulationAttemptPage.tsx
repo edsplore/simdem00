@@ -12,12 +12,17 @@ import {
   IconButton,
   Chip,
   SvgIcon,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
+import apiClient from "../../../services/api/interceptors";
 import DashboardContent from "../DashboardContent";
 import ChatSimulationPage from "./simulation/ChatSimulationPage";
 import AudioSimulationPage from "./simulation/AudioSimulationPage";
@@ -81,6 +86,8 @@ const SimulationAttemptPage = () => {
     "Test" | "Practice" | null
   >(null);
   const [showStartPage, setShowStartPage] = useState(false);
+  const [showOverviewVideo, setShowOverviewVideo] = useState(false);
+  const [overviewVideoUrl, setOverviewVideoUrl] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -225,6 +232,14 @@ const SimulationAttemptPage = () => {
     loadSimulation();
   }, [simulationId]);
 
+  useEffect(() => {
+    return () => {
+      if (overviewVideoUrl) {
+        URL.revokeObjectURL(overviewVideoUrl);
+      }
+    };
+  }, [overviewVideoUrl]);
+
   // Navigate to different simulation
   const navigateToSimulation = (index: number) => {
     if (index < 0 || index >= allSimulations.length) return;
@@ -354,6 +369,28 @@ const SimulationAttemptPage = () => {
       if (!practiceEnabled) {
         setSelectedAttempt(null);
       }
+    }
+  };
+
+  const handleOpenOverviewVideo = async () => {
+    if (!simulation?.overview_video) return;
+    try {
+      const { data } = await apiClient.get(simulation.overview_video, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(data);
+      setOverviewVideoUrl(url);
+      setShowOverviewVideo(true);
+    } catch (err) {
+      console.error("Failed to load overview video", err);
+    }
+  };
+
+  const handleCloseOverviewVideo = () => {
+    setShowOverviewVideo(false);
+    if (overviewVideoUrl) {
+      URL.revokeObjectURL(overviewVideoUrl);
+      setOverviewVideoUrl(null);
     }
   };
 
@@ -554,14 +591,38 @@ const SimulationAttemptPage = () => {
                         startIcon={<PlayArrowIcon />}
                         variant="text"
                         sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
-                        onClick={() =>
-                          window.open(simulation.overview_video, "_blank")
-                        }
+                        onClick={handleOpenOverviewVideo}
                       >
                         Overview Video
                       </Button>
                     )}
                   </Stack>
+                  {simulation.overview_video && (
+                    <Dialog
+                      open={showOverviewVideo}
+                      onClose={handleCloseOverviewVideo}
+                      maxWidth="md"
+                      fullWidth
+                    >
+                      <DialogTitle>Overview Video</DialogTitle>
+                      <DialogContent>
+                        {overviewVideoUrl ? (
+                          <video
+                            style={{ width: "100%" }}
+                            controls
+                            src={overviewVideoUrl}
+                          />
+                        ) : (
+                          <Box sx={{ display: "flex", justifyContent: "center" }}>
+                            <CircularProgress />
+                          </Box>
+                        )}
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={handleCloseOverviewVideo}>Close</Button>
+                      </DialogActions>
+                    </Dialog>
+                  )}
                 </Stack>
 
                 {/* Level Selection */}

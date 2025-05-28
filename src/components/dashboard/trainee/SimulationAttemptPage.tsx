@@ -32,6 +32,7 @@ import VisualSimulationPage from "./simulation/VisualSimulationPage";
 import { fetchSimulationById } from "../../../services/simulations";
 import { canStartTest } from "../../../services/simulation";
 import { fetchTrainingData } from "../../../services/training";
+import { getOverviewVideo } from "../../../services/video_upload";
 import { useAuth } from "../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../utils/navigation";
 import type { Simulation, TrainingData } from "../../../types/training";
@@ -399,6 +400,27 @@ const SimulationAttemptPage = () => {
     setShowStartPage(true);
   };
 
+  const handleOpenOverviewVideo = async () => {
+    if (!simulation?.overview_video) return;
+    try {
+      const videoId = simulation.overview_video.split('/').pop() ?? simulation.overview_video;
+      const blob = await getOverviewVideo(videoId);
+      const url = URL.createObjectURL(blob);
+      setOverviewVideoUrl(url);
+      setShowOverviewVideo(true);
+    } catch (err) {
+      console.error('Failed to load overview video', err);
+    }
+  };
+
+  const handleCloseOverviewVideo = () => {
+    setShowOverviewVideo(false);
+    if (overviewVideoUrl) {
+      URL.revokeObjectURL(overviewVideoUrl);
+      setOverviewVideoUrl(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardContent>
@@ -597,7 +619,7 @@ const SimulationAttemptPage = () => {
                       </Button>
                     )}
                   </Stack>
-                  {simulation.overview_video && (
+                  {simulation.overview_video && overviewVideoUrl && (
                     <Dialog
                       open={showOverviewVideo}
                       onClose={handleCloseOverviewVideo}
@@ -606,17 +628,11 @@ const SimulationAttemptPage = () => {
                     >
                       <DialogTitle>Overview Video</DialogTitle>
                       <DialogContent>
-                        {overviewVideoUrl ? (
-                          <video
-                            style={{ width: "100%" }}
-                            controls
-                            src={overviewVideoUrl}
-                          />
-                        ) : (
-                          <Box sx={{ display: "flex", justifyContent: "center" }}>
-                            <CircularProgress />
-                          </Box>
-                        )}
+                        <video
+                          style={{ width: "100%" }}
+                          controls
+                          src={overviewVideoUrl}
+                        />
                       </DialogContent>
                       <DialogActions>
                         <Button onClick={handleCloseOverviewVideo}>Close</Button>

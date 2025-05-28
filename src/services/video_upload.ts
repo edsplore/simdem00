@@ -54,3 +54,14 @@ export const uploadOverviewVideo = async (
 
   return videoUrl;
 };
+
+/**
+ * Fetches a video by ID and returns it as a Blob.
+ * The backend expects the path to be `/videos/{video_id}`.
+ */
+export const getOverviewVideo = async (videoId: string): Promise<Blob> => {
+  const response = await apiClient.get(`/videos/${videoId}`, {
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};

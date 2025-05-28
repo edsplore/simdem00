@@ -87,6 +87,7 @@ const SimulationAttemptPage = () => {
   >(null);
   const [showStartPage, setShowStartPage] = useState(false);
   const [showOverviewVideo, setShowOverviewVideo] = useState(false);
+  const [isOverviewVideoLoading, setIsOverviewVideoLoading] = useState(false);
   const [overviewVideoUrl, setOverviewVideoUrl] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -380,6 +381,7 @@ const SimulationAttemptPage = () => {
   const handleOpenOverviewVideo = async () => {
     if (!simulation?.overview_video) return;
     try {
+      setIsOverviewVideoLoading(true);
       const videoId = simulation.overview_video.split('/').pop() ?? simulation.overview_video;
       const blob = await getOverviewVideo(videoId);
       const url = URL.createObjectURL(blob);
@@ -387,6 +389,8 @@ const SimulationAttemptPage = () => {
       setShowOverviewVideo(true);
     } catch (err) {
       console.error('Failed to load overview video', err);
+    } finally {
+      setIsOverviewVideoLoading(false);
     }
   };
 
@@ -587,12 +591,19 @@ const SimulationAttemptPage = () => {
                   <Stack direction="row" spacing={2}>
                     {simulation.overview_video && (
                       <Button
-                        startIcon={<PlayArrowIcon />}
+                        startIcon={
+                          isOverviewVideoLoading ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <PlayArrowIcon />
+                          )
+                        }
                         variant="text"
                         sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
                         onClick={handleOpenOverviewVideo}
+                        disabled={isOverviewVideoLoading}
                       >
-                        Overview Video
+                        {isOverviewVideoLoading ? 'Loading...' : 'Overview Video'}
                       </Button>
                     )}
                   </Stack>

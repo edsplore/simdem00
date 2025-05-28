@@ -12,6 +12,10 @@ import {
   IconButton,
   Chip,
   SvgIcon,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
@@ -27,6 +31,7 @@ import VisualSimulationPage from "./simulation/VisualSimulationPage";
 import { fetchSimulationById } from "../../../services/simulations";
 import { canStartTest } from "../../../services/simulation";
 import { fetchTrainingData } from "../../../services/training";
+import { getOverviewVideo } from "../../../services/video_upload";
 import { useAuth } from "../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../utils/navigation";
 import type { Simulation, TrainingData } from "../../../types/training";
@@ -81,6 +86,8 @@ const SimulationAttemptPage = () => {
     "Test" | "Practice" | null
   >(null);
   const [showStartPage, setShowStartPage] = useState(false);
+  const [showOverviewVideo, setShowOverviewVideo] = useState(false);
+  const [overviewVideoUrl, setOverviewVideoUrl] = useState<string | null>(null);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -362,6 +369,27 @@ const SimulationAttemptPage = () => {
     setShowStartPage(true);
   };
 
+  const handleOpenOverviewVideo = async () => {
+    if (!simulation?.overview_video) return;
+    try {
+      const videoId = simulation.overview_video.split('/').pop() ?? simulation.overview_video;
+      const blob = await getOverviewVideo(videoId);
+      const url = URL.createObjectURL(blob);
+      setOverviewVideoUrl(url);
+      setShowOverviewVideo(true);
+    } catch (err) {
+      console.error('Failed to load overview video', err);
+    }
+  };
+
+  const handleCloseOverviewVideo = () => {
+    setShowOverviewVideo(false);
+    if (overviewVideoUrl) {
+      URL.revokeObjectURL(overviewVideoUrl);
+      setOverviewVideoUrl(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <DashboardContent>
@@ -554,14 +582,32 @@ const SimulationAttemptPage = () => {
                         startIcon={<PlayArrowIcon />}
                         variant="text"
                         sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
-                        onClick={() =>
-                          window.open(simulation.overview_video, "_blank")
-                        }
+                        onClick={handleOpenOverviewVideo}
                       >
                         Overview Video
                       </Button>
                     )}
                   </Stack>
+                  {simulation.overview_video && overviewVideoUrl && (
+                    <Dialog
+                      open={showOverviewVideo}
+                      onClose={handleCloseOverviewVideo}
+                      maxWidth="md"
+                      fullWidth
+                    >
+                      <DialogTitle>Overview Video</DialogTitle>
+                      <DialogContent>
+                        <video
+                          style={{ width: "100%" }}
+                          controls
+                          src={overviewVideoUrl}
+                        />
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={handleCloseOverviewVideo}>Close</Button>
+                      </DialogActions>
+                    </Dialog>
+                  )}
                 </Stack>
 
                 {/* Level Selection */}

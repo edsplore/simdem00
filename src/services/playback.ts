@@ -83,6 +83,59 @@ export interface PlaybackRowPaginationParams {
   search?: string;
 }
 
+// New interface for insights request
+export interface FetchPlaybackInsightsPayload {
+  user_id: string;
+  attempt_id: string;
+  simulation_id?: string;
+  simulation_type?: string;
+}
+
+// New interface for insights response
+export interface PlaybackInsight {
+  category: string;
+  score: string;
+  things_done_well: Array<{
+    title: string;
+    description: string;
+  }>;
+  things_to_improve: Array<{
+    title: string;
+    description: string;
+  }>;
+}
+
+export interface FetchPlaybackInsightsResponse {
+  insights: {
+    confidence: PlaybackInsight;
+    concentration: PlaybackInsight;
+    energy: PlaybackInsight;
+    dead_air_time: {
+      percentage: string;
+      description: string;
+    };
+    click_score?: {
+      score: string;
+      total: string;
+      description: string;
+    };
+    keyword_score?: {
+      score: string;
+      total: string;
+      description: string;
+    };
+    text_field_keyword_score?: {
+      score: string;
+      total: string;
+      description: string;
+    };
+    sim_accuracy_score?: {
+      percentage: string;
+      description: string;
+    };
+  };
+}
+
 export const fetchPlaybackRowData = async (
   payload: FetchPlaybackRowDataPayload
 ): Promise<FetchPlaybackRowDataResponse> => {
@@ -115,6 +168,19 @@ export const fetchPlaybackStats = async (
     return response.data.attempts;
   } catch (error) {
     console.error("Error fetching manager dashboard aggregated data:", error);
+    throw error;
+  }
+};
+
+// New function to fetch playback insights
+export const fetchPlaybackInsights = async (
+  payload: FetchPlaybackInsightsPayload
+): Promise<FetchPlaybackInsightsResponse> => {
+  try {
+    const response = await apiClient.post("/attempt/insights", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching playback insights:", error);
     throw error;
   }
 };

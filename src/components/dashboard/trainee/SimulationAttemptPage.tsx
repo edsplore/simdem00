@@ -22,7 +22,6 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
-import apiClient from "../../../services/api/interceptors";
 import DashboardContent from "../DashboardContent";
 import ChatSimulationPage from "./simulation/ChatSimulationPage";
 import AudioSimulationPage from "./simulation/AudioSimulationPage";

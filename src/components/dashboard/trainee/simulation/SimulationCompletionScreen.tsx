@@ -21,6 +21,8 @@ interface SimulationCompletionScreenProps {
   showCompletionScreen: boolean;
   userName: string;
   simulationName: string;
+  simulationId: string;
+  attemptId: string;
   level: string;
   simType: string;
   attemptType: string;
@@ -40,6 +42,8 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   showCompletionScreen,
   userName,
   simulationName,
+  simulationId,
+  attemptId,
   level,
   simType,
   attemptType,
@@ -97,9 +101,9 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
 
       await submitFeedback({
         user_id: user.id,
-        simulation_id: simulationName, // Using simulation name as ID for now
-        attempt_id: "latest", // Assuming latest attempt
-        feedback: data
+        simulation_id: simulationId,
+        attempt_id: attemptId,
+        feedback: data,
       });
 
       showNotification("Feedback submitted successfully", "success");
@@ -484,6 +488,8 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
         open={isFeedbackDialogOpen}
         onClose={handleCloseFeedbackDialog}
         onSubmit={handleSubmitFeedback}
+        simulationId={simulationId}
+        attemptId={attemptId}
         simulationName={simulationName}
       />
     </div>

@@ -33,14 +33,18 @@ interface FeedbackDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: FeedbackFormData) => void;
-  simulationName: string;
+  simulationId: string;
+  attemptId: string;
+  simulationName?: string; // Optional - retained for potential display
 }
 
 const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   open,
   onClose,
   onSubmit,
-  simulationName
+  simulationId, // currently unused but passed for future use
+  attemptId, // currently unused but passed for future use
+  simulationName,
 }) => {
   const { control, handleSubmit, reset } = useForm<FeedbackFormData>({
     defaultValues: {

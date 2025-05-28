@@ -22,6 +22,7 @@ import {
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
 } from "@mui/icons-material";
+import apiClient from "../../../services/api/interceptors";
 import DashboardContent from "../DashboardContent";
 import ChatSimulationPage from "./simulation/ChatSimulationPage";
 import AudioSimulationPage from "./simulation/AudioSimulationPage";
@@ -232,6 +233,14 @@ const SimulationAttemptPage = () => {
     loadSimulation();
   }, [simulationId]);
 
+  useEffect(() => {
+    return () => {
+      if (overviewVideoUrl) {
+        URL.revokeObjectURL(overviewVideoUrl);
+      }
+    };
+  }, [overviewVideoUrl]);
+
   // Navigate to different simulation
   const navigateToSimulation = (index: number) => {
     if (index < 0 || index >= allSimulations.length) return;
@@ -361,6 +370,28 @@ const SimulationAttemptPage = () => {
       if (!practiceEnabled) {
         setSelectedAttempt(null);
       }
+    }
+  };
+
+  const handleOpenOverviewVideo = async () => {
+    if (!simulation?.overview_video) return;
+    try {
+      const { data } = await apiClient.get(simulation.overview_video, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(data);
+      setOverviewVideoUrl(url);
+      setShowOverviewVideo(true);
+    } catch (err) {
+      console.error("Failed to load overview video", err);
+    }
+  };
+
+  const handleCloseOverviewVideo = () => {
+    setShowOverviewVideo(false);
+    if (overviewVideoUrl) {
+      URL.revokeObjectURL(overviewVideoUrl);
+      setOverviewVideoUrl(null);
     }
   };
 

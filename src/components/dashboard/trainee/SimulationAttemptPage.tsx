@@ -12,6 +12,10 @@ import {
   IconButton,
   Chip,
   SvgIcon,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import {
   PlayArrow as PlayArrowIcon,
@@ -81,6 +85,7 @@ const SimulationAttemptPage = () => {
     "Test" | "Practice" | null
   >(null);
   const [showStartPage, setShowStartPage] = useState(false);
+  const [showOverviewVideo, setShowOverviewVideo] = useState(false);
   const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -554,14 +559,34 @@ const SimulationAttemptPage = () => {
                         startIcon={<PlayArrowIcon />}
                         variant="text"
                         sx={{ color: "#3A4170", bgcolor: "#F6F6FF", px: 2 }}
-                        onClick={() =>
-                          window.open(simulation.overview_video, "_blank")
-                        }
+                        onClick={() => setShowOverviewVideo(true)}
                       >
                         Overview Video
                       </Button>
                     )}
                   </Stack>
+                  {simulation.overview_video && (
+                    <Dialog
+                      open={showOverviewVideo}
+                      onClose={() => setShowOverviewVideo(false)}
+                      maxWidth="md"
+                      fullWidth
+                    >
+                      <DialogTitle>Overview Video</DialogTitle>
+                      <DialogContent>
+                        <video
+                          style={{ width: "100%" }}
+                          controls
+                          src={simulation.overview_video}
+                        />
+                      </DialogContent>
+                      <DialogActions>
+                        <Button onClick={() => setShowOverviewVideo(false)}>
+                          Close
+                        </Button>
+                      </DialogActions>
+                    </Dialog>
+                  )}
                 </Stack>
 
                 {/* Level Selection */}

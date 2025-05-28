@@ -21,6 +21,7 @@ import {
   TextField,
   CardContent,
   Button,
+  Tooltip,
 } from "@mui/material";
 import {
   AudioFile,
@@ -295,6 +296,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
 
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoError, setVideoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Track if form has been initialized from settings
@@ -436,6 +438,16 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setVideoError('Video file size exceeds 10MB. Please upload a smaller file.');
+      e.target.value = '';
+      return;
+    }
+
+    setVideoError(null);
     setIsUploadingVideo(true);
     setVideoUploadProgress(0);
     try {
@@ -903,15 +915,19 @@ Understand refund process"
                 >
                   <PlayCircle sx={{ fontSize: 24, color: "#444CE7" }} />
                 </Box>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  sx={{ bgcolor: "#444CE7" }}
-                  disabled={!watch("overviewVideo.enabled") || isUploadingVideo}
-                  onClick={handleVideoButtonClick}
-                >
-                  {isUploadingVideo ? `${videoUploadProgress}%` : 'Upload Video'}
-                </Button>
+                <Tooltip title="Maximum file size: 10MB" arrow>
+                  <span>
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      sx={{ bgcolor: "#444CE7" }}
+                      disabled={!watch("overviewVideo.enabled") || isUploadingVideo}
+                      onClick={handleVideoButtonClick}
+                    >
+                      {isUploadingVideo ? `${videoUploadProgress}%` : 'Upload Video'}
+                    </Button>
+                  </span>
+                </Tooltip>
                 <input
                   type="file"
                   accept="video/*"
@@ -919,6 +935,14 @@ Understand refund process"
                   onChange={handleVideoChange}
                   style={{ display: 'none' }}
                 />
+                <Typography variant="caption" color="text.secondary">
+                  Max file size: 10MB
+                </Typography>
+                {videoError && (
+                  <Typography variant="caption" color="error">
+                    {videoError}
+                  </Typography>
+                )}
                 {watch('overviewVideo.url') && !isUploadingVideo && (
                   <Typography variant="caption" color="text.secondary">
                     Video uploaded

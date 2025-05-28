@@ -1,5 +1,10 @@
 import apiClient from "./api/interceptors";
-import { TrainingData } from "../types/training";
+import type {
+  TrainingData,
+  TrainingPlan,
+  Module,
+  Simulation,
+} from "../types/training";
 
 export const fetchTrainingPlanDetails = async (
   userId: string,
@@ -24,6 +29,61 @@ export const fetchTrainingData = async (
     return response.data;
   } catch (error) {
     console.error("Error fetching training data:", error);
+    throw error;
+  }
+};
+
+export interface TrainingItemsPaginationParams {
+  page: number;
+  pagesize: number;
+  search?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface TrainingItemsResponse {
+  training_plans: TrainingPlan[];
+  modules: Module[];
+  simulations: Simulation[];
+  pagination?: {
+    total_count: number;
+    page: number;
+    pagesize: number;
+    total_pages: number;
+  };
+}
+
+export const fetchTrainingItems = async (
+  userId: string,
+  params: TrainingItemsPaginationParams,
+): Promise<TrainingItemsResponse> => {
+  try {
+    const payload: Record<string, unknown> = { user_id: userId };
+
+    if (params) {
+      payload.pagination = {
+        page: params.page,
+        pagesize: params.pagesize,
+      };
+      if (params.search) {
+        payload.pagination.search = params.search;
+      }
+      if (params.status) {
+        payload.pagination.status = params.status;
+      }
+      if (params.startDate) {
+        payload.pagination.startDate = params.startDate;
+      }
+      if (params.endDate) {
+        payload.pagination.endDate = params.endDate;
+      }
+    }
+
+    const response = await apiClient.post("/fetch-assigned-plans", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching training items:", error);
     throw error;
   }
 };

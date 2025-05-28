@@ -1410,6 +1410,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
                   onSettingsChange={handleAdvancedSettingsChange}
                   simulationType={simulationType}
                   activeSection={activeSection}
+                  simulationId={simulationId || ''}
                 />
 
                 <VoiceAndScoreSettings

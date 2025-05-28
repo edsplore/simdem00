@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import {
   Box,
@@ -28,6 +28,7 @@ import {
   ChatBubble,
   PlayCircle,
 } from "@mui/icons-material";
+import { uploadOverviewVideo } from "../../../../../../services/video_upload";
 
 // Styled components remain the same...
 const StyledSwitch = styled(Switch)(({ theme }) => ({
@@ -126,6 +127,7 @@ interface AdvancedSettingsProps {
   onSettingsChange: (settings: SimulationSettings) => void;
   simulationType?: string;
   activeSection?: string;
+  simulationId: string;
 }
 
 interface FormData {
@@ -259,6 +261,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   onSettingsChange,
   simulationType: initialSimType,
   activeSection,
+  simulationId,
 }) => {
   // Initialize form with values from props
   const { control, handleSubmit, watch, setValue, reset } = useForm<FormData>({
@@ -289,6 +292,10 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       },
     },
   });
+
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Track if form has been initialized from settings
   const hasInitializedFromSettings = useRef(false);
@@ -418,6 +425,31 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       quickTips: data.quickTips,
       overviewVideo: data.overviewVideo,
     });
+  };
+
+  const handleVideoButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleVideoChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingVideo(true);
+    setVideoUploadProgress(0);
+    try {
+      const url = await uploadOverviewVideo(
+        simulationId,
+        file,
+        (p) => setVideoUploadProgress(p),
+      );
+      setValue('overviewVideo.url', url, { shouldDirty: true, shouldTouch: true });
+    } catch (err) {
+      console.error('Video upload failed', err);
+    } finally {
+      setIsUploadingVideo(false);
+    }
   };
 
   return (
@@ -875,10 +907,23 @@ Understand refund process"
                   fullWidth
                   variant="contained"
                   sx={{ bgcolor: "#444CE7" }}
-                  disabled={!watch("overviewVideo.enabled")}
+                  disabled={!watch("overviewVideo.enabled") || isUploadingVideo}
+                  onClick={handleVideoButtonClick}
                 >
-                  Upload Video
+                  {isUploadingVideo ? `${videoUploadProgress}%` : 'Upload Video'}
                 </Button>
+                <input
+                  type="file"
+                  accept="video/*"
+                  ref={fileInputRef}
+                  onChange={handleVideoChange}
+                  style={{ display: 'none' }}
+                />
+                {watch('overviewVideo.url') && !isUploadingVideo && (
+                  <Typography variant="caption" color="text.secondary">
+                    Video uploaded
+                  </Typography>
+                )}
               </Box>
             </CardContent>
           </Card>

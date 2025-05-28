@@ -373,28 +373,6 @@ const SimulationAttemptPage = () => {
     }
   };
 
-  const handleOpenOverviewVideo = async () => {
-    if (!simulation?.overview_video) return;
-    try {
-      const { data } = await apiClient.get(simulation.overview_video, {
-        responseType: "blob",
-      });
-      const url = URL.createObjectURL(data);
-      setOverviewVideoUrl(url);
-      setShowOverviewVideo(true);
-    } catch (err) {
-      console.error("Failed to load overview video", err);
-    }
-  };
-
-  const handleCloseOverviewVideo = () => {
-    setShowOverviewVideo(false);
-    if (overviewVideoUrl) {
-      URL.revokeObjectURL(overviewVideoUrl);
-      setOverviewVideoUrl(null);
-    }
-  };
-
   const handleContinue = () => {
     if (!simulation) return;
     setShowStartPage(true);

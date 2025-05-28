@@ -13,7 +13,7 @@ import {
   RadioGroup,
   FormControlLabel,
   FormControl,
-  FormLabel
+  Divider
 } from '@mui/material';
 import { Close as CloseIcon } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
@@ -35,18 +35,19 @@ interface FeedbackDialogProps {
   onSubmit: (data: FeedbackFormData) => void;
   simulationId: string;
   attemptId: string;
-  simulationName?: string; // Optional - retained for potential display
+  simulationName?: string;
 }
 
 const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   open,
   onClose,
   onSubmit,
-  simulationId, // currently unused but passed for future use
-  attemptId, // currently unused but passed for future use
+  simulationId,
+  attemptId,
   simulationName,
 }) => {
-  const { control, handleSubmit, reset } = useForm<FeedbackFormData>({
+  const { control, handleSubmit, reset, formState: { isValid }, watch } = useForm<FeedbackFormData>({
+    mode: 'onChange',
     defaultValues: {
       effectivenessRating: '',
       objectivesClarityRating: '',
@@ -57,6 +58,10 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
       improvementSuggestions: ''
     }
   });
+
+  // Watch all required fields to determine if form is valid
+  const watchedFields = watch(['effectivenessRating', 'objectivesClarityRating', 'skillsAcquisition', 'confidenceRating', 'scoringEffectivenessRating']);
+  const allRequiredFieldsFilled = watchedFields.every(field => field && field !== '');
 
   // Reset form when dialog closes
   React.useEffect(() => {
@@ -75,6 +80,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
       <Controller
         name={name}
         control={control}
+        rules={{ required: true }}
         render={({ field }) => (
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
@@ -87,13 +93,13 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                   width: 40,
                   height: 40,
                   p: 0,
-                  borderRadius: '50%',
-                  color: field.value === value.toString() ? 'white' : '#343F8A',
-                  borderColor: field.value === value.toString() ? '#343F8A' : '#E0E0E0',
-                  bgcolor: field.value === value.toString() ? '#343F8A' : 'transparent',
+                  borderRadius: '6px',
+                  color: field.value === value.toString() ? 'white' : '#666',
+                  border: `1px solid ${field.value === value.toString() ? '#143FDA' : 'rgba(0, 0, 0, 0.2)'}`,
+                  bgcolor: field.value === value.toString() ? '#143FDA' : 'transparent',
                   '&:hover': {
-                    bgcolor: field.value === value.toString() ? '#343F8A' : '#F5F6FF',
-                    borderColor: '#343F8A',
+                    bgcolor: field.value === value.toString() ? '#143FDA' : '#F5F6FF',
+                    borderColor: '#143FDA',
                   },
                 }}
               >
@@ -116,10 +122,24 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         sx: {
           borderRadius: 3,
           maxWidth: 600,
+          height: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
         }
       }}
     >
-      <DialogTitle sx={{ p: 3, pb: 2 }}>
+      {/* Fixed Header */}
+      <DialogTitle 
+        sx={{ 
+          p: 3, 
+          pb: 2,
+          position: 'sticky',
+          top: 0,
+          bgcolor: 'background.paper',
+          zIndex: 1,
+          borderBottom: '1px solid #E0E0E0',
+        }}
+      >
         <Stack direction="row" alignItems="center" spacing={2}>
           <Box
             sx={{
@@ -134,7 +154,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
           >
             <Box
               component="svg"
-              sx={{ width: 24, height: 24, color: '#343F8A' }}
+              sx={{ width: 24, height: 24, color: '#143FDA' }}
               viewBox="0 0 24 24"
               fill="currentColor"
             >
@@ -156,11 +176,20 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         </Stack>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, pt: 1 }}>
-        <form onSubmit={handleSubmit(handleFormSubmit)}>
-          <Stack spacing={4}>
+      {/* Scrollable Content */}
+      <DialogContent 
+        sx={{ 
+          p: 3, 
+          pt: 1,
+          flex: 1,
+          overflow: 'auto',
+          pb: '100px', // Add padding bottom to account for fixed footer
+        }}
+      >
+        <form onSubmit={handleSubmit(handleFormSubmit)} id="feedback-form">
+          <Stack spacing={0}>
             {/* Effectiveness Rating */}
-            <Box>
+            <Box py={3}>
               <Typography variant="subtitle1" fontWeight="medium">
                 Overall, how effective was this simulation in preparing you for the specific work area it targeted?
               </Typography>
@@ -170,8 +199,10 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               {renderRatingButtons('effectivenessRating')}
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Objectives Clarity Rating */}
-            <Box>
+            <Box py={3}>
               <Typography variant="subtitle1" fontWeight="medium">
                 How clear were the objectives and instructions provided for this simulation?
               </Typography>
@@ -181,8 +212,10 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               {renderRatingButtons('objectivesClarityRating')}
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Skills Acquisition */}
-            <Box>
+            <Box py={3}>
               <Typography variant="subtitle1" fontWeight="medium">
                 Did you acquire the necessary skills from this simulation to handle the specific work area it was designed for?
               </Typography>
@@ -192,22 +225,45 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               <Controller
                 name="skillsAcquisition"
                 control={control}
+                rules={{ required: true }}
                 render={({ field }) => (
                   <FormControl component="fieldset">
                     <RadioGroup {...field}>
-                      <FormControlLabel value="Strongly Disagree" control={<Radio />} label="Strongly Disagree" />
-                      <FormControlLabel value="Disagree" control={<Radio />} label="Disagree" />
-                      <FormControlLabel value="Neutral" control={<Radio />} label="Neutral" />
-                      <FormControlLabel value="Agree" control={<Radio />} label="Agree" />
-                      <FormControlLabel value="Strongly Agree" control={<Radio />} label="Strongly Agree" />
+                      <FormControlLabel 
+                        value="Strongly Disagree" 
+                        control={<Radio sx={{ color: '#143FDA', '&.Mui-checked': { color: '#143FDA' } }} />} 
+                        label="Strongly Disagree" 
+                      />
+                      <FormControlLabel 
+                        value="Disagree" 
+                        control={<Radio sx={{ color: '#143FDA', '&.Mui-checked': { color: '#143FDA' } }} />} 
+                        label="Disagree" 
+                      />
+                      <FormControlLabel 
+                        value="Neutral" 
+                        control={<Radio sx={{ color: '#143FDA', '&.Mui-checked': { color: '#143FDA' } }} />} 
+                        label="Neutral" 
+                      />
+                      <FormControlLabel 
+                        value="Agree" 
+                        control={<Radio sx={{ color: '#143FDA', '&.Mui-checked': { color: '#143FDA' } }} />} 
+                        label="Agree" 
+                      />
+                      <FormControlLabel 
+                        value="Strongly Agree" 
+                        control={<Radio sx={{ color: '#143FDA', '&.Mui-checked': { color: '#143FDA' } }} />} 
+                        label="Strongly Agree" 
+                      />
                     </RadioGroup>
                   </FormControl>
                 )}
               />
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Confidence Rating */}
-            <Box>
+            <Box py={3}>
               <Typography variant="subtitle1" fontWeight="medium">
                 How confident do you feel in applying the skills practiced in this simulation to a real call center environment?
               </Typography>
@@ -217,8 +273,10 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               {renderRatingButtons('confidenceRating')}
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Scoring Effectiveness Rating */}
-            <Box>
+            <Box py={3}>
               <Typography variant="subtitle1" fontWeight="medium">
                 How effective was the scoring and insights provided during or after the simulation in helping you improve?
               </Typography>
@@ -228,9 +286,11 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               {renderRatingButtons('scoringEffectivenessRating')}
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Impactful Part */}
-            <Box>
-              <Typography variant="subtitle1" fontWeight="medium">
+            <Box py={3}>
+              <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
                 What was the most impactful part of this simulation for your learning and preparation?
               </Typography>
               <Controller
@@ -242,8 +302,28 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                     fullWidth
                     multiline
                     rows={4}
-                    placeholder="Describe"
-                    sx={{ mt: 1 }}
+                    placeholder="Input text"
+                    label="Describe"
+                    variant="outlined"
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: 'rgba(0, 0, 0, 0.2)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#143FDA',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#143FDA',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        '&.Mui-focused': {
+                          color: '#143FDA',
+                        },
+                      },
+                    }}
                   />
                 )}
               />
@@ -252,9 +332,11 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
               </Typography>
             </Box>
 
+            <Divider sx={{ bgcolor: '#E0E0E0' }} />
+
             {/* Improvement Suggestions */}
-            <Box>
-              <Typography variant="subtitle1" fontWeight="medium">
+            <Box py={3}>
+              <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
                 What could be improved to make this simulation more effective or enjoyable?
               </Typography>
               <Controller
@@ -266,8 +348,28 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                     fullWidth
                     multiline
                     rows={4}
-                    placeholder="Describe"
-                    sx={{ mt: 1 }}
+                    placeholder="Input text"
+                    label="Describe"
+                    variant="outlined"
+                    sx={{ 
+                      mt: 1,
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: 'rgba(0, 0, 0, 0.2)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#143FDA',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#143FDA',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        '&.Mui-focused': {
+                          color: '#143FDA',
+                        },
+                      },
+                    }}
                   />
                 )}
               />
@@ -275,48 +377,65 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                 Optional
               </Typography>
             </Box>
-
-            {/* Action Buttons */}
-            <Stack direction="row" spacing={2} justifyContent="space-between">
-              <Button
-                variant="outlined"
-                onClick={onClose}
-                sx={{
-                  borderColor: '#E0E0E0',
-                  color: '#333333',
-                  '&:hover': {
-                    borderColor: '#C0C0C0',
-                    bgcolor: '#F5F5F5',
-                  },
-                  borderRadius: 2,
-                  px: 4,
-                  py: 1.5,
-                  flex: 1,
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                sx={{
-                  bgcolor: '#0037ff',
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: '#002ed4',
-                  },
-                  borderRadius: 2,
-                  px: 4,
-                  py: 1.5,
-                  flex: 1,
-                }}
-              >
-                Submit Feedback
-              </Button>
-            </Stack>
           </Stack>
         </form>
       </DialogContent>
+
+      {/* Fixed Footer */}
+      <Box
+        sx={{
+          position: 'sticky',
+          bottom: 0,
+          bgcolor: 'background.paper',
+          borderTop: '1px solid #E0E0E0',
+          p: 3,
+          zIndex: 1,
+        }}
+      >
+        <Stack direction="row" spacing={2} justifyContent="space-between">
+          <Button
+            variant="outlined"
+            onClick={onClose}
+            sx={{
+              borderColor: '#E0E0E0',
+              color: '#333333',
+              '&:hover': {
+                borderColor: '#C0C0C0',
+                bgcolor: '#F5F5F5',
+              },
+              borderRadius: 2,
+              px: 4,
+              py: 1.5,
+              flex: 1,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="feedback-form"
+            variant="contained"
+            disabled={!allRequiredFieldsFilled}
+            sx={{
+              bgcolor: allRequiredFieldsFilled ? '#143FDA' : '#B0B0B0',
+              color: 'white',
+              '&:hover': {
+                bgcolor: allRequiredFieldsFilled ? '#0F2FBA' : '#B0B0B0',
+              },
+              '&.Mui-disabled': {
+                bgcolor: '#B0B0B0',
+                color: 'white',
+              },
+              borderRadius: 2,
+              px: 4,
+              py: 1.5,
+              flex: 1,
+            }}
+          >
+            Submit Feedback
+          </Button>
+        </Stack>
+      </Box>
     </Dialog>
   );
 };

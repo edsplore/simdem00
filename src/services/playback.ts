@@ -57,7 +57,7 @@ export interface FetchPlaybackStatsPayload {
 }
 
 export interface FetchPlaybackStatsResponse {
-  simultion_completion: {
+  simulation_completion: {
     completed: number;
     total: number;
     total_modules: number;

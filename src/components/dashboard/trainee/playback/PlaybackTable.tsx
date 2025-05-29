@@ -151,6 +151,7 @@ const PlaybackTable = () => {
             setPaginationParams((prevState) => ({
               ...prevState,
               search: value,
+              page: 1,
             }));
           }}
         />
@@ -195,7 +196,7 @@ const PlaybackTable = () => {
               Training Plan & Module
             </Typography>
           </Grid>
-          <Grid item xs={4}>
+          <Grid item xs={3}>
             <Typography variant="subtitle2" color="text.secondary">
               Sim Name
             </Typography>
@@ -203,6 +204,11 @@ const PlaybackTable = () => {
           <Grid item xs={2}>
             <Typography variant="subtitle2" color="text.secondary">
               Sim Type
+            </Typography>
+          </Grid>
+          <Grid item xs={1}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Attempt Type
             </Typography>
           </Grid>
           <Grid item xs={1}>
@@ -256,7 +262,7 @@ const PlaybackTable = () => {
                 </Typography>
               </Stack>
             </Grid>
-            <Grid item xs={4}>
+            <Grid item xs={3}>
               <Typography variant="body2">{playback.simName}</Typography>
             </Grid>
             <Grid item xs={2}>
@@ -268,6 +274,9 @@ const PlaybackTable = () => {
                   color: "purple.main",
                 }}
               />
+            </Grid>
+            <Grid item xs={1}>
+              <Typography variant="body2">{playback.attemptType}</Typography>
             </Grid>
             <Grid item xs={1}>
               <Typography variant="body2">{playback.simLevel}</Typography>

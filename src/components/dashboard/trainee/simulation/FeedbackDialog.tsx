@@ -15,7 +15,10 @@ import {
   FormControl,
   Divider
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { 
+  Close as CloseIcon,
+  ChatOutlined as ChatOutlinedIcon,
+} from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 
 // Feedback form data structure
@@ -143,8 +146,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
         <Stack direction="row" alignItems="center" spacing={2}>
           <Box
             sx={{
-              width: 48,
-              height: 48,
+              width: 58,
+              height: 58,
               borderRadius: '50%',
               bgcolor: '#F5F6FF',
               display: 'flex',
@@ -153,13 +156,17 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
             }}
           >
             <Box
-              component="svg"
-              sx={{ width: 24, height: 24, color: '#143FDA' }}
-              viewBox="0 0 24 24"
-              fill="currentColor"
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '50%',
+                bgcolor: 'rgba(0, 30, 238, 0.08)', // Updated color with 8% transparency
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
-              <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.2L4 17.2V4H20V16Z" />
-              <path d="M11 12H13V14H11V12ZM11 6H13V10H11V6Z" />
+              <ChatOutlinedIcon sx={{ width: 24, height: 24, color: '#143FDA' }} />
             </Box>
           </Box>
           <Stack spacing={0.5} flex={1}>

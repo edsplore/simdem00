@@ -5,7 +5,6 @@ import PauseIcon from "@mui/icons-material/Pause";
 import GroupIcon from "@mui/icons-material/Group";
 import CancelIcon from "@mui/icons-material/Cancel";
 import WaveSurfer from "wavesurfer.js";
-import { FetchPlaybackByIdRowDataResponse } from "../../../../../services/playback";
 
 interface PlaybackControlsProps {
   audioUrl: string;
@@ -19,7 +18,7 @@ const PlaybackControls = (props: PlaybackControlsProps) => {
   const [showWaveforms, setShowWaveforms] = useState(false);
 
   useEffect(() => {
-    if (waveformRef.current) {
+    if (waveformRef.current && !wavesurferRef.current) {
       wavesurferRef.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor: "#C2C2C2",
@@ -34,11 +33,6 @@ const PlaybackControls = (props: PlaybackControlsProps) => {
         barMinHeight: 1,
       });
 
-      // Load audio file (replace with your actual audio file)
-      if (props.audioUrl) {
-        wavesurferRef.current.load(props.audioUrl || "/src/assets/script2.mp3");
-      }
-
       wavesurferRef.current.on("ready", () => {
         setDuration(Math.floor(wavesurferRef.current?.getDuration() || 0));
       });
@@ -51,12 +45,18 @@ const PlaybackControls = (props: PlaybackControlsProps) => {
 
       wavesurferRef.current.on("play", () => setIsPlaying(true));
       wavesurferRef.current.on("pause", () => setIsPlaying(false));
-
-      return () => {
-        wavesurferRef.current?.destroy();
-      };
     }
+
+    return () => {
+      wavesurferRef.current?.destroy();
+    };
   }, []);
+
+  useEffect(() => {
+    if (wavesurferRef.current && props.audioUrl) {
+      wavesurferRef.current.load(props.audioUrl);
+    }
+  }, [props.audioUrl]);
 
   const formatTime = (timeInSeconds: number) => {
     const minutes = Math.floor(timeInSeconds / 60);

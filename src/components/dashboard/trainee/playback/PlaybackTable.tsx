@@ -92,7 +92,7 @@ const PlaybackTable = () => {
     const q = searchQuery.trim().toLowerCase();
 
     return playbackData.attempts.filter((row) => {
-      if (q && !row.trainingPlan.toLowerCase().includes(q)) {
+      if (q && !row.simName.toLowerCase().includes(q)) {
         return false;
       }
       if (simTypeFilter !== "all" && row.simType !== simTypeFilter) {
@@ -145,12 +145,14 @@ const PlaybackTable = () => {
           sx={{ maxWidth: 300 }}
           value={searchQuery}
           onKeyDown={(e) => e.stopPropagation()}
-          onChange={(e) =>
+          onChange={(e) => {
+            const value = e.target.value;
+            setSearchQuery(value);
             setPaginationParams((prevState) => ({
               ...prevState,
-              search: e.target.value,
-            }))
-          }
+              search: value,
+            }));
+          }}
         />
         <Stack direction="row" spacing={2}>
           <DateSelector
@@ -193,12 +195,7 @@ const PlaybackTable = () => {
               Training Plan & Module
             </Typography>
           </Grid>
-          <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Sim ID
-            </Typography>
-          </Grid>
-          <Grid item xs={3}>
+          <Grid item xs={4}>
             <Typography variant="subtitle2" color="text.secondary">
               Sim Name
             </Typography>
@@ -259,12 +256,7 @@ const PlaybackTable = () => {
                 </Typography>
               </Stack>
             </Grid>
-            <Grid item xs={1}>
-              <Typography variant="body2">
-                {playback.simId.substring(0, 5) + "..."}
-              </Typography>
-            </Grid>
-            <Grid item xs={3}>
+            <Grid item xs={4}>
               <Typography variant="body2">{playback.simName}</Typography>
             </Grid>
             <Grid item xs={2}>

@@ -36,9 +36,6 @@ const PlaybackPage = () => {
           <Stack spacing={5}>
             {stats && (
               <>
-                <Typography variant="h5" fontWeight="medium">
-                  My Overall Stats
-                </Typography>
                 <StatsGrid stats={stats} />
               </>
             )}

@@ -41,7 +41,7 @@ export const fetchAssignedStats = async (
 ): Promise<TrainingStats> => {
   try {
     const response = await apiClient.post('/fetch-assigned-stats', payload);
-    return response.data;
+    return response.data.stats;
   } catch (error) {
     console.error('Error fetching assigned stats:', error);
     throw error;

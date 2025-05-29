@@ -10,6 +10,7 @@ import {
   Grid,
   Box,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import SimIcon from "@mui/icons-material/SimCard";
 import TimerIcon from "@mui/icons-material/AccessTime";
@@ -39,23 +40,34 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
   const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
   const [insights, setInsights] = useState<FetchPlaybackInsightsResponse | null>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const handleViewInsights = async () => {
     if (!user?.id) return;
 
     setIsLoadingInsights(true);
+    setInsightsError(null);
     try {
+      // Get simulation ID from the attempt ID or use the ID directly
+      const simulationId = props.playbackData.id.includes('-') 
+        ? props.playbackData.id.split('-')[0] 
+        : props.playbackData.id;
+
+      // Convert simulation type to expected format (e.g., visual-audio to visual_audio)
+      const simulationType = props.playbackData.type?.replace(/-/g, '_');
+
       const insightsData = await fetchPlaybackInsights({
         user_id: user.id,
         attempt_id: props.playbackData.id,
-        simulation_id: props.playbackData.id.split('-')[0], // Extracting simulation ID from attempt ID
-        simulation_type: props.playbackData.type
+        simulation_id: simulationId,
+        simulation_type: simulationType
       });
 
       setInsights(insightsData);
       setIsInsightsDialogOpen(true);
     } catch (error) {
       console.error("Error fetching insights:", error);
+      setInsightsError("Failed to load insights. Please try again.");
     } finally {
       setIsLoadingInsights(false);
     }
@@ -388,8 +400,21 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
             onClick={handleViewInsights}
             disabled={isLoadingInsights}
           >
-            {isLoadingInsights ? "Loading Insights..." : "View Insights"}
+            {isLoadingInsights ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress size={20} sx={{ mr: 1 }} />
+                Loading Insights...
+              </Box>
+            ) : (
+              "View Insights"
+            )}
           </Button>
+
+          {insightsError && (
+            <Typography color="error" variant="body2" sx={{ mt: 1, textAlign: 'center' }}>
+              {insightsError}
+            </Typography>
+          )}
         </Stack>
       </Card>
 

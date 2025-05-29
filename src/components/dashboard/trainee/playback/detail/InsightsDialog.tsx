@@ -9,6 +9,7 @@ import {
   Stack,
   Collapse,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -41,14 +42,14 @@ const InsightsDialog: React.FC<InsightsDialogProps> = ({
   const [expandedSections, setExpandedSections] = useState<{
     [key: string]: boolean;
   }>({
-    confidence: true,
-    concentration: false,
-    energy: false,
-    dead_air_time: false,
-    click_score: false,
-    keyword_score: false,
-    text_field_keyword_score: false,
-    sim_accuracy_score: false,
+    ContextualAccuracy: true,
+    KeywordScore: false,
+    ClickScore: false,
+    DataAccuracy: false,
+    Confidence: false,
+    Energy: false,
+    Concentration: false,
+    FinalScore: false,
   });
 
   const toggleSection = (section: string) => {
@@ -60,21 +61,21 @@ const InsightsDialog: React.FC<InsightsDialogProps> = ({
 
   const getIconForCategory = (category: string) => {
     switch (category) {
-      case 'confidence':
+      case 'Confidence':
         return <ChatIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'concentration':
+      case 'Concentration':
         return <PsychologyIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'energy':
+      case 'Energy':
         return <EnergyIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'dead_air_time':
+      case 'ContextualAccuracy':
         return <TimeIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'click_score':
+      case 'ClickScore':
         return <MouseIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'keyword_score':
+      case 'KeywordScore':
         return <TranslateIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'text_field_keyword_score':
+      case 'DataAccuracy':
         return <TextFieldsIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
-      case 'sim_accuracy_score':
+      case 'FinalScore':
         return <CheckCircleIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
       default:
         return <ChatIcon sx={{ color: '#444CE7', fontSize: 20 }} />;
@@ -82,26 +83,11 @@ const InsightsDialog: React.FC<InsightsDialogProps> = ({
   };
 
   const formatCategoryTitle = (category: string): string => {
-    switch (category) {
-      case 'confidence':
-        return 'Confidence';
-      case 'concentration':
-        return 'Concentration';
-      case 'energy':
-        return 'Energy';
-      case 'dead_air_time':
-        return 'Dead Air Time';
-      case 'click_score':
-        return 'Click Score';
-      case 'keyword_score':
-        return 'Keyword Score';
-      case 'text_field_keyword_score':
-        return 'Text Field Keyword Score';
-      case 'sim_accuracy_score':
-        return 'Sim Accuracy Score';
-      default:
-        return category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    }
+    // Add spaces before capital letters and capitalize the first letter
+    return category
+      .replace(/([A-Z])/g, ' $1')
+      .trim()
+      .replace(/^./, (str) => str.toUpperCase());
   };
 
   return (
@@ -149,473 +135,57 @@ const InsightsDialog: React.FC<InsightsDialogProps> = ({
 
       <DialogContent sx={{ p: 0 }}>
         {isLoading ? (
-          <Box sx={{ p: 3, textAlign: 'center' }}>
-            <Typography>Loading insights...</Typography>
+          <Box sx={{ p: 3, textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <CircularProgress />
           </Box>
-        ) : !insights ? (
+        ) : !insights || !insights.insights ? (
           <Box sx={{ p: 3, textAlign: 'center' }}>
             <Typography>No insights available</Typography>
           </Box>
         ) : (
           <Box sx={{ maxHeight: 'calc(90vh - 100px)', overflow: 'auto' }}>
-            {/* Confidence Section */}
-            {insights.insights.confidence && (
-              <Box sx={{ mb: 1 }}>
+            {Object.entries(insights.insights).map(([category, insightItems]) => (
+              <Box key={category} sx={{ mb: 1 }}>
                 <Box
-                  onClick={() => toggleSection('confidence')}
+                  onClick={() => toggleSection(category)}
                   sx={{
                     p: 2,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    bgcolor: expandedSections.confidence ? '#F5F6FF' : 'transparent',
+                    bgcolor: expandedSections[category] ? '#F5F6FF' : 'transparent',
                     '&:hover': {
                       bgcolor: '#F5F6FF',
                     },
                   }}
                 >
                   <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('confidence')}
-                    <Typography variant="subtitle1">Confidence</Typography>
+                    {getIconForCategory(category)}
+                    <Typography variant="subtitle1">{formatCategoryTitle(category)}</Typography>
                   </Stack>
                   <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.confidence.score}
-                    </Typography>
-                    {expandedSections.confidence ? (
+                    {expandedSections[category] ? (
                       <ExpandLessIcon />
                     ) : (
                       <ExpandMoreIcon />
                     )}
                   </Stack>
                 </Box>
-                <Collapse in={expandedSections.confidence}>
+                <Collapse in={expandedSections[category]}>
                   <Box sx={{ p: 2, pl: 6 }}>
-                    {insights.insights.confidence.things_done_well.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, color: 'success.main' }}
-                        >
-                          Things Done Well:
+                    {Array.isArray(insightItems) && insightItems.map((item, index) => (
+                      <Box key={index} sx={{ mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          {index + 1}. {item}
                         </Typography>
-                        {insights.insights.confidence.things_done_well.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
-
-                    {insights.insights.confidence.things_to_improve.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, mt: 2, color: 'warning.main' }}
-                        >
-                          Things to improve:
-                        </Typography>
-                        {insights.insights.confidence.things_to_improve.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
+                      </Box>
+                    ))}
                   </Box>
                 </Collapse>
                 <Divider />
               </Box>
-            )}
-
-            {/* Concentration Section */}
-            {insights.insights.concentration && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('concentration')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.concentration ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('concentration')}
-                    <Typography variant="subtitle1">Concentration</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.concentration.score}
-                    </Typography>
-                    {expandedSections.concentration ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.concentration}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    {insights.insights.concentration.things_done_well.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, color: 'success.main' }}
-                        >
-                          Things Done Well:
-                        </Typography>
-                        {insights.insights.concentration.things_done_well.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
-
-                    {insights.insights.concentration.things_to_improve.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, mt: 2, color: 'warning.main' }}
-                        >
-                          Things to improve:
-                        </Typography>
-                        {insights.insights.concentration.things_to_improve.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Energy Section */}
-            {insights.insights.energy && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('energy')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.energy ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('energy')}
-                    <Typography variant="subtitle1">Energy</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.energy.score}
-                    </Typography>
-                    {expandedSections.energy ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.energy}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    {insights.insights.energy.things_done_well.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, color: 'success.main' }}
-                        >
-                          Things Done Well:
-                        </Typography>
-                        {insights.insights.energy.things_done_well.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
-
-                    {insights.insights.energy.things_to_improve.length > 0 && (
-                      <>
-                        <Typography
-                          variant="subtitle2"
-                          sx={{ mb: 1, mt: 2, color: 'warning.main' }}
-                        >
-                          Things to improve:
-                        </Typography>
-                        {insights.insights.energy.things_to_improve.map((item, index) => (
-                          <Box key={index} sx={{ mb: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {index + 1}. {item.title}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {item.description}
-                            </Typography>
-                          </Box>
-                        ))}
-                      </>
-                    )}
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Dead Air Time Section */}
-            {insights.insights.dead_air_time && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('dead_air_time')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.dead_air_time ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('dead_air_time')}
-                    <Typography variant="subtitle1">Dead Air Time</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.dead_air_time.percentage}
-                    </Typography>
-                    {expandedSections.dead_air_time ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.dead_air_time}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {insights.insights.dead_air_time.description}
-                    </Typography>
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Click Score Section */}
-            {insights.insights.click_score && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('click_score')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.click_score ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('click_score')}
-                    <Typography variant="subtitle1">Click Score</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.click_score.score}/{insights.insights.click_score.total}
-                    </Typography>
-                    {expandedSections.click_score ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.click_score}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {insights.insights.click_score.description}
-                    </Typography>
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Keyword Score Section */}
-            {insights.insights.keyword_score && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('keyword_score')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.keyword_score ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('keyword_score')}
-                    <Typography variant="subtitle1">Keyword Score</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.keyword_score.score}/{insights.insights.keyword_score.total}
-                    </Typography>
-                    {expandedSections.keyword_score ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.keyword_score}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {insights.insights.keyword_score.description}
-                    </Typography>
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Text Field Keyword Score Section */}
-            {insights.insights.text_field_keyword_score && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('text_field_keyword_score')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.text_field_keyword_score
-                      ? '#F5F6FF'
-                      : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('text_field_keyword_score')}
-                    <Typography variant="subtitle1">Text Field Keyword Score</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.text_field_keyword_score.score}/
-                      {insights.insights.text_field_keyword_score.total}
-                    </Typography>
-                    {expandedSections.text_field_keyword_score ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.text_field_keyword_score}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {insights.insights.text_field_keyword_score.description}
-                    </Typography>
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
-
-            {/* Sim Accuracy Score Section */}
-            {insights.insights.sim_accuracy_score && (
-              <Box sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection('sim_accuracy_score')}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections.sim_accuracy_score
-                      ? '#F5F6FF'
-                      : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory('sim_accuracy_score')}
-                    <Typography variant="subtitle1">Sim Accuracy Score</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {insights.insights.sim_accuracy_score.percentage}
-                    </Typography>
-                    {expandedSections.sim_accuracy_score ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections.sim_accuracy_score}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {insights.insights.sim_accuracy_score.description}
-                    </Typography>
-                  </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            )}
+            ))}
           </Box>
         )}
       </DialogContent>

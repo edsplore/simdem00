@@ -91,48 +91,10 @@ export interface FetchPlaybackInsightsPayload {
   simulation_type?: string;
 }
 
-// New interface for insights response
-export interface PlaybackInsight {
-  category: string;
-  score: string;
-  things_done_well: Array<{
-    title: string;
-    description: string;
-  }>;
-  things_to_improve: Array<{
-    title: string;
-    description: string;
-  }>;
-}
-
+// New interface for insights response based on the actual API response
 export interface FetchPlaybackInsightsResponse {
   insights: {
-    confidence: PlaybackInsight;
-    concentration: PlaybackInsight;
-    energy: PlaybackInsight;
-    dead_air_time: {
-      percentage: string;
-      description: string;
-    };
-    click_score?: {
-      score: string;
-      total: string;
-      description: string;
-    };
-    keyword_score?: {
-      score: string;
-      total: string;
-      description: string;
-    };
-    text_field_keyword_score?: {
-      score: string;
-      total: string;
-      description: string;
-    };
-    sim_accuracy_score?: {
-      percentage: string;
-      description: string;
-    };
+    [key: string]: string[];
   };
 }
 

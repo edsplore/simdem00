@@ -166,11 +166,11 @@ const PlaybackTable = () => {
             sx={{ minWidth: 160, bgcolor: "background.paper" }}
           >
             <MenuItem value="all">All Types</MenuItem>
-            <MenuItem value="audio">Audio Simulation</MenuItem>
-            <MenuItem value="visual-audio">Visual Audio Simulation</MenuItem>
-            <MenuItem value="chat">Chat Simulation</MenuItem>
-            <MenuItem value="visual-chat">Visual Chat Simulation</MenuItem>
-            <MenuItem value="visual">Visual Only Simulation</MenuItem>
+            <MenuItem value="audio">Audio</MenuItem>
+            <MenuItem value="visual-audio">Visual Audio</MenuItem>
+            <MenuItem value="chat">Chat</MenuItem>
+            <MenuItem value="visual-chat">Visual Chat</MenuItem>
+            <MenuItem value="visual">Visual Only</MenuItem>
           </Select>
           <Select
             value={levelFilter}
@@ -179,9 +179,9 @@ const PlaybackTable = () => {
             sx={{ minWidth: 120, bgcolor: "background.paper" }}
           >
             <MenuItem value="all">All Levels</MenuItem>
-            <MenuItem value="1">Level 1</MenuItem>
-            <MenuItem value="2">Level 2</MenuItem>
-            <MenuItem value="3">Level 3</MenuItem>
+            <MenuItem value="1">Level 01</MenuItem>
+            <MenuItem value="2">Level 02</MenuItem>
+            <MenuItem value="3">Level 03</MenuItem>
           </Select>
         </Stack>
       </Stack>

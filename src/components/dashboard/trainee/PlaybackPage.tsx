@@ -24,13 +24,13 @@ const PlaybackPage = () => {
         });
         const converted: TrainingStats = {
           simulation_completed: {
-            total_simulations: data.simultion_completion.total,
-            completed_simulations: data.simultion_completion.completed,
+            total_simulations: data.simulation_completion.total,
+            completed_simulations: data.simulation_completion.completed,
             percentage:
-              data.simultion_completion.total > 0
+              data.simulation_completion.total > 0
                 ? Math.round(
-                    (data.simultion_completion.completed /
-                      data.simultion_completion.total) *
+                    (data.simulation_completion.completed /
+                      data.simulation_completion.total) *
                       100,
                   )
                 : 0,

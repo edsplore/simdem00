@@ -5,18 +5,16 @@ import {
   Grid,
   Paper,
   TextField,
-  IconButton,
   Typography,
   Chip,
   Select,
   MenuItem,
-  Pagination,
   Box,
   CircularProgress,
   TablePagination,
 } from "@mui/material";
-import FilterListIcon from "@mui/icons-material/FilterList";
-import SortIcon from "@mui/icons-material/Sort";
+import { DateRange } from "@mui/x-date-pickers-pro/models";
+import dayjs, { Dayjs } from "dayjs";
 import { useAuth } from "../../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import {
@@ -26,18 +24,7 @@ import {
   FetchPlaybackRowDataResponse,
   PlaybackRowPaginationParams,
 } from "../../../../services/playback";
-
-interface SimulationRecord {
-  id: string;
-  trainingPlan: string;
-  module: string;
-  simId: string;
-  simName: string;
-  simType: string;
-  level: string;
-  score: string;
-  status: string;
-}
+import DateSelector from "../../../common/DateSelector";
 
 const PlaybackTable = () => {
   const { user, currentWorkspaceId, currentTimeZone } = useAuth();
@@ -52,6 +39,12 @@ const PlaybackTable = () => {
     useState<FetchPlaybackRowDataResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([
+    dayjs().subtract(6, "day"),
+    dayjs(),
+  ]);
+  const [simTypeFilter, setSimTypeFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
   const handleRowClick = (id: string) => {
     const path = buildPathWithWorkspace(
@@ -61,15 +54,59 @@ const PlaybackTable = () => {
     );
     navigate(path);
   };
-  const filteredData = useMemo(() => {
-    if (!playbackData) return [];
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return playbackData;
+  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+    // state already updated, nothing extra to do
+  };
 
-    return playbackData.filter((row) =>
-      row.trainingPlan.toLowerCase().includes(q)
-    );
-  }, [playbackData, searchQuery]);
+  const isDateInRange = (dateStr: string | null | undefined) => {
+    if (!dateStr) return true;
+    if (!dateRange[0] && !dateRange[1]) return true;
+
+    const backendDate = dayjs.utc(dateStr);
+
+    let startDateUTC = null as Dayjs | null;
+    let endDateUTC = null as Dayjs | null;
+
+    if (dateRange[0]) {
+      startDateUTC = dateRange[0].utc().startOf("day");
+    }
+
+    if (dateRange[1]) {
+      endDateUTC = dateRange[1].utc().endOf("day");
+    }
+
+    if (startDateUTC && endDateUTC) {
+      return (
+        backendDate.isAfter(startDateUTC) && backendDate.isBefore(endDateUTC)
+      );
+    } else if (startDateUTC) {
+      return backendDate.isAfter(startDateUTC);
+    } else if (endDateUTC) {
+      return backendDate.isBefore(endDateUTC);
+    }
+    return true;
+  };
+
+  const filteredData = useMemo(() => {
+    if (!playbackData?.attempts) return [];
+    const q = searchQuery.trim().toLowerCase();
+
+    return playbackData.attempts.filter((row) => {
+      if (q && !row.trainingPlan.toLowerCase().includes(q)) {
+        return false;
+      }
+      if (simTypeFilter !== "all" && row.simType !== simTypeFilter) {
+        return false;
+      }
+      if (levelFilter !== "all" && row.simLevel !== levelFilter) {
+        return false;
+      }
+      if (!isDateInRange((row as any).completedAt)) {
+        return false;
+      }
+      return true;
+    });
+  }, [playbackData, searchQuery, simTypeFilter, levelFilter, dateRange]);
 
   const loadPlaybackData = async () => {
     if (user?.id) {
@@ -115,13 +152,37 @@ const PlaybackTable = () => {
             }))
           }
         />
-        <Stack direction="row" spacing={1}>
-          <IconButton>
-            <FilterListIcon sx={{ fontSize: 20 }} />
-          </IconButton>
-          <IconButton>
-            <SortIcon sx={{ fontSize: 20 }} />
-          </IconButton>
+        <Stack direction="row" spacing={2}>
+          <DateSelector
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+            variant="managerGlobal"
+          />
+          <Select
+            value={simTypeFilter}
+            onChange={(e) => setSimTypeFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: 160, bgcolor: "background.paper" }}
+          >
+            <MenuItem value="all">All Types</MenuItem>
+            <MenuItem value="audio">Audio Simulation</MenuItem>
+            <MenuItem value="visual-audio">Visual Audio Simulation</MenuItem>
+            <MenuItem value="chat">Chat Simulation</MenuItem>
+            <MenuItem value="visual-chat">Visual Chat Simulation</MenuItem>
+            <MenuItem value="visual">Visual Only Simulation</MenuItem>
+          </Select>
+          <Select
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value)}
+            size="small"
+            sx={{ minWidth: 120, bgcolor: "background.paper" }}
+          >
+            <MenuItem value="all">All Levels</MenuItem>
+            <MenuItem value="1">Level 1</MenuItem>
+            <MenuItem value="2">Level 2</MenuItem>
+            <MenuItem value="3">Level 3</MenuItem>
+          </Select>
         </Stack>
       </Stack>
 
@@ -172,7 +233,7 @@ const PlaybackTable = () => {
           <></>
         )}
 
-        {playbackData?.attempts?.map((playback: AttemptsResponse) => (
+        {filteredData.map((playback: AttemptsResponse) => (
           <Grid
             key={playback.id}
             container
@@ -249,7 +310,7 @@ const PlaybackTable = () => {
 
       <TablePagination
         component="div"
-        count={playbackData?.total_attempts || 1000}
+        count={filteredData.length}
         page={paginationParams.page - 1}
         onPageChange={(_: unknown, newPage: number) =>
           setPaginationParams((prevState) => ({

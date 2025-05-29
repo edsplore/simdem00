@@ -1,5 +1,5 @@
 import apiClient from "./api/interceptors";
-import { TrainingData } from "../types/training";
+import { TrainingData, TrainingStats } from "../types/training";
 
 export const fetchTrainingPlanDetails = async (
   userId: string,
@@ -24,6 +24,26 @@ export const fetchTrainingData = async (
     return response.data;
   } catch (error) {
     console.error("Error fetching training data:", error);
+    throw error;
+  }
+};
+
+export interface FetchAssignedStatsPayload {
+  user_id: string;
+  pagination?: {
+    page: number;
+    pagesize: number;
+  };
+}
+
+export const fetchAssignedStats = async (
+  payload: FetchAssignedStatsPayload,
+): Promise<TrainingStats> => {
+  try {
+    const response = await apiClient.post('/fetch-assigned-stats', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching assigned stats:', error);
     throw error;
   }
 };

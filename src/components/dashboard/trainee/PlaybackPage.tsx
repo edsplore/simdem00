@@ -5,10 +5,7 @@ import PlaybackHeader from "./playback/PlaybackHeader";
 import PlaybackTable from "./playback/PlaybackTable";
 import StatsGrid from "./StatsGrid";
 import { useAuth } from "../../../context/AuthContext";
-import {
-  fetchPlaybackStats,
-  FetchPlaybackStatsResponse,
-} from "../../../services/playback";
+import { fetchAssignedStats } from "../../../services/training";
 import type { TrainingStats } from "../../../types/training";
 
 const PlaybackPage = () => {
@@ -19,38 +16,10 @@ const PlaybackPage = () => {
     const loadStats = async () => {
       if (!user?.id) return;
       try {
-        const data: FetchPlaybackStatsResponse = await fetchPlaybackStats({
+        const data: TrainingStats = await fetchAssignedStats({
           user_id: user.id,
         });
-        const converted: TrainingStats = {
-          simulation_completed: {
-            total_simulations: data.simulation_completion.total,
-            completed_simulations: data.simulation_completion.completed,
-            percentage:
-              data.simulation_completion.total > 0
-                ? Math.round(
-                    (data.simulation_completion.completed /
-                      data.simulation_completion.total) *
-                      100,
-                  )
-                : 0,
-          },
-          timely_completion: {
-            total_simulations: data.ontime_completion.total,
-            completed_simulations: data.ontime_completion.completed,
-            percentage:
-              data.ontime_completion.total > 0
-                ? Math.round(
-                    (data.ontime_completion.completed /
-                      data.ontime_completion.total) *
-                      100,
-                  )
-                : 0,
-          },
-          average_sim_score: data.average_sim_score.percentage,
-          highest_sim_score: data.highest_sim_score.percentage,
-        };
-        setStats(converted);
+        setStats(data);
       } catch (error) {
         console.error("Error loading playback stats:", error);
       }

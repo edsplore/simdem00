@@ -33,10 +33,16 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
             user_id: user.id,
             attempt_id: attepmtId,
           });
-          if (data.transcriptObject.length == 0) {
-            const transcript = data?.transcript.split("\n");
-            const messages = transcript
-              ?.map((line) => {
+          let parsedMessages: any[] = [];
+          if (data.transcriptObject && data.transcriptObject.length > 0) {
+            parsedMessages = data.transcriptObject.map((item: any) => ({
+              type: item.role === "user" ? "customer" : "agent",
+              text: item.content,
+            }));
+          } else if (data.transcript) {
+            const transcript = data.transcript.split("\n");
+            parsedMessages = transcript
+              .map((line) => {
                 const [speaker, ...rest] = line.split(":");
                 if (!speaker || rest.length === 0) return null;
 
@@ -46,8 +52,9 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
                 };
               })
               .filter((entry): entry => entry !== null && entry.text !== "");
-            setMessages(messages);
           }
+
+          setMessages(parsedMessages);
           setPlaybackData(data);
         } catch (error) {
           console.error("Error loading playback data:", error);
@@ -64,13 +71,7 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
     <>
       <Stack direction="row" spacing={2}>
         <Stack flex={1} spacing={2}>
-          <PlaybackChat
-            messages={
-              playbackData?.transcriptObject?.length > 0
-                ? playbackData.transcriptObject
-                : messages
-            }
-          />
+          <PlaybackChat messages={messages} />
           <PlaybackControls audioUrl={playbackData?.audioUrl || ""} />
         </Stack>
         {showDetails && playbackData ? (

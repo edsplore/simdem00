@@ -4,12 +4,12 @@ import DashboardContent from "../DashboardContent";
 import PlaybackHeader from "./playback/PlaybackHeader";
 import PlaybackTable from "./playback/PlaybackTable";
 import StatsGrid from "./StatsGrid";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import {
   fetchPlaybackStats,
   FetchPlaybackStatsResponse,
-} from "../../services/playback";
-import type { TrainingStats } from "../../types/training";
+} from "../../../services/playback";
+import type { TrainingStats } from "../../../types/training";
 
 const PlaybackPage = () => {
   const { user } = useAuth();

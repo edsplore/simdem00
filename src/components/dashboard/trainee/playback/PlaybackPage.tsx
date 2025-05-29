@@ -5,7 +5,7 @@ import DashboardContent from '../../DashboardContent';
 import PlaybackHeader from './PlaybackHeader';
 import PlaybackTable from './PlaybackTable';
 import StatsGrid from '../StatsGrid';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../../context/AuthContext';
 import {
   fetchPlaybackStats,
   FetchPlaybackStatsResponse,

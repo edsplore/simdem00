@@ -298,6 +298,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoError, setVideoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const watchedVideoUrl = watch('overviewVideo.url');
 
   // Track if form has been initialized from settings
   const hasInitializedFromSettings = useRef(false);
@@ -461,6 +462,15 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
       console.error('Video upload failed', err);
     } finally {
       setIsUploadingVideo(false);
+    }
+  };
+
+  const handleDeleteVideo = () => {
+    if (window.confirm('Are you sure you want to delete this video?')) {
+      setValue('overviewVideo.url', '', {
+        shouldDirty: true,
+        shouldTouch: true,
+      });
     }
   };
 
@@ -943,10 +953,27 @@ Understand refund process"
                     {videoError}
                   </Typography>
                 )}
-                {watch('overviewVideo.url') && !isUploadingVideo && (
-                  <Typography variant="caption" color="text.secondary">
-                    Video uploaded
-                  </Typography>
+                {watchedVideoUrl && !isUploadingVideo && (
+                  <>
+                    <Typography variant="caption" color="text.secondary">
+                      Video uploaded
+                    </Typography>
+                    <Box sx={{ mt: 2, width: '100%' }}>
+                      <video
+                        src={watchedVideoUrl}
+                        controls
+                        style={{ width: '100%' }}
+                      />
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        sx={{ mt: 1 }}
+                        onClick={handleDeleteVideo}
+                      >
+                        Delete Video
+                      </Button>
+                    </Box>
+                  </>
                 )}
               </Box>
             </CardContent>

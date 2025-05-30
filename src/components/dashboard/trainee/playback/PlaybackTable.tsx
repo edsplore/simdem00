@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Stack,
-  Grid,
   Paper,
   TextField,
   Typography,
@@ -12,6 +11,12 @@ import {
   Box,
   CircularProgress,
   TablePagination,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import dayjs, { Dayjs } from "dayjs";
@@ -189,125 +194,115 @@ const PlaybackTable = () => {
         </Stack>
       </Stack>
 
-      <Paper variant="outlined">
-        <Grid container sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Training Plan & Module
-            </Typography>
-          </Grid>
-          <Grid item xs={3}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Sim Name
-            </Typography>
-          </Grid>
-          <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Sim Type
-            </Typography>
-          </Grid>
-          <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Attempt Type
-            </Typography>
-          </Grid>
-          <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Level
-            </Typography>
-          </Grid>
-          <Grid item xs={1}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Score
-            </Typography>
-          </Grid>
-          <Grid item xs={2}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Status
-            </Typography>
-          </Grid>
-        </Grid>
-
-        {isLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <></>
-        )}
-
-        {filteredData.map((playback: AttemptsResponse) => (
-          <Grid
-            key={playback.id}
-            container
-            sx={{
-              p: 2,
-              borderBottom: 1,
-              borderColor: "divider",
-              "&:hover": {
-                bgcolor: "action.hover",
-                cursor: "pointer",
-              },
-            }}
-            onClick={() => handleRowClick(playback.id)}
-            alignItems="center"
-          >
-            <Grid item xs={2}>
-              <Stack>
-                <Typography variant="body2" fontWeight="medium">
-                  {playback.trainingPlan}
+      <TableContainer component={Paper} variant="outlined">
+        <Table size="small">
+          <TableHead sx={{ bgcolor: "grey.50" }}>
+            <TableRow>
+              <TableCell sx={{ width: 200 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Training Plan & Module
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {playback.moduleName}
+              </TableCell>
+              <TableCell sx={{ width: 250 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Sim Name
                 </Typography>
-              </Stack>
-            </Grid>
-            <Grid item xs={3}>
-              <Typography variant="body2">{playback.simName}</Typography>
-            </Grid>
-            <Grid item xs={2}>
-              <Chip
-                label={playback.simType}
-                size="small"
-                sx={{
-                  bgcolor: "purple.50",
-                  color: "purple.main",
-                }}
-              />
-            </Grid>
-            <Grid item xs={1}>
-              <Typography variant="body2">{playback.attemptType}</Typography>
-            </Grid>
-            <Grid item xs={1}>
-              <Typography variant="body2">{playback.simLevel}</Typography>
-            </Grid>
-            <Grid item xs={1}>
-              <Typography
-                variant="body2"
-                color={
-                  playback.score >= 80
-                    ? "success.main"
-                    : playback.score >= 60
-                    ? "warning.main"
-                    : "error.main"
-                }
-              >
-                {playback.score}
-              </Typography>
-            </Grid>
-            <Grid item xs={2}>
-              <Chip
-                label={playback.status}
-                size="small"
-                sx={{
-                  bgcolor: "success.50",
-                  color: "success.main",
-                }}
-              />
-            </Grid>
-          </Grid>
-        ))}
-      </Paper>
+              </TableCell>
+              <TableCell sx={{ width: 150 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Sim Type
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ width: 120 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Attempt Type
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ width: 80 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Level
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ width: 80 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Score
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ width: 120 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Status
+                </Typography>
+              </TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                  <CircularProgress />
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredData.map((playback: AttemptsResponse) => (
+                <TableRow
+                  key={playback.id}
+                  hover
+                  onClick={() => handleRowClick(playback.id)}
+                  sx={{ cursor: "pointer" }}
+                >
+                  <TableCell>
+                    <Stack>
+                      <Typography variant="body2" fontWeight="medium">
+                        {playback.trainingPlan}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {playback.moduleName}
+                      </Typography>
+                    </Stack>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{playback.simName}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={playback.simType}
+                      size="small"
+                      sx={{ bgcolor: "purple.50", color: "purple.main" }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{playback.attemptType}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{playback.simLevel}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography
+                      variant="body2"
+                      color={
+                        playback.score >= 80
+                          ? "success.main"
+                          : playback.score >= 60
+                          ? "warning.main"
+                          : "error.main"
+                      }
+                    >
+                      {playback.score}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={playback.status}
+                      size="small"
+                      sx={{ bgcolor: "success.50", color: "success.main" }}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <TablePagination
         component="div"

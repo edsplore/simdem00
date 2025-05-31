@@ -36,6 +36,11 @@ interface SimulationCompletionScreenProps {
   onShareFeedback?: () => void;
   hasNextSimulation?: boolean;
   minPassingScore: number;
+  /**
+   * Whether to display the Share Feedback button. Defaults to true for
+   * backwards compatibility.
+   */
+  showFeedbackButton?: boolean;
 }
 
 const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
@@ -56,6 +61,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
   onViewPlayback,
   hasNextSimulation = false,
   minPassingScore,
+  showFeedbackButton = true,
 }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
@@ -429,12 +435,14 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
               >
                 View Playback
               </button>
-              <button
-                onClick={handleOpenFeedbackDialog}
-                className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
-              >
-                Share Feedback
-              </button>
+              {showFeedbackButton && (
+                <button
+                  onClick={handleOpenFeedbackDialog}
+                  className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+                >
+                  Share Feedback
+                </button>
+              )}
             </div>
           </div>
         </div>

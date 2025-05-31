@@ -274,6 +274,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   const levelSettings = getLevelSettings();
 
+  const showFeedbackButton =
+    levelSettings?.enablePostSimulationSurvey === true;
+
   // Function to check if a hotspot should be skipped based on settings
   const shouldSkipHotspot = () => {
     if (!currentItem || currentItem.type !== "hotspot" || !levelSettings)
@@ -2373,6 +2376,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
+        showFeedbackButton={showFeedbackButton}
       />
 
       <Box

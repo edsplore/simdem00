@@ -359,6 +359,12 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
+  const showFeedbackButton =
+    (level === "Level 01" && simulation?.lvl1?.enablePostSimulationSurvey) ||
+    (level === "Level 02" && simulation?.lvl2?.enablePostSimulationSurvey) ||
+    (level === "Level 03" && simulation?.lvl3?.enablePostSimulationSurvey) ||
+    false;
+
   // Check if simulation was passed based on scores
   const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
@@ -1663,6 +1669,7 @@ const VisualChatSimulationPage: React.FC<VisualChatSimulationPageProps> = ({
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
+        showFeedbackButton={showFeedbackButton}
       />
 
       <Box

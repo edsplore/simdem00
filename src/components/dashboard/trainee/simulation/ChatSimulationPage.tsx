@@ -101,6 +101,12 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
+  const showFeedbackButton =
+    (level === "Level 01" && simulation?.lvl1?.enablePostSimulationSurvey) ||
+    (level === "Level 02" && simulation?.lvl2?.enablePostSimulationSurvey) ||
+    (level === "Level 03" && simulation?.lvl3?.enablePostSimulationSurvey) ||
+    false;
+
   // Check if simulation was passed based on scores
   const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
@@ -317,6 +323,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         onViewPlayback={undefined} // Chat doesn't have playback
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
+        showFeedbackButton={showFeedbackButton}
       />
 
       {/* Only render the chat interface when completion screen is NOT showing */}

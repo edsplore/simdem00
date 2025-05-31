@@ -222,6 +222,12 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
+  const showFeedbackButton =
+    (level === "Level 01" && simulation?.lvl1?.enablePostSimulationSurvey) ||
+    (level === "Level 02" && simulation?.lvl2?.enablePostSimulationSurvey) ||
+    (level === "Level 03" && simulation?.lvl3?.enablePostSimulationSurvey) ||
+    false;
+
   // Check if simulation was passed based on scores
   const isPassed = scores ? scores.FinalScore >= minPassingScore : false;
 
@@ -1382,6 +1388,7 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
         onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
+        showFeedbackButton={showFeedbackButton}
       />
 
       <Box sx={{ height: "100%", bgcolor: "white", py: 0, px: 0 }}>

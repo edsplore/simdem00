@@ -24,7 +24,9 @@ import {
   BatteryChargingFull as EnergyIcon,
   CallEnd as CallEndIcon,
 } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext"; // Update path as needed
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import {
   startChatSimulation,
   sendChatMessage,
@@ -77,7 +79,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   onRestartSim,
 }) => {
   // Get authenticated user
-  const { user } = useAuth();
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const userId = user?.id || "";
   const userName = user?.name || "User";
 
@@ -95,6 +97,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
   const [elapsedTime, setElapsedTime] = useState(0);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const navigate = useNavigate();
 
   // Input container height - used for spacing calculations
   const inputContainerHeight = 70;
@@ -303,6 +306,16 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
     }
   };
 
+  const handleViewPlayback = () => {
+    if (!simulationProgressId) return;
+    const path = buildPathWithWorkspace(
+      `/playback/${simulationProgressId}`,
+      currentWorkspaceId,
+      currentTimeZone,
+    );
+    navigate(path);
+  };
+
   return (
     <>
       <SimulationCompletionScreen
@@ -320,7 +333,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         onBackToList={handleBackToSimList}
         onGoToNextSim={hasNextSimulation ? handleGoToNextSim : undefined}
         onRestartSim={onRestartSim} // Chat doesn't have restart
-        onViewPlayback={undefined} // Chat doesn't have playback
+        onViewPlayback={handleViewPlayback}
         hasNextSimulation={hasNextSimulation}
         minPassingScore={minPassingScore}
         showFeedbackButton={showFeedbackButton}

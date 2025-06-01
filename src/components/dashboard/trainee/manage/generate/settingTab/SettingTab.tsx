@@ -783,9 +783,7 @@ const SettingTab: React.FC<SettingTabProps> = ({
       key_objectives: objectivesSettings.enabled
         ? processTextToArray(objectivesSettings.text)
         : [],
-      overview_video:
-        contextSettings?.overviewVideo?.url ||
-        "https://example.com/overview.mp4",
+      overview_video: contextSettings?.overviewVideo?.url || "",
       quick_tips: tipsSettings.enabled
         ? processTextToArray(tipsSettings.text)
         : [],

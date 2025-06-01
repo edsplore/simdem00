@@ -60,7 +60,7 @@ const PlaybackTable = () => {
     navigate(path);
   };
   const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
-    // state already updated, nothing extra to do
+    setPaginationParams((p) => ({ ...p, page: 1 }));
   };
 
   const isDateInRange = (dateStr: string | null | undefined) => {
@@ -113,21 +113,37 @@ const PlaybackTable = () => {
     });
   }, [playbackData, searchQuery, simTypeFilter, levelFilter, dateRange]);
 
+  const paginatedData = useMemo(() => {
+    const start = (paginationParams.page - 1) * paginationParams.pagesize;
+    return filteredData.slice(start, start + paginationParams.pagesize);
+  }, [filteredData, paginationParams]);
+
   const loadPlaybackData = async () => {
     if (user?.id) {
       try {
         setIsLoading(true);
         setError(null);
 
-        const payload: FetchPlaybackRowDataPayload = { user_id: user.id };
+        let allAttempts: AttemptsResponse[] = [];
+        let currentPage = 1;
+        const pageSize = 50;
+        let totalAttempts = 0;
 
-        if (paginationParams) {
-          payload["pagination"] = paginationParams;
+        while (true) {
+          const payload: FetchPlaybackRowDataPayload = {
+            user_id: user.id,
+            pagination: { page: currentPage, pagesize: pageSize },
+          };
+
+          const data = await fetchPlaybackRowData(payload);
+          totalAttempts = data.total_attempts;
+          allAttempts = allAttempts.concat(data.attempts);
+
+          if (allAttempts.length >= totalAttempts) break;
+          currentPage += 1;
         }
 
-        // In a real implementation, we would fetch data from the API
-        const data = await fetchPlaybackRowData(payload);
-        setPlaybackData(data);
+        setPlaybackData({ attempts: allAttempts, total_attempts: totalAttempts });
       } catch (error) {
         console.error("Error loading playback data:", error);
         setError("Failed to load playback data");
@@ -139,7 +155,7 @@ const PlaybackTable = () => {
 
   useEffect(() => {
     loadPlaybackData();
-  }, [user?.id, paginationParams]);
+  }, [user?.id]);
 
   return (
     <Stack spacing={2}>
@@ -155,7 +171,6 @@ const PlaybackTable = () => {
             setSearchQuery(value);
             setPaginationParams((prevState) => ({
               ...prevState,
-              search: value,
               page: 1,
             }));
           }}
@@ -169,7 +184,10 @@ const PlaybackTable = () => {
           />
           <Select
             value={simTypeFilter}
-            onChange={(e) => setSimTypeFilter(e.target.value)}
+            onChange={(e) => {
+              setSimTypeFilter(e.target.value);
+              setPaginationParams((p) => ({ ...p, page: 1 }));
+            }}
             size="small"
             sx={{ minWidth: 160, bgcolor: "background.paper" }}
           >
@@ -182,7 +200,10 @@ const PlaybackTable = () => {
           </Select>
           <Select
             value={levelFilter}
-            onChange={(e) => setLevelFilter(e.target.value)}
+            onChange={(e) => {
+              setLevelFilter(e.target.value);
+              setPaginationParams((p) => ({ ...p, page: 1 }));
+            }}
             size="small"
             sx={{ minWidth: 120, bgcolor: "background.paper" }}
           >
@@ -285,7 +306,7 @@ const PlaybackTable = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((playback: AttemptsResponse, index) => (
+              paginatedData.map((playback: AttemptsResponse, index) => (
                 <TableRow
                   key={playback.id}
                   hover

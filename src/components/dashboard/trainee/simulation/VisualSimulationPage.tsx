@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -44,6 +45,7 @@ import {
 } from "../../../../services/simulation_visual_attempts";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 
 // Utility interfaces for percentage-based coordinate system
 interface PercentageCoordinates {
@@ -160,8 +162,8 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
   simulation,
   onRestartSim,
 }) => {
-  // Get authenticated user
-  const { user } = useAuth();
+  // Get authenticated user and workspace info
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const userId = user?.id || "";
   const userName = user?.name || "User";
 
@@ -1351,10 +1353,16 @@ const VisualSimulationPage: React.FC<VisualSimulationPageProps> = ({
     setImageLoaded(false);
   };
 
+  const navigate = useNavigate();
+
   const handleViewPlayback = () => {
-    // Handle playback view action
-    // For now, just close the completion screen
-    setShowCompletionScreen(false);
+    if (!simulationProgressId) return;
+    const path = buildPathWithWorkspace(
+      `/playback/${simulationProgressId}`,
+      currentWorkspaceId,
+      currentTimeZone,
+    );
+    navigate(path);
   };
 
   // Get highlight color from settings or use default

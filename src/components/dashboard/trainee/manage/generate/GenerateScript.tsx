@@ -437,6 +437,7 @@ const GenerateScriptContent = () => {
               "Be polite and empathetic",
               "Provide accurate information",
             ],
+            overview_video: simulation.overview_video ?? "",
             voice_id: simulation.voice_id ?? "",
             language: simulation.language ?? "English",
             voice_speed: simulation.voice_speed ?? "Normal",

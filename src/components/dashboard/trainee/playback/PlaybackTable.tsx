@@ -119,13 +119,40 @@ const PlaybackTable = () => {
         setIsLoading(true);
         setError(null);
 
-        const payload: FetchPlaybackRowDataPayload = { user_id: user.id };
+        const pagination: PlaybackRowPaginationParams = {
+          ...paginationParams,
+          search: searchQuery.trim() || undefined,
+        };
 
-        if (paginationParams) {
-          payload["pagination"] = paginationParams;
+        if (simTypeFilter !== "all") {
+          pagination.simType = simTypeFilter;
         }
 
-        // In a real implementation, we would fetch data from the API
+        if (levelFilter !== "all") {
+          pagination.level = levelFilter.startsWith("level")
+            ? levelFilter
+            : `level${levelFilter}`;
+        }
+
+        if (dateRange[0]) {
+          pagination.createdFrom = dateRange[0]
+            .utc()
+            .startOf("day")
+            .toISOString();
+        }
+
+        if (dateRange[1]) {
+          pagination.createdTo = dateRange[1]
+            .utc()
+            .endOf("day")
+            .toISOString();
+        }
+
+        const payload: FetchPlaybackRowDataPayload = {
+          user_id: user.id,
+          pagination,
+        };
+
         const data = await fetchPlaybackRowData(payload);
         setPlaybackData(data);
       } catch (error) {
@@ -139,7 +166,7 @@ const PlaybackTable = () => {
 
   useEffect(() => {
     loadPlaybackData();
-  }, [user?.id, paginationParams]);
+  }, [user?.id, paginationParams, simTypeFilter, levelFilter, dateRange]);
 
   return (
     <Stack spacing={2}>

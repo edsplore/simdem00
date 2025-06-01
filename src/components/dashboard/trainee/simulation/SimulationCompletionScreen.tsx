@@ -422,23 +422,25 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
 
           {/* Action Buttons */}
           <div className="mt-8 space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div
+              className={`grid gap-4 ${showFeedbackButton ? "grid-cols-3" : "grid-cols-2"}`}
+            >
               <button
                 onClick={onRestartSim}
-                className="py-3 px-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 font-bold border border-gray-200"
+                className="w-full py-3 px-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 font-bold border border-gray-200"
               >
                 Restart Sim
               </button>
               <button
                 onClick={onViewPlayback}
-                className="py-3 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-bold"
+                className="w-full py-3 px-4 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-bold"
               >
                 View Playback
               </button>
               {showFeedbackButton && (
                 <button
                   onClick={handleOpenFeedbackDialog}
-                  className="py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+                  className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
                 >
                   Share Feedback
                 </button>

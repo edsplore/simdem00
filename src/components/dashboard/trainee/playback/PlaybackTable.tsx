@@ -40,6 +40,8 @@ const PlaybackTable = () => {
     });
   const [playbackData, setPlaybackData] =
     useState<FetchPlaybackRowDataResponse | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([
@@ -153,6 +155,11 @@ const PlaybackTable = () => {
 
         const data = await fetchPlaybackRowData(payload);
         setPlaybackData(data);
+
+        if (data.pagination) {
+          setTotalCount(data.pagination.total_count);
+          setTotalPages(data.pagination.total_pages);
+        }
       } catch (error) {
         console.error("Error loading playback data:", error);
         setError("Failed to load playback data");
@@ -453,7 +460,7 @@ const PlaybackTable = () => {
 
       <TablePagination
         component="div"
-        count={filteredData.length}
+        count={totalCount}
         page={paginationParams.page - 1}
         onPageChange={(_: unknown, newPage: number) =>
           setPaginationParams((prevState) => ({

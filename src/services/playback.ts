@@ -23,9 +23,17 @@ export interface AttemptsResponse {
   attemptNumber?: number;
   latestAttemptDate?: string;
 }
+export interface PaginationMetadata {
+  total_count: number;
+  page: number;
+  pagesize: number;
+  total_pages: number;
+}
+
 export interface FetchPlaybackRowDataResponse {
   attempts: AttemptsResponse[];
   total_attempts: number;
+  pagination?: PaginationMetadata;
 }
 
 export interface FetchPlaybackByIdRowDataPayload {
@@ -110,7 +118,24 @@ export const fetchPlaybackRowData = async (
 ): Promise<FetchPlaybackRowDataResponse> => {
   try {
     const response = await apiClient.post("/attempts/fetch", payload);
-    return response.data;
+
+    return {
+      attempts: response.data.attempts || [],
+      total_attempts: response.data.total_attempts || 0,
+      pagination:
+        response.data.pagination ||
+        (payload.pagination
+          ? {
+              total_count: response.data.total_attempts || 0,
+              page: payload.pagination.page,
+              pagesize: payload.pagination.pagesize,
+              total_pages: Math.ceil(
+                (response.data.total_attempts || 0) /
+                  payload.pagination.pagesize,
+              ),
+            }
+          : undefined),
+    };
   } catch (error) {
     console.error("Error fetching manager dashboard aggregated data:", error);
     throw error;

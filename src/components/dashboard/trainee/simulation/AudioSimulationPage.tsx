@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -36,6 +37,7 @@ import {
   EndAudioSimulationResponse,
 } from "../../../../services/simulation_audio_attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -113,8 +115,8 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
   assignmentId,
   simulation,
 }) => {
-  // Get authenticated user using useAuth hook
-  const { user } = useAuth();
+  // Get authenticated user and workspace info using useAuth hook
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const userId = user?.id || "";
   const userName = user?.name || "User";
 
@@ -490,10 +492,16 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
     // Don't reset settingsInitializedRef.current here, as we want to keep our settings
   };
 
+  const navigate = useNavigate();
+
   const handleViewPlayback = () => {
-    // Handle playback view action
-    // For now, just close the completion screen
-    setShowCompletionScreen(false);
+    if (!simulationProgressId) return;
+    const path = buildPathWithWorkspace(
+      `/playback/${simulationProgressId}`,
+      currentWorkspaceId,
+      currentTimeZone,
+    );
+    navigate(path);
   };
 
   // Log current state of hide settings when visible messages changes

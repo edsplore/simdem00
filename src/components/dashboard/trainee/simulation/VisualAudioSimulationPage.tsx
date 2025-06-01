@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -49,6 +50,7 @@ import { convertAudioToText } from "../../../../services/simulation_script";
 import { textToSpeech } from "../../../../services/text_to_speech";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
+import { buildPathWithWorkspace } from "../../../../utils/navigation";
 
 // Utility interfaces for percentage-based coordinate system
 interface PercentageCoordinates {
@@ -170,8 +172,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   simulation,
   onRestartSim,
 }) => {
-  // Get authenticated user using useAuth hook
-  const { user } = useAuth();
+  // Get authenticated user and workspace info using useAuth hook
+  const { user, currentWorkspaceId, currentTimeZone } = useAuth();
   const userId = user?.id || "";
   const userName = user?.name || "User";
 
@@ -2281,10 +2283,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }, 500);
   };
 
+  const navigate = useNavigate();
+
   const handleViewPlayback = () => {
-    // Handle playback view action
-    // For now, just close the completion screen
-    setShowCompletionScreen(false);
+    if (!simulationProgressId) return;
+    const path = buildPathWithWorkspace(
+      `/playback/${simulationProgressId}`,
+      currentWorkspaceId,
+      currentTimeZone,
+    );
+    navigate(path);
   };
 
   // New navigation handlers

@@ -29,7 +29,10 @@ import {
   ChatBubble,
   PlayCircle,
 } from "@mui/icons-material";
-import { uploadOverviewVideo } from "../../../../../../services/video_upload";
+import {
+  uploadOverviewVideo,
+  getOverviewVideo,
+} from "../../../../../../services/video_upload";
 
 // Styled components remain the same...
 const StyledSwitch = styled(Switch)(({ theme }) => ({
@@ -299,6 +302,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
   const [videoError, setVideoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const watchedVideoUrl = watch('overviewVideo.url');
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
 
   // Track if form has been initialized from settings
   const hasInitializedFromSettings = useRef(false);
@@ -434,6 +438,34 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
     fileInputRef.current?.click();
   };
 
+  // Fetch the overview video with authentication whenever its URL changes
+  useEffect(() => {
+    let objectUrl: string | null = null;
+
+    const loadVideo = async () => {
+      if (!watchedVideoUrl) {
+        setPreviewVideoUrl(null);
+        return;
+      }
+      try {
+        const videoId = watchedVideoUrl.split('/').pop() ?? watchedVideoUrl;
+        const blob = await getOverviewVideo(videoId);
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewVideoUrl(objectUrl);
+      } catch (err) {
+        console.error('Failed to load preview video', err);
+      }
+    };
+
+    loadVideo();
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [watchedVideoUrl]);
+
   const handleVideoChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -471,6 +503,7 @@ const AdvancedSettings: React.FC<AdvancedSettingsProps> = ({
         shouldDirty: true,
         shouldTouch: true,
       });
+      setPreviewVideoUrl(null);
     }
   };
 
@@ -953,14 +986,14 @@ Understand refund process"
                     {videoError}
                   </Typography>
                 )}
-                {watchedVideoUrl && !isUploadingVideo && (
+                {previewVideoUrl && !isUploadingVideo && (
                   <>
                     <Typography variant="caption" color="text.secondary">
                       Video uploaded
                     </Typography>
                     <Box sx={{ mt: 2, width: '100%' }}>
                       <video
-                        src={watchedVideoUrl}
+                        src={previewVideoUrl ?? ''}
                         controls
                         style={{ width: '100%' }}
                       />

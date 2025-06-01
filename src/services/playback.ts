@@ -20,6 +20,8 @@ export interface AttemptsResponse {
   attemptType: string;
   estTime: number;
   attemptCount: number;
+  attemptNumber?: number;
+  latestAttemptDate?: string;
 }
 export interface FetchPlaybackRowDataResponse {
   attempts: AttemptsResponse[];
@@ -81,6 +83,11 @@ export interface PlaybackRowPaginationParams {
   pagesize: number;
   sortDir?: "asc" | "desc";
   search?: string;
+  simType?: string;
+  type?: string;
+  level?: string;
+  createdFrom?: string;
+  createdTo?: string;
 }
 
 // New interface for insights request

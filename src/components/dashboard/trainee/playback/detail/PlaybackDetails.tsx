@@ -21,6 +21,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
 import PowerIcon from "@mui/icons-material/Power";
 import PsychologyIcon from "@mui/icons-material/Psychology";
+import dayjs from "dayjs";
 
 import CompletionTime from "./ScoreDetailsCard";
 import Label from "../../../../common/StatusLabel";
@@ -41,6 +42,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
   const [insights, setInsights] = useState<FetchPlaybackInsightsResponse | null>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+
+  const formattedCompletionDate = dayjs(props.playbackData.completedAt).format(
+    "MMM D, YYYY"
+  );
+  const isPassed =
+    props.playbackData.simAccuracyScore >= props.playbackData.minPassingScore;
 
   const handleViewInsights = async () => {
     if (!user?.id) return;
@@ -156,7 +163,9 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     </Grid>
                     <Grid item xs={6}>
                       <Stack spacing={0.5}>
-                        <Typography variant="body2">Dec 20, 2024</Typography>
+                        <Typography variant="body2">
+                          {formattedCompletionDate}
+                        </Typography>
                         <Typography
                           sx={{ fontSize: "12px", color: "text.secondary" }}
                         >
@@ -261,8 +270,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
           <Stack spacing={2}>
             <Stack direction="row" spacing={2} alignItems="center">
               <Typography variant="h6">Score Details</Typography>
-              <Label color="secondary">Min Passing Score: 86%</Label>
-              <Label color="success">Passed</Label>
+              <Label color="secondary">
+                Min Passing Score: {props.playbackData.minPassingScore}%
+              </Label>
+              <Label color={isPassed ? "success" : "error"}>
+                {isPassed ? "Passed" : "Failed"}
+              </Label>
             </Stack>
             <Divider />
 
@@ -280,12 +293,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                 justifyContent="space-between"
               >
                 <CompletionTime
-                  time="86%"
+                  time={`${props.playbackData.simAccuracyScore}%`}
                   label="Sim Score"
                   icon={<SimIcon fontSize="small" />}
                 />
                 <CompletionTime
-                  time="26m 54s"
+                  time={props.playbackData.timeTakenSeconds}
                   label="Completion Time"
                   icon={<TimerIcon fontSize="small" />}
                 />
@@ -352,12 +365,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   justifyContent="space-between"
                 >
                   <CompletionTime
-                    time="High"
+                    time={`${props.playbackData.confidence}%`}
                     label="Confidence"
                     icon={<VisibilityIcon fontSize="small" />}
                   />
                   <CompletionTime
-                    time="High"
+                    time={`${props.playbackData.concentration}%`}
                     label="Concentration"
                     icon={<PsychologyIcon fontSize="small" />}
                   />
@@ -369,7 +382,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   justifyContent="space-between"
                 >
                   <CompletionTime
-                    time="High"
+                    time={`${props.playbackData.energy}%`}
                     label="Energy"
                     icon={<PowerIcon fontSize="small" />}
                   />

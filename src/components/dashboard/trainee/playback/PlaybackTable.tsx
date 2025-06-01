@@ -5,10 +5,8 @@ import {
   Paper,
   TextField,
   Typography,
-  Chip,
   Select,
   MenuItem,
-  Box,
   CircularProgress,
   TablePagination,
   Table,
@@ -232,18 +230,28 @@ const PlaybackTable = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
               }}>
-                Training Plan & Module
+                Training Plan
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Module
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
@@ -252,8 +260,8 @@ const PlaybackTable = () => {
               }}>
                 Sim Name
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
@@ -262,18 +270,8 @@ const PlaybackTable = () => {
               }}>
                 Sim Type
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Attempt Type
-              </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
@@ -282,32 +280,82 @@ const PlaybackTable = () => {
               }}>
                 Level
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
               }}>
-                Score
+                Sim Score
               </TableCell>
-              <TableCell sx={{ 
-                fontWeight: 500, 
+              <TableCell sx={{
+                fontWeight: 500,
                 color: 'text.secondary',
                 fontSize: '0.875rem',
                 py: 2,
                 borderBottom: '1px solid',
                 borderColor: 'divider',
               }}>
-                Status
+                Est. Time
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Due Date
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Attempt Type
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Attempt Number
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Time Taken
+              </TableCell>
+              <TableCell sx={{
+                fontWeight: 500,
+                color: 'text.secondary',
+                fontSize: '0.875rem',
+                py: 2,
+                borderBottom: '1px solid',
+                borderColor: 'divider',
+              }}>
+                Latest Attempt Date
               </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
                   <CircularProgress size={40} />
                 </TableCell>
               </TableRow>
@@ -326,26 +374,14 @@ const PlaybackTable = () => {
                   }}
                 >
                   <TableCell sx={{ py: 2 }}>
-                    <Stack spacing={0.5}>
-                      <Typography 
-                        variant="body2" 
-                        sx={{ 
-                          fontWeight: 500,
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        {playback.trainingPlan}
-                      </Typography>
-                      <Typography 
-                        variant="caption" 
-                        sx={{ 
-                          color: 'text.secondary',
-                          fontSize: '0.75rem',
-                        }}
-                      >
-                        {playback.moduleName}
-                      </Typography>
-                    </Stack>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.trainingPlan}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.moduleName}
+                    </Typography>
                   </TableCell>
                   <TableCell sx={{ py: 2 }}>
                     <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
@@ -359,11 +395,6 @@ const PlaybackTable = () => {
                   </TableCell>
                   <TableCell sx={{ py: 2 }}>
                     <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.attemptType}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
                       {playback.simLevel}
                     </Typography>
                   </TableCell>
@@ -373,11 +404,11 @@ const PlaybackTable = () => {
                       sx={{
                         fontSize: '0.875rem',
                         fontWeight: 500,
-                        color: playback.score >= 80 
-                          ? '#22c55e' 
-                          : playback.score >= 60 
-                          ? '#f59e0b' 
-                          : '#ef4444'
+                        color: playback.score >= 80
+                          ? '#22c55e'
+                          : playback.score >= 60
+                          ? '#f59e0b'
+                          : '#ef4444',
                       }}
                     >
                       {playback.score}%
@@ -385,10 +416,35 @@ const PlaybackTable = () => {
                   </TableCell>
                   <TableCell sx={{ py: 2 }}>
                     <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.status}
+                      {playback.estTime}
                     </Typography>
                   </TableCell>
-                </TableRow>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.dueDate}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.attemptType}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.attemptNumber}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.timeTaken}
+                    </Typography>
+                  </TableCell>
+                  <TableCell sx={{ py: 2 }}>
+                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+                      {playback.latestAttemptDate}
+                    </Typography>
+                  </TableCell>
+                  </TableRow>
               ))
             )}
           </TableBody>

@@ -108,6 +108,7 @@ const SimulationCompletionScreen: React.FC<SimulationCompletionScreenProps> = ({
       await submitFeedback({
         user_id: user.id,
         simulation_id: simulationId,
+        simulation_level: level,
         attempt_id: attemptId,
         feedback: data,
       });

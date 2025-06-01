@@ -13,6 +13,8 @@ export interface FeedbackFormData {
 export interface SubmitFeedbackRequest {
   user_id: string;
   simulation_id: string;
+  /** The level of the simulation, e.g. "beginner" */
+  simulation_level: string;
   attempt_id: string;
   feedback: FeedbackFormData;
 }

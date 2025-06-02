@@ -9,6 +9,7 @@ import WaveSurfer from "wavesurfer.js";
 interface PlaybackControlsProps {
   audioUrl: string;
 }
+
 const PlaybackControls = (props: PlaybackControlsProps) => {
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
@@ -82,16 +83,8 @@ const PlaybackControls = (props: PlaybackControlsProps) => {
     <Box
       sx={{
         width: "100%",
-        maxWidth: 950,
-        margin: "0 auto",
         padding: 2,
         backgroundColor: "#F9FAFB",
-        border: "1px solid #ddd",
-        borderRadius: 2,
-        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-        position: "sticky",
-        bottom: 0,
-        zIndex: 10,
       }}
     >
       <Stack spacing={2}>

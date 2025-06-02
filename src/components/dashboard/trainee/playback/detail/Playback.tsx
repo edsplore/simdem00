@@ -13,6 +13,7 @@ interface PlaybackProps {
   attepmtId: string;
   showDetails: boolean;
 }
+
 const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
   const { user } = useAuth();
   const [playbackData, setPlaybackData] =
@@ -68,25 +69,67 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
   }, []);
 
   return (
-    <>
-      <Stack direction="row" spacing={2} sx={{ height: '100%' }}>
-        <Stack
-          flex={1}
-          spacing={2}
-          sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+    <Box sx={{ 
+      height: 'calc(100vh - 130px)', // Adjust based on your header height
+      display: 'flex',
+      position: 'relative'
+    }}>
+      <Stack 
+        direction="row" 
+        spacing={2} 
+        sx={{ 
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Left Column */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
         >
-          <PlaybackChat messages={messages} />
-          <Box sx={{ mt: 'auto' }}>
+          {/* Chat Area - scrollable */}
+          <Box
+            sx={{
+              flex: 1,
+              overflow: 'auto',
+              paddingBottom: '120px', // Space for controls
+            }}
+          >
+            <PlaybackChat messages={messages} />
+          </Box>
+
+          {/* Controls - fixed at bottom */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              backgroundColor: '#fff',
+              borderTop: '1px solid #e0e0e0',
+              boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
+            }}
+          >
             <PlaybackControls audioUrl={playbackData?.audioUrl || ''} />
           </Box>
-        </Stack>
-        {showDetails && playbackData ? (
-          <PlaybackDetails playbackData={playbackData} />
-        ) : (
-          <></>
+        </Box>
+
+        {/* Right Column - Details */}
+        {showDetails && playbackData && (
+          <Box sx={{ height: '100%' }}>
+            <PlaybackDetails playbackData={playbackData} />
+          </Box>
         )}
       </Stack>
-    </>
+    </Box>
   );
 }; 
+
 export default Playback;

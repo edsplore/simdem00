@@ -86,8 +86,8 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
         sx={{
           width: 480,
           p: 2,
-          borderRadius: 2,
-          maxHeight: "620px",
+          borderRadius: 2,          
+          height: 'calc(100vh - 130px)',
           overflowY: "auto",
           paddingRight: "8px",
           "&::-webkit-scrollbar": {

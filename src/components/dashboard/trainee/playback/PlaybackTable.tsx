@@ -564,6 +564,7 @@ const PlaybackTable = () => {
       >
         <DataGridPremium
           autoHeight
+          rowHeight={68}
           rows={filteredData}
           columns={columns}
           getRowId={(row) => row.id}

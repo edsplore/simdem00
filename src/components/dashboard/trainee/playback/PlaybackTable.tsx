@@ -415,7 +415,10 @@ const PlaybackTable = () => {
         }
 
         if (attemptTypeFilter !== "all") {
-          pagination.type = attemptTypeFilter;
+          // API expects capitalized attempt type values
+          pagination.type =
+            attemptTypeFilter.charAt(0).toUpperCase() +
+            attemptTypeFilter.slice(1).toLowerCase();
         }
 
         if (dateRange[0]) {
@@ -613,8 +616,8 @@ const PlaybackTable = () => {
             }}
           >
             <MenuItem value="all">All Attempt Type</MenuItem>
-            <MenuItem value="practice">Practice</MenuItem>
-            <MenuItem value="test">Test</MenuItem>
+            <MenuItem value="Practice">Practice</MenuItem>
+            <MenuItem value="Test">Test</MenuItem>
           </Select>
         </Stack>
       </Stack>

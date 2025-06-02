@@ -8,7 +8,6 @@ import {
   Chip,
   Divider,
 } from "@mui/material";
-import PlaybackControls from "./PlaybackControls";
 
 interface Message {
   type: "agent" | "customer";

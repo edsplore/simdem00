@@ -6,7 +6,7 @@ import {
   fetchPlaybackByIdRowData,
   FetchPlaybackByIdRowDataResponse,
 } from "../../../../../services/playback";
-import { Stack } from "@mui/material";
+import { Stack, Box } from "@mui/material";
 import PlaybackDetails from "./PlaybackDetails";
 
 interface PlaybackProps {
@@ -69,10 +69,16 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
 
   return (
     <>
-      <Stack direction="row" spacing={2}>
-        <Stack flex={1} spacing={2}>
+      <Stack direction="row" spacing={2} sx={{ height: '100%' }}>
+        <Stack
+          flex={1}
+          spacing={2}
+          sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+        >
           <PlaybackChat messages={messages} />
-          <PlaybackControls audioUrl={playbackData?.audioUrl || ""} />
+          <Box sx={{ mt: 'auto' }}>
+            <PlaybackControls audioUrl={playbackData?.audioUrl || ''} />
+          </Box>
         </Stack>
         {showDetails && playbackData ? (
           <PlaybackDetails playbackData={playbackData} />
@@ -82,5 +88,5 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
       </Stack>
     </>
   );
-};
+}; 
 export default Playback;

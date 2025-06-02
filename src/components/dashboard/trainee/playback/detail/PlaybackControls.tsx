@@ -89,6 +89,9 @@ const PlaybackControls = (props: PlaybackControlsProps) => {
         border: "1px solid #ddd",
         borderRadius: 2,
         boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
+        position: "sticky",
+        bottom: 0,
+        zIndex: 10,
       }}
     >
       <Stack spacing={2}>

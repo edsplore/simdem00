@@ -12,9 +12,10 @@ import PlaybackDetails from "./PlaybackDetails";
 interface PlaybackProps {
   attepmtId: string;
   showDetails: boolean;
+  onPlaybackDataLoaded?: (data: FetchPlaybackByIdRowDataResponse) => void;
 }
 
-const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
+const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProps) => {
   const { user } = useAuth();
   const [playbackData, setPlaybackData] =
     useState<FetchPlaybackByIdRowDataResponse | null>(null);
@@ -57,6 +58,7 @@ const Playback = ({ attepmtId, showDetails }: PlaybackProps) => {
 
           setMessages(parsedMessages);
           setPlaybackData(data);
+          onPlaybackDataLoaded && onPlaybackDataLoaded(data);
         } catch (error) {
           console.error("Error loading playback data:", error);
           setError("Failed to load playback data");

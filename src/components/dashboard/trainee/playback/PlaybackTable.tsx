@@ -15,6 +15,9 @@ import {
 } from "@mui/x-data-grid-premium";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import dayjs, { Dayjs } from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
 import { useAuth } from "../../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import {
@@ -97,7 +100,10 @@ const PlaybackTable = () => {
       if (q && !row.simName.toLowerCase().includes(q)) {
         return false;
       }
-      if (simTypeFilter !== "all" && row.simType !== simTypeFilter) {
+      if (
+        simTypeFilter !== "all" &&
+        row.simType.replace(/_/g, "-") !== simTypeFilter
+      ) {
         return false;
       }
       if (levelFilter !== "all" && row.simLevel !== levelFilter) {
@@ -260,7 +266,7 @@ const PlaybackTable = () => {
         };
 
         if (simTypeFilter !== "all") {
-          pagination.simType = simTypeFilter;
+          pagination.simType = simTypeFilter.replace(/-/g, "_");
         }
 
         if (levelFilter !== "all") {

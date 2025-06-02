@@ -20,6 +20,8 @@ import utc from "dayjs/plugin/utc";
 dayjs.extend(utc);
 import { useAuth } from "../../../../context/AuthContext";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
+import { mapLevelToCode } from "../../../../utils/simulation";
+
 import {
   AttemptsResponse,
   fetchPlaybackRowData,
@@ -106,7 +108,10 @@ const PlaybackTable = () => {
       ) {
         return false;
       }
-      if (levelFilter !== "all" && row.simLevel !== levelFilter) {
+      if (
+        levelFilter !== "all" &&
+        mapLevelToCode(levelFilter) !== mapLevelToCode(row.simLevel)
+      ) {
         return false;
       }
       if (!isDateInRange((row as any).completedAt)) {
@@ -270,9 +275,7 @@ const PlaybackTable = () => {
         }
 
         if (levelFilter !== "all") {
-          pagination.level = levelFilter.startsWith("level")
-            ? levelFilter
-            : `level${levelFilter}`;
+          pagination.level = mapLevelToCode(levelFilter);
         }
 
         if (dateRange[0]) {

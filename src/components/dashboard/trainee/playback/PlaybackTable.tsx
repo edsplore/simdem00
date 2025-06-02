@@ -32,6 +32,18 @@ import {
   PlaybackRowPaginationParams,
 } from "../../../../services/playback";
 import DateSelector from "../../../common/DateSelector";
+import { formatDateToTimeZone, formatTimeToTimeZone } from "../../../../utils/dateTime";
+
+// Helper functions for date formatting with timezone similar to ManageSimulationsPage
+const formatDate = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return "Invalid date";
+  return formatDateToTimeZone(dateString, timeZone);
+};
+
+const formatDateTime = (dateString: string, timeZone: string | null = null) => {
+  if (!dateString) return "";
+  return formatTimeToTimeZone(dateString, timeZone);
+};
 
 const PlaybackTable = () => {
   const { user, currentWorkspaceId, currentTimeZone } = useAuth();
@@ -355,16 +367,14 @@ const PlaybackTable = () => {
         resizable: true,
         headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              fontSize: '14px',
-              color: '#374151',
-              fontWeight: 400
-            }}
-          >
-            {params.value}
-          </Typography>
+          <Stack>
+            <Typography variant="body2">
+              {formatDate(params.value, currentTimeZone)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatDateTime(params.value, currentTimeZone)}
+            </Typography>
+          </Stack>
         ),
       },
     ],

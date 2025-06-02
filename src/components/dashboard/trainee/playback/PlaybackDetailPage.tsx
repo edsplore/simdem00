@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import DashboardContent from "../DashboardContent";
+import DashboardContent from "../../DashboardContent";
 import { useParams } from "react-router-dom";
 import PlaybackHeader from "./PlaybackHeader";
 import { Stack } from "@mui/material";

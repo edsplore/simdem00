@@ -36,6 +36,7 @@ import { useAuth } from "../../../../../context/AuthContext";
 interface PlaybackDetailsProps {
   playbackData: FetchPlaybackByIdRowDataResponse;
 }
+
 const PlaybackDetails = (props: PlaybackDetailsProps) => {
   const { user } = useAuth();
   const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
@@ -85,330 +86,349 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
       <Card
         sx={{
           width: 480,
-          p: 2,
           borderRadius: 2,          
           height: 'calc(100vh - 130px)',
-          overflowY: "auto",
-          paddingRight: "8px",
-          "&::-webkit-scrollbar": {
-            display: "none", // Hide the scrollbar
-          },
-          scrollbarWidth: "none", // For Firefox
+          display: 'flex',
+          flexDirection: 'column',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <Stack spacing={3}>
-          {/* Simulation Details Section */}
-          <Stack spacing={2}>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="flex-start"
-            >
-              <Typography variant="h6">Simulation Details</Typography>
-              <IconButton size="small">
-                <CloseIcon sx={{ fontSize: 20 }} />
-              </IconButton>
-            </Stack>
-
-            <Box sx={{ maxHeight: "350px", overflowY: "auto" }}>
-              <Stack
-                spacing={0}
-                sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  overflow: "hidden",
-                }}
-              >
-                {/* Headers */}
-                <Grid
-                  container
-                  sx={{
-                    p: 1.5,
-                    bgcolor: "#F9FAFB",
-                  }}
-                >
-                  <Grid item xs={6}>
-                    <Typography
-                      sx={{ fontSize: "12px", color: "text.secondary" }}
-                    >
-                      Sim Name & ID
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography
-                      sx={{ fontSize: "12px", color: "text.secondary" }}
-                    >
-                      Completion Date
-                    </Typography>
-                  </Grid>
-                </Grid>
-
-                <Divider />
-
-                {/* Data Row */}
-                <Box>
-                  <Grid container sx={{ p: 1.5 }}>
-                    <Grid item xs={6}>
-                      <Stack spacing={0.5}>
-                        <Typography variant="body2">
-                          {props.playbackData.name}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: "12px", color: "text.secondary" }}
-                        >
-                          {props.playbackData.id}
-                        </Typography>
-                      </Stack>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Stack spacing={0.5}>
-                        <Typography variant="body2">
-                          {formattedCompletionDate}
-                        </Typography>
-                        <Typography
-                          sx={{ fontSize: "12px", color: "text.secondary" }}
-                        >
-                          {props.playbackData.completedAt}
-                        </Typography>
-                      </Stack>
-                    </Grid>
-                  </Grid>
-                </Box>
-
-                <Divider />
-
-                {/* Second Headers */}
-                <Grid
-                  container
-                  sx={{
-                    p: 1.5,
-                    bgcolor: "#F9FAFB",
-                  }}
-                >
-                  <Grid item xs={6}>
-                    <Typography
-                      sx={{ fontSize: "12px", color: "text.secondary" }}
-                    >
-                      Sim Type
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={6}>
-                    <Typography
-                      sx={{ fontSize: "12px", color: "text.secondary" }}
-                    >
-                      Attempt Type
-                    </Typography>
-                  </Grid>
-                </Grid>
-
-                <Divider />
-
-                {/* Second Data Row */}
-                <Box>
-                  <Grid container sx={{ p: 1.5 }}>
-                    <Grid item xs={6}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        {props.playbackData.type ? (
-                          <Chip
-                            label={props.playbackData.type}
-                            size="small"
-                            sx={{
-                              bgcolor: "grey.200",
-                              height: 24,
-                              "& .MuiChip-label": {
-                                px: 1,
-                                fontSize: "14px",
-                              },
-                            }}
-                          />
-                        ) : (
-                          <></>
-                        )}
-
-                        {props.playbackData.simLevel ? (
-                          <Chip
-                            label={props.playbackData.simLevel}
-                            size="small"
-                            sx={{
-                              bgcolor: "grey.200",
-                              height: 24,
-                              "& .MuiChip-label": {
-                                px: 1,
-                                fontSize: "14px",
-                              },
-                            }}
-                          />
-                        ) : (
-                          <></>
-                        )}
-                      </Stack>
-                    </Grid>
-                    <Grid item xs={6}>
-                      <Chip
-                        label="Test"
-                        size="small"
-                        sx={{
-                          bgcolor: "grey.200",
-                          height: 24,
-                          "& .MuiChip-label": {
-                            px: 1,
-                            fontSize: "14px",
-                          },
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-                </Box>
-              </Stack>
-            </Box>
-          </Stack>
-
-          <Divider />
-
-          {/* Score Details Section */}
-          <Stack spacing={2}>
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Typography variant="h6">Score Details</Typography>
-              <Label color="secondary">
-                Min Passing Score: {props.playbackData.minPassingScore}%
-              </Label>
-              <Label color={isPassed ? "success" : "error"}>
-                {isPassed ? "Passed" : "Failed"}
-              </Label>
-            </Stack>
-            <Divider />
-
-            <Paper
-              elevation={1}
-              sx={{
-                padding: 2,
-                borderRadius: "8px",
-              }}
-            >
+        {/* Scrollable Content Area */}
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: 'auto',
+            p: 2,
+            paddingBottom: '100px', // Space for fixed button
+            "&::-webkit-scrollbar": {
+              display: "none",
+            },
+            scrollbarWidth: "none",
+          }}
+        >
+          <Stack spacing={3}>
+            {/* Simulation Details Section */}
+            <Stack spacing={2}>
               <Stack
                 direction="row"
-                spacing={4}
-                alignItems="center"
                 justifyContent="space-between"
+                alignItems="flex-start"
               >
-                <CompletionTime
-                  time={`${props.playbackData.simAccuracyScore}%`}
-                  label="Sim Score"
-                  icon={<SimIcon fontSize="small" />}
-                />
-                <CompletionTime
-                  time={props.playbackData.timeTakenSeconds}
-                  label="Completion Time"
-                  icon={<TimerIcon fontSize="small" />}
-                />
+                <Typography variant="h6">Simulation Details</Typography>
+                <IconButton size="small">
+                  <CloseIcon sx={{ fontSize: 20 }} />
+                </IconButton>
               </Stack>
-            </Paper>
 
-            <Paper
-              elevation={1}
-              sx={{
-                padding: 2,
-                borderRadius: "8px",
-              }}
-            >
-              <Stack spacing={2}>
+              <Box>
                 <Stack
-                  direction="row"
-                  spacing={4}
-                  alignItems="center"
-                  justifyContent="space-between"
+                  spacing={0}
+                  sx={{
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                  }}
                 >
-                  <CompletionTime
-                    time={`${props.playbackData.clickScore.toFixed(2)}%`}
-                    label="Click Score"
-                    icon={<MouseIcon fontSize="small" />}
-                  />
-                  <CompletionTime
-                    time={`${props.playbackData.keywordScore}%`}
-                    label="Keyword Score"
-                    icon={<TextFieldsIcon fontSize="small" />}
-                  />
+                  {/* Headers */}
+                  <Grid
+                    container
+                    sx={{
+                      p: 1.5,
+                      bgcolor: "#F9FAFB",
+                    }}
+                  >
+                    <Grid item xs={6}>
+                      <Typography
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
+                      >
+                        Sim Name & ID
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
+                      >
+                        Completion Date
+                      </Typography>
+                    </Grid>
+                  </Grid>
+
+                  <Divider />
+
+                  {/* Data Row */}
+                  <Box>
+                    <Grid container sx={{ p: 1.5 }}>
+                      <Grid item xs={6}>
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2">
+                            {props.playbackData.name}
+                          </Typography>
+                          <Typography
+                            sx={{ fontSize: "12px", color: "text.secondary" }}
+                          >
+                            {props.playbackData.id}
+                          </Typography>
+                        </Stack>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Stack spacing={0.5}>
+                          <Typography variant="body2">
+                            {formattedCompletionDate}
+                          </Typography>
+                          <Typography
+                            sx={{ fontSize: "12px", color: "text.secondary" }}
+                          >
+                            {props.playbackData.completedAt}
+                          </Typography>
+                        </Stack>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Divider />
+
+                  {/* Second Headers */}
+                  <Grid
+                    container
+                    sx={{
+                      p: 1.5,
+                      bgcolor: "#F9FAFB",
+                    }}
+                  >
+                    <Grid item xs={6}>
+                      <Typography
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
+                      >
+                        Sim Type
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography
+                        sx={{ fontSize: "12px", color: "text.secondary" }}
+                      >
+                        Attempt Type
+                      </Typography>
+                    </Grid>
+                  </Grid>
+
+                  <Divider />
+
+                  {/* Second Data Row */}
+                  <Box>
+                    <Grid container sx={{ p: 1.5 }}>
+                      <Grid item xs={6}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          {props.playbackData.type && (
+                            <Chip
+                              label={props.playbackData.type}
+                              size="small"
+                              sx={{
+                                bgcolor: "grey.200",
+                                height: 24,
+                                "& .MuiChip-label": {
+                                  px: 1,
+                                  fontSize: "14px",
+                                },
+                              }}
+                            />
+                          )}
+
+                          {props.playbackData.simLevel && (
+                            <Chip
+                              label={props.playbackData.simLevel}
+                              size="small"
+                              sx={{
+                                bgcolor: "grey.200",
+                                height: 24,
+                                "& .MuiChip-label": {
+                                  px: 1,
+                                  fontSize: "14px",
+                                },
+                              }}
+                            />
+                          )}
+                        </Stack>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Chip
+                          label="Test"
+                          size="small"
+                          sx={{
+                            bgcolor: "grey.200",
+                            height: 24,
+                            "& .MuiChip-label": {
+                              px: 1,
+                              fontSize: "14px",
+                            },
+                          }}
+                        />
+                      </Grid>
+                    </Grid>
+                  </Box>
                 </Stack>
+              </Box>
+            </Stack>
+
+            <Divider />
+
+            {/* Score Details Section */}
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Typography variant="h6">Score Details</Typography>
+                <Label color="secondary">
+                  Min Passing Score: {props.playbackData.minPassingScore}%
+                </Label>
+                <Label color={isPassed ? "success" : "error"}>
+                  {isPassed ? "Passed" : "Failed"}
+                </Label>
+              </Stack>
+              <Divider />
+
+              <Paper
+                elevation={1}
+                sx={{
+                  padding: 2,
+                  borderRadius: "8px",
+                }}
+              >
                 <Stack
                   direction="row"
                   spacing={4}
                   alignItems="center"
                   justifyContent="space-between"
                 >
-                  <CompletionTime
-                    time={`${props.playbackData.textFieldKeywordScore}%`}
-                    label="Text Field Keyword Score"
-                    icon={<TextFieldsIcon fontSize="small" />}
-                  />
                   <CompletionTime
                     time={`${props.playbackData.simAccuracyScore}%`}
-                    label="Sim Accuracy Score"
-                    icon={<CheckCircleIcon fontSize="small" />}
+                    label="Sim Score"
+                    icon={<SimIcon fontSize="small" />}
+                  />
+                  <CompletionTime
+                    time={props.playbackData.timeTakenSeconds}
+                    label="Completion Time"
+                    icon={<TimerIcon fontSize="small" />}
                   />
                 </Stack>
-              </Stack>
-            </Paper>
+              </Paper>
 
-            <Paper
-              elevation={3}
-              sx={{
-                padding: 2,
-                borderRadius: "8px",
-              }}
-            >
-              <Stack spacing={1}>
-                <Stack
-                  direction="row"
-                  spacing={4}
-                  alignItems="center"
-                  justifyContent="space-between"
-                >
-                  <CompletionTime
-                    time={`${props.playbackData.confidence}%`}
-                    label="Confidence"
-                    icon={<VisibilityIcon fontSize="small" />}
-                  />
-                  <CompletionTime
-                    time={`${props.playbackData.concentration}%`}
-                    label="Concentration"
-                    icon={<PsychologyIcon fontSize="small" />}
-                  />
+              <Paper
+                elevation={1}
+                sx={{
+                  padding: 2,
+                  borderRadius: "8px",
+                }}
+              >
+                <Stack spacing={2}>
+                  <Stack
+                    direction="row"
+                    spacing={4}
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <CompletionTime
+                      time={`${props.playbackData.clickScore.toFixed(2)}%`}
+                      label="Click Score"
+                      icon={<MouseIcon fontSize="small" />}
+                    />
+                    <CompletionTime
+                      time={`${props.playbackData.keywordScore}%`}
+                      label="Keyword Score"
+                      icon={<TextFieldsIcon fontSize="small" />}
+                    />
+                  </Stack>
+                  <Stack
+                    direction="row"
+                    spacing={4}
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <CompletionTime
+                      time={`${props.playbackData.textFieldKeywordScore}%`}
+                      label="Text Field Keyword Score"
+                      icon={<TextFieldsIcon fontSize="small" />}
+                    />
+                    <CompletionTime
+                      time={`${props.playbackData.simAccuracyScore}%`}
+                      label="Sim Accuracy Score"
+                      icon={<CheckCircleIcon fontSize="small" />}
+                    />
+                  </Stack>
                 </Stack>
-                <Stack
-                  direction="row"
-                  spacing={4}
-                  alignItems="center"
-                  justifyContent="space-between"
-                >
-                  <CompletionTime
-                    time={`${props.playbackData.energy}%`}
-                    label="Energy"
-                    icon={<PowerIcon fontSize="small" />}
-                  />
+              </Paper>
+
+              <Paper
+                elevation={3}
+                sx={{
+                  padding: 2,
+                  borderRadius: "8px",
+                }}
+              >
+                <Stack spacing={1}>
+                  <Stack
+                    direction="row"
+                    spacing={4}
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <CompletionTime
+                      time={`${props.playbackData.confidence}%`}
+                      label="Confidence"
+                      icon={<VisibilityIcon fontSize="small" />}
+                    />
+                    <CompletionTime
+                      time={`${props.playbackData.concentration}%`}
+                      label="Concentration"
+                      icon={<PsychologyIcon fontSize="small" />}
+                    />
+                  </Stack>
+                  <Stack
+                    direction="row"
+                    spacing={4}
+                    alignItems="center"
+                    justifyContent="space-between"
+                  >
+                    <CompletionTime
+                      time={`${props.playbackData.energy}%`}
+                      label="Energy"
+                      icon={<PowerIcon fontSize="small" />}
+                    />
+                  </Stack>
                 </Stack>
-              </Stack>
-            </Paper>
+              </Paper>
+            </Stack>
           </Stack>
+        </Box>
 
-          {/* View Insights Button */}
+        {/* Fixed Button Container */}
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            p: 2,
+            backgroundColor: '#ffffff',
+            borderTop: '1px solid #e0e0e0',
+            boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.05)',
+          }}
+        >
           <Button
             variant="text"
             sx={{
               color: "#001EEE",
               p: 1,
               minWidth: "auto",
-              width: "100%", // Full width
-              textAlign: "center", // Center the button
-              display: "block", // Block level element
-              mt: 2, // Optional: space from content above
-              backgroundColor: "#F6F6FF", // Set background color
+              width: "100%",
+              textAlign: "center",
+              display: "block",
+              backgroundColor: "#F6F6FF",
               "&:hover": {
-                backgroundColor: "#F6F6FF", // Keep the same background color on hover
+                backgroundColor: "#F6F6FF",
               },
-              fontWeight: "bold", // Ensure normal font weight
-              fontFamily: "Arial, sans-serif", // Use a specific font family
-              textTransform: "none", // Prevent uppercase text
+              fontWeight: "bold",
+              fontFamily: "Arial, sans-serif",
+              textTransform: "none",
             }}
             onClick={handleViewInsights}
             disabled={isLoadingInsights}
@@ -428,7 +448,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
               {insightsError}
             </Typography>
           )}
-        </Stack>
+        </Box>
       </Card>
 
       {/* Insights Dialog */}

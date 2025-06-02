@@ -27,6 +27,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthContext"; // Update path as needed
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
+import { mapLevelToCode } from "../../../../utils/simulation";
 import {
   startChatSimulation,
   sendChatMessage,
@@ -158,6 +159,7 @@ const ChatSimulationPage: React.FC<ChatSimulationPageProps> = ({
         simulationId,
         assignmentId,
         attemptType,
+        mapLevelToCode(level),
       );
 
 

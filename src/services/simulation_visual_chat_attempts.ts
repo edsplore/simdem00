@@ -123,6 +123,7 @@ export interface StartVisualChatRequest {
   sim_id: string;
   assignment_id: string;
   attempt_type: string; // "Test" or "Practice"
+  simulation_level: string;
 }
 
 export interface StartVisualChatResponse {
@@ -171,6 +172,7 @@ export const startVisualChatAttempt = async (
   simulationId: string,
   assignmentId: string,
   attemptType: string,
+  simulationLevel: string,
 ): Promise<StartVisualChatResponse> => {
   try {
     const response = await apiClient.post<StartVisualChatResponse>(
@@ -180,6 +182,7 @@ export const startVisualChatAttempt = async (
         sim_id: simulationId,
         assignment_id: assignmentId,
         attempt_type: attemptType,
+        simulation_level: simulationLevel,
       },
     );
 

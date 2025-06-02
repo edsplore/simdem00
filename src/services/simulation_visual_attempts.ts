@@ -107,6 +107,7 @@ export interface StartVisualSimulationRequest {
   sim_id: string;
   assignment_id: string;
   attempt_type: string; // "Test" or "Practice"
+  simulation_level: string;
 }
 
 export interface EndVisualSimulationRequest {
@@ -163,6 +164,7 @@ export const startVisualSimulation = async (
   simulationId: string,
   assignmentId: string,
   attemptType: string,
+  simulationLevel: string,
 ): Promise<VisualSimulationResponse> => {
   try {
     const response = await apiClient.post<VisualSimulationResponse>(
@@ -172,6 +174,7 @@ export const startVisualSimulation = async (
         sim_id: simulationId,
         assignment_id: assignmentId,
         attempt_type: attemptType,
+        simulation_level: simulationLevel,
       },
     );
 

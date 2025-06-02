@@ -51,6 +51,7 @@ import { textToSpeech } from "../../../../services/text_to_speech";
 import { AttemptInterface } from "../../../../types/attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
+import { mapLevelToCode } from "../../../../utils/simulation";
 
 // Utility interfaces for percentage-based coordinate system
 interface PercentageCoordinates {
@@ -1895,6 +1896,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         simulationId,
         assignmentId,
         attemptType, // Pass the attemptType
+        mapLevelToCode(level),
       );
 
 

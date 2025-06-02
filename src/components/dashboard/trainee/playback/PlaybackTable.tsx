@@ -60,10 +60,8 @@ const PlaybackTable = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([
-    dayjs().subtract(6, "day"),
-    dayjs(),
-  ]);
+  // Default to showing all available data
+  const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
   const [simTypeFilter, setSimTypeFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
   const [attemptTypeFilter, setAttemptTypeFilter] = useState("all");

@@ -7,7 +7,9 @@ import {
   Typography,
   Select,
   MenuItem,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from '@mui/icons-material/Search';
 import {
   DataGridPremium,
   GridColDef,
@@ -126,9 +128,18 @@ const PlaybackTable = () => {
       {
         field: 'trainingPlan',
         headerName: 'Training Plan',
-        flex: 1,
+        width: 200,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '14px',
+              color: '#374151',
+              fontWeight: 400
+            }}
+          >
             {params.value}
           </Typography>
         ),
@@ -136,9 +147,18 @@ const PlaybackTable = () => {
       {
         field: 'moduleName',
         headerName: 'Module',
-        flex: 1,
+        width: 150,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '14px',
+              color: '#374151',
+              fontWeight: 400
+            }}
+          >
             {params.value}
           </Typography>
         ),
@@ -146,9 +166,18 @@ const PlaybackTable = () => {
       {
         field: 'simName',
         headerName: 'Sim Name',
-        flex: 1,
+        width: 250,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '14px',
+              color: '#374151',
+              fontWeight: 400
+            }}
+          >
             {params.value}
           </Typography>
         ),
@@ -156,61 +185,102 @@ const PlaybackTable = () => {
       {
         field: 'simType',
         headerName: 'Sim Type',
-        flex: 1,
+        width: 130,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'simLevel',
         headerName: 'Level',
-        flex: 1,
+        width: 100,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'score',
         headerName: 'Sim Score',
-        flex: 1,
+        width: 120,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography
-            variant="body2"
-            sx={{
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              color:
-                params.value >= 80
-                  ? '#22c55e'
-                  : params.value >= 60
-                  ? '#f59e0b'
-                  : '#ef4444',
-            }}
-          >
+          <div style={{
+            backgroundColor: '#FEF3C7',
+            color: '#92400E',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 600,
+            display: 'inline-block',
+            border: '1px solid #FDE68A'
+          }}>
             {params.value}%
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'estTime',
         headerName: 'Est. Time',
-        flex: 1,
+        width: 120,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'dueDate',
         headerName: 'Due Date',
-        flex: 1,
+        width: 150,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '14px',
+              color: '#374151',
+              fontWeight: 400
+            }}
+          >
             {params.value}
           </Typography>
         ),
@@ -218,39 +288,81 @@ const PlaybackTable = () => {
       {
         field: 'attemptType',
         headerName: 'Attempt Type',
-        flex: 1,
+        width: 140,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'attemptNumber',
         headerName: 'Attempt Number',
-        flex: 1,
+        width: 150,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'timeTaken',
         headerName: 'Time Taken',
-        flex: 1,
+        width: 130,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <div style={{
+            backgroundColor: '#F3F4F6',
+            color: '#374151',
+            padding: '4px 12px',
+            borderRadius: '16px',
+            fontSize: '12px',
+            fontWeight: 500,
+            display: 'inline-block',
+            border: '1px solid #E5E7EB'
+          }}>
             {params.value}
-          </Typography>
+          </div>
         ),
       },
       {
         field: 'latestAttemptDate',
         headerName: 'Latest Attempt Date',
-        flex: 1,
+        width: 180,
+        resizable: true,
+        headerClassName: 'table-header',
         renderCell: (params) => (
-          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              fontSize: '14px',
+              color: '#374151',
+              fontWeight: 400
+            }}
+          >
             {params.value}
           </Typography>
         ),
@@ -318,12 +430,34 @@ const PlaybackTable = () => {
   }, [user?.id, paginationParams, simTypeFilter, levelFilter, dateRange]);
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <TextField
-          placeholder="Search"
+          placeholder="Search by ID or Name"
           size="small"
-          sx={{ maxWidth: 300 }}
+          sx={{ 
+            width: 280,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              '& fieldset': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9CA3AF',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#3B82F6',
+                borderWidth: '1px',
+              },
+            },
+            '& .MuiInputBase-input': {
+              padding: '8px 12px',
+              fontSize: '14px',
+              color: '#374151',
+            }
+          }}
           value={searchQuery}
           onKeyDown={(e) => e.stopPropagation()}
           onChange={(e) => {
@@ -334,6 +468,13 @@ const PlaybackTable = () => {
               search: value,
               page: 1,
             }));
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: '#9CA3AF', fontSize: '20px' }} />
+              </InputAdornment>
+            ),
           }}
         />
         <Stack direction="row" spacing={2}>
@@ -347,9 +488,30 @@ const PlaybackTable = () => {
             value={simTypeFilter}
             onChange={(e) => setSimTypeFilter(e.target.value)}
             size="small"
-            sx={{ minWidth: 160, bgcolor: "background.paper" }}
+            displayEmpty
+            sx={{ 
+              minWidth: 140,
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#9CA3AF',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#3B82F6',
+                borderWidth: '1px',
+              },
+              '& .MuiSelect-select': {
+                padding: '8px 12px',
+                fontSize: '14px',
+                color: '#374151',
+              }
+            }}
           >
-            <MenuItem value="all">All Types</MenuItem>
+            <MenuItem value="all">All Sim Type</MenuItem>
             <MenuItem value="audio">Audio</MenuItem>
             <MenuItem value="visual-audio">Visual Audio</MenuItem>
             <MenuItem value="chat">Chat</MenuItem>
@@ -360,9 +522,30 @@ const PlaybackTable = () => {
             value={levelFilter}
             onChange={(e) => setLevelFilter(e.target.value)}
             size="small"
-            sx={{ minWidth: 120, bgcolor: "background.paper" }}
+            displayEmpty
+            sx={{ 
+              minWidth: 120,
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#9CA3AF',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#3B82F6',
+                borderWidth: '1px',
+              },
+              '& .MuiSelect-select': {
+                padding: '8px 12px',
+                fontSize: '14px',
+                color: '#374151',
+              }
+            }}
           >
-            <MenuItem value="all">All Levels</MenuItem>
+            <MenuItem value="all">All levels</MenuItem>
             <MenuItem value="1">Level 01</MenuItem>
             <MenuItem value="2">Level 02</MenuItem>
             <MenuItem value="3">Level 03</MenuItem>
@@ -373,9 +556,10 @@ const PlaybackTable = () => {
       <Paper
         sx={{
           boxShadow: 'none',
-          border: '1px solid',
-          borderColor: 'divider',
-          height: 500,
+          border: '1px solid #E5E7EB',
+          borderRadius: '12px',
+          overflow: 'hidden',
+          width: '100%',
         }}
       >
         <DataGridPremium
@@ -399,15 +583,105 @@ const PlaybackTable = () => {
             }))
           }
           onRowClick={(params) => handleRowClick(params.row.id)}
+          scrollbarSize={8}
           sx={{
-            '& .MuiDataGrid-row:nth-of-type(even)': {
-              backgroundColor: '#f8f9fa',
+            border: 'none',
+            width: '100%',
+            '& .MuiDataGrid-main': {
+              border: 'none',
+            },
+            '& .table-header': {
+              backgroundColor: '#ffffff',
+              borderBottom: '1px solid #E5E7EB',
+              fontSize: '14px',
+              fontWeight: 500,
+              color: '#6B7280',
+              '& .MuiDataGrid-columnHeaderTitle': {
+                fontSize: '14px',
+                fontWeight: 500,
+                color: '#6B7280',
+              },
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              borderBottom: '1px solid #E5E7EB',
+              minHeight: '56px !important',
+              maxHeight: '56px !important',
+            },
+            '& .MuiDataGrid-columnHeader': {
+              padding: '0 16px',
+              '&:focus, &:focus-within': {
+                outline: 'none',
+              },
+            },
+            '& .MuiDataGrid-cell': {
+              borderBottom: '1px solid #F3F4F6',
+              padding: '12px 16px',
+              fontSize: '14px',
+              color: '#374151',
+              minHeight: '68px !important',
+              maxHeight: '68px !important',
+              display: 'flex',
+              alignItems: 'center',
+              '&:focus, &:focus-within': {
+                outline: 'none',
+              },
             },
             '& .MuiDataGrid-row': {
               cursor: 'pointer',
+              backgroundColor: '#ffffff',
+              minHeight: '68px !important',
+              maxHeight: '68px !important',
+              '&:nth-of-type(even)': {
+                backgroundColor: '#F9FAFB',
+              },
+              '&:hover': {
+                backgroundColor: '#F3F4F6',
+              },
+              '&.Mui-selected': {
+                backgroundColor: '#EBF8FF',
+                '&:hover': {
+                  backgroundColor: '#DBEAFE',
+                },
+              },
             },
-            '& .MuiDataGrid-row:hover': {
-              backgroundColor: '#f0f0f0',
+            '& .MuiDataGrid-footerContainer': {
+              borderTop: '1px solid #E5E7EB',
+              backgroundColor: '#ffffff',
+              minHeight: '60px',
+              '& .MuiTablePagination-root': {
+                fontSize: '14px',
+                color: '#6B7280',
+              },
+              '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                fontSize: '14px',
+                color: '#6B7280',
+              },
+            },
+            '& .MuiDataGrid-selectedRowCount': {
+              display: 'none',
+            },
+            '& .MuiDataGrid-virtualScroller': {
+              backgroundColor: '#ffffff',
+              '&::-webkit-scrollbar': {
+                width: '8px',
+                height: '8px',
+              },
+              '&::-webkit-scrollbar-track': {
+                backgroundColor: '#F3F4F6',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: '#D1D5DB',
+                borderRadius: '4px',
+                '&:hover': {
+                  backgroundColor: '#9CA3AF',
+                },
+              },
+            },
+            '& .MuiDataGrid-scrollbar--horizontal': {
+              height: '8px',
+            },
+            '& .MuiDataGrid-scrollbar--vertical': {
+              width: '8px',
             },
           }}
         />

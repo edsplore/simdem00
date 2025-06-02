@@ -66,6 +66,7 @@ const PlaybackTable = () => {
   ]);
   const [simTypeFilter, setSimTypeFilter] = useState("all");
   const [levelFilter, setLevelFilter] = useState("all");
+  const [attemptTypeFilter, setAttemptTypeFilter] = useState("all");
   const [error, setError] = useState<string | null>(null);
   const handleRowClick = (id: string) => {
     const path = buildPathWithWorkspace(
@@ -128,12 +129,25 @@ const PlaybackTable = () => {
       ) {
         return false;
       }
+      if (
+        attemptTypeFilter !== "all" &&
+        row.attemptType !== attemptTypeFilter
+      ) {
+        return false;
+      }
       if (!isDateInRange((row as any).completedAt)) {
         return false;
       }
       return true;
     });
-  }, [playbackData, searchQuery, simTypeFilter, levelFilter, dateRange]);
+  }, [
+    playbackData,
+    searchQuery,
+    simTypeFilter,
+    levelFilter,
+    attemptTypeFilter,
+    dateRange,
+  ]);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -400,6 +414,10 @@ const PlaybackTable = () => {
           pagination.level = mapLevelToCode(levelFilter);
         }
 
+        if (attemptTypeFilter !== "all") {
+          pagination.type = attemptTypeFilter;
+        }
+
         if (dateRange[0]) {
           pagination.createdFrom = dateRange[0]
             .utc()
@@ -437,7 +455,14 @@ const PlaybackTable = () => {
 
   useEffect(() => {
     loadPlaybackData();
-  }, [user?.id, paginationParams, simTypeFilter, levelFilter, dateRange]);
+  }, [
+    user?.id,
+    paginationParams,
+    simTypeFilter,
+    levelFilter,
+    attemptTypeFilter,
+    dateRange,
+  ]);
 
   return (
     <Stack spacing={3}>
@@ -533,7 +558,7 @@ const PlaybackTable = () => {
             onChange={(e) => setLevelFilter(e.target.value)}
             size="small"
             displayEmpty
-            sx={{ 
+            sx={{
               minWidth: 120,
               backgroundColor: '#ffffff',
               borderRadius: '8px',
@@ -559,6 +584,37 @@ const PlaybackTable = () => {
             <MenuItem value="1">Level 01</MenuItem>
             <MenuItem value="2">Level 02</MenuItem>
             <MenuItem value="3">Level 03</MenuItem>
+          </Select>
+          <Select
+            value={attemptTypeFilter}
+            onChange={(e) => setAttemptTypeFilter(e.target.value)}
+            size="small"
+            displayEmpty
+            sx={{
+              minWidth: 150,
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '14px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#D1D5DB',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#9CA3AF',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#3B82F6',
+                borderWidth: '1px',
+              },
+              '& .MuiSelect-select': {
+                padding: '8px 12px',
+                fontSize: '14px',
+                color: '#374151',
+              }
+            }}
+          >
+            <MenuItem value="all">All Attempt Type</MenuItem>
+            <MenuItem value="practice">Practice</MenuItem>
+            <MenuItem value="test">Test</MenuItem>
           </Select>
         </Stack>
       </Stack>

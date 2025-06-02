@@ -563,6 +563,7 @@ const PlaybackTable = () => {
         }}
       >
         <DataGridPremium
+          autoHeight
           rows={filteredData}
           columns={columns}
           getRowId={(row) => row.id}
@@ -681,7 +682,7 @@ const PlaybackTable = () => {
               height: '8px',
             },
             '& .MuiDataGrid-scrollbar--vertical': {
-              width: '8px',
+              display: 'none',
             },
           }}
         />

@@ -7,15 +7,12 @@ import {
   Typography,
   Select,
   MenuItem,
-  CircularProgress,
-  TablePagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
 } from "@mui/material";
+import {
+  DataGridPremium,
+  GridColDef,
+  GridPaginationModel,
+} from "@mui/x-data-grid-premium";
 import { DateRange } from "@mui/x-date-pickers-pro/models";
 import dayjs, { Dayjs } from "dayjs";
 import { useAuth } from "../../../../context/AuthContext";
@@ -112,6 +109,144 @@ const PlaybackTable = () => {
       return true;
     });
   }, [playbackData, searchQuery, simTypeFilter, levelFilter, dateRange]);
+
+  const columns: GridColDef[] = useMemo(
+    () => [
+      {
+        field: 'trainingPlan',
+        headerName: 'Training Plan',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'moduleName',
+        headerName: 'Module',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'simName',
+        headerName: 'Sim Name',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'simType',
+        headerName: 'Sim Type',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'simLevel',
+        headerName: 'Level',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'score',
+        headerName: 'Sim Score',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography
+            variant="body2"
+            sx={{
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              color:
+                params.value >= 80
+                  ? '#22c55e'
+                  : params.value >= 60
+                  ? '#f59e0b'
+                  : '#ef4444',
+            }}
+          >
+            {params.value}%
+          </Typography>
+        ),
+      },
+      {
+        field: 'estTime',
+        headerName: 'Est. Time',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'dueDate',
+        headerName: 'Due Date',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'attemptType',
+        headerName: 'Attempt Type',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'attemptNumber',
+        headerName: 'Attempt Number',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'timeTaken',
+        headerName: 'Time Taken',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+      {
+        field: 'latestAttemptDate',
+        headerName: 'Latest Attempt Date',
+        flex: 1,
+        renderCell: (params) => (
+          <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+            {params.value}
+          </Typography>
+        ),
+      },
+    ],
+    []
+  );
 
   const loadPlaybackData = async () => {
     if (user?.id) {
@@ -226,257 +361,48 @@ const PlaybackTable = () => {
         </Stack>
       </Stack>
 
-      <TableContainer 
-        component={Paper} 
-        sx={{ 
+      <Paper
+        sx={{
           boxShadow: 'none',
           border: '1px solid',
           borderColor: 'divider',
+          height: 500,
         }}
       >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#f8f9fa' }}>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Training Plan
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Module
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Sim Name
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Sim Type
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Level
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Sim Score
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Est. Time
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Due Date
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Attempt Type
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Attempt Number
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Time Taken
-              </TableCell>
-              <TableCell sx={{
-                fontWeight: 500,
-                color: 'text.secondary',
-                fontSize: '0.875rem',
-                py: 2,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-              }}>
-                Latest Attempt Date
-              </TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={40} />
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredData.map((playback: AttemptsResponse, index) => (
-                <TableRow
-                  key={playback.id}
-                  hover
-                  onClick={() => handleRowClick(playback.id)}
-                  sx={{ 
-                    cursor: 'pointer',
-                    backgroundColor: index % 2 === 0 ? '#fff' : '#f8f9fa',
-                    '&:hover': {
-                      backgroundColor: '#f0f0f0',
-                    },
-                  }}
-                >
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.trainingPlan}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.moduleName}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.simName}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.simType}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.simLevel}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontSize: '0.875rem',
-                        fontWeight: 500,
-                        color: playback.score >= 80
-                          ? '#22c55e'
-                          : playback.score >= 60
-                          ? '#f59e0b'
-                          : '#ef4444',
-                      }}
-                    >
-                      {playback.score}%
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.estTime}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.dueDate}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.attemptType}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.attemptNumber}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.timeTaken}
-                    </Typography>
-                  </TableCell>
-                  <TableCell sx={{ py: 2 }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-                      {playback.latestAttemptDate}
-                    </Typography>
-                  </TableCell>
-                  </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <TablePagination
-        component="div"
-        count={totalCount}
-        page={paginationParams.page - 1}
-        onPageChange={(_: unknown, newPage: number) =>
-          setPaginationParams((prevState) => ({
-            ...prevState,
-            page: newPage + 1,
-          }))
-        }
-        rowsPerPage={paginationParams.pagesize}
-        onRowsPerPageChange={(e) =>
-          setPaginationParams((prevState) => ({
-            ...prevState,
-            pagesize: Number(e.target.value),
-          }))
-        }
-        rowsPerPageOptions={[5, 10, 25, 50]}
-      />
+        <DataGridPremium
+          rows={filteredData}
+          columns={columns}
+          getRowId={(row) => row.id}
+          loading={isLoading}
+          pagination
+          paginationMode="server"
+          rowCount={totalCount}
+          pageSizeOptions={[5, 10, 25, 50]}
+          paginationModel={{
+            page: paginationParams.page - 1,
+            pageSize: paginationParams.pagesize,
+          }}
+          onPaginationModelChange={(model: GridPaginationModel) =>
+            setPaginationParams((prevState) => ({
+              ...prevState,
+              page: model.page + 1,
+              pagesize: model.pageSize,
+            }))
+          }
+          onRowClick={(params) => handleRowClick(params.row.id)}
+          sx={{
+            '& .MuiDataGrid-row:nth-of-type(even)': {
+              backgroundColor: '#f8f9fa',
+            },
+            '& .MuiDataGrid-row': {
+              cursor: 'pointer',
+            },
+            '& .MuiDataGrid-row:hover': {
+              backgroundColor: '#f0f0f0',
+            },
+          }}
+        />
+      </Paper>
     </Stack>
   );
 };

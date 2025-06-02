@@ -1,17 +1,22 @@
 import React from 'react';
 import { Stack, Typography } from '@mui/material';
 
-const PlaybackHeader = () => {
-  return (
-    <Stack spacing={1}>
-      <Typography variant="h4" fontWeight="medium">
-        Playback
-      </Typography>
-      <Typography variant="body1" color="text.secondary">
-        Playback and Evaluate Your Training Simulations
-      </Typography>
-    </Stack>
-  );
-};
+interface PlaybackHeaderProps {
+  simulationName?: string;
+}
+
+const PlaybackHeader: React.FC<PlaybackHeaderProps> = ({ simulationName }) => (
+  <Stack direction="row" alignItems="center" spacing={1}>
+    <Typography variant="h5" fontWeight={700}>
+      Playback
+    </Typography>
+    {simulationName && (
+      <>
+        <Typography color="text.secondary">/</Typography>
+        <Typography variant="subtitle1">{simulationName}</Typography>
+      </>
+    )}
+  </Stack>
+);
 
 export default PlaybackHeader;

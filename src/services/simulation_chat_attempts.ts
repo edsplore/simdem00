@@ -6,6 +6,7 @@ export interface ChatStartRequest {
   sim_id: string;
   assignment_id: string;
   attempt_type: string; // "Test" or "Practice"
+  simulation_level: string;
 }
 
 export interface ChatMessageRequest {
@@ -65,6 +66,7 @@ export const startChatSimulation = async (
   simId: string,
   assignmentId: string,
   attemptType: string,
+  simulationLevel: string,
 ): Promise<ChatResponse> => {
   try {
     const response = await apiClient.post<ChatResponse>(
@@ -74,6 +76,7 @@ export const startChatSimulation = async (
         sim_id: simId,
         assignment_id: assignmentId,
         attempt_type: attemptType,
+        simulation_level: simulationLevel,
       },
     );
 

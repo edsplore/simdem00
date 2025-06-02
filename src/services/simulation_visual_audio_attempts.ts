@@ -116,6 +116,7 @@ export interface StartVisualAudioRequest {
   sim_id: string;
   assignment_id: string;
   attempt_type: string; // "Test" or "Practice"
+  simulation_level: string;
 }
 
 export interface StartVisualAudioResponse {
@@ -195,6 +196,7 @@ export const startVisualAudioAttempt = async (
   simulationId: string,
   assignmentId: string,
   attemptType: string,
+  simulationLevel: string,
 ): Promise<StartVisualAudioResponse> => {
   try {
     const response = await apiClient.post<StartVisualAudioResponse>(
@@ -204,6 +206,7 @@ export const startVisualAudioAttempt = async (
         sim_id: simulationId,
         assignment_id: assignmentId,
         attempt_type: attemptType,
+        simulation_level: simulationLevel,
       },
     );
 

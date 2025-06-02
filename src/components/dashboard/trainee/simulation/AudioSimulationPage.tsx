@@ -38,6 +38,7 @@ import {
 } from "../../../../services/simulation_audio_attempts";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
+import { mapLevelToCode } from "../../../../utils/simulation";
 
 interface Message {
   speaker: "customer" | "trainee";
@@ -346,6 +347,7 @@ const AudioSimulationPage: React.FC<AudioSimulationPageProps> = ({
         sim_id: simulationId,
         assignment_id: assignmentId,
         attempt_type: attemptType, // Pass the attemptType
+        simulation_level: mapLevelToCode(level),
       });
 
 

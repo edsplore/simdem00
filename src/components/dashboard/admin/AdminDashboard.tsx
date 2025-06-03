@@ -41,6 +41,7 @@ import {
 } from "@mui/icons-material";
 import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
+import { fetchDivisions, fetchDepartments } from "../../../services/suggestions";
 import {
   AdminDashboardUserActivityPayload,
   AdminDashboardUserActivityPayloadParams,
@@ -597,7 +598,7 @@ const menuItemSx = {
 };
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
+  const { user, currentWorkspaceId } = useAuth();
   const [dashboardData, setDashboardData] = useState(adminDashboardData);
   const [dashboardStats, setDashboardStats] =
     useState<AdminDashboardUserStatsResponse | null>(null);
@@ -613,6 +614,10 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [department, setDepartment] = useState("All Department");
   const [division, setDivision] = useState("All Divisions");
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [divisions, setDivisions] = useState<string[]>([]);
+  const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
+  const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [role, setRole] = useState("All Roles");
   const [status, setStatus] = useState("All Status");
   const [timeframe, setTimeframe] = useState("All Time");
@@ -694,6 +699,38 @@ const AdminDashboard = () => {
     loadAdminDashboardStats();
   }, [user?.id]);
 
+  // Load divisions and departments when workspace changes
+  useEffect(() => {
+    if (!currentWorkspaceId) return;
+
+    const loadDivisions = async () => {
+      setIsLoadingDivisions(true);
+      try {
+        const data = await fetchDivisions(currentWorkspaceId);
+        setDivisions(data);
+      } catch (err) {
+        console.error("Failed to load divisions:", err);
+      } finally {
+        setIsLoadingDivisions(false);
+      }
+    };
+
+    const loadDepartments = async () => {
+      setIsLoadingDepartments(true);
+      try {
+        const data = await fetchDepartments(currentWorkspaceId);
+        setDepartments(data);
+      } catch (err) {
+        console.error("Failed to load departments:", err);
+      } finally {
+        setIsLoadingDepartments(false);
+      }
+    };
+
+    loadDivisions();
+    loadDepartments();
+  }, [currentWorkspaceId]);
+
   // useEffect(() => {
   //   const loadUserActivity = async () => {
   //     try {
@@ -752,6 +789,7 @@ const AdminDashboard = () => {
   };
 
   const handleDepartmentChange = (event: SelectChangeEvent<string>) => {
+    setDepartment(event.target.value);
     setUserActivityParams({
       ...userActivityParams,
       department: event.target.value,
@@ -759,6 +797,7 @@ const AdminDashboard = () => {
   };
 
   const handleDivisionChange = (event: SelectChangeEvent<string>) => {
+    setDivision(event.target.value);
     setUserActivityParams({
       ...userActivityParams,
       division: event.target.value,
@@ -1129,18 +1168,11 @@ const AdminDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Department">
                     All Department
                   </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Engineering">
-                    Engineering
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Product">
-                    Product
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Design">
-                    Design
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Operations">
-                    Operations
-                  </MenuItem>
+                  {departments.map((dept) => (
+                    <MenuItem sx={menuItemSx} key={dept} value={dept}>
+                      {dept}
+                    </MenuItem>
+                  ))}
                 </Select>
 
                 <Select
@@ -1155,12 +1187,11 @@ const AdminDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Divisions">
                     All Divisions
                   </MenuItem>
-                  <MenuItem sx={menuItemSx} value="EverAI Labs">
-                    EverAI Labs
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Product Development">
-                    Product Development
-                  </MenuItem>
+                  {divisions.map((div) => (
+                    <MenuItem sx={menuItemSx} key={div} value={div}>
+                      {div}
+                    </MenuItem>
+                  ))}
                 </Select>
 
                 <Select

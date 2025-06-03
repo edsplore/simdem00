@@ -52,6 +52,7 @@ export interface FetchPlaybackByIdRowDataResponse {
   textFieldKeywordScore: number;
   keywordScore: number;
   simAccuracyScore: number;
+  finalScore: number;
   confidence: number;
   energy: number;
   concentration: number;

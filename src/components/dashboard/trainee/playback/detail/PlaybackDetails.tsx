@@ -300,7 +300,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   justifyContent="space-between"
                 >
                   <CompletionTime
-                    time={`${props.playbackData.simAccuracyScore}%`}
+                    time={`${props.playbackData.finalScore}%`}
                     label="Sim Score"
                     icon={<SimIcon fontSize="small" />}
                   />

@@ -10,6 +10,7 @@ import {
   TextField,
   InputAdornment,
   Select,
+  Button,
   MenuItem,
   Table,
   TableBody,
@@ -32,6 +33,7 @@ import {
   Search as SearchIcon,
   Info as InfoIcon,
   MoreVert as MoreVertIcon,
+  FileDownloadOutlined as FileDownloadOutlinedIcon,
   ChevronLeft as ChevronLeftIcon,
   ChevronRight as ChevronRightIcon,
   ExpandMore,
@@ -48,8 +50,9 @@ import {
   fetchAdminDashboardUserActivity,
 } from "../../../services/admin";
 import { DateRange } from "@mui/x-date-pickers-pro";
-import { Dayjs } from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import DateSelector from "../../common/DateSelector";
+import { LineChart } from "@mui/x-charts";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
 
@@ -62,6 +65,15 @@ const adminDashboardData = {
         manager: 24,
         designer: 4,
         trainees: 199,
+      },
+    },
+    activationPendingUsers: {
+      total: 120,
+      breakdown: {
+        admin: 1,
+        manager: 10,
+        designer: 5,
+        trainees: 104,
       },
     },
     activeUsers: {
@@ -247,6 +259,16 @@ const adminDashboardData = {
   ],
   totalUsers: 110,
 };
+
+const userEngagementData = Array.from({ length: 90 }, (_, index) => {
+  const day = dayjs().subtract(89 - index, "day");
+  return {
+    date: day.format("MM/DD"),
+    daily: 100 + (index % 20),
+    weekly: 200 + (index % 30),
+    monthly: 300 + (index % 40),
+  };
+});
 
 const InfoIconPopup = ({ title }) => {
   return (
@@ -598,10 +620,29 @@ const AdminDashboard = () => {
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
 
+  const [engagementRange, setEngagementRange] = useState("7");
+  const [engagementDateRange, setEngagementDateRange] = useState<DateRange<Dayjs>>([
+    dayjs().subtract(6, "day"),
+    dayjs(),
+  ]);
+  const [engagementRole, setEngagementRole] = useState("All Roles");
+
   const [userActivityData, setUserActivityData] = useState({
     users: adminDashboardData.userActivity,
     total: adminDashboardData.totalUsers,
   });
+
+  const engagementDataFiltered = React.useMemo(() => {
+    if (engagementRange !== "custom") {
+      const range = parseInt(engagementRange, 10);
+      return userEngagementData.slice(-range);
+    }
+    if (engagementDateRange[0] && engagementDateRange[1]) {
+      const diff = engagementDateRange[1].diff(engagementDateRange[0], "day") + 1;
+      return userEngagementData.slice(-diff);
+    }
+    return userEngagementData.slice(-7);
+  }, [engagementRange, engagementDateRange]);
 
   const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {};
 
@@ -742,6 +783,73 @@ const AdminDashboard = () => {
     setTimeframe(event.target.value);
   };
 
+  const handleEngagementRangeChange = (event: SelectChangeEvent<string>) => {
+    setEngagementRange(event.target.value);
+    if (event.target.value === "7") {
+      setEngagementDateRange([dayjs().subtract(6, "day"), dayjs()]);
+    } else if (event.target.value === "30") {
+      setEngagementDateRange([dayjs().subtract(29, "day"), dayjs()]);
+    } else if (event.target.value === "90") {
+      setEngagementDateRange([dayjs().subtract(89, "day"), dayjs()]);
+    }
+  };
+
+  const handleEngagementRoleChange = (event: SelectChangeEvent<string>) => {
+    setEngagementRole(event.target.value);
+  };
+
+  const handleExportCsv = () => {
+    const headers = [
+      "Name",
+      "Email",
+      "Role",
+      "Division",
+      "Department",
+      "Added On",
+      "Status",
+      "Assigned Simulations",
+      "Completion Rate",
+      "Adherence Rate",
+      "Average Score",
+      "Activated On",
+      "Deactivated On",
+      "Login Count",
+      "Last Login Date",
+      "Last Session Duration",
+    ];
+
+    const csvRows = [headers.join(",")];
+    userActivity.forEach((user) => {
+      const row = [
+        user.name,
+        user.email,
+        user.role,
+        user.division,
+        user.department,
+        user.addedOn,
+        user.status,
+        user.assignedSimulations,
+        user.completionRate,
+        user.adherenceRate,
+        user.averageScore,
+        user.activatedOn,
+        user.deActivatedOn,
+        user.loginCount,
+        user.lastLoginOn,
+        user.lastSessionDuration,
+      ].join(",");
+      csvRows.push(row);
+    });
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "user_activity.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   if (isLoading) {
     return (
@@ -798,7 +906,7 @@ const AdminDashboard = () => {
           {dashboardStats ? (
             <Stack>
               <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="New Users Onboarded"
                     total={dashboardStats?.new_users.total_users}
@@ -807,7 +915,16 @@ const AdminDashboard = () => {
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
+                  <UserStatsCard
+                    title="Activation Pending Users"
+                    total={dashboardStats?.activation_pending_users.total_users}
+                    breakdown={dashboardStats?.activation_pending_users.breakdown}
+                    icon={<InfoIcon />}
+                    popupText="On time completed test Sim / Total no. of test sims completed"
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Active Users"
                     total={dashboardStats?.active_users.total_users}
@@ -816,11 +933,11 @@ const AdminDashboard = () => {
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Deactivated Users"
                     total={dashboardStats?.deactivated_users.total_users}
-                    breakdown={dashboardStats?.deactivated_users.total_users}
+                    breakdown={dashboardStats?.deactivated_users.breakdown}
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -867,6 +984,84 @@ const AdminDashboard = () => {
           ) : (
             <></>
           )}
+
+          {/* User Engagement Graph */}
+          <Stack spacing={2}>
+            <Stack direction={{ sm: "column", md: "row" }} justifyContent="space-between" alignItems={{ sm: "flex-start", md: "center" }}>
+              <Typography variant="h5" sx={{ fontSize: 18 }} color="#000000CC" fontWeight="semibold">
+                User Engagement
+              </Typography>
+              <Stack direction={{ sm: "column", md: "row" }} spacing={2}>
+                <Select
+                  value={engagementRange}
+                  onChange={handleEngagementRangeChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="7">
+                    Last 7 Days
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="30">
+                    Last 30 Days
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="90">
+                    Last 90 Days
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="custom">
+                    Custom Range
+                  </MenuItem>
+                </Select>
+                {engagementRange === "custom" && (
+                  <DateSelector
+                    dateRange={engagementDateRange}
+                    setDateRange={setEngagementDateRange}
+                    handleDateRangeApplyCallback={() => {}}
+                    variant="managerGlobal"
+                  />
+                )}
+                <Select
+                  value={engagementRole}
+                  onChange={handleEngagementRoleChange}
+                  displayEmpty
+                  IconComponent={ExpandMore}
+                  MenuProps={menuSelectProps}
+                  sx={menuSelectsx}
+                  size="small"
+                >
+                  <MenuItem sx={menuItemSx} value="All Roles">
+                    All Roles
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Admin">
+                    Admin
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Manager">
+                    Manager
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Designer">
+                    Designer
+                  </MenuItem>
+                  <MenuItem sx={menuItemSx} value="Trainee">
+                    Trainee
+                  </MenuItem>
+                </Select>
+              </Stack>
+            </Stack>
+            <Box sx={{ width: "100%" }}>
+              <LineChart
+                dataset={engagementDataFiltered}
+                xAxis={[{ scaleType: "point", dataKey: "date" }]}
+                series={[
+                  { dataKey: "daily", label: "DAU", color: "#375CE5" },
+                  { dataKey: "weekly", label: "WAU", color: "#7891EB" },
+                  { dataKey: "monthly", label: "MAU", color: "#C8D2F7" },
+                ]}
+                height={300}
+              />
+            </Box>
+          </Stack>
 
           {/* User Status and Activity Log */}
           <Typography
@@ -1026,6 +1221,13 @@ const AdminDashboard = () => {
                   setDateRange={setDateRange}
                   handleDateRangeApplyCallback={handleDateRangeApplyCallback}
                 />
+                <Button
+                  variant="outlined"
+                  startIcon={<FileDownloadOutlinedIcon />}
+                  onClick={handleExportCsv}
+                >
+                  Export CSV
+                </Button>
               </Stack>
             </Stack>
 

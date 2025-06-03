@@ -909,8 +909,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="New Users Onboarded"
-                    total={dashboardStats?.new_users.total_users}
-                    breakdown={dashboardStats?.new_users.breakdown}
+                    total={dashboardStats?.new_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.new_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -918,8 +925,17 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Activation Pending Users"
-                    total={dashboardStats?.activation_pending_users.total_users}
-                    breakdown={dashboardStats?.activation_pending_users.breakdown}
+                    total={
+                      dashboardStats?.activation_pending_users?.total_users ?? 0
+                    }
+                    breakdown={
+                      dashboardStats?.activation_pending_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -927,8 +943,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Active Users"
-                    total={dashboardStats?.active_users.total_users}
-                    breakdown={dashboardStats?.active_users.breakdown}
+                    total={dashboardStats?.active_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.active_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -936,8 +959,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Deactivated Users"
-                    total={dashboardStats?.deactivated_users.total_users}
-                    breakdown={dashboardStats?.deactivated_users.breakdown}
+                    total={dashboardStats?.deactivated_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.deactivated_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -955,8 +985,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={4}>
                   <UserStatsCard
                     title="Daily Active Users (DAU)"
-                    total={dashboardStats?.daily_active_users.total_users}
-                    breakdown={dashboardStats?.daily_active_users.breakdown}
+                    total={dashboardStats?.daily_active_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.daily_active_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -964,8 +1001,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={4}>
                   <UserStatsCard
                     title="Weekly Active Users (WAU)"
-                    total={dashboardStats?.weekly_active_users.total_users}
-                    breakdown={dashboardStats?.weekly_active_users.breakdown}
+                    total={dashboardStats?.weekly_active_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.weekly_active_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -973,8 +1017,15 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={4}>
                   <UserStatsCard
                     title="Monthly Active Users (MAU)"
-                    total={dashboardStats?.monthly_active_users.total_users}
-                    breakdown={dashboardStats?.monthly_active_users.breakdown}
+                    total={dashboardStats?.monthly_active_users?.total_users ?? 0}
+                    breakdown={
+                      dashboardStats?.monthly_active_users?.breakdown ?? {
+                        admin: 0,
+                        manager: 0,
+                        designer: 0,
+                        trainees: 0,
+                      }
+                    }
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />

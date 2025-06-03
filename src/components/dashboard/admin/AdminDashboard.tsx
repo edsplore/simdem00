@@ -978,64 +978,6 @@ const AdminDashboard = () => {
             <></>
           )}
 
-          {/* Second row of stats */}
-          {dashboardStats ? (
-            <Stack>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                  <UserStatsCard
-                    title="Daily Active Users (DAU)"
-                    total={dashboardStats?.daily_active_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.daily_active_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
-                    icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <UserStatsCard
-                    title="Weekly Active Users (WAU)"
-                    total={dashboardStats?.weekly_active_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.weekly_active_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
-                    icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                </Grid>
-                <Grid item xs={12} md={4}>
-                  <UserStatsCard
-                    title="Monthly Active Users (MAU)"
-                    total={dashboardStats?.monthly_active_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.monthly_active_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
-                    icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
-                  />
-                </Grid>
-              </Grid>
-            </Stack>
-          ) : (
-            <></>
-          )}
-
           {/* User Engagement Graph */}
           <Stack spacing={2}>
             <Stack direction={{ sm: "column", md: "row" }} justifyContent="space-between" alignItems={{ sm: "flex-start", md: "center" }}>

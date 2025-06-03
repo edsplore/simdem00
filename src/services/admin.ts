@@ -50,6 +50,15 @@ export interface AdminDashboardUserStatsResponse {
       trainees: number;
     };
   };
+  activation_pending_users: {
+    total_users: number;
+    breakdown: {
+      admin: number;
+      manager: number;
+      designer: number;
+      trainees: number;
+    };
+  };
   active_users: {
     total_users: number;
     breakdown: {

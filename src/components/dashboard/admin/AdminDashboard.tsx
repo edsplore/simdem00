@@ -23,7 +23,6 @@ import {
   Chip,
   Pagination,
   FormControl,
-  InputLabel,
   SelectChangeEvent,
   Tooltip,
   circularProgressClasses,
@@ -625,7 +624,6 @@ const AdminDashboard = () => {
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
 
-  const [engagementRange, setEngagementRange] = useState("7");
   const [engagementDateRange, setEngagementDateRange] = useState<DateRange<Dayjs>>([
     dayjs().subtract(6, "day"),
     dayjs(),
@@ -638,16 +636,12 @@ const AdminDashboard = () => {
   });
 
   const engagementDataFiltered = React.useMemo(() => {
-    if (engagementRange !== "custom") {
-      const range = parseInt(engagementRange, 10);
-      return userEngagementData.slice(-range);
-    }
     if (engagementDateRange[0] && engagementDateRange[1]) {
       const diff = engagementDateRange[1].diff(engagementDateRange[0], "day") + 1;
       return userEngagementData.slice(-diff);
     }
     return userEngagementData.slice(-7);
-  }, [engagementRange, engagementDateRange]);
+  }, [engagementDateRange]);
 
   const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {};
 
@@ -822,16 +816,6 @@ const AdminDashboard = () => {
     setTimeframe(event.target.value);
   };
 
-  const handleEngagementRangeChange = (event: SelectChangeEvent<string>) => {
-    setEngagementRange(event.target.value);
-    if (event.target.value === "7") {
-      setEngagementDateRange([dayjs().subtract(6, "day"), dayjs()]);
-    } else if (event.target.value === "30") {
-      setEngagementDateRange([dayjs().subtract(29, "day"), dayjs()]);
-    } else if (event.target.value === "90") {
-      setEngagementDateRange([dayjs().subtract(89, "day"), dayjs()]);
-    }
-  };
 
   const handleEngagementRoleChange = (event: SelectChangeEvent<string>) => {
     setEngagementRole(event.target.value);
@@ -933,11 +917,6 @@ const AdminDashboard = () => {
               Simulator Platform Stats
             </Typography>
 
-            <DateSelector
-              dateRange={dateRange}
-              setDateRange={setDateRange}
-              handleDateRangeApplyCallback={handleDateRangeApplyCallback}
-            />
           </Stack>
 
           {/* First row of stats */}
@@ -1024,36 +1003,12 @@ const AdminDashboard = () => {
                 User Engagement
               </Typography>
               <Stack direction={{ sm: "column", md: "row" }} spacing={2}>
-                <Select
-                  value={engagementRange}
-                  onChange={handleEngagementRangeChange}
-                  displayEmpty
-                  IconComponent={ExpandMore}
-                  MenuProps={menuSelectProps}
-                  sx={menuSelectsx}
-                  size="small"
-                >
-                  <MenuItem sx={menuItemSx} value="7">
-                    Last 7 Days
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="30">
-                    Last 30 Days
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="90">
-                    Last 90 Days
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="custom">
-                    Custom Range
-                  </MenuItem>
-                </Select>
-                {engagementRange === "custom" && (
-                  <DateSelector
-                    dateRange={engagementDateRange}
-                    setDateRange={setEngagementDateRange}
-                    handleDateRangeApplyCallback={() => {}}
-                    variant="managerGlobal"
-                  />
-                )}
+                <DateSelector
+                  dateRange={engagementDateRange}
+                  setDateRange={setEngagementDateRange}
+                  handleDateRangeApplyCallback={() => {}}
+                  variant="managerGlobal"
+                />
                 <Select
                   value={engagementRole}
                   onChange={handleEngagementRoleChange}
@@ -1244,6 +1199,7 @@ const AdminDashboard = () => {
                   dateRange={dateRange}
                   setDateRange={setDateRange}
                   handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                  variant="managerGlobal"
                 />
                 <Button
                   variant="outlined"

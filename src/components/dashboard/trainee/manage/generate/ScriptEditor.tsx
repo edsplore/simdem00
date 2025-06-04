@@ -229,16 +229,20 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const quillRef = useRef<ReactQuill>(null);
 
   // --- Virtual anchor for Popper ---
-  const [virtualAnchor, setVirtualAnchor] = useState<any>(null);
+  const [virtualAnchor, setVirtualAnchor] = useState<{
+    getBoundingClientRect: () => DOMRect;
+    clientWidth: number;
+    clientHeight: number;
+  } | null>(null);
 
-  useEffect(() => {
-    if (showKeywordPopper && quillRef.current) {
+  const calculateVirtualAnchor = (index: number, length: number) => {
+    if (quillRef.current) {
       const quill = quillRef.current.getEditor();
-      const bounds = quill.getBounds(selectionIndex, selectionLength);
+      const bounds = quill.getBounds(index, length);
       const editorContainer = quillRef.current.editor?.container;
-      if (editorContainer) {
+      if (editorContainer && bounds) {
         const rect = editorContainer.getBoundingClientRect();
-        setVirtualAnchor({
+        return {
           getBoundingClientRect: () => ({
             top: rect.top + bounds.top + window.scrollY,
             left: rect.left + bounds.left + window.scrollX,
@@ -249,10 +253,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
           }),
           clientWidth: bounds.width,
           clientHeight: bounds.height,
-        });
+        };
       }
     }
-  }, [showKeywordPopper, selectionIndex, selectionLength]);
+    return null;
+  };
 
   // ----------------------------
   //  Basic UI logic
@@ -576,8 +581,13 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setSelectionIndex(range.index);
     setSelectionLength(range.length);
 
-    // Now we show the popper
-    setShowKeywordPopper(true);
+    // Calculate the virtual anchor BEFORE showing the popper
+    const anchor = calculateVirtualAnchor(range.index, range.length);
+    if (anchor) {
+      setVirtualAnchor(anchor);
+      // Now we show the popper with the correct position already set
+      setShowKeywordPopper(true);
+    }
   };
 
   //
@@ -917,7 +927,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                 width: "100%",
                                 height: 52,
                                 justifyContent: "space-between",
-                                px: 2,
+                                paddingLeft: 1,
+                                paddingRight: 2,
                                 py: 1,
                                 borderBottom: "1px solid #EAECF0",
                                 boxSizing: "border-box",
@@ -959,7 +970,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             <Box
                               sx={{
                                 width: "100%",
-                                minHeight: 48,
+                                minHeight: 58,
                                 borderBottom: "1px solid #EAECF0",
                                 display: "flex",
                                 alignItems: "center",
@@ -973,6 +984,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                   bgcolor: "#E9F8EE",
                                   color: "#157A41",
                                   borderRadius: "24px",
+                                  border: "1px solid #EAECF0",
                                   px: 2,
                                   py: 0.5,
                                   display: "flex",
@@ -987,7 +999,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                 {quillRef.current?.getEditor().getText(selectionIndex, selectionLength)}
                                 <IconButton
                                   size="small"
-                                  sx={{ color: "#157A41", ml: 1, p: 0, width: 24, height: 24, "&:hover": { bgcolor: "transparent" } }}
+                                  sx={{ color: "#157A41", p: 0, width: 24, height: 24, "&:hover": { bgcolor: "transparent" } }}
                                   onClick={() => {
                                     if (quillRef.current) {
                                       const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
@@ -998,7 +1010,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                     setShowKeywordPopper(false);
                                   }}
                                 >
-                                  <img src={vectorIcon} alt="Close" style={{ width: 13, height: 13 }} />
+                                    <img src={vectorIcon} alt="Close" style={{ width: 13, height: 13, filter: 'invert(27%) sepia(79%) saturate(1089%) hue-rotate(134deg) brightness(94%) contrast(87%)' }} />
                                 </IconButton>
                               </Box>
                             </Box>
@@ -1006,16 +1018,18 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             {/* Tabs for Alternative Word and Verbatim */}
                             <Box
                               sx={{
-                                width: "100%",
+                                width: "calc(100% - 32px)",
                                 height: 41,
                                 display: "flex",
                                 gap: 0,
                                 bgcolor: "#fff",
+                                  border: "1px solid #F8F8F8",
                                 borderRadius: "12px",
                                 alignItems: "center",
                                 p: "2px",
                                 mt: 2,
                                 mb: 2,
+                                mx: 2,
                                 overflow: "hidden",
                                 px: 2,
                               }}
@@ -1185,6 +1199,10 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                           fontSize: 15,
                                           fontWeight: 500,
                                           p: 0,
+                                          "&::placeholder": {
+                                            color: "#666666",
+                                            opacity: 1,
+                                          },
                                         }
                                       }}
                                     />
@@ -1230,8 +1248,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             )}
 
                             {/* Keyword Score */}
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5, mb: 2, borderTop: "1px solid #EAECF0", borderBottom: "1px solid #EAECF0", borderRadius: "8px", bgcolor: "#fff" }}>
-                              <Typography variant="body2">Keyword Score</Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5, mb: 2, borderTop: "1px solid #EAECF0", borderBottom: "1px solid #EAECF0", bgcolor: "#fff" }}>
+                              <Typography sx={{ fontSize: 15, color: "#666666", fontWeight: 500 }}>Keyword Score</Typography>
                               <Box sx={{ display: "flex", alignItems: "center", border: "1px solid", borderColor: "divider", borderRadius: 1, height: 32 }}>
                                 <IconButton
                                   size="small"
@@ -1254,6 +1272,17 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                         return updatedKeywords;
                                       });
                                     }
+                                  }}
+                                  sx={{
+                                    color: (() => {
+                                      if (quillRef.current) {
+                                        const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                        const keyword = editingKeywords.find(k => k.main_keyword === mainKeyword);
+                                        const currentValue = keyword?.points || 1;
+                                        return currentValue === 1 ? "#E5E7EB" : "#666666";
+                                      }
+                                      return "#666666";
+                                    })()
                                   }}
                                 >
                                   −
@@ -1299,7 +1328,18 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                               <Button
                                 variant="outlined"
                                 size="small"
-                                sx={{ minWidth: 120, height: 36, fontWeight: 500, fontSize: 15 }}
+                                sx={{ 
+                                  flex: 1, 
+                                  height: 36, 
+                                  fontWeight: 500, 
+                                  fontSize: 15,
+                                  borderColor: "#666666",
+                                  color: "#666666",
+                                  "&:hover": {
+                                    borderColor: "#F8F8F8",
+                                    backgroundColor: "transparent"
+                                  }
+                                }}
                                 onClick={() => {
                                   if (quillRef.current) {
                                     const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
@@ -1315,7 +1355,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                               <Button
                                 variant="contained"
                                 size="small"
-                                sx={{ minWidth: 120, height: 36, fontWeight: 600, fontSize: 15, boxShadow: "none" }}
+                                sx={{ flex: 1, height: 36, fontWeight: 600, fontSize: 15, boxShadow: "none" }}
                                 onClick={() => {
                                   if (quillRef.current) {
                                     const quill = quillRef.current.getEditor();

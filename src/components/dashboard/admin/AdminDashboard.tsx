@@ -53,6 +53,10 @@ import { DateRange } from "@mui/x-date-pickers-pro";
 import dayjs, { Dayjs } from "dayjs";
 import DateSelector from "../../common/DateSelector";
 import { LineChart } from "@mui/x-charts";
+import {
+  fetchActiveUserMetricsHistory,
+  ActiveUserMetricsHistoryItem,
+} from "../../../services/metrics";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
 
@@ -260,15 +264,6 @@ const adminDashboardData = {
   totalUsers: 110,
 };
 
-const userEngagementData = Array.from({ length: 90 }, (_, index) => {
-  const day = dayjs().subtract(89 - index, "day");
-  return {
-    date: day.format("MM/DD"),
-    daily: 100 + (index % 20),
-    weekly: 200 + (index % 30),
-    monthly: 300 + (index % 40),
-  };
-});
 
 const InfoIconPopup = ({ title }) => {
   return (
@@ -630,20 +625,20 @@ const AdminDashboard = () => {
   ]);
   const [engagementRole, setEngagementRole] = useState("All Roles");
 
+  const [userEngagementData, setUserEngagementData] = useState<
+    ActiveUserMetricsHistoryItem[]
+  >([]);
+
   const [userActivityData, setUserActivityData] = useState({
     users: adminDashboardData.userActivity,
     total: adminDashboardData.totalUsers,
   });
 
-  const engagementDataFiltered = React.useMemo(() => {
-    if (engagementDateRange[0] && engagementDateRange[1]) {
-      const diff = engagementDateRange[1].diff(engagementDateRange[0], "day") + 1;
-      return userEngagementData.slice(-diff);
-    }
-    return userEngagementData.slice(-7);
-  }, [engagementDateRange]);
+  const engagementDataFiltered = userEngagementData;
 
-  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {};
+  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+    setEngagementDateRange(range);
+  };
 
   const loadUserActivity = async () => {
     if (user?.id) {
@@ -688,9 +683,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const loadUserEngagementMetrics = async () => {
+    try {
+      const days =
+        engagementDateRange[0] && engagementDateRange[1]
+          ? engagementDateRange[1].diff(engagementDateRange[0], "day") + 1
+          : 30;
+      const { metrics } = await fetchActiveUserMetricsHistory(days);
+      const mapped = metrics.map((m) => ({
+        date: dayjs(m.date).format("MM/DD"),
+        daily: m.daily_active_users,
+        weekly: m.weekly_active_users,
+        monthly: m.monthly_active_users,
+      }));
+      setUserEngagementData(mapped);
+    } catch (error) {
+      console.error("Failed to load engagement metrics:", error);
+    }
+  };
+
   useEffect(() => {
     loadUserActivity();
     loadAdminDashboardStats();
+    loadUserEngagementMetrics();
   }, [user?.id]);
 
   // Load divisions and departments when workspace changes
@@ -724,6 +739,10 @@ const AdminDashboard = () => {
     loadDivisions();
     loadDepartments();
   }, [currentWorkspaceId]);
+
+  useEffect(() => {
+    loadUserEngagementMetrics();
+  }, [engagementDateRange]);
 
   // useEffect(() => {
   //   const loadUserActivity = async () => {
@@ -1006,7 +1025,7 @@ const AdminDashboard = () => {
                 <DateSelector
                   dateRange={engagementDateRange}
                   setDateRange={setEngagementDateRange}
-                  handleDateRangeApplyCallback={() => {}}
+                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
                   variant="managerGlobal"
                 />
                 <Select

@@ -904,9 +904,8 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                               display: "flex",
                               flexDirection: "column",
                               width: 386,
-                              minHeight: 320,
-                              maxHeight: 420,
-                              overflow: "hidden",
+                              height: 'auto',
+                              overflow: 'visible',
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
@@ -928,8 +927,18 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 <IconButton
                                   size="small"
-                                  onClick={() => setShowKeywordPopper(false)}
-                                  sx={{ width: 28, height: 28, borderRadius: "50%", p: 0 }}
+                                  sx={{
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: "50%",
+                                    p: 0,
+                                    cursor: 'default',
+                                    "&:hover": {
+                                      backgroundColor: "transparent",
+                                      transform: "none",
+                                      boxShadow: "none"
+                                    }
+                                  }}
                                 >
                                   <img src={featuredIcon} alt="FeaturedIcon" />
                                 </IconButton>
@@ -952,14 +961,11 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                 width: "100%",
                                 minHeight: 48,
                                 borderBottom: "1px solid #EAECF0",
-                                px: 2,
-                                py: 1,
                                 display: "flex",
                                 alignItems: "center",
+                                justifyContent: "flex-start",
+                                px: 2,
                                 bgcolor: "transparent",
-                                gap: 1,
-                                mt: 2,
-                                mb: 2,
                               }}
                             >
                               <Box
@@ -975,7 +981,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                   fontSize: 16,
                                   height: 32,
                                   boxShadow: "none",
-                                  gap: 1,
+                                  gap: 1
                                 }}
                               >
                                 {quillRef.current?.getEditor().getText(selectionIndex, selectionLength)}
@@ -1008,9 +1014,10 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                                 borderRadius: "12px",
                                 alignItems: "center",
                                 p: "2px",
-                                mt: 1,
+                                mt: 2,
                                 mb: 2,
                                 overflow: "hidden",
+                                px: 2,
                               }}
                             >
                               <Button
@@ -1223,7 +1230,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             )}
 
                             {/* Keyword Score */}
-                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, mt: 2, mb: 2 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5, mb: 2, borderTop: "1px solid #EAECF0", borderBottom: "1px solid #EAECF0", borderRadius: "8px", bgcolor: "#fff" }}>
                               <Typography variant="body2">Keyword Score</Typography>
                               <Box sx={{ display: "flex", alignItems: "center", border: "1px solid", borderColor: "divider", borderRadius: 1, height: 32 }}>
                                 <IconButton
@@ -1288,7 +1295,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                             </Box>
 
                             {/* Action buttons */}
-                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 2, mt: 3, gap: 2 }}>
+                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 0, mt: 0, gap: 2, mb: 2, }}>
                               <Button
                                 variant="outlined"
                                 size="small"

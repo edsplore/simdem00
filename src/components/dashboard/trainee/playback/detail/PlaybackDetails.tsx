@@ -253,7 +253,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                       </Grid>
                       <Grid item xs={6}>
                         <Chip
-                          label="Test"
+                          label={props.playbackData.attemptType}
                           size="small"
                           sx={{
                             bgcolor: "grey.200",

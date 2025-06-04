@@ -61,6 +61,7 @@ export interface FetchPlaybackByIdRowDataResponse {
   completedAt: string;
   type: string;
   simLevel: string;
+  attemptType: string;
 }
 
 export interface FetchPlaybackStatsPayload {

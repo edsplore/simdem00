@@ -2,7 +2,6 @@ import React, { useState, useRef, useMemo, useEffect } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import DOMPurify from "dompurify";
-
 import {
   Stack,
   Avatar,
@@ -28,6 +27,8 @@ import {
   MenuItem,
   Paper,
   Tooltip,
+  Autocomplete,
+  Chip,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -40,6 +41,9 @@ import {
 
 // Import the AudioRecorder component
 import AudioRecorder from "./AudioRecorder";
+import vectorIcon from "../../../../../assets/vector.svg";
+import featuredIcon from "../../../../../assets/featuredIcon.svg";
+
 
 //
 // 1. Define a custom Quill format for "keyword"
@@ -89,11 +93,17 @@ const DragOverlay = styled(Box)(({ theme }) => ({
 //
 // The rest is your existing data model.
 //
+interface Keyword {
+  main_keyword: string;
+  alternative_keywords: string[];
+  points: number;
+}
+
 interface Message {
   id: string;
   role: "Customer" | "Trainee";
   message: string; // We'll store Quill HTML in here once editing is done
-  keywords: string[]; // The array of selected keywords
+  keywords: Keyword[];
 }
 
 const initialMessages: Message[] = [
@@ -179,7 +189,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   // We'll track which message's "keywords" we might be modifying
   // as we highlight/unhighlight text inside the Quill editor
-  const [editingKeywords, setEditingKeywords] = useState<string[]>([]);
+  const [editingKeywords, setEditingKeywords] = useState<Keyword[]>([]);
 
   // We'll show a small popup at selection for "Add/Remove Keyword"
   const [selectionAnchor, setSelectionAnchor] = useState<Range | null>(null);
@@ -187,6 +197,9 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const [selectionLength, setSelectionLength] = useState<number>(0);
   const [showKeywordPopper, setShowKeywordPopper] = useState(false);
   const [isAlreadyKeyword, setIsAlreadyKeyword] = useState(false); // does selection have 'keyword'?
+  const [activeTab, setActiveTab] = useState<"alternative" | "verbatim">("alternative"); // New state for tab management
+  const [alternativeKeywordInput, setAlternativeKeywordInput] = useState(""); // State for alternative keyword input
+  const [altInputValue, setAltInputValue] = useState("");
 
   // Refs
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -214,6 +227,32 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
 
   // We will attach a small ref to Quill
   const quillRef = useRef<ReactQuill>(null);
+
+  // --- Virtual anchor for Popper ---
+  const [virtualAnchor, setVirtualAnchor] = useState<any>(null);
+
+  useEffect(() => {
+    if (showKeywordPopper && quillRef.current) {
+      const quill = quillRef.current.getEditor();
+      const bounds = quill.getBounds(selectionIndex, selectionLength);
+      const editorContainer = quillRef.current.editor?.container;
+      if (editorContainer) {
+        const rect = editorContainer.getBoundingClientRect();
+        setVirtualAnchor({
+          getBoundingClientRect: () => ({
+            top: rect.top + bounds.top + window.scrollY,
+            left: rect.left + bounds.left + window.scrollX,
+            width: bounds.width,
+            height: bounds.height,
+            right: rect.left + bounds.left + bounds.width + window.scrollX,
+            bottom: rect.top + bounds.top + bounds.height + window.scrollY,
+          }),
+          clientWidth: bounds.width,
+          clientHeight: bounds.height,
+        });
+      }
+    }
+  }, [showKeywordPopper, selectionIndex, selectionLength]);
 
   // ----------------------------
   //  Basic UI logic
@@ -391,7 +430,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setEditingId(msg.id);
     // In a real app, 'msg.message' might be plain text or already HTML. We'll assume HTML
     const inputHtml =
-      "<p><span class='keyword'>Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I’m here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>";
+      "<p><span class='keyword'>Thank you for calli</span>ng Sunshine Pharmacy. My name is Sarah, and I'm here to assist you with your prescription needs. This call may be recorded for quality and training purposes. Before we proceed, may I have your full name, please?</p>";
     const safeHtml = inputHtml
       .replace(/<span[^>]*>/g, "")
       .replace(/<\/span>/g, "");
@@ -400,6 +439,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // setDraftText(delta);
     setDraftRole(msg.role); // NEW: initialize draft role
     setEditingKeywords(msg.keywords || []);
+    console.log("Initial keywords state when editing:", msg.keywords || []);
 
     // measure bubble width
     const rowEl = messageRefs.current[index];
@@ -421,19 +461,15 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     const updatedMessages = messages.map((m) =>
       m.id === id
         ? {
-            ...m,
-            message: draftText,
-            keywords: editingKeywords,
-            role: draftRole,
-          }
+          ...m,
+          message: draftText,
+          keywords: editingKeywords,
+          role: draftRole,
+        }
         : m,
     );
+    console.log("Final keywords state before saving:", editingKeywords);
     setMessages(updatedMessages);
-    if (onScriptUpdate) {
-      onScriptUpdate(updatedMessages);
-    }
-
-    // Update parent component
     if (onScriptUpdate) {
       onScriptUpdate(updatedMessages);
     }
@@ -446,13 +482,62 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
   const hasChanged = useMemo(() => {
     const msg = messages.find((m) => m.id === editingId);
     if (!msg) return false;
+
     // Compare HTML text
     if (msg.message !== draftText) return true;
-    // Compare keywords array
-    if (JSON.stringify(msg.keywords) !== JSON.stringify(editingKeywords))
-      return true;
-    // NEW: Compare role
+
+    // Compare role
     if (msg.role !== draftRole) return true;
+
+    // Compare keywords array - improved comparison
+    const originalKeywords = msg.keywords || [];
+    const currentKeywords = editingKeywords || [];
+
+    // Check if number of keywords changed
+    if (originalKeywords.length !== currentKeywords.length) return true;
+
+    // Create a map from main_keyword to keyword object for easy lookup
+    const originalKeywordMap = new Map();
+    originalKeywords.forEach(kw => {
+      originalKeywordMap.set(kw.main_keyword, kw);
+    });
+
+    const currentKeywordMap = new Map();
+    currentKeywords.forEach(kw => {
+      currentKeywordMap.set(kw.main_keyword, kw);
+    });
+
+    // Check if any keyword was added or removed
+    for (const mainKeyword of originalKeywordMap.keys()) {
+      if (!currentKeywordMap.has(mainKeyword)) return true;
+    }
+    for (const mainKeyword of currentKeywordMap.keys()) {
+      if (!originalKeywordMap.has(mainKeyword)) return true;
+    }
+
+    // Check if any existing keyword was modified
+    for (const [mainKeyword, currentKeyword] of currentKeywordMap.entries()) {
+      const originalKeyword = originalKeywordMap.get(mainKeyword);
+      if (!originalKeyword) continue;
+
+      // Compare points
+      if (originalKeyword.points !== currentKeyword.points) return true;
+
+      // Compare alternative keywords arrays
+      const origAlts = originalKeyword.alternative_keywords || [];
+      const currAlts = currentKeyword.alternative_keywords || [];
+
+      if (origAlts.length !== currAlts.length) return true;
+
+      // Sort arrays to compare content regardless of order
+      const sortedOrigAlts = [...origAlts].sort();
+      const sortedCurrAlts = [...currAlts].sort();
+
+      for (let j = 0; j < sortedOrigAlts.length; j++) {
+        if (sortedOrigAlts[j] !== sortedCurrAlts[j]) return true;
+      }
+    }
+
     return false;
   }, [editingId, draftText, editingKeywords, draftRole, messages]);
 
@@ -469,7 +554,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
       // no selection
       const htmlText = editor.getHTML();
       setDraftText(htmlText);
-      setShowKeywordPopper(false);
       return;
     }
 
@@ -480,14 +564,14 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     }
 
     // If the user highlights text, we figure out if it's already a "keyword"
-    const format = editor.getText(range.index, range.length);
+    const selectedText = editor.getText(range.index, range.length);
 
     const selectedMessage = messages.find(
       (message) => message.id === editingId,
     );
 
-    let isKeyword = selectedMessage?.keywords.includes(format) || false;
-    isKeyword = editingKeywords?.includes(format) || false;
+    let isKeyword = selectedMessage?.keywords.some(kw => kw.main_keyword === selectedText) || false;
+    isKeyword = editingKeywords?.some(kw => kw.main_keyword === selectedText) || false;
     setIsAlreadyKeyword(isKeyword);
 
     // We'll store the selection index/length
@@ -505,70 +589,54 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     setDraftText(content);
   };
 
-  //
-  // Adding/Removing a Keyword in Quill
-  //
-  const addKeyword = (quill: any) => {
-    const range = quill.getSelection();
-    if (!range || range.length === 0) return;
-    const selectionIndex = range.index;
-    const selectionLength = range.length;
-
-    const substring = quill.getText(selectionIndex, selectionLength);
-
-    setEditingKeywords((prev: string[]) => [...prev, substring]);
-
-    quill.formatText(selectionIndex, selectionLength, "keyword", true);
-
-    setShowKeywordPopper(false);
-  };
-
-  useEffect(() => {
-  }, [messages]);
-
-  const removeKeyword = (quill: any) => {
-    // un‐highlight the selection
-    quill.formatText(selectionIndex, selectionLength, "keyword", false);
-
-    // remove that substring from editingKeywords
-    const substring = quill.getText(selectionIndex, selectionLength);
-    setEditingKeywords((prev) => prev.filter((kw) => kw !== substring));
-
-    setShowKeywordPopper(false);
-  };
-
-  // We'll create a Popper that points to our "selectionAnchor" (a DOM Range).
-  // However, DOM Ranges aren't typical "anchorEl", so we do a trick: we create an empty hidden span near the selection:
-  const [popperPos, setPopperPos] = useState<{ left: number; top: number }>({
-    left: 0,
-    top: 0,
-  });
-
-  useEffect(() => {
-    if (!selectionAnchor || !showKeywordPopper) return;
-
-    // We can approximate the selection's bounding box from the Quill's bounding rect
-    // + the results of editor.getSelectionBounds()
-    if (quillRef.current) {
-      const editor = quillRef.current.getEditor();
-      const bounds = editor.getSelectionBounds(selectionIndex, selectionLength);
-      const containerRect = editor.editor.container.getBoundingClientRect();
-
-      setPopperPos({
-        left: containerRect.left + bounds.left,
-        top: containerRect.top + bounds.top - 40, // 40px above
-      });
-    }
-  }, [selectionAnchor, showKeywordPopper, selectionIndex, selectionLength]);
-
-  // Update local messages state when script prop changes
-  useEffect(() => {
-    setMessages(script);
-  }, [script]);
-
   // Handle audio transcription
   const handleTranscription = (text: string) => {
     setInputText(text);
+  };
+
+  // Effect to update script whenever messages change
+  useEffect(() => {
+    if (onScriptUpdate) {
+      onScriptUpdate(messages);
+    }
+  }, [messages, onScriptUpdate]);
+
+  // Reset active tab to "alternative" when keyword popper opens
+  useEffect(() => {
+    if (showKeywordPopper) {
+      setActiveTab("alternative");
+      setAlternativeKeywordInput(""); // Clear alternative keyword input
+    }
+  }, [showKeywordPopper]);
+
+  const handleAddAlternativeKeyword = () => {
+    if (!altInputValue.trim()) return;
+    if (quillRef.current) {
+      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+      setEditingKeywords(prev => {
+        const updated = [...prev];
+        const keywordIndex = updated.findIndex(k => k.main_keyword === mainKeyword);
+        if (keywordIndex >= 0) {
+          if (!updated[keywordIndex].alternative_keywords.includes(altInputValue.trim())) {
+            updated[keywordIndex] = {
+              ...updated[keywordIndex],
+              alternative_keywords: [
+                ...updated[keywordIndex].alternative_keywords,
+                altInputValue.trim()
+              ]
+            };
+          }
+        } else {
+          updated.push({
+            main_keyword: mainKeyword,
+            alternative_keywords: [altInputValue.trim()],
+            points: 1
+          });
+        }
+        return updated;
+      });
+      setAltInputValue("");
+    }
   };
 
   // ----------------------------
@@ -762,7 +830,7 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                           borderTopLeftRadius:
                             msg.role === "Customer" ? 0 : undefined,
                         }}
-                        // Dangerously set the HTML since Quill content is HTML
+                      // Dangerously set the HTML since Quill content is HTML
                       >
                         <div
                           dangerouslySetInnerHTML={{
@@ -816,51 +884,451 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
                         {/* <style>{`.keyword-style { background-color: yellow; font-weight: bold; }`}</style> */}
                         <Popper
                           open={showKeywordPopper}
-                          anchorEl={keywordPopperRef.current} // not used in a standard way
-                          style={{
-                            position: "absolute",
-                            left: "40%",
-                            top: "10%",
-                            right: "10%",
-                            zIndex: 1300,
-                            width: "fit-content",
-                          }}
+                          anchorEl={virtualAnchor}
+                          placement="bottom-start"
+                          style={{ zIndex: 3000 }}
+                          modifiers={[{
+                            name: 'preventOverflow',
+                            enabled: true,
+                            options: {
+                              altAxis: true,
+                              altBoundary: true,
+                              boundary: document.body,
+                            },
+                          }]}
                         >
                           <Box
                             sx={{
-                              p: 1,
-                              bgcolor: "background.paper",
-                              border: "1px solid",
-                              borderColor: "divider",
-                              borderRadius: 1,
-                              boxShadow: theme.shadows[2],
+                              bgcolor: "#FFFFFF",
+                              border: "1px solid #00000033",
+                              borderRadius: "20px",
+                              boxShadow: "0px 0px 24px 0px #1D006614",
                               display: "flex",
-                              gap: 1,
+                              flexDirection: "column",
+                              width: 386,
+                              minHeight: 320,
+                              maxHeight: 420,
+                              overflow: "hidden",
                             }}
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {isAlreadyKeyword ? (
-                              <Button
-                                variant="contained"
+                            {/* Header */}
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                width: "100%",
+                                height: 52,
+                                justifyContent: "space-between",
+                                px: 2,
+                                py: 1,
+                                borderBottom: "1px solid #EAECF0",
+                                boxSizing: "border-box",
+                                gap: 1,
+                              }}
+                            >
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => setShowKeywordPopper(false)}
+                                  sx={{ width: 28, height: 28, borderRadius: "50%", p: 0 }}
+                                >
+                                  <img src={featuredIcon} alt="FeaturedIcon" />
+                                </IconButton>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600, fontSize: 18, ml: 1 }}>
+                                  Add Keyword
+                                </Typography>
+                              </Box>
+                              <IconButton
                                 size="small"
+                                onClick={() => setShowKeywordPopper(false)}
+                                sx={{ width: 28, height: 28, borderRadius: "50%", p: 0 }}
+                              >
+                                <img src={vectorIcon} alt="Close" style={{ width: 13, height: 13 }} />
+                              </IconButton>
+                            </Box>
+
+                            {/* Selected keyword display */}
+                            <Box
+                              sx={{
+                                width: "100%",
+                                minHeight: 48,
+                                borderBottom: "1px solid #EAECF0",
+                                px: 2,
+                                py: 1,
+                                display: "flex",
+                                alignItems: "center",
+                                bgcolor: "transparent",
+                                gap: 1,
+                                mt: 2,
+                                mb: 2,
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  bgcolor: "#E9F8EE",
+                                  color: "#157A41",
+                                  borderRadius: "24px",
+                                  px: 2,
+                                  py: 0.5,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  fontWeight: 600,
+                                  fontSize: 16,
+                                  height: 32,
+                                  boxShadow: "none",
+                                  gap: 1,
+                                }}
+                              >
+                                {quillRef.current?.getEditor().getText(selectionIndex, selectionLength)}
+                                <IconButton
+                                  size="small"
+                                  sx={{ color: "#157A41", ml: 1, p: 0, width: 24, height: 24, "&:hover": { bgcolor: "transparent" } }}
+                                  onClick={() => {
+                                    if (quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      setEditingKeywords((prev) => prev.filter(kw => kw.main_keyword !== mainKeyword));
+                                      const quill = quillRef.current.getEditor();
+                                      quill.formatText(selectionIndex, selectionLength, "keyword", false);
+                                    }
+                                    setShowKeywordPopper(false);
+                                  }}
+                                >
+                                  <img src={vectorIcon} alt="Close" style={{ width: 13, height: 13 }} />
+                                </IconButton>
+                              </Box>
+                            </Box>
+
+                            {/* Tabs for Alternative Word and Verbatim */}
+                            <Box
+                              sx={{
+                                width: "100%",
+                                height: 41,
+                                display: "flex",
+                                gap: 0,
+                                bgcolor: "#fff",
+                                borderRadius: "12px",
+                                alignItems: "center",
+                                p: "2px",
+                                mt: 1,
+                                mb: 2,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <Button
+                                disableRipple
+                                sx={{
+                                  flex: 1,
+                                  height: 33,
+                                  bgcolor: activeTab === "alternative" ? "#F4F6FF" : "transparent",
+                                  color: activeTab === "alternative" ? "#175CD3" : "#667085",
+                                  fontWeight: 600,
+                                  fontSize: 16,
+                                  borderRadius: "8px",
+                                  boxShadow: "none",
+                                  textTransform: "none",
+                                  minWidth: 0,
+                                  p: 0,
+                                  "&:hover": {
+                                    bgcolor: activeTab === "alternative" ? "#F4F6FF" : "transparent",
+                                    boxShadow: "none",
+                                  },
+                                }}
+                                onClick={() => setActiveTab("alternative")}
+                              >
+                                Alternative Word
+                              </Button>
+                              <Button
+                                disableRipple
+                                sx={{
+                                  flex: 1,
+                                  height: 33,
+                                  bgcolor: activeTab === "verbatim" ? "#F4F6FF" : "transparent",
+                                  color: activeTab === "verbatim" ? "#175CD3" : "#667085",
+                                  fontWeight: 600,
+                                  fontSize: 16,
+                                  borderRadius: "8px",
+                                  boxShadow: "none",
+                                  textTransform: "none",
+                                  minWidth: 0,
+                                  p: 0,
+                                  "&:hover": {
+                                    bgcolor: activeTab === "verbatim" ? "#F4F6FF" : "transparent",
+                                    boxShadow: "none",
+                                  },
+                                }}
                                 onClick={() => {
-                                  const quill = quillRef.current?.getEditor();
-                                  if (quill) removeKeyword(quill);
+                                  setActiveTab("verbatim");
+                                  setAlternativeKeywordInput("");
+                                  setEditingKeywords(prev => prev.map(keyword => ({ ...keyword, alternative_keywords: [] })));
+                                }}
+                              >
+                                Verbatim
+                              </Button>
+                            </Box>
+
+                            {/* Alternative keywords input - only show when Alternative Word tab is active */}
+                            {activeTab === "alternative" && (
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  width: "100%",
+                                  bgcolor: "#fff",
+                                  border: "1px solid #EAECF0",
+                                  borderRadius: "8px",
+                                  px: 1,
+                                  py: 0.5,
+                                  minHeight: 40,
+                                  mt: 1,
+                                  mb: 2,
+                                  mx: 2,
+                                  gap: 1.5,
+                                  maxWidth: 'calc(100% - 32px)',
+                                  overflowX: 'auto',
+                                  flexWrap: 'nowrap',
+                                }}
+                              >
+                                <Autocomplete
+                                  multiple
+                                  freeSolo
+                                  disableClearable
+                                  options={[]}
+                                  value={(() => {
+                                    if (quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      const keyword = editingKeywords.find(k => k.main_keyword === mainKeyword);
+                                      return keyword ? keyword.alternative_keywords : [];
+                                    }
+                                    return [];
+                                  })()}
+                                  inputValue={altInputValue}
+                                  onInputChange={(event, newInputValue) => {
+                                    setAltInputValue(newInputValue);
+                                  }}
+                                  onChange={(event, newValue) => {
+                                    if (quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      setEditingKeywords(prev => {
+                                        const updated = [...prev];
+                                        const keywordIndex = updated.findIndex(k => k.main_keyword === mainKeyword);
+                                        if (keywordIndex >= 0) {
+                                          updated[keywordIndex] = {
+                                            ...updated[keywordIndex],
+                                            alternative_keywords: newValue.filter(v => v.trim() !== "")
+                                          };
+                                        } else {
+                                          updated.push({
+                                            main_keyword: mainKeyword,
+                                            alternative_keywords: newValue.filter(v => v.trim() !== ""),
+                                            points: 1
+                                          });
+                                        }
+                                        return updated;
+                                      });
+                                    }
+                                    setAltInputValue("");
+                                  }}
+                                  renderTags={(value, getTagProps) =>
+                                    value.map((option, index) => (
+                                      <Chip
+                                        variant="outlined"
+                                        label={option}
+                                        {...getTagProps({ index })}
+                                        sx={{
+                                          bgcolor: "#F4F6F8",
+                                          color: "#344054",
+                                          borderRadius: "20px",
+                                          fontWeight: 500,
+                                          fontSize: 15,
+                                          height: 28,
+                                          ".MuiChip-deleteIcon": {
+                                            color: "#98A2B3",
+                                            fontSize: 18,
+                                            mr: 0.5
+                                          }
+                                        }}
+                                      />
+                                    ))
+                                  }
+                                  renderInput={(params) => (
+                                    <TextField
+                                      {...params}
+                                      variant="standard"
+                                      placeholder="+Add alternative word"
+                                      InputProps={{
+                                        ...params.InputProps,
+                                        disableUnderline: true,
+                                        style: { minHeight: 28, fontSize: 15, fontWeight: 500 }
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleAddAlternativeKeyword();
+                                        }
+                                      }}
+                                      sx={{
+                                        flex: 1,
+                                        minWidth: 120,
+                                        "& .MuiInputBase-root": {
+                                          bgcolor: "transparent",
+                                          border: "none",
+                                          boxShadow: "none",
+                                          p: 0,
+                                        },
+                                        "& .MuiInputBase-input": {
+                                          fontSize: 15,
+                                          fontWeight: 500,
+                                          p: 0,
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                  sx={{
+                                    flex: 1,
+                                    minWidth: 120,
+                                    "& .MuiAutocomplete-endAdornment": { display: "none" },
+                                    maxWidth: 300,
+                                  }}
+                                />
+                                {/* Show +Add only if there is at least one keyword */}
+                                {(() => {
+                                  if (quillRef.current) {
+                                    const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                    const keyword = editingKeywords.find(k => k.main_keyword === mainKeyword);
+                                    if (keyword && keyword.alternative_keywords.length > 0) {
+                                      return (
+                                        <Button
+                                          onClick={handleAddAlternativeKeyword}
+                                          sx={{
+                                            ml: 1,
+                                            color: "#175CD3",
+                                            fontWeight: 500,
+                                            fontSize: 15,
+                                            background: "none",
+                                            border: "none",
+                                            cursor: "pointer",
+                                            p: 0,
+                                            minWidth: 36,
+                                            height: 28,
+                                            "&:hover": { textDecoration: "underline", background: "none" }
+                                          }}
+                                        >
+                                          +Add
+                                        </Button>
+                                      );
+                                    }
+                                  }
+                                  return null;
+                                })()}
+                              </Box>
+                            )}
+
+                            {/* Keyword Score */}
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, mt: 2, mb: 2 }}>
+                              <Typography variant="body2">Keyword Score</Typography>
+                              <Box sx={{ display: "flex", alignItems: "center", border: "1px solid", borderColor: "divider", borderRadius: 1, height: 32 }}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    if (editingId && quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      setEditingKeywords((prev) => {
+                                        const updatedKeywords = [...prev];
+                                        const keywordIndex = updatedKeywords.findIndex(k => k.main_keyword === mainKeyword);
+                                        if (keywordIndex >= 0) {
+                                          if (updatedKeywords[keywordIndex].points > 0) {
+                                            updatedKeywords[keywordIndex] = {
+                                              ...updatedKeywords[keywordIndex],
+                                              points: updatedKeywords[keywordIndex].points - 1
+                                            };
+                                          }
+                                        } else {
+                                          updatedKeywords.push({ main_keyword: mainKeyword, alternative_keywords: [], points: 0 });
+                                        }
+                                        return updatedKeywords;
+                                      });
+                                    }
+                                  }}
+                                >
+                                  −
+                                </IconButton>
+                                <Typography sx={{ px: 2 }}>
+                                  {(() => {
+                                    if (quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      const keyword = editingKeywords.find(k => k.main_keyword === mainKeyword);
+                                      return keyword?.points || 1;
+                                    }
+                                    return 1;
+                                  })()}
+                                </Typography>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => {
+                                    if (editingId && quillRef.current) {
+                                      const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                      setEditingKeywords((prev) => {
+                                        const updatedKeywords = [...prev];
+                                        const keywordIndex = updatedKeywords.findIndex(k => k.main_keyword === mainKeyword);
+                                        if (keywordIndex >= 0) {
+                                          updatedKeywords[keywordIndex] = {
+                                            ...updatedKeywords[keywordIndex],
+                                            points: updatedKeywords[keywordIndex].points + 1
+                                          };
+                                        } else {
+                                          updatedKeywords.push({ main_keyword: mainKeyword, alternative_keywords: [], points: 1 });
+                                        }
+                                        return updatedKeywords;
+                                      });
+                                    }
+                                  }}
+                                >
+                                  +
+                                </IconButton>
+                              </Box>
+                            </Box>
+
+                            {/* Action buttons */}
+                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 2, mt: 3, gap: 2 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                sx={{ minWidth: 120, height: 36, fontWeight: 500, fontSize: 15 }}
+                                onClick={() => {
+                                  if (quillRef.current) {
+                                    const mainKeyword = quillRef.current.getEditor().getText(selectionIndex, selectionLength);
+                                    setEditingKeywords((prev) => prev.filter(kw => kw.main_keyword !== mainKeyword));
+                                    const quill = quillRef.current.getEditor();
+                                    quill.formatText(selectionIndex, selectionLength, "keyword", false);
+                                  }
+                                  setShowKeywordPopper(false);
                                 }}
                               >
                                 Remove Keyword
                               </Button>
-                            ) : (
                               <Button
                                 variant="contained"
                                 size="small"
+                                sx={{ minWidth: 120, height: 36, fontWeight: 600, fontSize: 15, boxShadow: "none" }}
                                 onClick={() => {
-                                  const quill = quillRef.current?.getEditor();
-                                  if (quill) addKeyword(quill);
+                                  if (quillRef.current) {
+                                    const quill = quillRef.current.getEditor();
+                                    const mainKeyword = quill.getText(selectionIndex, selectionLength);
+                                    const existingKeywordIndex = editingKeywords.findIndex(kw => kw.main_keyword === mainKeyword);
+                                    if (existingKeywordIndex >= 0) {
+                                      quill.formatText(selectionIndex, selectionLength, "keyword", true);
+                                    } else {
+                                      setEditingKeywords(prev => [...prev, { main_keyword: mainKeyword, alternative_keywords: [], points: 1 }]);
+                                      quill.formatText(selectionIndex, selectionLength, "keyword", true);
+                                    }
+                                  }
+                                  setShowKeywordPopper(false);
                                 }}
                               >
-                                Add Keyword
+                                Save
                               </Button>
-                            )}
+                            </Box>
                           </Box>
                         </Popper>
                         <Stack direction="row" spacing={1} sx={{ mt: 1 }}>

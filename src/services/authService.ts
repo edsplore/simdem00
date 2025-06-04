@@ -73,17 +73,17 @@ class AuthService {
         error: error instanceof Error ? error.message : "Unknown error",
         response: axios.isAxiosError(error)
           ? {
-              status: error.response?.status,
-              statusText: error.response?.statusText,
-              data: error.response?.data,
-            }
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+          }
           : undefined,
         request: axios.isAxiosError(error)
           ? {
-              method: error.config?.method,
-              url: error.config?.url,
-              headers: error.config?.headers,
-            }
+            method: error.config?.method,
+            url: error.config?.url,
+            headers: error.config?.headers,
+          }
           : undefined,
       });
 
@@ -147,12 +147,12 @@ class AuthService {
       // Decode the token and log the full structure for debugging
       const decodedToken = jwtDecode<DecodedToken>(token);
 
-    // Always prefer workspace ID provided explicitly (e.g. from URL)
-    // This ensures the workspace used for API requests matches the one
-    // in the browser URL and isn't overridden by values in the token.
-    if (workspaceId) {
-      this.currentWorkspaceId = workspaceId;
-    }
+      // Always prefer workspace ID provided explicitly (e.g. from URL)
+      // This ensures the workspace used for API requests matches the one
+      // in the browser URL and isn't overridden by values in the token.
+      if (workspaceId) {
+        this.currentWorkspaceId = workspaceId;
+      }
 
       // Find all workspace keys by looking for keys that contain roles and permissions
       const workspaceKeys = Object.keys(decodedToken).filter(

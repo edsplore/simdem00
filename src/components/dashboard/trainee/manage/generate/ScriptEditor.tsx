@@ -439,7 +439,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
     // setDraftText(delta);
     setDraftRole(msg.role); // NEW: initialize draft role
     setEditingKeywords(msg.keywords || []);
-    console.log("Initial keywords state when editing:", msg.keywords || []);
 
     // measure bubble width
     const rowEl = messageRefs.current[index];
@@ -468,7 +467,6 @@ const ScriptEditor: React.FC<ScriptEditorProps> = ({
         }
         : m,
     );
-    console.log("Final keywords state before saving:", editingKeywords);
     setMessages(updatedMessages);
     if (onScriptUpdate) {
       onScriptUpdate(updatedMessages);

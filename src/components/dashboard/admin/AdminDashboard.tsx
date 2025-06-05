@@ -42,13 +42,12 @@ import DashboardContent from "../DashboardContent";
 import { useAuth } from "../../../context/AuthContext";
 import { fetchDivisions, fetchDepartments } from "../../../services/suggestions";
 import {
-  AdminDashboardUserActivityPayload,
-  AdminDashboardUserActivityPayloadParams,
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
   RoleCount,
   fetchAdminDashboardStats,
-  fetchAdminDashboardUserActivity,
+  fetchAdminUsersTable,
+  AdminUsersTableRequest,
 } from "../../../services/admin";
 import { fetchRoles } from "../../../services/roles";
 import { DateRange } from "@mui/x-date-pickers-pro";
@@ -517,7 +516,7 @@ const AdminDashboard = () => {
   >([]);
 
   const [userActivityParams, setUserActivityParams] =
-    useState<AdminDashboardUserActivityPayloadParams | null>(null);
+    useState<AdminUsersTableRequest>({});
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -553,31 +552,46 @@ const AdminDashboard = () => {
 
   const engagementDataFiltered = userEngagementData;
 
-  const handleDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+  const handleEngagementDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
     setEngagementDateRange(range);
   };
 
-  const loadUserActivity = async () => {
-    if (user?.id) {
-      try {
-        setIsLoading(true);
-        setError(null);
-        // In a real implementation, we would fetch data from the API
-        const payload: AdminDashboardUserActivityPayload = {
-          user_id: user.id,
-        };
+  const handleUserDateRangeApplyCallback = (range: DateRange<Dayjs>) => {
+    setDateRange(range);
+    setUserActivityParams({
+      ...userActivityParams,
+      start_time: range[0] ? range[0].toISOString() : undefined,
+      end_time: range[1] ? range[1].toISOString() : undefined,
+    });
+    setPage(0);
+  };
 
-        if (userActivityParams) {
-          payload["pagination"] = userActivityParams;
-        }
-        const data = await fetchAdminDashboardUserActivity(payload);
-        setUserActivity(data);
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
-        setError("Failed to load dashboard data");
-      } finally {
-        setIsLoading(false);
-      }
+  const loadUserActivity = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const payload: AdminUsersTableRequest = {
+        page: page + 1,
+        limit: rowsPerPage,
+        search: searchQuery || undefined,
+        division: division !== "All Divisions" ? division : undefined,
+        department: department !== "All Department" ? department : undefined,
+        role: role !== "All Roles" ? role : undefined,
+        status: status !== "All Status" ? status.toUpperCase() : undefined,
+        start_time: userActivityParams.start_time,
+        end_time: userActivityParams.end_time,
+        sort: "+first_name",
+      };
+
+      const data = await fetchAdminUsersTable(payload);
+      setUserActivity(data.items);
+      setUserActivityData({ users: data.items, total: data.total_count });
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+      setError("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -702,16 +716,8 @@ const AdminDashboard = () => {
   // ]);
 
   useEffect(() => {
-    if (
-      userActivityParams?.department ||
-      userActivityParams?.dateRange ||
-      userActivityParams?.division ||
-      userActivityParams?.role ||
-      userActivityParams?.status
-    ) {
-      loadUserActivity();
-    }
-  }, [userActivityParams]);
+    loadUserActivity();
+  }, [userActivityParams, searchQuery, page, rowsPerPage]);
 
   const handleChangePage = (
     event: React.ChangeEvent<unknown>,
@@ -731,6 +737,7 @@ const AdminDashboard = () => {
       ...userActivityParams,
       department: event.target.value,
     });
+    setPage(0);
   };
 
   const handleDivisionChange = (event: SelectChangeEvent<string>) => {
@@ -739,6 +746,7 @@ const AdminDashboard = () => {
       ...userActivityParams,
       division: event.target.value,
     });
+    setPage(0);
   };
 
   const handleRoleChange = (event: SelectChangeEvent<string>) => {
@@ -747,13 +755,16 @@ const AdminDashboard = () => {
       ...userActivityParams,
       role: event.target.value,
     });
+    setPage(0);
   };
 
   const handleStatusChange = (event: SelectChangeEvent<string>) => {
+    setStatus(event.target.value);
     setUserActivityParams({
       ...userActivityParams,
       status: event.target.value,
     });
+    setPage(0);
   };
 
   const handleTimeframeChange = (event: SelectChangeEvent<string>) => {
@@ -920,7 +931,7 @@ const AdminDashboard = () => {
                 <DateSelector
                   dateRange={engagementDateRange}
                   setDateRange={setEngagementDateRange}
-                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                  handleDateRangeApplyCallback={handleEngagementDateRangeApplyCallback}
                   variant="managerGlobal"
                 />
                 <Select
@@ -983,7 +994,10 @@ const AdminDashboard = () => {
               <TextField
                 placeholder="Search by Assignment Name or ID"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setPage(0);
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -1098,7 +1112,7 @@ const AdminDashboard = () => {
                 <DateSelector
                   dateRange={dateRange}
                   setDateRange={setDateRange}
-                  handleDateRangeApplyCallback={handleDateRangeApplyCallback}
+                  handleDateRangeApplyCallback={handleUserDateRangeApplyCallback}
                   variant="managerGlobal"
                 />
                 <Button

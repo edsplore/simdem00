@@ -72,6 +72,41 @@ export const fetchAdminDashboardUserActivity = async (
   }
 };
 
+export interface AdminUsersTableRequest {
+  page?: number;
+  limit?: number;
+  start_time?: string;
+  end_time?: string;
+  division?: string;
+  department?: string;
+  role?: string;
+  status?: string;
+  search?: string;
+  sort?: string;
+}
+
+export interface AdminUsersTableResponse {
+  items: AdminDashboardUserActivityResponse[];
+  page_no: number;
+  page_size: number;
+  total_count: number;
+}
+
+export const fetchAdminUsersTable = async (
+  payload: AdminUsersTableRequest,
+): Promise<AdminUsersTableResponse> => {
+  try {
+    const response = await apiClient.post(
+      "/admin-dashboard/users/table",
+      payload,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching admin users table:", error);
+    throw error;
+  }
+};
+
 // Get the UAM API URL from environment variables
 const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
 const USER_REPORT_URL = `${UAM_API_URL}/uam/api/user-report`;

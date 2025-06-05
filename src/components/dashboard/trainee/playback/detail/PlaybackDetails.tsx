@@ -21,7 +21,10 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
 import PowerIcon from "@mui/icons-material/Power";
 import PsychologyIcon from "@mui/icons-material/Psychology";
-import dayjs from "dayjs";
+import {
+  formatDateToTimeZone,
+  formatTimeToTimeZone,
+} from "../../../../../utils/dateTime";
 
 import CompletionTime from "./ScoreDetailsCard";
 import Label from "../../../../common/StatusLabel";
@@ -38,14 +41,19 @@ interface PlaybackDetailsProps {
 }
 
 const PlaybackDetails = (props: PlaybackDetailsProps) => {
-  const { user } = useAuth();
+  const { user, currentTimeZone } = useAuth();
   const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
   const [insights, setInsights] = useState<FetchPlaybackInsightsResponse | null>(null);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [insightsError, setInsightsError] = useState<string | null>(null);
 
-  const formattedCompletionDate = dayjs(props.playbackData.completedAt).format(
-    "MMM D, YYYY"
+  const formattedCompletionDate = formatDateToTimeZone(
+    props.playbackData.completedAt,
+    currentTimeZone
+  );
+  const formattedCompletionTime = formatTimeToTimeZone(
+    props.playbackData.completedAt,
+    currentTimeZone
   );
   const isPassed =
     props.playbackData.simAccuracyScore >= props.playbackData.minPassingScore;
@@ -180,7 +188,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                           <Typography
                             sx={{ fontSize: "12px", color: "text.secondary" }}
                           >
-                            {props.playbackData.completedAt}
+                            {formattedCompletionTime}
                           </Typography>
                         </Stack>
                       </Grid>

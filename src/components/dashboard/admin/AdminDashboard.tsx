@@ -313,7 +313,17 @@ interface UserStatsCardProps {
   thickness?: number;
 }
 
-const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"];
+const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"]; 
+
+// Tooltip text for the KPI cards
+const TOOLTIP_NEW_USERS =
+  "Total new users onboarded to this workspace. Breakdown shows counts by role.";
+const TOOLTIP_PENDING_USERS =
+  "Invited users pending activation. Breakdown shows counts by role.";
+const TOOLTIP_ACTIVE_USERS =
+  "Currently active user accounts. Breakdown shows counts by role.";
+const TOOLTIP_DEACTIVATED_USERS =
+  "Users whose accounts are deactivated. Breakdown shows counts by role.";
 
 const UserStatsCard = ({
   title,
@@ -851,7 +861,7 @@ const AdminDashboard = () => {
                     total={dashboardStats?.new_users?.total_count ?? 0}
                     breakdown={dashboardStats?.new_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
+                    popupText={TOOLTIP_NEW_USERS}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -860,7 +870,7 @@ const AdminDashboard = () => {
                     total={dashboardStats?.activation_pending_users?.total_count ?? 0}
                     breakdown={dashboardStats?.activation_pending_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
+                    popupText={TOOLTIP_PENDING_USERS}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -869,7 +879,7 @@ const AdminDashboard = () => {
                     total={dashboardStats?.active_users?.total_count ?? 0}
                     breakdown={dashboardStats?.active_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
+                    popupText={TOOLTIP_ACTIVE_USERS}
                   />
                 </Grid>
                 <Grid item xs={12} md={3}>
@@ -878,7 +888,7 @@ const AdminDashboard = () => {
                     total={dashboardStats?.deactivated_users?.total_count ?? 0}
                     breakdown={dashboardStats?.deactivated_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
-                    popupText="On time completed test Sim / Total no. of test sims completed"
+                    popupText={TOOLTIP_DEACTIVATED_USERS}
                   />
                 </Grid>
               </Grid>

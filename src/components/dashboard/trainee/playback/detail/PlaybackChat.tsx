@@ -129,8 +129,9 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                         sx={{
                           whiteSpace: "pre-wrap",
                           color: "#23254C",
-                          fontWeight: 700,
+                          fontWeight: 400,
                           mb: 1,
+                          fontSize: "16px",
                         }}
                       >
                         {highlightSentence(
@@ -139,13 +140,15 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                           'script'
                         )}
                       </Typography>
+                      {/* Divider between messages */}
+                      <Box sx={{ borderBottom: "1px solid #E5E7EB", mb: 1 }} />
                       {/* Actual sentence always below */}
                       <Typography
                         variant="body2"
                         sx={{
                           whiteSpace: "pre-wrap",
                           color: "#23254C",
-                          fontWeight: 400,
+                          fontWeight: 700,
                           mb: 0,
                           fontSize: "16px",
                         }}
@@ -156,6 +159,8 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                           'actual'
                         )}
                       </Typography>
+                      {/* Divider above the scores */}
+                      <Box sx={{ borderBottom: "1px solid #E5E7EB", mb: 1 }} />
                       {/* Scores Row (only if keyword_analysis and total_points > 0) */}
                       {typeof keywordData.total_points === 'number' && keywordData.total_points > 0 && (
                         <Stack direction="row" spacing={2} alignItems="center" mt={2}>
@@ -172,34 +177,6 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                               border: "1px solid #0F174F66",
                               bgcolor: "#fff",
                               color: "#1C2358",
-                              fontSize: "14px",
-                              lineHeight: "20px",
-                              letterSpacing: 0,
-                              fontWeight: 500,
-                              transition: "none",
-                              whiteSpace: "nowrap",
-                              overflow: "visible",
-                              textOverflow: "unset",
-                              '&:hover': {
-                                bgcolor: '#E6EAF5',
-                                cursor: 'pointer',
-                              },
-                            }}
-                          />
-                          <Chip
-                            label={<><span style={{ fontWeight: 700 }}>0%</span> Sym Accuracy</>}
-                            size="small"
-                            sx={{
-                              minWidth: 120,
-                              maxWidth: "none",
-                              height: 36,
-                              gap: "8px",
-                              padding: 0,
-                              borderRadius: "100px",
-                              border: "1px solid #0F174F66",
-                              bgcolor: "#fff",
-                              color: "#1C2358",
-                              fontFamily: 'Inter',
                               fontSize: "14px",
                               lineHeight: "20px",
                               letterSpacing: 0,

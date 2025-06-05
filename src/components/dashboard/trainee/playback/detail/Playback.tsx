@@ -137,7 +137,7 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
           </Box>
 
           {/* Controls - fixed at bottom */}
-          {playbackData?.type !== "chat" && (
+          {(playbackData?.type !== "chat" || playbackData?.type !== "visual-chat") && (
             <Box
               sx={{
                 position: 'absolute',

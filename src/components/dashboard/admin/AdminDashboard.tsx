@@ -580,8 +580,7 @@ const AdminDashboard = () => {
         role: role !== "All Roles" ? role : undefined,
         status: status !== "All Status" ? status.toUpperCase() : undefined,
         start_time: userActivityParams.start_time,
-        end_time: userActivityParams.end_time,
-        sort: "",
+        end_time: userActivityParams.end_time     
       };
 
       const data = await fetchAdminUsersTable(payload);

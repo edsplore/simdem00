@@ -49,6 +49,7 @@ import {
 import { convertAudioToText } from "../../../../services/simulation_script";
 import { textToSpeech } from "../../../../services/text_to_speech";
 import { AttemptInterface } from "../../../../types/attempts";
+import { uploadAttemptAudio } from "../../../../services/audio_upload";
 import SimulationCompletionScreen from "./SimulationCompletionScreen";
 import { buildPathWithWorkspace } from "../../../../utils/navigation";
 import { mapLevelToCode } from "../../../../utils/simulation";
@@ -247,6 +248,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   });
   // NEW: Ref to store wrong clicks immediately
   const wrongClicksRef = useRef<Record<string, any[]>>({});
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const convoRecorderRef = useRef<MediaRecorder | null>(null);
+  const convoChunksRef = useRef<BlobPart[]>([]);
 
   const minPassingScore = simulation?.minimum_passing_score || 85;
 
@@ -480,6 +486,68 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     };
   }, [currentItem, isPaused, isCallActive]);
 
+  const startConversationRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      console.error('Media devices API not supported in this browser.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContextRef.current = ctx;
+      const destination = ctx.createMediaStreamDestination();
+      destinationRef.current = destination;
+      const micSource = ctx.createMediaStreamSource(stream);
+      micSource.connect(destination);
+      const recorder = new MediaRecorder(destination.stream);
+      convoRecorderRef.current = recorder;
+      convoChunksRef.current = [];
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          convoChunksRef.current.push(e.data);
+        }
+      };
+      recorder.start();
+    } catch (e) {
+      console.error('Failed to start conversation recording:', e);
+    }
+  };
+
+  const stopConversationRecording = async () => {
+    return new Promise<void>((resolve) => {
+      const rec = convoRecorderRef.current;
+      if (!rec) {
+        resolve();
+        return;
+      }
+      rec.onstop = async () => {
+        try {
+          const blob = new Blob(convoChunksRef.current, { type: 'audio/webm' });
+          if (simulationProgressId) {
+            await uploadAttemptAudio(simulationProgressId, blob);
+          }
+        } catch (err) {
+          console.error('Failed to upload conversation audio:', err);
+        } finally {
+          convoChunksRef.current = [];
+          resolve();
+        }
+      };
+      try {
+        rec.stop();
+      } catch (err) {
+        resolve();
+      }
+      micStreamRef.current?.getTracks().forEach((t) => t.stop());
+      micStreamRef.current = null;
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    });
+  };
+
   // Function to start audio recording
   const startAudioRecording = () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -500,29 +568,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     // Reset audio chunks
     setAudioChunks([]);
 
-    // Request microphone access
-    navigator.mediaDevices
-      .getUserMedia({ audio: true })
-      .then((stream) => {
-        const recorder = new MediaRecorder(stream);
-        setRecordingInstance(recorder);
+    const startRec = (stream: MediaStream) => {
+      const recorder = new MediaRecorder(stream);
+      setRecordingInstance(recorder);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          setAudioChunks((prev) => [...prev, e.data]);
+        }
+      };
+      recorder.start(1000);
+    };
 
-        // Add data handler
-        recorder.ondataavailable = (e) => {
-          if (e.data.size > 0) {
-            setAudioChunks((prev) => [...prev, e.data]);
-          }
-        };
-
-        // Start recording
-        recorder.start(1000); // Collect data every second for continuous chunks
-      })
-      .catch((error) => {
-        console.error("Error accessing microphone:", error);
-        alert(
-          "Microphone access is required for this simulation. Please allow microphone access and try again.",
-        );
-      });
+    if (micStreamRef.current) {
+      startRec(micStreamRef.current);
+    } else {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          micStreamRef.current = stream;
+          startRec(stream);
+        })
+        .catch((error) => {
+          console.error("Error accessing microphone:", error);
+          alert(
+            "Microphone access is required for this simulation. Please allow microphone access and try again.",
+          );
+        });
+    }
   };
 
   // Function to stop and process audio recording
@@ -573,15 +645,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           recordingInstance.state === "recording" ||
           recordingInstance.state === "paused"
         ) {
-          // Stop recording - this will trigger onstop handler
-          recordingInstance.stop();
-
-          // Release microphone
-          if (recordingInstance.stream) {
-            recordingInstance.stream
-              .getTracks()
-              .forEach((track) => track.stop());
-          }
+        // Stop recording - this will trigger onstop handler
+        recordingInstance.stop();
         } else {
           resolve("");
         }
@@ -1181,6 +1246,16 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       return new Promise<boolean>((resolve, reject) => {
         const audio = new Audio(url);
         audioRef.current = audio;
+
+        if (audioContextRef.current && destinationRef.current) {
+          try {
+            const source = audioContextRef.current.createMediaElementSource(audio);
+            source.connect(destinationRef.current);
+          } catch (e) {
+            console.error('Failed to connect TTS audio to recorder:', e);
+          }
+        }
+
         audio.onended = () => {
           URL.revokeObjectURL(url);
           audioRef.current = null;
@@ -1890,6 +1965,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       setIsCallActive(true);
       setCallStatus("Loading visual-audio simulation...");
 
+      await startConversationRecording();
+
       // Use the startVisualAudioAttempt function instead of direct axios call
       const response = await startVisualAudioAttempt(
         userId,
@@ -2217,6 +2294,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         }
         return item;
       });
+      await stopConversationRecording();
 
 
       const response = await endVisualAudioAttempt(
@@ -2323,6 +2401,21 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         recordingInstance.stream?.getTracks().forEach((track) => {
           track.stop();
         });
+      }
+
+      if (convoRecorderRef.current) {
+        try {
+          convoRecorderRef.current.stop();
+        } catch (e) {}
+        convoRecorderRef.current = null;
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => t.stop());
+        micStreamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
       }
 
       // Revoke any blob URLs created for frames

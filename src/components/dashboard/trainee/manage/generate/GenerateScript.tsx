@@ -1017,7 +1017,7 @@ const GenerateScriptContent = () => {
           msg.role.toLowerCase() === "trainee"
             ? "assistant"
             : msg.role.toLowerCase(),
-        keywords: msg.keywords || [],
+        keywords: (msg.keywords || []).map((k) => k.main_keyword),
       }));
 
       // Use updateSimulation from simulation_operations instead of direct axios call
@@ -1140,7 +1140,7 @@ const GenerateScriptContent = () => {
               msg.role.toLowerCase() === "trainee"
                 ? "assistant"
                 : msg.role.toLowerCase(),
-            keywords: msg.keywords || [],
+            keywords: (msg.keywords || []).map((k) => k.main_keyword),
           }))
         : [];
 

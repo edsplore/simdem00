@@ -322,7 +322,7 @@ const UserStatsCard = ({
   icon,
   popupText,
   size = 140,
-  thickness = 5,
+  thickness = 3,
 }: UserStatsCardProps) => {
   // Calculate cumulative percentages for proper circular progress display
   let cumulativePercentage = 0;
@@ -351,13 +351,13 @@ const UserStatsCard = ({
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        mb={2}
+        mb={3}
       >
         <Typography variant="h6" sx={{ fontSize: 16 }}>{title}</Typography>
         <InfoIconPopup title={popupText} />
       </Stack>
 
-      <Stack spacing={2} alignItems="center" flex={1}>
+      <Stack spacing={3} alignItems="center" flex={1}>
         {/* Circular Progress */}
         <Box sx={{ position: "relative", display: "inline-flex" }}>
           <CircularProgress
@@ -401,43 +401,48 @@ const UserStatsCard = ({
           </Box>
         </Box>
 
-        {/* Role Breakdown in 2 columns */}
-        <Grid container spacing={1} sx={{ width: "100%", px: 1 }}>
-          {breakdown.map((item, idx) => (
-            <Grid item xs={6} key={`${item.role}-breakdown-${idx}`}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={0.5}
-              >
-                <Box
-                  sx={{
-                    width: 16,
-                    height: 8,
-                    borderRadius: "25px",
-                    bgcolor: colors[(idx % (colors.length - 1)) + 1],
-                    flexShrink: 0,
-                  }}
-                />
-                <Typography
-                  color="#000000CC"
-                  fontSize={13}
-                  fontWeight={500}
-                  variant="body2"
-                  noWrap
-                  sx={{ lineHeight: 1.2 }}
+        {/* Role Breakdown in 2 columns with gray background */}
+        <Box
+          sx={{
+            width: "100%",
+            bgcolor: "#F9FAFB",
+            borderRadius: 1,
+            p: 1.5,
+          }}
+        >
+          <Grid container spacing={1.5}>
+            {breakdown.map((item, idx) => (
+              <Grid item xs={6} key={`${item.role}-breakdown-${idx}`}>
+                <Stack
+                  alignItems="flex-start"
+                  spacing={0.5}
                 >
-                  {item.count} {item.role}
-                </Typography>
-              </Stack>
-            </Grid>
-          ))}
-        </Grid>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 8,
+                      borderRadius: "25px",
+                      bgcolor: colors[(idx % (colors.length - 1)) + 1],
+                    }}
+                  />
+                  <Typography
+                    color="#000000CC"
+                    fontSize={13}
+                    fontWeight={500}
+                    variant="body2"
+                    sx={{ lineHeight: 1.2 }}
+                  >
+                    {item.count} {item.role}
+                  </Typography>
+                </Stack>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
       </Stack>
     </Card>
   );
 };
-
 
 const menuSelectsx = {
   border: "1px solid #00000014",

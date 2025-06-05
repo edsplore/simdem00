@@ -573,7 +573,7 @@ const AdminDashboard = () => {
 
       const payload: AdminUsersTableRequest = {
         page: page + 1,
-        limit: rowsPerPage,
+        limit: 5,
         search: searchQuery || undefined,
         division: division !== "All Divisions" ? division : undefined,
         department: department !== "All Department" ? department : undefined,

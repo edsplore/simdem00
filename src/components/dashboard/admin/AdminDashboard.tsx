@@ -25,7 +25,6 @@ import {
   FormControl,
   SelectChangeEvent,
   Tooltip,
-  circularProgressClasses,
   TableFooter,
 } from "@mui/material";
 import {
@@ -44,6 +43,7 @@ import { fetchDivisions, fetchDepartments } from "../../../services/suggestions"
 import {
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
+  UserStat,
   RoleCount,
   fetchAdminDashboardStats,
   fetchAdminUsersTable,
@@ -53,7 +53,7 @@ import { fetchRoles } from "../../../services/roles";
 import { DateRange } from "@mui/x-date-pickers-pro";
 import dayjs, { Dayjs } from "dayjs";
 import DateSelector from "../../common/DateSelector";
-import { LineChart } from "@mui/x-charts";
+import { LineChart, PieChart } from "@mui/x-charts";
 import {
   fetchActiveUserMetricsHistory,
   ActiveUserMetricsHistoryItem,
@@ -310,10 +310,27 @@ interface UserStatsCardProps {
   icon?: React.ReactNode;
   popupText?: string;
   size?: number;
-  thickness?: number;
 }
 
-const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"]; 
+const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"];
+
+const addMissingRoles = (
+  stats: AdminDashboardUserStatsResponse,
+  roles: string[],
+): AdminDashboardUserStatsResponse => {
+  const ensure = (stat: UserStat): UserStat => {
+    const map = new Map(stat.role_breakdown.map((r) => [r.role, r.count]));
+    const breakdown = roles.map((r) => ({ role: r, count: map.get(r) ?? 0 }));
+    return { ...stat, role_breakdown: breakdown };
+  };
+
+  return {
+    new_users: ensure(stats.new_users),
+    activation_pending_users: ensure(stats.activation_pending_users),
+    active_users: ensure(stats.active_users),
+    deactivated_users: ensure(stats.deactivated_users),
+  };
+};
 
 // Tooltip text for the KPI cards
 const TOOLTIP_NEW_USERS =
@@ -332,16 +349,13 @@ const UserStatsCard = ({
   icon,
   popupText,
   size = 140,
-  thickness = 3,
 }: UserStatsCardProps) => {
-  // Calculate cumulative percentages for proper circular progress display
-  let cumulativePercentage = 0;
-  const progressData = breakdown.map((item, idx) => {
-    const percentage = total ? (item.count / total) * 100 : 0;
-    const startPercentage = cumulativePercentage;
-    cumulativePercentage += percentage;
-    return { ...item, percentage, startPercentage, colorIndex: idx % colors.length };
-  });
+  const pieData = breakdown.map((item, idx) => ({
+    id: idx,
+    value: item.count,
+    label: item.role,
+    color: colors[(idx % (colors.length - 1)) + 1],
+  }));
 
   return (
     <Card
@@ -368,31 +382,17 @@ const UserStatsCard = ({
       </Stack>
 
       <Stack spacing={3} alignItems="center" flex={1}>
-        {/* Circular Progress */}
-        <Box sx={{ position: "relative", display: "inline-flex" }}>
-          <CircularProgress
-            variant="determinate"
-            value={100}
-            size={size}
-            thickness={thickness}
-            sx={{ color: colors[0] }}
+        <Box sx={{ position: "relative" }}>
+          <PieChart
+            series={[{
+              data: pieData,
+              innerRadius: size / 2 - 20,
+              outerRadius: size / 2,
+            }]}
+            width={size}
+            height={size}
+            hideLegend
           />
-          {progressData.map((item, idx) => (
-            <CircularProgress
-              key={`${item.role}-${idx}`}
-              variant="determinate"
-              value={item.percentage}
-              size={size}
-              thickness={thickness}
-              sx={{
-                color: colors[item.colorIndex + 1],
-                position: "absolute",
-                left: 0,
-                transform: `rotate(${item.startPercentage * 3.6}deg)`,
-                transformOrigin: "center",
-              }}
-            />
-          ))}
           <Box
             sx={{
               top: 0,
@@ -599,8 +599,13 @@ const AdminDashboard = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchAdminDashboardStats(currentWorkspaceId);
-        setDashboardStats(data);
+        const [stats, roles] = await Promise.all([
+          fetchAdminDashboardStats(currentWorkspaceId),
+          fetchRoles(),
+        ]);
+        const roleNames = roles.map((r) => r.name);
+        const augmented = addMissingRoles(stats, roleNames);
+        setDashboardStats(augmented);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
         setError("Failed to load dashboard data");

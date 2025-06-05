@@ -300,7 +300,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   justifyContent="space-between"
                 >
                   <CompletionTime
-                    time={`${props.playbackData.finalScore}%`}
+                    time={`${Math.ceil(props.playbackData.finalScore)}%`}
                     label="Sim Score"
                     icon={<SimIcon fontSize="small" />}
                   />
@@ -327,12 +327,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${props.playbackData.clickScore.toFixed(2)}%`}
+                      time={`${Math.ceil(props.playbackData.clickScore)}%`}
                       label="Click Score"
                       icon={<MouseIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${props.playbackData.keywordScore}%`}
+                      time={`${Math.ceil(props.playbackData.keywordScore)}%`}
                       label="Keyword Score"
                       icon={<TextFieldsIcon fontSize="small" />}
                     />
@@ -344,12 +344,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${props.playbackData.textFieldKeywordScore}%`}
+                      time={`${Math.ceil(props.playbackData.textFieldKeywordScore)}%`}
                       label="Text Field Keyword Score"
                       icon={<TextFieldsIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${props.playbackData.simAccuracyScore}%`}
+                      time={`${Math.ceil(props.playbackData.simAccuracyScore)}%`}
                       label="Sim Accuracy Score"
                       icon={<CheckCircleIcon fontSize="small" />}
                     />
@@ -372,12 +372,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${props.playbackData.confidence}%`}
+                      time={`${Math.ceil(props.playbackData.confidence)}%`}
                       label="Confidence"
                       icon={<VisibilityIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${props.playbackData.concentration}%`}
+                      time={`${Math.ceil(props.playbackData.concentration)}%`}
                       label="Concentration"
                       icon={<PsychologyIcon fontSize="small" />}
                     />
@@ -389,7 +389,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${props.playbackData.energy}%`}
+                      time={`${Math.ceil(props.playbackData.energy)}%`}
                       label="Energy"
                       icon={<PowerIcon fontSize="small" />}
                     />

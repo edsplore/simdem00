@@ -58,6 +58,11 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
   const isPassed =
     props.playbackData.simAccuracyScore >= props.playbackData.minPassingScore;
 
+  const formatScore = (score: number | string) =>
+    typeof score === "number" && !isNaN(score)
+      ? `${Math.ceil(score)}%`
+      : `${score}`;
+
   const handleViewInsights = async () => {
     if (!user?.id) return;
 
@@ -308,7 +313,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   justifyContent="space-between"
                 >
                   <CompletionTime
-                    time={`${Math.ceil(props.playbackData.finalScore)}%`}
+                    time={formatScore(props.playbackData.finalScore)}
                     label="Sim Score"
                     icon={<SimIcon fontSize="small" />}
                   />
@@ -335,12 +340,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.clickScore)}%`}
+                      time={formatScore(props.playbackData.clickScore)}
                       label="Click Score"
                       icon={<MouseIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.keywordScore)}%`}
+                      time={formatScore(props.playbackData.keywordScore)}
                       label="Keyword Score"
                       icon={<TextFieldsIcon fontSize="small" />}
                     />
@@ -352,12 +357,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.textFieldKeywordScore)}%`}
+                      time={formatScore(props.playbackData.textFieldKeywordScore)}
                       label="Data Entry Score"
                       icon={<TextFieldsIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.simAccuracyScore)}%`}
+                      time={formatScore(props.playbackData.simAccuracyScore)}
                       label="Contextual Accuracy Score"
                       icon={<CheckCircleIcon fontSize="small" />}
                     />
@@ -380,12 +385,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.confidence)}%`}
+                      time={formatScore(props.playbackData.confidence)}
                       label="Confidence"
                       icon={<VisibilityIcon fontSize="small" />}
                     />
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.concentration)}%`}
+                      time={formatScore(props.playbackData.concentration)}
                       label="Concentration"
                       icon={<PsychologyIcon fontSize="small" />}
                     />
@@ -397,7 +402,7 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                     justifyContent="space-between"
                   >
                     <CompletionTime
-                      time={`${Math.ceil(props.playbackData.energy)}%`}
+                      time={formatScore(props.playbackData.energy)}
                       label="Energy"
                       icon={<PowerIcon fontSize="small" />}
                     />

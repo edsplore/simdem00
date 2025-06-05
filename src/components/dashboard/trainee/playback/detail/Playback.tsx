@@ -35,12 +35,41 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
             user_id: user.id,
             attempt_id: attepmtId,
           });
-          let parsedMessages: any[] = [];
+          let parsedMessages: {
+            type: "agent" | "customer";
+            text: string;
+            originalText?: string;
+            scores?: { keywordScore: string; symAccuracy: string };
+          }[] = [];
           if (data.transcriptObject && data.transcriptObject.length > 0) {
-            parsedMessages = data.transcriptObject.map((item: any) => ({
-              type: item.role === "user" ? "customer" : "agent",
-              text: item.content,
-            }));
+            // Split transcript into lines and extract expected scripts for Trainee
+            const transcriptLines = data.transcript.split('\n');
+            const expectedLines = transcriptLines
+              .filter(line => line.startsWith('Trainee:'))
+              .map(line => line.replace('Trainee: ', ''));
+            let expectedIndex = 0;
+            parsedMessages = data.transcriptObject.map((item: any) => {
+              if (item.role === "user") {
+                // Trainee message (agent)
+                const expectedScript = expectedLines[expectedIndex] || "";
+                expectedIndex += 1;
+                return {
+                  type: "agent",
+                  text: item.content,
+                  originalText: expectedScript,
+                  scores: {
+                    keywordScore: data.keywordScore ? `${data.keywordScore}` : "",
+                    symAccuracy: data.simAccuracyScore ? `${data.simAccuracyScore}%` : ""
+                  }
+                };
+              } else {
+                // Customer message
+                return {
+                  type: "customer",
+                  text: item.content
+                };
+              }
+            });
           } else if (data.transcript) {
             const transcript = data.transcript.split("\n");
             parsedMessages = transcript
@@ -49,7 +78,7 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
                 if (!speaker || rest.length === 0) return null;
 
                 return {
-                  type: speaker.trim() === "Trainee" ? "customer" : "agent",
+                  type: speaker.trim() === "Trainee" ? "agent" : "customer",
                   text: rest.join(":").trim(),
                 };
               })
@@ -71,15 +100,15 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
   }, []);
 
   return (
-    <Box sx={{ 
+    <Box sx={{
       height: 'calc(100vh - 130px)', // Adjust based on your header height
       display: 'flex',
       position: 'relative'
     }}>
-      <Stack 
-        direction="row" 
-        spacing={2} 
-        sx={{ 
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
           width: '100%',
           height: '100%',
           overflow: 'hidden'
@@ -132,6 +161,6 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
       </Stack>
     </Box>
   );
-}; 
+};
 
 export default Playback;

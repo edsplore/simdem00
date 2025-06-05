@@ -28,6 +28,7 @@ import {
   circularProgressClasses,
   TableFooter,
 } from "@mui/material";
+import { lighten } from "@mui/material/styles";
 import {
   Search as SearchIcon,
   Info as InfoIcon,
@@ -314,7 +315,15 @@ interface UserStatsCardProps {
   thickness?: number;
 }
 
-const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"]; 
+const BASE_COLOR = "#375CE5";
+const TRACK_COLOR = lighten(BASE_COLOR, 0.85);
+
+const generateRoleColors = (count: number): string[] => {
+  const step = 0.7 / (count + 1);
+  return Array.from({ length: count }, (_, idx) =>
+    lighten(BASE_COLOR, step * (idx + 1)),
+  );
+};
 
 // Tooltip text for the KPI cards
 const TOOLTIP_NEW_USERS =
@@ -335,13 +344,18 @@ const UserStatsCard = ({
   size = 140,
   thickness = 3,
 }: UserStatsCardProps) => {
+  const roleColors = React.useMemo(
+    () => generateRoleColors(breakdown.length),
+    [breakdown.length],
+  );
+
   // Calculate cumulative percentages for proper circular progress display
   let cumulativePercentage = 0;
   const progressData = breakdown.map((item, idx) => {
     const percentage = total ? (item.count / total) * 100 : 0;
     const startPercentage = cumulativePercentage;
     cumulativePercentage += percentage;
-    return { ...item, percentage, startPercentage, colorIndex: idx % colors.length };
+    return { ...item, percentage, startPercentage, color: roleColors[idx] };
   });
 
   return (
@@ -376,7 +390,7 @@ const UserStatsCard = ({
             value={100}
             size={size}
             thickness={thickness}
-            sx={{ color: colors[0] }}
+            sx={{ color: TRACK_COLOR }}
           />
           {progressData.map((item, idx) => (
             <CircularProgress
@@ -386,7 +400,7 @@ const UserStatsCard = ({
               size={size}
               thickness={thickness}
               sx={{
-                color: colors[item.colorIndex + 1],
+                color: item.color,
                 position: "absolute",
                 left: 0,
                 transform: `rotate(${item.startPercentage * 3.6}deg)`,
@@ -433,7 +447,7 @@ const UserStatsCard = ({
                       width: 16,
                       height: 8,
                       borderRadius: "25px",
-                      bgcolor: colors[(idx % (colors.length - 1)) + 1],
+                      bgcolor: progressData[idx].color,
                     }}
                   />
                   <Typography

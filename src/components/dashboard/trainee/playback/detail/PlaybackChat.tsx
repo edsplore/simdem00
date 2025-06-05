@@ -96,7 +96,7 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
     >
       <Stack spacing={2}>
         {keywordAnalysis.filter(item => item.actual_sentence && item.actual_sentence.trim() !== '').map((item, index) => {
-          const isAgent = item.role === "assistant";
+          const isAgent = item.role === "assistant" || item.role === "Trainee";
           const keywordData = item.keyword_analysis || {};
           return (
             <Stack

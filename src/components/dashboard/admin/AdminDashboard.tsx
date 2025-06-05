@@ -322,7 +322,7 @@ const UserStatsCard = ({
   icon,
   popupText,
   size = 140,
-  thickness = 8,
+  thickness = 5,
 }: UserStatsCardProps) => {
   // Calculate cumulative percentages for proper circular progress display
   let cumulativePercentage = 0;
@@ -401,42 +401,42 @@ const UserStatsCard = ({
           </Box>
         </Box>
 
-        {/* Role Breakdown */}
-        <Stack spacing={0.5} width="100%">
+        {/* Role Breakdown in 2 columns */}
+        <Grid container spacing={1} sx={{ width: "100%", px: 1 }}>
           {breakdown.map((item, idx) => (
-            <Stack
-              key={`${item.role}-breakdown-${idx}`}
-              direction="row"
-              alignItems="center"
-              spacing={1}
-              sx={{ px: 1 }}
-            >
-              <Box
-                sx={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  bgcolor: colors[(idx % (colors.length - 1)) + 1],
-                  flexShrink: 0,
-                }}
-              />
-              <Typography
-                color="#000000CC"
-                fontSize={14}
-                fontWeight={500}
-                variant="body2"
-                noWrap
+            <Grid item xs={6} key={`${item.role}-breakdown-${idx}`}>
+              <Stack
+                direction="row"
+                alignItems="center"
+                spacing={0.5}
               >
-                {item.count} {item.role}
-              </Typography>
-            </Stack>
+                <Box
+                  sx={{
+                    width: 16,
+                    height: 8,
+                    borderRadius: "25px",
+                    bgcolor: colors[(idx % (colors.length - 1)) + 1],
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography
+                  color="#000000CC"
+                  fontSize={13}
+                  fontWeight={500}
+                  variant="body2"
+                  noWrap
+                  sx={{ lineHeight: 1.2 }}
+                >
+                  {item.count} {item.role}
+                </Typography>
+              </Stack>
+            </Grid>
           ))}
-        </Stack>
+        </Grid>
       </Stack>
     </Card>
   );
 };
-
 
 
 const menuSelectsx = {

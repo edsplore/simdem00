@@ -319,10 +319,16 @@ const BASE_COLOR = "#375CE5";
 const TRACK_COLOR = lighten(BASE_COLOR, 0.85);
 
 const generateRoleColors = (count: number): string[] => {
-  const step = 0.7 / (count + 1);
-  return Array.from({ length: count }, (_, idx) =>
-    lighten(BASE_COLOR, step * (idx + 1)),
-  );
+  if (count <= 0) return [];
+
+  const baseHue = 227; // hue for BASE_COLOR (#375CE5)
+  const saturation = 70;
+  const lightness = 55;
+
+  return Array.from({ length: count }, (_, idx) => {
+    const hue = (baseHue + (idx * 360) / count) % 360;
+    return `hsl(${hue}deg ${saturation}% ${lightness}%)`;
+  });
 };
 
 // Tooltip text for the KPI cards

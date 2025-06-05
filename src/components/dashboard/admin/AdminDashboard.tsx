@@ -581,7 +581,7 @@ const AdminDashboard = () => {
         status: status !== "All Status" ? status.toUpperCase() : undefined,
         start_time: userActivityParams.start_time,
         end_time: userActivityParams.end_time,
-        sort: "+first_name",
+        sort: "",
       };
 
       const data = await fetchAdminUsersTable(payload);

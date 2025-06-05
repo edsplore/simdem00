@@ -54,7 +54,7 @@ class AuthService {
       });
 
 
-      const newToken = response.data;
+      const newToken = response.data
       this.token = newToken;
 
       // Reset refresh attempts on success

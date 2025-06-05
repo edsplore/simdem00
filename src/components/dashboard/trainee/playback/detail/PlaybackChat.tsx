@@ -86,6 +86,7 @@ function highlightSentence(
 }
 
 const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
+
   return (
     <Box
       sx={{
@@ -94,7 +95,7 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
       }}
     >
       <Stack spacing={2}>
-        {keywordAnalysis.map((item, index) => {
+        {keywordAnalysis.filter(item => item.actual_sentence && item.actual_sentence.trim() !== '').map((item, index) => {
           const isAgent = item.role === "assistant";
           const keywordData = item.keyword_analysis || {};
           return (
@@ -120,126 +121,116 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                     gap: isAgent ? "12px" : undefined,
                   }}
                 >
-                  {/* Script (expected) sentence always on top */}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: "pre-wrap",
-                      color: "#23254C",
-                      fontWeight: 700,
-                      mb: 1,
-                    }}
-                  >
-                    {highlightSentence(
-                      item.script_sentence,
-                      keywordData.keyword_matches || [],
-                      'script'
-                    )}
-                  </Typography>
-                  {/* Actual sentence always below */}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: "pre-wrap",
-                      color: "#23254C",
-                      fontWeight: 400,
-                      mb: 0,
-                      fontSize: "16px",
-                    }}
-                  >
-                    {highlightSentence(
-                      item.actual_sentence,
-                      keywordData.keyword_matches || [],
-                      'actual'
-                    )}
-                  </Typography>
-                  {/* Scores Row (only if keyword_analysis and total_points > 0) */}
-                  {typeof keywordData.total_points === 'number' && keywordData.total_points > 0 && (
-                    <Stack direction="row" spacing={2} alignItems="center" mt={2}>
-                      <Chip
-                        label={<><span style={{ fontWeight: 700 }}>{keywordData.total_keywords && keywordData.missing_keywords !== undefined ? `${keywordData.total_keywords - keywordData.missing_keywords}/${keywordData.total_keywords}` : "0/0"}</span> Keyword Score</>}
-                        size="small"
+                  {isAgent ? (
+                    <>
+                      {/* Script (expected) sentence always on top */}
+                      <Typography
+                        variant="body2"
                         sx={{
-                          minWidth: 120,
-                          maxWidth: "none",
-                          height: 36,
-                          gap: "8px",
-                          padding: 0,
-                          borderRadius: "100px",
-                          border: "1px solid #0F174F66",
-                          bgcolor: "#fff",
-                          color: "#1C2358",
-                          fontSize: "14px",
-                          lineHeight: "20px",
-                          letterSpacing: 0,
-                          fontWeight: 500,
-                          transition: "none",
-                          whiteSpace: "nowrap",
-                          overflow: "visible",
-                          textOverflow: "unset",
-                          '&:hover': {
-                            bgcolor: '#E6EAF5',
-                            cursor: 'pointer',
-                          },
+                          whiteSpace: "pre-wrap",
+                          color: "#23254C",
+                          fontWeight: 700,
+                          mb: 1,
                         }}
-                      />
-                      <Chip
-                        label={<><span style={{ fontWeight: 700 }}>{keywordData.total_keywords && keywordData.missing_keywords !== undefined ? `${keywordData.total_keywords - keywordData.missing_keywords}/${keywordData.total_keywords}` : "0/0"}</span> Keywords</>}
-                        size="small"
+                      >
+                        {highlightSentence(
+                          item.script_sentence,
+                          keywordData.keyword_matches || [],
+                          'script'
+                        )}
+                      </Typography>
+                      {/* Actual sentence always below */}
+                      <Typography
+                        variant="body2"
                         sx={{
-                          minWidth: 120,
-                          maxWidth: "none",
-                          height: 36,
-                          gap: "8px",
-                          padding: 0,
-                          borderRadius: "100px",
-                          border: "1px solid #0F174F66",
-                          bgcolor: "#fff",
-                          color: "#1C2358",
-                          fontFamily: 'Inter',
-                          fontSize: "14px",
-                          lineHeight: "20px",
-                          letterSpacing: 0,
-                          fontWeight: 500,
-                          transition: "none",
-                          whiteSpace: "nowrap",
-                          overflow: "visible",
-                          textOverflow: "unset",
-                          '&:hover': {
-                            bgcolor: '#E6EAF5',
-                            cursor: 'pointer',
-                          },
+                          whiteSpace: "pre-wrap",
+                          color: "#23254C",
+                          fontWeight: 400,
+                          mb: 0,
+                          fontSize: "16px",
                         }}
-                      />
-                      <Chip
-                        label={<><span style={{ fontWeight: 700 }}>0%</span> Sym Accuracy</>}
-                        size="small"
-                        sx={{
-                          minWidth: 120,
-                          maxWidth: "none",
-                          height: 36,
-                          gap: "8px",
-                          padding: 0,
-                          borderRadius: "100px",
-                          border: "1px solid #0F174F66",
-                          bgcolor: "#fff",
-                          color: "#1C2358",
-                          fontFamily: 'Inter',
-                          fontSize: "14px",
-                          lineHeight: "20px",
-                          letterSpacing: 0,
-                          fontWeight: 500,
-                          transition: "none",
-                          whiteSpace: "nowrap",
-                          overflow: "visible",
-                          textOverflow: "unset",
-                          '&:hover': {
-                            bgcolor: '#E6EAF5',
-                            cursor: 'pointer',
-                          },
-                        }}
-                      />
-                    </Stack>
+                      >
+                        {highlightSentence(
+                          item.actual_sentence,
+                          keywordData.keyword_matches || [],
+                          'actual'
+                        )}
+                      </Typography>
+                      {/* Scores Row (only if keyword_analysis and total_points > 0) */}
+                      {typeof keywordData.total_points === 'number' && keywordData.total_points > 0 && (
+                        <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                          <Chip
+                            label={<><span style={{ fontWeight: 700 }}>{keywordData.total_keywords && keywordData.missing_keywords !== undefined ? `${keywordData.total_keywords - keywordData.missing_keywords}/${keywordData.total_keywords}` : "0/0"}</span> Keyword Score</>}
+                            size="small"
+                            sx={{
+                              minWidth: 120,
+                              maxWidth: "none",
+                              height: 36,
+                              gap: "8px",
+                              padding: 0,
+                              borderRadius: "100px",
+                              border: "1px solid #0F174F66",
+                              bgcolor: "#fff",
+                              color: "#1C2358",
+                              fontSize: "14px",
+                              lineHeight: "20px",
+                              letterSpacing: 0,
+                              fontWeight: 500,
+                              transition: "none",
+                              whiteSpace: "nowrap",
+                              overflow: "visible",
+                              textOverflow: "unset",
+                              '&:hover': {
+                                bgcolor: '#E6EAF5',
+                                cursor: 'pointer',
+                              },
+                            }}
+                          />
+                          <Chip
+                            label={<><span style={{ fontWeight: 700 }}>0%</span> Sym Accuracy</>}
+                            size="small"
+                            sx={{
+                              minWidth: 120,
+                              maxWidth: "none",
+                              height: 36,
+                              gap: "8px",
+                              padding: 0,
+                              borderRadius: "100px",
+                              border: "1px solid #0F174F66",
+                              bgcolor: "#fff",
+                              color: "#1C2358",
+                              fontFamily: 'Inter',
+                              fontSize: "14px",
+                              lineHeight: "20px",
+                              letterSpacing: 0,
+                              fontWeight: 500,
+                              transition: "none",
+                              whiteSpace: "nowrap",
+                              overflow: "visible",
+                              textOverflow: "unset",
+                              '&:hover': {
+                                bgcolor: '#E6EAF5',
+                                cursor: 'pointer',
+                              },
+                            }}
+                          />
+                        </Stack>
+                      )}
+                    </>
+                  ) : (
+                    // CUSTOMER: Only show actual_sentence
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: "pre-wrap",
+                        color: "#23254C",
+                        fontWeight: 400,
+                        mb: 0,
+                        fontSize: "16px",
+                      }}
+                    >
+                      {item.script_sentence}
+                    </Typography>
                   )}
                 </Paper>
               </Box>

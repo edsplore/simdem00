@@ -133,23 +133,25 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
               paddingBottom: '120px', // Space for controls
             }}
           >
-            <PlaybackChat keywordAnalysis={playbackData?.keyword_analysis || []} />
+            <PlaybackChat keywordAnalysis={playbackData?.keyword_analysis || []}/>
           </Box>
 
           {/* Controls - fixed at bottom */}
-          <Box
-            sx={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              backgroundColor: '#fff',
-              borderTop: '1px solid #e0e0e0',
-              boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            <PlaybackControls audioUrl={playbackData?.audioUrl || ''} />
-          </Box>
+          {playbackData?.type !== "chat" && (
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#fff',
+                borderTop: '1px solid #e0e0e0',
+                boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              <PlaybackControls audioUrl={playbackData?.audioUrl || ''} />
+            </Box>
+          )}
         </Box>
 
         {/* Right Column - Details */}

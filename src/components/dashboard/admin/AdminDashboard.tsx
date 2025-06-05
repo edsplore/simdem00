@@ -44,6 +44,7 @@ import { fetchDivisions, fetchDepartments } from "../../../services/suggestions"
 import {
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
+  UserStat,
   RoleCount,
   fetchAdminDashboardStats,
   fetchAdminUsersTable,
@@ -506,6 +507,14 @@ const menuItemSx = {
   },
 };
 
+const mergeRoleBreakdown = (
+  breakdown: RoleCount[] = [],
+  roles: string[] = [],
+): RoleCount[] => {
+  const roleMap = new Map(breakdown.map((b) => [b.role, b.count]));
+  return roles.map((r) => ({ role: r, count: roleMap.get(r) ?? 0 }));
+};
+
 const AdminDashboard = () => {
   const { user, currentWorkspaceId } = useAuth();
   const [dashboardData, setDashboardData] = useState(adminDashboardData);
@@ -599,8 +608,24 @@ const AdminDashboard = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchAdminDashboardStats(currentWorkspaceId);
-        setDashboardStats(data);
+        const [stats, roles] = await Promise.all([
+          fetchAdminDashboardStats(currentWorkspaceId),
+          fetchRoles(),
+        ]);
+        const roleNames = roles.map((r) => r.name);
+        setRolesList(roleNames);
+
+        const augment = (s: UserStat) => ({
+          ...s,
+          role_breakdown: mergeRoleBreakdown(s.role_breakdown, roleNames),
+        });
+
+        setDashboardStats({
+          new_users: augment(stats.new_users),
+          activation_pending_users: augment(stats.activation_pending_users),
+          active_users: augment(stats.active_users),
+          deactivated_users: augment(stats.deactivated_users),
+        });
       } catch (error) {
         console.error("Error loading dashboard data:", error);
         setError("Failed to load dashboard data");
@@ -663,18 +688,9 @@ const AdminDashboard = () => {
       }
     };
 
-    const loadRoles = async () => {
-      try {
-        const data = await fetchRoles();
-        setRolesList(data.map((r) => r.name));
-      } catch (err) {
-        console.error("Failed to load roles:", err);
-      }
-    };
-
     loadDivisions();
     loadDepartments();
-    loadRoles();
+    // Roles are loaded as part of loadAdminDashboardStats
   }, [currentWorkspaceId]);
 
   useEffect(() => {

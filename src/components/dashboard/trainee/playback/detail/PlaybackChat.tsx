@@ -160,7 +160,7 @@ const PlaybackChat = ({ keywordAnalysis }: PlaybackChatProps) => {
                         )}
                       </Typography>
                       {/* Divider above the scores */}
-                      <Box sx={{ borderBottom: "1px solid #E5E7EB", mb: 1 }} />
+                      <Box sx={{ borderBottom: "1px solid #bec4cf", mt: 1 }} />
                       {/* Scores Row (only if keyword_analysis and total_points > 0) */}
                       {typeof keywordData.total_points === 'number' && keywordData.total_points > 0 && (
                         <Stack direction="row" spacing={2} alignItems="center" mt={2}>

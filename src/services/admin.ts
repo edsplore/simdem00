@@ -40,70 +40,21 @@ export interface AdminDashboardUserActivityResponse {
   lastSessionDuration: number;
 }
 
+export interface RoleCount {
+  role: string;
+  count: number;
+}
+
+export interface UserStat {
+  total_count: number;
+  role_breakdown: RoleCount[];
+}
+
 export interface AdminDashboardUserStatsResponse {
-  new_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  activation_pending_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  active_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  deactivated_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  daily_active_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  weekly_active_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
-  monthly_active_users: {
-    total_users: number;
-    breakdown: {
-      admin: number;
-      manager: number;
-      designer: number;
-      trainees: number;
-    };
-  };
+  new_users: UserStat;
+  activation_pending_users: UserStat;
+  active_users: UserStat;
+  deactivated_users: UserStat;
 }
 
 export const fetchAdminDashboardUserActivity = async (
@@ -121,13 +72,17 @@ export const fetchAdminDashboardUserActivity = async (
   }
 };
 
+// Get the UAM API URL from environment variables
+const UAM_API_URL = import.meta.env.VITE_CORE_BACKEND_URL;
+const USER_REPORT_URL = `${UAM_API_URL}/uam/api/user-report`;
+
 export const fetchAdminDashboardStats = async (
-  payload: AdminDashboardUserStatsPayload
+  workspaceId: string,
 ): Promise<AdminDashboardUserStatsResponse> => {
   try {
-    const response = await apiClient.post(
-      "/admin-dashboard/users/stats",
-      payload
+    const encodedWorkspaceId = encodeURIComponent(workspaceId);
+    const response = await apiClient.get(
+      `${USER_REPORT_URL}/${encodedWorkspaceId}/simulator/stats`,
     );
     return response.data;
   } catch (error) {

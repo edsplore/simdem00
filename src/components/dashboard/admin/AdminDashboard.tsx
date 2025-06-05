@@ -321,10 +321,17 @@ const UserStatsCard = ({
   breakdown,
   icon,
   popupText,
-  size = 170,
-  thickness = 5,
+  size = 140,
+  thickness = 8,
 }: UserStatsCardProps) => {
-  const displayed = breakdown.slice(0, colors.length - 1);
+  // Calculate cumulative percentages for proper circular progress display
+  let cumulativePercentage = 0;
+  const progressData = breakdown.map((item, idx) => {
+    const percentage = total ? (item.count / total) * 100 : 0;
+    const startPercentage = cumulativePercentage;
+    cumulativePercentage += percentage;
+    return { ...item, percentage, startPercentage, colorIndex: idx % colors.length };
+  });
 
   return (
     <Card
@@ -335,105 +342,103 @@ const UserStatsCard = ({
           "linear-gradient(white, white) padding-box, linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%) border-box",
         border: "1px solid transparent",
         boxShadow: "0px 12px 24px -4px #919EAB1F",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <Stack
         direction="row"
         justifyContent="space-between"
         alignItems="center"
-        mb={3}
+        mb={2}
       >
-        <Typography variant="h6">{title}</Typography>
+        <Typography variant="h6" sx={{ fontSize: 16 }}>{title}</Typography>
         <InfoIconPopup title={popupText} />
       </Stack>
 
-      <Grid container alignItems="center" spacing={1.5}>
-        <Grid item xs={12} md={6}>
-          <Box sx={{ position: "relative", display: "inline-flex" }}>
+      <Stack spacing={2} alignItems="center" flex={1}>
+        {/* Circular Progress */}
+        <Box sx={{ position: "relative", display: "inline-flex" }}>
+          <CircularProgress
+            variant="determinate"
+            value={100}
+            size={size}
+            thickness={thickness}
+            sx={{ color: colors[0] }}
+          />
+          {progressData.map((item, idx) => (
             <CircularProgress
+              key={`${item.role}-${idx}`}
               variant="determinate"
-              value={100}
+              value={item.percentage}
               size={size}
               thickness={thickness}
-              sx={{ color: colors[0] }}
-            />
-            {displayed.map((item, idx) => (
-              <CircularProgress
-                key={item.role}
-                variant="determinate"
-                value={total ? (item.count / total) * 100 : 0}
-                size={size}
-                thickness={thickness}
-                sx={() => ({
-                  color: colors[idx + 1],
-                  animationDuration: "550ms",
-                  position: "absolute",
-                  left: 0,
-                  width: "100%",
-                  height: "auto",
-                })}
-              />
-            ))}
-            <Box
               sx={{
-                top: 0,
-                left: 0,
-                bottom: 0,
-                right: 0,
+                color: colors[item.colorIndex + 1],
                 position: "absolute",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                left: 0,
+                transform: `rotate(${item.startPercentage * 3.6}deg)`,
+                transformOrigin: "center",
               }}
-            >
-              <Typography variant="h3" fontWeight="bold">
-                {total.toLocaleString()}
-              </Typography>
-            </Box>
+            />
+          ))}
+          <Box
+            sx={{
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+              position: "absolute",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography variant="h4" fontWeight="bold">
+              {total.toLocaleString()}
+            </Typography>
           </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Stack spacing={1} bgcolor="#F9FAFB" py={1} px={2} borderRadius={1}>
-            {breakdown.map((item, idx) => (
-              <Stack
-                key={item.role}
-                direction="row"
-                justifyContent="space-between"
-                alignItems="center"
+        </Box>
+
+        {/* Role Breakdown */}
+        <Stack spacing={0.5} width="100%">
+          {breakdown.map((item, idx) => (
+            <Stack
+              key={`${item.role}-breakdown-${idx}`}
+              direction="row"
+              alignItems="center"
+              spacing={1}
+              sx={{ px: 1 }}
+            >
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  bgcolor: colors[(idx % (colors.length - 1)) + 1],
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                color="#000000CC"
+                fontSize={14}
+                fontWeight={500}
+                variant="body2"
+                noWrap
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "start",
-                    gap: 0.5,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 16,
-                      height: 8,
-                      borderRadius: "25px",
-                      bgcolor: colors[(idx + 1) % colors.length],
-                    }}
-                  />
-                  <Typography
-                    color="#000000CC"
-                    fontSize={16}
-                    fontWeight={600}
-                    variant="body2"
-                  >
-                    {item.count} {item.role}
-                  </Typography>
-                </Box>
-              </Stack>
-            ))}
-          </Stack>
-        </Grid>
-      </Grid>
+                {item.count} {item.role}
+              </Typography>
+            </Stack>
+          ))}
+        </Stack>
+      </Stack>
     </Card>
   );
 };
+
+
+
 const menuSelectsx = {
   border: "1px solid #00000014",
   borderRadius: 1,

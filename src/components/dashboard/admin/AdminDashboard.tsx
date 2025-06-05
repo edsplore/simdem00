@@ -50,6 +50,7 @@ import {
   fetchAdminDashboardStats,
   fetchAdminDashboardUserActivity,
 } from "../../../services/admin";
+import { fetchRoles } from "../../../services/roles";
 import { DateRange } from "@mui/x-date-pickers-pro";
 import dayjs, { Dayjs } from "dayjs";
 import DateSelector from "../../common/DateSelector";
@@ -525,6 +526,7 @@ const AdminDashboard = () => {
   const [division, setDivision] = useState("All Divisions");
   const [departments, setDepartments] = useState<string[]>([]);
   const [divisions, setDivisions] = useState<string[]>([]);
+  const [rolesList, setRolesList] = useState<string[]>([]);
   const [isLoadingDepartments, setIsLoadingDepartments] = useState(false);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(false);
   const [role, setRole] = useState("All Roles");
@@ -648,8 +650,18 @@ const AdminDashboard = () => {
       }
     };
 
+    const loadRoles = async () => {
+      try {
+        const data = await fetchRoles();
+        setRolesList(data.map((r) => r.name));
+      } catch (err) {
+        console.error("Failed to load roles:", err);
+      }
+    };
+
     loadDivisions();
     loadDepartments();
+    loadRoles();
   }, [currentWorkspaceId]);
 
   useEffect(() => {
@@ -730,6 +742,7 @@ const AdminDashboard = () => {
   };
 
   const handleRoleChange = (event: SelectChangeEvent<string>) => {
+    setRole(event.target.value);
     setUserActivityParams({
       ...userActivityParams,
       role: event.target.value,
@@ -922,18 +935,11 @@ const AdminDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Roles">
                     All Roles
                   </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Admin">
-                    Admin
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Manager">
-                    Manager
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Designer">
-                    Designer
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Trainee">
-                    Trainee
-                  </MenuItem>
+                  {rolesList.map((r) => (
+                    <MenuItem sx={menuItemSx} key={r} value={r}>
+                      {r}
+                    </MenuItem>
+                  ))}
                 </Select>
               </Stack>
             </Stack>
@@ -1062,18 +1068,11 @@ const AdminDashboard = () => {
                   <MenuItem sx={menuItemSx} value="All Roles">
                     All Roles
                   </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Admin">
-                    Admin
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Manager">
-                    Manager
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Designer">
-                    Designer
-                  </MenuItem>
-                  <MenuItem sx={menuItemSx} value="Trainee">
-                    Trainee
-                  </MenuItem>
+                  {rolesList.map((r) => (
+                    <MenuItem sx={menuItemSx} key={r} value={r}>
+                      {r}
+                    </MenuItem>
+                  ))}
                 </Select>
 
                 <Select

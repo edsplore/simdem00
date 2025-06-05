@@ -28,6 +28,7 @@ import {
   circularProgressClasses,
   TableFooter,
 } from "@mui/material";
+import { lighten } from "@mui/material/styles";
 import {
   Search as SearchIcon,
   Info as InfoIcon,
@@ -44,6 +45,7 @@ import { fetchDivisions, fetchDepartments } from "../../../services/suggestions"
 import {
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
+  UserStat,
   RoleCount,
   fetchAdminDashboardStats,
   fetchAdminUsersTable,
@@ -313,7 +315,15 @@ interface UserStatsCardProps {
   thickness?: number;
 }
 
-const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"]; 
+const BASE_COLOR = "#375CE5";
+const TRACK_COLOR = lighten(BASE_COLOR, 0.85);
+
+const generateRoleColors = (count: number): string[] => {
+  const step = 0.7 / (count + 1);
+  return Array.from({ length: count }, (_, idx) =>
+    lighten(BASE_COLOR, step * (idx + 1)),
+  );
+};
 
 // Tooltip text for the KPI cards
 const TOOLTIP_NEW_USERS =
@@ -334,13 +344,18 @@ const UserStatsCard = ({
   size = 140,
   thickness = 3,
 }: UserStatsCardProps) => {
+  const roleColors = React.useMemo(
+    () => generateRoleColors(breakdown.length),
+    [breakdown.length],
+  );
+
   // Calculate cumulative percentages for proper circular progress display
   let cumulativePercentage = 0;
   const progressData = breakdown.map((item, idx) => {
     const percentage = total ? (item.count / total) * 100 : 0;
     const startPercentage = cumulativePercentage;
     cumulativePercentage += percentage;
-    return { ...item, percentage, startPercentage, colorIndex: idx % colors.length };
+    return { ...item, percentage, startPercentage, color: roleColors[idx] };
   });
 
   return (
@@ -375,7 +390,7 @@ const UserStatsCard = ({
             value={100}
             size={size}
             thickness={thickness}
-            sx={{ color: colors[0] }}
+            sx={{ color: TRACK_COLOR }}
           />
           {progressData.map((item, idx) => (
             <CircularProgress
@@ -385,7 +400,7 @@ const UserStatsCard = ({
               size={size}
               thickness={thickness}
               sx={{
-                color: colors[item.colorIndex + 1],
+                color: item.color,
                 position: "absolute",
                 left: 0,
                 transform: `rotate(${item.startPercentage * 3.6}deg)`,
@@ -432,7 +447,7 @@ const UserStatsCard = ({
                       width: 16,
                       height: 8,
                       borderRadius: "25px",
-                      bgcolor: colors[(idx % (colors.length - 1)) + 1],
+                      bgcolor: progressData[idx].color,
                     }}
                   />
                   <Typography
@@ -504,6 +519,14 @@ const menuItemSx = {
     bgcolor: "#143FDA0A",
     color: "#143FDA",
   },
+};
+
+const mergeRoleBreakdown = (
+  breakdown: RoleCount[] = [],
+  roles: string[] = [],
+): RoleCount[] => {
+  const roleMap = new Map(breakdown.map((b) => [b.role, b.count]));
+  return roles.map((r) => ({ role: r, count: roleMap.get(r) ?? 0 }));
 };
 
 const AdminDashboard = () => {
@@ -599,8 +622,24 @@ const AdminDashboard = () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchAdminDashboardStats(currentWorkspaceId);
-        setDashboardStats(data);
+        const [stats, roles] = await Promise.all([
+          fetchAdminDashboardStats(currentWorkspaceId),
+          fetchRoles(),
+        ]);
+        const roleNames = roles.map((r) => r.name);
+        setRolesList(roleNames);
+
+        const augment = (s: UserStat) => ({
+          ...s,
+          role_breakdown: mergeRoleBreakdown(s.role_breakdown, roleNames),
+        });
+
+        setDashboardStats({
+          new_users: augment(stats.new_users),
+          activation_pending_users: augment(stats.activation_pending_users),
+          active_users: augment(stats.active_users),
+          deactivated_users: augment(stats.deactivated_users),
+        });
       } catch (error) {
         console.error("Error loading dashboard data:", error);
         setError("Failed to load dashboard data");
@@ -663,18 +702,9 @@ const AdminDashboard = () => {
       }
     };
 
-    const loadRoles = async () => {
-      try {
-        const data = await fetchRoles();
-        setRolesList(data.map((r) => r.name));
-      } catch (err) {
-        console.error("Failed to load roles:", err);
-      }
-    };
-
     loadDivisions();
     loadDepartments();
-    loadRoles();
+    // Roles are loaded as part of loadAdminDashboardStats
   }, [currentWorkspaceId]);
 
   useEffect(() => {

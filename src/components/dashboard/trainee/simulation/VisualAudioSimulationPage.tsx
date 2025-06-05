@@ -645,15 +645,8 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           recordingInstance.state === "recording" ||
           recordingInstance.state === "paused"
         ) {
-          // Stop recording - this will trigger onstop handler
-          recordingInstance.stop();
-
-          // Release microphone
-          if (recordingInstance.stream) {
-            recordingInstance.stream
-              .getTracks()
-              .forEach((track) => track.stop());
-          }
+        // Stop recording - this will trigger onstop handler
+        recordingInstance.stop();
         } else {
           resolve("");
         }

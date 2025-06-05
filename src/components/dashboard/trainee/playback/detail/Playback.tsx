@@ -133,7 +133,7 @@ const Playback = ({ attepmtId, showDetails, onPlaybackDataLoaded }: PlaybackProp
               paddingBottom: '120px', // Space for controls
             }}
           >
-            <PlaybackChat messages={messages} />
+            <PlaybackChat keywordAnalysis={playbackData?.keyword_analysis || []} />
           </Box>
 
           {/* Controls - fixed at bottom */}

@@ -62,6 +62,7 @@ export interface FetchPlaybackByIdRowDataResponse {
   type: string;
   simLevel: string;
   attemptType: string;
+  keyword_analysis?: any[];
 }
 
 export interface FetchPlaybackStatsPayload {

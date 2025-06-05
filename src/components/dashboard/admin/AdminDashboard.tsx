@@ -46,6 +46,7 @@ import {
   AdminDashboardUserActivityPayloadParams,
   AdminDashboardUserActivityResponse,
   AdminDashboardUserStatsResponse,
+  RoleCount,
   fetchAdminDashboardStats,
   fetchAdminDashboardUserActivity,
 } from "../../../services/admin";
@@ -302,6 +303,18 @@ const InfoIconPopup = ({ title }) => {
 };
 
 // UserStatsCard component
+interface UserStatsCardProps {
+  title: string;
+  total: number;
+  breakdown: RoleCount[];
+  icon?: React.ReactNode;
+  popupText?: string;
+  size?: number;
+  thickness?: number;
+}
+
+const colors = ["#E3E8FB", "#C8D2F7", "#7891EB", "#375CE5", "#B3B8F6", "#8FA0F4"];
+
 const UserStatsCard = ({
   title,
   total,
@@ -310,7 +323,9 @@ const UserStatsCard = ({
   popupText,
   size = 170,
   thickness = 5,
-}) => {
+}: UserStatsCardProps) => {
+  const displayed = breakdown.slice(0, colors.length - 1);
+
   return (
     <Card
       sx={{
@@ -334,61 +349,31 @@ const UserStatsCard = ({
 
       <Grid container alignItems="center" spacing={1.5}>
         <Grid item xs={12} md={6}>
-          <Box
-            sx={{
-              position: "relative",
-              display: "inline-flex",
-            }}
-          >
+          <Box sx={{ position: "relative", display: "inline-flex" }}>
             <CircularProgress
               variant="determinate"
-              value={breakdown.trainees}
+              value={100}
               size={size}
               thickness={thickness}
-              sx={{ color: "#E3E8FB" }}
+              sx={{ color: colors[0] }}
             />
-            <CircularProgress
-              variant="determinate"
-              value={breakdown.designer}
-              size={size}
-              thickness={thickness}
-              sx={() => ({
-                color: "#C8D2F7",
-                animationDuration: "550ms",
-                position: "absolute",
-                left: 0,
-                width: "100%",
-                height: "auto",
-              })}
-            />
-            <CircularProgress
-              variant="determinate"
-              value={breakdown.manager}
-              size={size}
-              thickness={thickness}
-              sx={() => ({
-                color: "#7891EB",
-                animationDuration: "550ms",
-                position: "absolute",
-                left: 0,
-                width: "100%",
-                height: "auto",
-              })}
-            />
-            <CircularProgress
-              variant="determinate"
-              value={breakdown.admin}
-              size={size}
-              thickness={thickness}
-              sx={() => ({
-                color: "#375CE5",
-                animationDuration: "550ms",
-                position: "absolute",
-                left: 0,
-                width: "100%",
-                height: "auto",
-              })}
-            />
+            {displayed.map((item, idx) => (
+              <CircularProgress
+                key={item.role}
+                variant="determinate"
+                value={total ? (item.count / total) * 100 : 0}
+                size={size}
+                thickness={thickness}
+                sx={() => ({
+                  color: colors[idx + 1],
+                  animationDuration: "550ms",
+                  position: "absolute",
+                  left: 0,
+                  width: "100%",
+                  height: "auto",
+                })}
+              />
+            ))}
             <Box
               sx={{
                 top: 0,
@@ -409,130 +394,40 @@ const UserStatsCard = ({
         </Grid>
         <Grid item xs={12} md={6}>
           <Stack spacing={1} bgcolor="#F9FAFB" py={1} px={2} borderRadius={1}>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "start",
-                  gap: 0.5,
-                }}
+            {breakdown.map((item, idx) => (
+              <Stack
+                key={item.role}
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
               >
                 <Box
                   sx={{
-                    width: 16,
-                    height: 8,
-                    borderRadius: "25px",
-                    bgcolor: "#375CE5",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "start",
+                    gap: 0.5,
                   }}
-                />
-                <Typography
-                  color="#000000CC"
-                  fontSize={16}
-                  fontWeight={600}
-                  variant="body2"
                 >
-                  {breakdown.admin} Admin
-                </Typography>
-              </Box>
-            </Stack>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "start",
-                  gap: 0.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 16,
-                    height: 8,
-                    borderRadius: "25px",
-                    bgcolor: "#7891EB",
-                  }}
-                />
-                <Typography
-                  color="#000000CC"
-                  fontSize={16}
-                  fontWeight={600}
-                  variant="body2"
-                >
-                  {breakdown.manager} Manager
-                </Typography>
-              </Box>
-            </Stack>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "start",
-                  gap: 0.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 16,
-                    height: 8,
-                    borderRadius: "25px",
-                    bgcolor: "#C8D2F7",
-                  }}
-                />
-                <Typography
-                  color="#000000CC"
-                  fontSize={16}
-                  fontWeight={600}
-                  variant="body2"
-                >
-                  {breakdown.designer} Designer
-                </Typography>
-              </Box>
-            </Stack>
-            <Stack
-              direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "start",
-                  gap: 0.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 16,
-                    height: 8,
-                    borderRadius: "25px",
-                    bgcolor: "#E3E8FB",
-                  }}
-                />
-                <Typography
-                  color="#000000CC"
-                  fontSize={16}
-                  fontWeight={600}
-                  variant="body2"
-                >
-                  {breakdown.trainees} Trainees
-                </Typography>
-              </Box>
-            </Stack>
+                  <Box
+                    sx={{
+                      width: 16,
+                      height: 8,
+                      borderRadius: "25px",
+                      bgcolor: colors[(idx + 1) % colors.length],
+                    }}
+                  />
+                  <Typography
+                    color="#000000CC"
+                    fontSize={16}
+                    fontWeight={600}
+                    variant="body2"
+                  >
+                    {item.count} {item.role}
+                  </Typography>
+                </Box>
+              </Stack>
+            ))}
           </Stack>
         </Grid>
       </Grid>
@@ -665,14 +560,11 @@ const AdminDashboard = () => {
   };
 
   const loadAdminDashboardStats = async () => {
-    if (user?.id) {
+    if (currentWorkspaceId) {
       try {
         setIsLoading(true);
         setError(null);
-        // In a real implementation, we would fetch data from the API
-        const data = await fetchAdminDashboardStats({
-          user_id: user.id,
-        });
+        const data = await fetchAdminDashboardStats(currentWorkspaceId);
         setDashboardStats(data);
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -706,7 +598,7 @@ const AdminDashboard = () => {
     loadUserActivity();
     loadAdminDashboardStats();
     loadUserEngagementMetrics();
-  }, [user?.id]);
+  }, [user?.id, currentWorkspaceId]);
 
   // Load divisions and departments when workspace changes
   useEffect(() => {
@@ -946,15 +838,8 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="New Users Onboarded"
-                    total={dashboardStats?.new_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.new_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
+                    total={dashboardStats?.new_users?.total_count ?? 0}
+                    breakdown={dashboardStats?.new_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -962,17 +847,8 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Activation Pending Users"
-                    total={
-                      dashboardStats?.activation_pending_users?.total_users ?? 0
-                    }
-                    breakdown={
-                      dashboardStats?.activation_pending_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
+                    total={dashboardStats?.activation_pending_users?.total_count ?? 0}
+                    breakdown={dashboardStats?.activation_pending_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -980,15 +856,8 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Active Users"
-                    total={dashboardStats?.active_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.active_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
+                    total={dashboardStats?.active_users?.total_count ?? 0}
+                    breakdown={dashboardStats?.active_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />
@@ -996,15 +865,8 @@ const AdminDashboard = () => {
                 <Grid item xs={12} md={3}>
                   <UserStatsCard
                     title="Deactivated Users"
-                    total={dashboardStats?.deactivated_users?.total_users ?? 0}
-                    breakdown={
-                      dashboardStats?.deactivated_users?.breakdown ?? {
-                        admin: 0,
-                        manager: 0,
-                        designer: 0,
-                        trainees: 0,
-                      }
-                    }
+                    total={dashboardStats?.deactivated_users?.total_count ?? 0}
+                    breakdown={dashboardStats?.deactivated_users?.role_breakdown ?? []}
                     icon={<InfoIcon />}
                     popupText="On time completed test Sim / Total no. of test sims completed"
                   />

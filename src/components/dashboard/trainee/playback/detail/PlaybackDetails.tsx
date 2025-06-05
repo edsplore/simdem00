@@ -345,12 +345,12 @@ const PlaybackDetails = (props: PlaybackDetailsProps) => {
                   >
                     <CompletionTime
                       time={`${Math.ceil(props.playbackData.textFieldKeywordScore)}%`}
-                      label="Text Field Keyword Score"
+                      label="Data Entry Score"
                       icon={<TextFieldsIcon fontSize="small" />}
                     />
                     <CompletionTime
                       time={`${Math.ceil(props.playbackData.simAccuracyScore)}%`}
-                      label="Sim Accuracy Score"
+                      label="Contextual Accuracy Score"
                       icon={<CheckCircleIcon fontSize="small" />}
                     />
                   </Stack>

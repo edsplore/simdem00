@@ -235,6 +235,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [currentTranscription, setCurrentTranscription] = useState<string>("");
 
+  // Hold the active recording stream so we can stop it when finished
+  const recordingStreamRef = useRef<MediaStream | null>(null);
+
   // Refs
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -570,6 +573,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     const startRec = (stream: MediaStream) => {
       const recorder = new MediaRecorder(stream);
+      recordingStreamRef.current = stream;
       setRecordingInstance(recorder);
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -580,13 +584,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     };
 
     if (micStreamRef.current) {
-      startRec(micStreamRef.current);
+      startRec(micStreamRef.current.clone());
     } else {
       navigator.mediaDevices
         .getUserMedia({ audio: true })
         .then((stream) => {
           micStreamRef.current = stream;
-          startRec(stream);
+          startRec(stream.clone());
         })
         .catch((error) => {
           console.error("Error accessing microphone:", error);
@@ -637,6 +641,12 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
           setIsTranscribing(false);
           reject(error);
         }
+
+        // Clean up the recording stream
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach((t) => t.stop());
+          recordingStreamRef.current = null;
+        }
       };
 
       try {
@@ -659,6 +669,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         // Even if there's an error, try to clear state
         setRecordingInstance(null);
         setIsRecording(false);
+        if (recordingStreamRef.current) {
+          recordingStreamRef.current.getTracks().forEach((t) => t.stop());
+          recordingStreamRef.current = null;
+        }
         reject(error);
       }
     });

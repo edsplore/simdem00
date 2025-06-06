@@ -24,7 +24,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Translate as TranslateIcon,
 } from '@mui/icons-material';
-import { FetchPlaybackInsightsResponse } from '../../../../../services/playback';
+import {
+  FetchPlaybackInsightsResponse,
+  InsightItem,
+} from '../../../../../services/playback';
 
 interface InsightsDialogProps {
   open: boolean;
@@ -144,48 +147,69 @@ const InsightsDialog: React.FC<InsightsDialogProps> = ({
           </Box>
         ) : (
           <Box sx={{ maxHeight: 'calc(90vh - 100px)', overflow: 'auto' }}>
-            {Object.entries(insights.insights).map(([category, insightItems]) => (
-              <Box key={category} sx={{ mb: 1 }}>
-                <Box
-                  onClick={() => toggleSection(category)}
-                  sx={{
-                    p: 2,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    bgcolor: expandedSections[category] ? '#F5F6FF' : 'transparent',
-                    '&:hover': {
-                      bgcolor: '#F5F6FF',
-                    },
-                  }}
-                >
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {getIconForCategory(category)}
-                    <Typography variant="subtitle1">{formatCategoryTitle(category)}</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    {expandedSections[category] ? (
-                      <ExpandLessIcon />
-                    ) : (
-                      <ExpandMoreIcon />
-                    )}
-                  </Stack>
-                </Box>
-                <Collapse in={expandedSections[category]}>
-                  <Box sx={{ p: 2, pl: 6 }}>
-                    {Array.isArray(insightItems) && insightItems.map((item, index) => (
-                      <Box key={index} sx={{ mb: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          {index + 1}. {item}
+            {Object.entries(insights.insights).map(([category, insightItems]) => {
+              const items = insightItems as InsightItem[];
+              const totalItem = items.find(
+                (i) =>
+                  i.metric?.toLowerCase() === category.toLowerCase() ||
+                  i.metric?.toLowerCase() === `total_${category.toLowerCase()}`,
+              );
+              const score = totalItem?.score;
+
+              return (
+                <Box key={category} sx={{ mb: 1 }}>
+                  <Box
+                    onClick={() => toggleSection(category)}
+                    sx={{
+                      p: 2,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      bgcolor: expandedSections[category] ? '#F5F6FF' : 'transparent',
+                      '&:hover': {
+                        bgcolor: '#F5F6FF',
+                      },
+                    }}
+                  >
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      {getIconForCategory(category)}
+                      <Box>
+                        <Typography
+                          variant="subtitle2"
+                          color="text.secondary"
+                          noWrap
+                        >
+                          {formatCategoryTitle(category)}
                         </Typography>
+                        {score !== undefined && (
+                          <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold', lineHeight: 1 }}>
+                            {Math.round(score)}
+                          </Typography>
+                        )}
                       </Box>
-                    ))}
+                    </Stack>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      {expandedSections[category] ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </Stack>
                   </Box>
-                </Collapse>
-                <Divider />
-              </Box>
-            ))}
+                  <Collapse in={expandedSections[category]}>
+                    <Box sx={{ p: 2, pl: 6 }}>
+                      {Array.isArray(items) &&
+                        items.map((item, index) => (
+                          <Box key={index} sx={{ mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              {index + 1}. {item.insight}
+                              {item.score !== undefined && ` (Score: ${Math.round(item.score)})`}
+                            </Typography>
+                          </Box>
+                        ))}
+                    </Box>
+                  </Collapse>
+                  <Divider />
+                </Box>
+              );
+            })}
           </Box>
         )}
       </DialogContent>

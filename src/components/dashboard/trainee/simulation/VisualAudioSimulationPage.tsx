@@ -951,6 +951,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       const finalAttemptData = updatedAttemptData;
 
 
+      // Ensure the full conversation audio is uploaded before ending
+      await stopConversationRecording();
+
       // Use the endVisualAudioAttempt function
       const response = await endVisualAudioAttempt(
         userId,
@@ -1192,6 +1195,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         return item;
       });
 
+
+      // Ensure the combined conversation audio is saved before finalizing
+      await stopConversationRecording();
 
       // Use the endVisualAudioAttempt function from simulation_visual_audio_attempts
       const response = await endVisualAudioAttempt(

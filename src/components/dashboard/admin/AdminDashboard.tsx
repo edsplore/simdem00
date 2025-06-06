@@ -62,6 +62,7 @@ import { LineChart, PieChart } from "@mui/x-charts";
 import {
   fetchActiveUserMetricsHistory,
   ActiveUserMetricsHistoryItem,
+  ActiveUserMetricsHistoryRequest,
 } from "../../../services/metrics";
 // import { fetchAdminDashboardData, fetchUserActivityLog } from '../../../services/admin';
 // import { adminDashboardData } from '../../../services/mockData/adminDashboard';
@@ -622,11 +623,18 @@ const AdminDashboard = () => {
 
   const loadUserEngagementMetrics = async () => {
     try {
-      const days =
-        engagementDateRange[0] && engagementDateRange[1]
-          ? engagementDateRange[1].diff(engagementDateRange[0], "day") + 1
-          : 30;
-      const { metrics } = await fetchActiveUserMetricsHistory(days);
+      const params: ActiveUserMetricsHistoryRequest = {
+        role: engagementRole !== "All Roles" ? engagementRole : undefined,
+      };
+
+      if (engagementDateRange[0] && engagementDateRange[1]) {
+        params.start_time = engagementDateRange[0].toISOString();
+        params.end_time = engagementDateRange[1].toISOString();
+      } else {
+        params.days = 30;
+      }
+
+      const { metrics } = await fetchActiveUserMetricsHistory(params);
       const mapped = metrics.map((m) => ({
         date: dayjs(m.date).format("MM/DD"),
         daily: m.daily_active_users,
@@ -689,7 +697,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     loadUserEngagementMetrics();
-  }, [engagementDateRange]);
+  }, [engagementDateRange, engagementRole]);
 
   // useEffect(() => {
   //   const loadUserActivity = async () => {

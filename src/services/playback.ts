@@ -109,10 +109,17 @@ export interface FetchPlaybackInsightsPayload {
   simulation_type?: string;
 }
 
-// New interface for insights response based on the actual API response
+// Interface for individual insight items returned by the backend
+export interface InsightItem {
+  metric?: string | null;
+  score?: number | null;
+  insight: string;
+}
+
+// Interface for insights response based on the actual API response
 export interface FetchPlaybackInsightsResponse {
   insights: {
-    [key: string]: string[];
+    [key: string]: InsightItem[];
   };
 }
 

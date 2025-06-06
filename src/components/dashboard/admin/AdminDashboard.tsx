@@ -28,6 +28,11 @@ import {
   TableFooter,
 } from "@mui/material";
 import {
+  DataGridPremium,
+  GridColDef,
+  GridPaginationModel,
+} from "@mui/x-data-grid-premium";
+import {
   Search as SearchIcon,
   Info as InfoIcon,
   MoreVert as MoreVertIcon,
@@ -832,6 +837,140 @@ const AdminDashboard = () => {
     URL.revokeObjectURL(url);
   };
 
+  const userColumns: GridColDef[] = [
+    {
+      field: "nameEmail",
+      headerName: "Name & Email",
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Stack>
+          <Typography variant="body2" color="#000000CC" fontWeight="medium">
+            {params.row.name}
+          </Typography>
+          <Typography variant="caption" color="#00000099">
+            {params.row.email}
+          </Typography>
+        </Stack>
+      ),
+      sortable: false,
+    },
+    {
+      field: "role",
+      headerName: "Role",
+      flex: 0.5,
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{ bgcolor: "#F2F4F7", color: "#344054", fontWeight: "medium" }}
+        />
+      ),
+    },
+    {
+      field: "divisionDepartment",
+      headerName: "Division & Department",
+      flex: 1,
+      minWidth: 200,
+      renderCell: (params) => (
+        <Stack>
+          <Typography variant="body2">{params.row.division}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {params.row.department}
+          </Typography>
+        </Stack>
+      ),
+      sortable: false,
+    },
+    { field: "addedOn", headerName: "Added On", flex: 0.6, minWidth: 120 },
+    {
+      field: "status",
+      headerName: "Status",
+      flex: 0.5,
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{
+            bgcolor:
+              params.value === "ACTIVE" ? "#F2F4F7" : "#FEF3F2",
+            color: params.value === "ACTIVE" ? "#344054" : "#B42318",
+            fontWeight: "medium",
+          }}
+        />
+      ),
+    },
+    {
+      field: "assignedSimulations",
+      headerName: "Assigned Simulations",
+      flex: 0.7,
+      minWidth: 150,
+    },
+    {
+      field: "completionRate",
+      headerName: "Completion Rate",
+      flex: 0.6,
+      minWidth: 150,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{ bgcolor: "#F2F4F7", color: "#344054", fontWeight: "medium" }}
+        />
+      ),
+    },
+    {
+      field: "adherenceRate",
+      headerName: "Adherence Rate",
+      flex: 0.6,
+      minWidth: 150,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{ bgcolor: "#F2F4F7", color: "#344054", fontWeight: "medium" }}
+        />
+      ),
+    },
+    {
+      field: "averageScore",
+      headerName: "Average Score",
+      flex: 0.6,
+      minWidth: 150,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{ bgcolor: "#F2F4F7", color: "#344054", fontWeight: "medium" }}
+        />
+      ),
+    },
+    { field: "activatedOn", headerName: "Activated On", flex: 0.6, minWidth: 150 },
+    { field: "deActivatedOn", headerName: "Deactivated On", flex: 0.7, minWidth: 150 },
+    {
+      field: "loginCount",
+      headerName: "Login Count",
+      flex: 0.5,
+      minWidth: 120,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{ bgcolor: "#F2F4F7", color: "#344054", fontWeight: "medium" }}
+        />
+      ),
+    },
+    { field: "lastLoginOn", headerName: "Last Login Date", flex: 0.7, minWidth: 150 },
+    {
+      field: "lastSessionDuration",
+      headerName: "Last Session Duration",
+      flex: 0.7,
+      minWidth: 170,
+    },
+  ];
+
 
   if (isLoading) {
     return (
@@ -1130,380 +1269,93 @@ const AdminDashboard = () => {
             </Stack>
 
             {/* User Activity Table */}
-            <Stack sx={{ borderRadius: 2 }}>
-              <TableContainer
-                component={Paper}
-                sx={{
-                  border: "1px solid #0000001A",
-                  borderTopLeftRadius: "16px",
-                  borderTopRightRadius: "16px",
-                  mt: 2,
+            <Paper
+              sx={{
+                boxShadow: "none",
+                border: "1px solid #E5E7EB",
+                borderRadius: "12px",
+                overflow: "hidden",
+                width: "100%",
+              }}
+            >
+              <DataGridPremium
+                autoHeight
+                rowHeight={68}
+                rows={userActivity}
+                columns={userColumns}
+                getRowId={(row) => row.id}
+                loading={isLoading}
+                pagination
+                paginationMode="server"
+                rowCount={userActivityData.total}
+                pageSizeOptions={[10, 25, 50, 100]}
+                paginationModel={{ page, pageSize: rowsPerPage }}
+                onPaginationModelChange={(model: GridPaginationModel) => {
+                  setPage(model.page);
+                  setRowsPerPage(model.pageSize);
                 }}
-                style={{ overflowX: "auto" }}
-              >
-                <Table style={{ minWidth: 6 * 550 }}>
-                  <TableHead sx={{ bgcolor: "#F9FAFB" }}>
-                    <TableRow>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          fontSize: 14,
-                          width: "150px",
-                        }}
-                      >
-                        Name & Email
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Role
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Division & Department
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Added On
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Status
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Assigned Simulations
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Completetion Rate
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Adherence Rate
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Average Score
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Activated On
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Deactivated On
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Login Count
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Last Login Date
-                      </TableCell>
-                      <TableCell
-                        sx={{
-                          py: 1,
-                          px: 2,
-                          color: "#00000066",
-                          width: "250px",
-                        }}
-                      >
-                        Last Session Duration
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {userActivity.map(
-                      (user: AdminDashboardUserActivityResponse) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <Stack>
-                              <Typography
-                                variant="body2"
-                                color="#000000CC"
-                                fontWeight="medium"
-                              >
-                                {user.name}
-                              </Typography>
-                              <Typography variant="caption" color="#00000099">
-                                {user.email}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={user.role}
-                              size="small"
-                              sx={{
-                                bgcolor: "#F2F4F7",
-                                color: "#344054",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Stack>
-                              <Typography variant="body2">
-                                {user.division}
-                              </Typography>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                              >
-                                {user.department}
-                              </Typography>
-                            </Stack>
-                          </TableCell>
-                          <TableCell>{user.addedOn}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={user.status}
-                              size="small"
-                              sx={{
-                                bgcolor:
-                                  user.status === "ACTIVE"
-                                    ? "#F2F4F7"
-                                    : "#FEF3F2",
-                                color:
-                                  user.status === "ACTIVE"
-                                    ? "#344054"
-                                    : "#B42318",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell> {user.assignedSimulations}</TableCell>
-                          <TableCell>
-                            {" "}
-                            <Chip
-                              label={user.completionRate}
-                              size="small"
-                              sx={{
-                                bgcolor: "#F2F4F7",
-                                color: "#344054",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {" "}
-                            <Chip
-                              label={user.adherenceRate}
-                              size="small"
-                              sx={{
-                                bgcolor: "#F2F4F7",
-                                color: "#344054",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {" "}
-                            <Chip
-                              label={user.averageScore}
-                              size="small"
-                              sx={{
-                                bgcolor: "#F2F4F7",
-                                color: "#344054",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{user.activatedOn}</TableCell>
-                          <TableCell>{user.deActivatedOn}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={user.loginCount}
-                              size="small"
-                              sx={{
-                                bgcolor: "#F2F4F7",
-                                color: "#344054",
-                                fontWeight: "medium",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{user.lastLoginOn}</TableCell>
-                          <TableCell>{user.lastSessionDuration}</TableCell>
-                        </TableRow>
-                      )
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              <TableContainer
+                scrollbarSize={8}
                 sx={{
-                  border: "1px solid #0000001A",
-                  borderBottomLeftRadius: "16px",
-                  borderTop: "0px",
-                  borderBottomRightRadius: "16px",
+                  border: "none",
+                  width: "100%",
+                  "& .MuiDataGrid-main": {
+                    border: "none",
+                  },
+                  "& .table-header": {
+                    backgroundColor: "#ffffff",
+                    borderBottom: "1px solid #E5E7EB",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "#6B7280",
+                    "& .MuiDataGrid-columnHeaderTitle": {
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      color: "#6B7280",
+                    },
+                  },
+                  "& .MuiDataGrid-columnHeaders": {
+                    borderBottom: "1px solid #E5E7EB",
+                    minHeight: "56px !important",
+                    maxHeight: "56px !important",
+                  },
+                  "& .MuiDataGrid-columnHeader": {
+                    padding: "0 16px",
+                    "&:focus, &:focus-within": {
+                      outline: "none",
+                    },
+                  },
+                  "& .MuiDataGrid-cell": {
+                    borderBottom: "1px solid #F3F4F6",
+                    padding: "12px 16px",
+                    fontSize: "14px",
+                    color: "#374151",
+                    minHeight: "68px !important",
+                    maxHeight: "68px !important",
+                    display: "flex",
+                    alignItems: "center",
+                    "&:focus, &:focus-within": {
+                      outline: "none",
+                    },
+                  },
+                  "& .MuiDataGrid-row": {
+                    backgroundColor: "#ffffff",
+                    minHeight: "68px !important",
+                    maxHeight: "68px !important",
+                    "&:nth-of-type(even)": {
+                      backgroundColor: "#F9FAFB",
+                    },
+                  },
+                  "& .MuiDataGrid-footerContainer": {
+                    borderTop: "1px solid #E5E7EB",
+                    backgroundColor: "#ffffff",
+                    minHeight: "60px",
+                  },
+                  "& .MuiDataGrid-selectedRowCount": {
+                    display: "none",
+                  },
                 }}
-              >
-                <Table>
-                  <TableRow sx={{ bgcolor: "#F9FAFB" }}>
-                    <TableCell
-                      sx={{ py: 1, px: 2, color: "#00000099", fontWeight: 500 }}
-                      colSpan={3}
-                    >
-                      Rows per page:
-                      <Select
-                        value={rowsPerPage.toString()}
-                        onChange={handleChangeRowsPerPage}
-                        displayEmpty
-                        IconComponent={ExpandMore}
-                        MenuProps={{
-                          PaperProps: {
-                            sx: {
-                              mt: 1,
-                              border: "1px solid #0000001A",
-                              borderRadius: 2,
-                              boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.05)",
-                              bgcolor: "white",
-                              width: 50,
-                            },
-                          },
-                          MenuListProps: {
-                            sx: {
-                              padding: 0,
-                            },
-                          },
-                        }}
-                        sx={{
-                          height: "22px",
-                          color: "#00000099",
-                          fontWeight: 600,
-                          fontSize: 14,
-                          outline: "none",
-                          outlineColor: "transparent",
-                          boxShadow: "none",
-                          "& fieldset": { border: "none" },
-                          "& .MuiSelect-iconOpen": {
-                            transform: "none",
-                          },
-                          "& .MuiSelect-icon": { color: "#00000066" },
-                        }}
-                        size="small"
-                      >
-                        <MenuItem value="10">10</MenuItem>
-                        <MenuItem value="25">25</MenuItem>
-                        <MenuItem value="50">50</MenuItem>
-                        <MenuItem value="100">100</MenuItem>
-                      </Select>
-                    </TableCell>
-
-                    <TableCell colSpan={3} sx={{ py: 1, px: 2 }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "flex-end",
-                          height: "22px",
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          color="#00000099"
-                          fontWeight={500}
-                          sx={{ mr: 2 }}
-                        >
-                          {`${page * rowsPerPage + 1}-${Math.min(
-                            (page + 1) * rowsPerPage,
-                            userActivityData.total
-                          )} of ${userActivityData.total}`}
-                        </Typography>
-
-                        <IconButton disabled={page === 0}>
-                          <ChevronLeftIcon />
-                        </IconButton>
-
-                        <IconButton
-                          disabled={
-                            page >=
-                            Math.ceil(userActivityData.total / rowsPerPage) - 1
-                          }
-                        >
-                          <ChevronRightIcon />
-                        </IconButton>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                </Table>
-              </TableContainer>
-            </Stack>
+              />
+            </Paper>
           </Stack>
         </Stack>
       </Container>
@@ -1511,4 +1363,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard;
+export default AdminDashboard

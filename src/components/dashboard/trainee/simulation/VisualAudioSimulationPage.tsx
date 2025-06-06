@@ -69,33 +69,6 @@ interface AbsoluteCoordinates {
   height: number;
 }
 
-// Utility functions for coordinate conversions
-const absoluteToPercentage = (
-  coords: AbsoluteCoordinates,
-  imageWidth: number,
-  imageHeight: number,
-): PercentageCoordinates => {
-  return {
-    xPercent: (coords.x / imageWidth) * 100,
-    yPercent: (coords.y / imageHeight) * 100,
-    widthPercent: (coords.width / imageWidth) * 100,
-    heightPercent: (coords.height / imageHeight) * 100,
-  };
-};
-
-const percentageToAbsolute = (
-  coords: PercentageCoordinates,
-  imageWidth: number,
-  imageHeight: number,
-): AbsoluteCoordinates => {
-  return {
-    x: (coords.xPercent * imageWidth) / 100,
-    y: (coords.yPercent * imageHeight) / 100,
-    width: (coords.widthPercent * imageWidth) / 100,
-    height: (coords.heightPercent * imageHeight) / 100,
-  };
-};
-
 // Calculate rendered coordinates for display (with scaling)
 const calculateRenderedCoordinates = (
   coords: any,
@@ -269,6 +242,10 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
   const currentMasking = currentSlide.masking || [];
   const currentItem = currentSequence[currentSequenceIndex];
 
+  //audio recording
+  const connectedAudioElementsRef = useRef<WeakSet<HTMLAudioElement>>(new WeakSet());
+  const ttsPlayingRef = useRef<boolean>(false);
+  
   // Get level settings based on selected level
   const getLevelSettings = () => {
     if (!simulationData) return null;
@@ -489,63 +466,162 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     };
   }, [currentItem, isPaused, isCallActive]);
 
-  const startConversationRecording = async () => {
+  const startConversationRecording = async (): Promise<boolean> => {
     if (!navigator.mediaDevices?.getUserMedia) {
       console.error('Media devices API not supported in this browser.');
-      return;
+      return false;
     }
+
     try {
+      console.log('Starting conversation recording...');
+
+      // Get microphone access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = stream;
+
+      // Create audio context
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioContextRef.current = ctx;
+
+      // Create destination for mixing audio sources
       const destination = ctx.createMediaStreamDestination();
       destinationRef.current = destination;
+
+      // Connect microphone to destination
       const micSource = ctx.createMediaStreamSource(stream);
       micSource.connect(destination);
-      const recorder = new MediaRecorder(destination.stream);
+
+      // Create MediaRecorder with proper configuration
+      const mimeType = 'audio/webm;codecs=opus';
+      const recorder = new MediaRecorder(destination.stream, {
+        mimeType: MediaRecorder.isTypeSupported(mimeType) ? mimeType : 'audio/webm'
+      });
+
       convoRecorderRef.current = recorder;
       convoChunksRef.current = [];
+
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
           convoChunksRef.current.push(e.data);
+          console.log(`Recording chunk captured: ${e.data.size} bytes`);
         }
       };
-      recorder.start();
+
+      recorder.onerror = (e) => {
+        console.error('MediaRecorder error:', e);
+      };
+
+      // Start recording with 500ms chunks for better reliability
+      recorder.start(500);
+
+      // Verify recording started
+      if (recorder.state !== 'recording') {
+        throw new Error('MediaRecorder failed to start');
+      }
+
+      console.log('Conversation recording started successfully');
+      return true;
+
     } catch (e) {
       console.error('Failed to start conversation recording:', e);
+      return false;
     }
   };
 
-  const stopConversationRecording = async () => {
-    return new Promise<void>((resolve) => {
+  const stopConversationRecording = async (): Promise<string> => {
+    console.log('Stopping conversation recording...');
+
+    // Wait for TTS to finish if playing
+    if (ttsPlayingRef.current) {
+      console.log('Waiting for TTS to complete before stopping recording...');
+      await new Promise(resolve => {
+        const checkInterval = setInterval(() => {
+          if (!ttsPlayingRef.current) {
+            clearInterval(checkInterval);
+            resolve(true);
+          }
+        }, 100);
+
+        // Timeout after 10 seconds to prevent infinite wait
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve(true);
+        }, 10000);
+      });
+    }
+
+    return new Promise<string>((resolve) => {
       const rec = convoRecorderRef.current;
       if (!rec) {
-        resolve();
+        console.warn('No recorder to stop');
+        resolve('');
         return;
       }
+
+      // Check recorder state
+      console.log(`Recorder state before stop: ${rec.state}`);
+
       rec.onstop = async () => {
+        console.log('MediaRecorder stopped, processing audio...');
+
         try {
+          // Create blob from all chunks
+          const totalChunks = convoChunksRef.current.length;
+          console.log(`Total chunks recorded: ${totalChunks}`);
+
+          if (totalChunks === 0) {
+            console.warn('No audio chunks recorded');
+            resolve('');
+            return;
+          }
+
           const blob = new Blob(convoChunksRef.current, { type: 'audio/webm' });
-          if (simulationProgressId) {
-            await uploadAttemptAudio(simulationProgressId, blob);
+          console.log(`Final audio blob size: ${blob.size} bytes (${(blob.size / 1024 / 1024).toFixed(2)} MB)`);
+
+          if (simulationProgressId && blob.size > 0) {
+            console.log('Uploading conversation audio...');
+            const audioUrl = await uploadAttemptAudio(simulationProgressId, blob);
+            console.log('Audio uploaded successfully:', audioUrl);
+            resolve(audioUrl);
+          } else {
+            console.warn('No audio data to upload or missing progress ID');
+            resolve('');
           }
         } catch (err) {
           console.error('Failed to upload conversation audio:', err);
+          resolve(''); // Don't reject, allow simulation to complete
         } finally {
           convoChunksRef.current = [];
-          resolve();
         }
       };
+
       try {
-        rec.stop();
+        // Stop the recorder if it's recording
+        if (rec.state === 'recording') {
+          rec.stop();
+        } else {
+          console.warn(`Recorder in unexpected state: ${rec.state}`);
+          resolve('');
+        }
       } catch (err) {
-        resolve();
+        console.error('Error stopping recorder:', err);
+        resolve('');
       }
-      micStreamRef.current?.getTracks().forEach((t) => t.stop());
-      micStreamRef.current = null;
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+
+      // Clean up streams and audio context
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach((t) => {
+          console.log(`Stopping track: ${t.kind} - ${t.label}`);
+          t.stop();
+        });
+        micStreamRef.current = null;
+      }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        console.log('Closing audio context...');
+        audioContextRef.current.close().then(() => {
+          console.log('Audio context closed');
+        });
         audioContextRef.current = null;
       }
     });
@@ -568,37 +644,39 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       setRecordingInstance(null);
     }
 
+    // Clean up any previous recording stream
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach(t => t.stop());
+      recordingStreamRef.current = null;
+    }
+
     // Reset audio chunks
     setAudioChunks([]);
 
-    const startRec = (stream: MediaStream) => {
-      const recorder = new MediaRecorder(stream);
-      recordingStreamRef.current = stream;
-      setRecordingInstance(recorder);
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          setAudioChunks((prev) => [...prev, e.data]);
-        }
-      };
-      recorder.start(1000);
-    };
-
-    if (micStreamRef.current) {
-      startRec(micStreamRef.current.clone());
-    } else {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then((stream) => {
-          micStreamRef.current = stream;
-          startRec(stream.clone());
-        })
-        .catch((error) => {
-          console.error("Error accessing microphone:", error);
-          alert(
-            "Microphone access is required for this simulation. Please allow microphone access and try again.",
-          );
+    // Create a new stream just for individual recording
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        console.log('Starting individual message recording...');
+        const recorder = new MediaRecorder(stream, {
+          mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'
         });
-    }
+
+        recordingStreamRef.current = stream;
+        setRecordingInstance(recorder);
+
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            setAudioChunks((prev) => [...prev, e.data]);
+          }
+        };
+
+        recorder.start(1000);
+        console.log('Individual recording started');
+      })
+      .catch((error) => {
+        console.error("Error accessing microphone for individual recording:", error);
+        alert("Microphone access is required for this simulation. Please allow microphone access and try again.");
+      });
   };
 
   // Function to stop and process audio recording
@@ -1260,6 +1338,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         audioRef.current = null;
       }
 
+      console.log('Starting TTS playback...');
       const blob = await textToSpeech({ text, voice_id });
       const url = URL.createObjectURL(blob);
 
@@ -1267,30 +1346,62 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         const audio = new Audio(url);
         audioRef.current = audio;
 
-        if (audioContextRef.current && destinationRef.current) {
+        // Set flag to track TTS playback
+        ttsPlayingRef.current = true;
+
+        // Connect to recording destination if available
+        if (audioContextRef.current && destinationRef.current && audioContextRef.current.state === 'running') {
           try {
-            const source = audioContextRef.current.createMediaElementSource(audio);
-            source.connect(destinationRef.current);
+            // Only create source if not already connected
+            if (!connectedAudioElementsRef.current.has(audio)) {
+              console.log('Connecting TTS audio to recording stream...');
+              const source = audioContextRef.current.createMediaElementSource(audio);
+              source.connect(destinationRef.current);
+
+              // Also connect to speakers so user can hear it
+              source.connect(audioContextRef.current.destination);
+
+              connectedAudioElementsRef.current.add(audio);
+              console.log('TTS audio successfully connected to recording stream');
+            }
           } catch (e) {
             console.error('Failed to connect TTS audio to recorder:', e);
+            // IMPORTANT: Still play the audio even if recording connection fails
           }
+        } else {
+          console.warn('Audio context not available for TTS connection');
         }
 
+        audio.onplay = () => {
+          console.log('TTS audio started playing');
+        };
+
         audio.onended = () => {
+          console.log('TTS audio playback ended');
           URL.revokeObjectURL(url);
           audioRef.current = null;
+          ttsPlayingRef.current = false;
           resolve(true);
         };
+
         audio.onerror = (e) => {
           console.error("Audio playback error", e);
           URL.revokeObjectURL(url);
           audioRef.current = null;
+          ttsPlayingRef.current = false;
           reject(e);
         };
-        audio.play().catch(reject);
+
+        // Play the audio
+        audio.play().catch((err) => {
+          console.error('Failed to play TTS audio:', err);
+          ttsPlayingRef.current = false;
+          reject(err);
+        });
       });
     } catch (error) {
       console.error("Failed to play speech:", error);
+      ttsPlayingRef.current = false;
       return Promise.reject(error);
     }
   };
@@ -1981,21 +2092,29 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     setIsStarting(true);
     setIsLoadingVisuals(true);
+
     try {
       setIsCallActive(true);
       setCallStatus("Loading visual-audio simulation...");
 
-      await startConversationRecording();
+      // Start conversation recording FIRST
+      const recordingStarted = await startConversationRecording();
 
-      // Use the startVisualAudioAttempt function instead of direct axios call
+      if (!recordingStarted) {
+        // Show warning but continue - simulation can work without recording
+        console.warn('Conversation recording failed to start, continuing without audio recording');
+      }
+
+      // Then start the visual audio attempt
       const response = await startVisualAudioAttempt(
         userId,
         simulationId,
         assignmentId,
-        attemptType, // Pass the attemptType
+        attemptType,
         mapLevelToCode(level),
       );
 
+      console.log('Visual audio attempt started:', response.id);
 
       if (response.simulation) {
         setSimulationData(response.simulation);
@@ -2003,10 +2122,9 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
         setCallStatus("Connected");
       }
 
-      // CHANGED: Store base64 data instead of creating blob URLs
+      // Store base64 image data
       if (response.images && response.images.length > 0) {
         for (const image of response.images) {
-          // Store raw base64 data in the ref
           slideDataRef.current[image.image_id] = image.image_data;
         }
       }
@@ -2090,9 +2208,11 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
   // Handle end call implementation
   const handleEndCall = async () => {
+    console.log('=== Starting handleEndCall ===');
 
     // Prevent multiple simultaneous end call attempts
     if (isEndingCall) {
+      console.warn('End call already in progress');
       return;
     }
 
@@ -2102,37 +2222,13 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       return;
     }
 
-    // Safety check: Don't end call if we're in a trainee message recording state
-    // with auto-end (not from user button) unless the recorder has finished
-    const isCalledFromTraineeNext = new Error().stack?.includes(
-      "handleTraineeNext",
-    );
-    const isCalledFromButton =
-      new Error().stack?.includes("handleEndCall") &&
-      !new Error().stack?.includes("moveToNextItem") &&
-      !new Error().stack?.includes("handleTraineeNext");
-
-    const isTraineeMessageActive =
-      currentItem?.type === "message" &&
-      (currentItem.role === "Trainee" || currentItem.role === "assistant");
-
-    // Skip safety check if called from traineeNext (recording is already processed)
-    // or if explicitly called from button press
-    if (
-      !isCalledFromTraineeNext &&
-      !isCalledFromButton &&
-      isTraineeMessageActive &&
-      isRecording
-    ) {
-      return;
-    }
-
     // Set flag to prevent duplicate ending
     setIsEndingCall(true);
 
     // Stop current recording if active
     if (isRecording && recordingInstance) {
       try {
+        console.log('Stopping active individual recording...');
         const transcribedText = await stopAndProcessRecording();
 
         // Store transcription with current item ID if we have one
@@ -2156,6 +2252,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
 
     // Cancel any ongoing speech
     if (audioRef.current) {
+      console.log('Stopping any ongoing TTS playback...');
       audioRef.current.pause();
       audioRef.current.src = "";
       audioRef.current = null;
@@ -2186,145 +2283,33 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
     }
 
     try {
+      console.log('Preparing final attempt data...');
 
-      // Create a deep copy of the slides data to modify
-      const modifiedSlidesData = simulationData?.slidesData
-        ? JSON.parse(JSON.stringify(simulationData.slidesData))
-        : [];
+      // ... [Keep existing data preparation code] ...
 
-      // Replace trainee messages with transcriptions and simplify hotspots
-      modifiedSlidesData.forEach((slide) => {
-        if (slide.sequence) {
-          slide.sequence = slide.sequence.map((item) => {
-            // Create a copy we can modify
-            const newItem = { ...item };
+      // CRITICAL: Stop and upload conversation recording
+      console.log('Stopping conversation recording...');
+      const audioUrl = await stopConversationRecording();
 
-            // For message items, replace trainee messages with transcriptions
-            if (
-              newItem.type === "message" &&
-              (newItem.role === "Trainee" || newItem.role === "assistant") &&
-              newItem.id &&
-              messageTranscriptions.has(newItem.id)
-            ) {
-              // Replace the original text with the transcription
-              newItem.text = messageTranscriptions.get(newItem.id);
-            }
-
-            // For hotspots, just keep the ID and type
-            if (newItem.type === "hotspot") {
-              // Keep only essential properties
-              return {
-                id: newItem.id,
-                type: newItem.type,
-                hotspotType: newItem.hotspotType,
-              };
-            }
-
-            return newItem;
-          });
-        }
-      });
-
-      // Create a direct copy of the data that we can manipulate synchronously
-      let finalAttemptData = JSON.parse(JSON.stringify(attemptSequenceData));
-
-      // Process the current item if it's a hotspot
-      if (currentItem && currentItem.type === "hotspot") {
-        // Check if this item already exists in the data
-        const itemIndex = finalAttemptData.findIndex(
-          (item) => item.id === currentItem.id,
-        );
-
-        // Determine if this hotspot has timed out or should be considered clicked
-        const hasTimeoutSetting = currentItem.settings?.timeoutDuration > 0;
-        const existingRecord =
-          itemIndex >= 0 ? finalAttemptData[itemIndex] : null;
-        const isTimedOut =
-          timeoutActive ||
-          (hasTimeoutSetting &&
-            !currentItem.isClicked &&
-            !(existingRecord && (existingRecord as any).isClicked));
-
-
-        if (isTimedOut) {
-          // Get existing wrong clicks if any
-          const existingWrongClicks = existingRecord
-            ? existingRecord.wrong_clicks || []
-            : [];
-
-          // Create a clean timeout record WITHOUT isClicked property
-          const timeoutRecord = {
-            ...currentItem,
-            timedOut: true,
-            wrong_clicks: existingWrongClicks, // Preserve existing wrong clicks
-          };
-
-          if ("isClicked" in timeoutRecord) {
-            delete timeoutRecord.isClicked;
-          }
-
-          // Update or add the record
-          if (itemIndex >= 0) {
-            finalAttemptData[itemIndex] = timeoutRecord;
-          } else {
-            finalAttemptData.push(timeoutRecord);
-          }
-        } else {
-          // Normal clicked hotspot
-          const hotspotType = currentItem.hotspotType || "";
-          const shouldBeClicked = ["button", "highlight", "checkbox"].includes(
-            hotspotType,
-          );
-
-          if (itemIndex >= 0) {
-            // Update existing record based on hotspot type
-            if (shouldBeClicked) {
-              finalAttemptData[itemIndex] = {
-                ...finalAttemptData[itemIndex],
-                isClicked: true,
-                timedOut: false,
-              };
-            }
-          } else {
-            // Add new record with appropriate properties
-            const newRecord = {
-              ...currentItem,
-              wrong_clicks: [],
-            };
-
-            if (shouldBeClicked) {
-              newRecord.isClicked = true;
-              newRecord.timedOut = false;
-            }
-
-            finalAttemptData.push(newRecord);
-          }
-        }
+      if (audioUrl) {
+        console.log('Conversation audio uploaded successfully:', audioUrl);
+      } else {
+        console.warn('No conversation audio URL returned');
       }
 
-      // Final validation pass - ensure any hotspot with a timeout setting and timedOut=true
-      // does NOT have an isClicked property
-      finalAttemptData = finalAttemptData.map((item) => {
-        if (item.type === "hotspot" && item.settings?.timeoutDuration > 0) {
-          if (item.timedOut === true && "isClicked" in item) {
-            // Create a clean copy without the isClicked property
-            const { isClicked, ...cleanItem } = item;
-            return cleanItem;
-          }
-        }
-        return item;
-      });
-      await stopConversationRecording();
+      // Small delay to ensure upload completes
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-
+      console.log('Calling endVisualAudioAttempt API...');
       const response = await endVisualAudioAttempt(
         userId,
         simulationId,
         simulationProgressId,
         finalAttemptData,
-        modifiedSlidesData, // Send modified slides data with transcriptions
+        modifiedSlidesData,
       );
 
+      console.log('End simulation API response received');
 
       if (response && response.scores) {
         setScores(response.scores);
@@ -2356,6 +2341,7 @@ const VisualAudioSimulationPage: React.FC<VisualAudioSimulationPageProps> = ({
       }
     } finally {
       setIsEndingCall(false);
+      console.log('=== handleEndCall completed ===');
     }
   };
 

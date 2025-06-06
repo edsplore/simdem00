@@ -577,8 +577,8 @@ const AdminDashboard = () => {
       setError(null);
 
       const payload: AdminUsersTableRequest = {
-        page: page + 1,
-        limit: 5,
+        page,
+        limit: rowsPerPage,
         search: searchQuery || undefined,
         division: division !== "All Divisions" ? division : undefined,
         department: department !== "All Department" ? department : undefined,

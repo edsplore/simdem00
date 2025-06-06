@@ -95,7 +95,7 @@ const AdminUsersTable = () => {
   const [divisions, setDivisions] = useState<string[]>([]);
   const [rolesList, setRolesList] = useState<string[]>([]);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [dateRange, setDateRange] = useState<DateRange<Dayjs>>([null, null]);
   const [userActivity, setUserActivity] = useState<AdminDashboardUserActivityResponse[]>([]);
   const [userActivityData, setUserActivityData] = useState({ users: [] as AdminDashboardUserActivityResponse[], total: 0 });

@@ -501,6 +501,7 @@ const AdminDashboard = () => {
     dayjs(),
   ]);
   const [engagementRole, setEngagementRole] = useState("All Roles");
+  const [rolesList, setRolesList] = useState<string[]>([]);
 
   const [userEngagementData, setUserEngagementData] = useState<
     ActiveUserMetricsHistoryItem[]
@@ -523,6 +524,7 @@ const AdminDashboard = () => {
           fetchRoles(),
         ]);
         const roleNames = roles.map((r) => r.name);
+        setRolesList(roleNames);
         const augmented = addMissingRoles(stats, roleNames);
         setDashboardStats(augmented);
       } catch (error) {
